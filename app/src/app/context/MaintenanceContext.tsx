@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 // Context to manage site maintenance status
 const MaintenanceContext = createContext({
-  isInMaintenance: true,
+  isInMaintenance: false,
   maintenanceMessage:
     "Court Vision is currently offline for the off-season. I'll be back with more features for the next fantasy basketball season!",
 });
@@ -14,7 +14,7 @@ export const MaintenanceProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [isInMaintenance] = useState(true);
+  const [isInMaintenance] = useState(false);
   const [maintenanceMessage] = useState(
     "Court Vision is currently offline for the off-season. I'll be back with more features for the next fantasy basketball season!"
   );

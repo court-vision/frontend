@@ -10,9 +10,11 @@ import {
   TableHeader,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { useStandings, StandingsPlayer } from "@/app/context/StandingsContext";
+import { useStandingsQuery, usePlayerStatsQuery } from "@/hooks/useStandings";
+import type { StandingsPlayer } from "@/types/standings";
 import { TrendingUp, TrendingDown, Minus, ArrowUpDown } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { useEffect, useState } from "react";
 import {
   Dialog,
@@ -22,12 +24,13 @@ import {
   DialogFooter,
   DialogContent,
   DialogHeader,
-	DialogClose,
+  DialogClose,
 } from "../ui/dialog";
-import  PlayerStatDisplay from "./PlayerStatDisplay";
+import PlayerStatDisplay from "./PlayerStatDisplay";
 
 export default function StandingsDisplay() {
-  const { standings, fetchPlayerStats } = useStandings();
+  const { data: standings = [], isLoading } = useStandingsQuery();
+  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [sortedStandings, setSortedStandings] = useState(standings);
   const [sortConfig, setSortConfig] = useState({
     key: "total_fpts",
@@ -59,8 +62,8 @@ export default function StandingsDisplay() {
   };
 
   const handlePlayerClick = (player: StandingsPlayer) => {
-    fetchPlayerStats(player.player_name);
-  }
+    setSelectedPlayer(player.player_name);
+  };
 
   const getSortIcon = (columnKey: string) => {
     if (sortConfig.key !== columnKey) {
@@ -76,84 +79,107 @@ export default function StandingsDisplay() {
     );
   };
 
-  return (
-    <Card className="mt-5 w-full">
-      <CardContent className="flex justify-center mb-[-20px] w-full">
-        <Table className="w-full">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">Rank</TableHead>
-              <TableHead className="w-[50%] text-center">Name</TableHead>
-              <TableHead
-                className="text-center cursor-pointer hover:bg-muted"
-                onClick={() => handleSort("total_fpts")}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  Total FPTS
-                  {getSortIcon("total_fpts")}
-                </div>
-              </TableHead>
-              <TableHead
-                className="text-center cursor-pointer hover:bg-muted"
-                onClick={() => handleSort("avg_fpts")}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  Average FPTS/G
-                  {getSortIcon("avg_fpts")}
-                </div>
-              </TableHead>
-              <TableHead className="w-[100px] text-center">
-                Rank Change
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedStandings.map((player: StandingsPlayer, index: number) => {
-              return (
-                <Dialog key={index}>
-                  <DialogTrigger asChild onClick={() => handlePlayerClick(player)}>
-                    <TableRow className="text-center cursor-pointer">
-                      <TableCell>{player.rank}</TableCell>
-                      <TableCell>{player.player_name}</TableCell>
-                      <TableCell>{player.total_fpts}</TableCell>
-                      <TableCell>
-                        {Math.round(player.avg_fpts * 10) / 10}
-                      </TableCell>
-                      <TableCell className="flex justify-center items-center space-x-1">
-                        {player.rank_change}
-                        <Separator orientation="vertical" />
-                        {player.rank_change > 0 ? (
-                          <TrendingUp className="text-green-500" size={20} />
-                        ) : player.rank_change < 0 ? (
-                          <TrendingDown className="text-red-500" size={20} />
-                        ) : (
-                          <Minus className="text-gray-500" size={20} />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-[900px]">
-                    <DialogHeader>
-                      <DialogTitle>Player Details</DialogTitle>
-                      <DialogDescription>
-                        Detailed stats and performance for {player.player_name}.
-                      </DialogDescription>
-                    </DialogHeader>
+  if (isLoading) {
+    return (
+      <Card className="mt-5 w-full">
+        <CardContent className="p-6">
+          <SkeletonTable rows={10} columns={5} />
+        </CardContent>
+      </Card>
+    );
+  }
 
-                    <PlayerStatDisplay player={player} />
-                    
-                    <DialogFooter>
-											<DialogClose>
-                      	<Button type="submit">Close</Button>
-											</DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+  return (
+    <>
+      <Card className="mt-5 w-full">
+        <CardContent className="flex justify-center mb-[-20px] w-full">
+          <Table className="w-full">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">Rank</TableHead>
+                <TableHead className="w-[50%] text-center">Name</TableHead>
+                <TableHead
+                  className="text-center cursor-pointer hover:bg-muted"
+                  onClick={() => handleSort("total_fpts")}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    Total FPTS
+                    {getSortIcon("total_fpts")}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="text-center cursor-pointer hover:bg-muted"
+                  onClick={() => handleSort("avg_fpts")}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    Average FPTS/G
+                    {getSortIcon("avg_fpts")}
+                  </div>
+                </TableHead>
+                <TableHead className="w-[100px] text-center">
+                  Rank Change
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedStandings.map((player: StandingsPlayer, index: number) => {
+                return (
+                  <TableRow
+                    key={index}
+                    className="text-center cursor-pointer"
+                    onClick={() => handlePlayerClick(player)}
+                  >
+                    <TableCell>{player.rank}</TableCell>
+                    <TableCell>{player.player_name}</TableCell>
+                    <TableCell>{player.total_fpts}</TableCell>
+                    <TableCell>
+                      {Math.round(player.avg_fpts * 10) / 10}
+                    </TableCell>
+                    <TableCell className="flex justify-center items-center space-x-1">
+                      {player.rank_change}
+                      <Separator orientation="vertical" />
+                      {player.rank_change > 0 ? (
+                        <TrendingUp className="text-green-500" size={20} />
+                      ) : player.rank_change < 0 ? (
+                        <TrendingDown className="text-red-500" size={20} />
+                      ) : (
+                        <Minus className="text-gray-500" size={20} />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Player Stats Dialog */}
+      <Dialog
+        open={!!selectedPlayer}
+        onOpenChange={() => setSelectedPlayer(null)}
+      >
+        <DialogContent className="max-w-[900px]">
+          <DialogHeader>
+            <DialogTitle>Player Details</DialogTitle>
+            <DialogDescription>
+              Detailed stats and performance for {selectedPlayer}.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPlayer && (
+            <PlayerStatDisplay
+              player={{ player_name: selectedPlayer } as StandingsPlayer}
+            />
+          )}
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

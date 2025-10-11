@@ -4,7 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 
 import UAuthForm from "@/components/auth-components/UserLoginOrCreate";
-import { useAuth } from "@/app/context/AuthContext";
+import { useSession, signOut } from "next-auth/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
@@ -18,39 +18,15 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 
 export default function Account() {
-  const {
-    setEmail,
-    setPassword,
-    isLoggedIn,
-    authEmail,
-    login,
-    logout,
-    sendVerificationEmail,
-    loading,
-  } = useAuth();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
-  const handleFormSubmit = async (
-    typeSumbit: string,
-    email: string,
-    password: string
-  ) => {
-    setEmail(email);
-    setPassword(password);
+  const isLoggedIn = !!session;
+  const authEmail = session?.user?.email || "";
+  const loading = status === "loading";
 
-    // If we are creating an account, we must send an email to verify the account
-    if (typeSumbit === "CREATE") {
-      // Redirect to verify email page and send the verification email
-      const success = await sendVerificationEmail(email, password);
-      if (!success) {
-        return;
-      }
-
-      router.push("/account/verify-email?email=" + email);
-    } else {
-      // If we are logging in, we must call the login function
-      login(email, password, "LOGIN");
-    }
+  const handleLogout = async () => {
+    await signOut({ redirect: false });
   };
 
   return (
@@ -63,7 +39,7 @@ export default function Account() {
           <div className="flex flex-1 items-start justify-center rounded-lg border border-primary border-dashed shadow-sm">
             <div className="flex flex-col items-center gap-1">
               <div className="flex-col items-center">
-                <UAuthForm handleFormSubmit={handleFormSubmit} />
+                <UAuthForm />
                 {loading && <Skeleton className="w-full max-w-md h-12" />}
               </div>
             </div>
@@ -110,7 +86,7 @@ export default function Account() {
                     </CardContent>
                     <CardFooter className="flex flex-row items-center border-t bg-muted/50 px-6 py-3 gap-5">
                       <div className="flex flex-col">
-                        <Button className="max-w-lg" onClick={() => logout()}>
+                        <Button className="max-w-lg" onClick={handleLogout}>
                           Logout
                         </Button>
                       </div>

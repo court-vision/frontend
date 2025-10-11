@@ -8,3 +8,4 @@ app/src/deprecated
 rankings/target
 app/endpoints.tsx
 app/.env.local
+project-context.md

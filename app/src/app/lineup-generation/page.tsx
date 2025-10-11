@@ -1,9 +1,10 @@
 "use client";
-import { useLineup } from "@/app/context/LineupContext";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import StopzForm from "@/components/lineup-components/StopzForm";
 import LineupDisplay from "@/components/lineup-components/LineupDisplay";
+import { useUIStore } from "@/stores/useUIStore";
+import { useGenerateLineupMutation } from "@/hooks/useLineups";
 
 function SkeletonCard() {
   return (
@@ -18,7 +19,11 @@ function SkeletonCard() {
 }
 
 export default function LineupGeneration() {
-  const { lineup, isLoading } = useLineup();
+  const { selectedTeam } = useUIStore();
+  const generateLineupMutation = useGenerateLineupMutation();
+
+  const lineup = generateLineupMutation.data;
+  const isLoading = generateLineupMutation.isPending;
 
   return (
     <>
@@ -40,10 +45,14 @@ export default function LineupGeneration() {
               <>
                 <SkeletonCard />
               </>
-            ) : (
+            ) : lineup ? (
               <>
                 <LineupDisplay lineup={lineup} />
               </>
+            ) : (
+              <div className="text-center text-muted-foreground">
+                Generate a lineup to see it displayed here
+              </div>
             )}
           </div>
         </section>

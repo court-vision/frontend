@@ -1,6 +1,5 @@
-// "use client";
+"use client";
 import * as z from "zod";
-import { useLineup } from "@/app/context/LineupContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "../ui/input";
@@ -22,7 +21,8 @@ import {
 } from "../ui/card";
 import { Button } from "../ui/button";
 import Image from "next/image";
-import { useTeams } from "@/app/context/TeamsContext";
+import { useUIStore } from "@/stores/useUIStore";
+import { useGenerateLineupMutation } from "@/hooks/useLineups";
 import { toast } from "sonner";
 
 const stopzInput = z.object({
@@ -33,8 +33,8 @@ const stopzInput = z.object({
 });
 
 export default function StopzForm() {
-  const { generateLineup } = useLineup();
-  const { selectedTeam } = useTeams();
+  const { selectedTeam } = useUIStore();
+  const generateLineupMutation = useGenerateLineupMutation();
 
   const form = useForm<z.infer<typeof stopzInput>>({
     resolver: zodResolver(stopzInput),
@@ -53,11 +53,26 @@ export default function StopzForm() {
   };
 
   const handleSubmit = (data: z.infer<typeof stopzInput>) => {
-    if (selectedTeam == -1) {
+    if (!selectedTeam) {
       toast.error("Please select a team first.");
       return;
     }
-    generateLineup(data.threshold, data.week);
+
+    generateLineupMutation.mutate(
+      {
+        selected_team: selectedTeam,
+        threshold: data.threshold,
+        week: data.week,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Lineup generated successfully!");
+        },
+        onError: () => {
+          toast.error("Failed to generate lineup. Please try again.");
+        },
+      }
+    );
   };
 
   return (
@@ -160,14 +175,22 @@ export default function StopzForm() {
                     fill-true
                   />
                 </Button>
-                <Button type="submit" className="size-sm bg-primary">
-                  <Image
-                    src="/arrow.png"
-                    alt="submit"
-                    width={30}
-                    height={30}
-                    fill-true
-                  />
+                <Button
+                  type="submit"
+                  className="size-sm bg-primary"
+                  disabled={generateLineupMutation.isPending}
+                >
+                  {generateLineupMutation.isPending ? (
+                    "Generating..."
+                  ) : (
+                    <Image
+                      src="/arrow.png"
+                      alt="submit"
+                      width={30}
+                      height={30}
+                      fill-true
+                    />
+                  )}
                 </Button>
               </CardFooter>
             </form>

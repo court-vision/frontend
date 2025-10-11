@@ -19,6 +19,10 @@ import {
   FormMessage,
   FormControl,
 } from "@/components/ui/form";
+import { signIn } from "next-auth/react";
+import { toast } from "sonner";
+import { useState } from "react";
+import { sendVerificationEmail } from "@/lib/auth";
 
 // Define Zod schemas
 const loginSchema = z.object({
@@ -43,11 +47,9 @@ const createSchema = z
     path: ["confirmPassword"],
   });
 
-export default function UserLoginOrCreate({
-  handleFormSubmit
-}: {
-  handleFormSubmit: (typeSubmit: string, email: string, password: string) => void;
-}) {
+export default function UserLoginOrCreate() {
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleTabChange = () => {
     // Clear form data
     loginForm.reset();
@@ -71,12 +73,62 @@ export default function UserLoginOrCreate({
     },
   });
 
-  const handleLoginSubmit = (data: z.infer<typeof loginSchema>) => {
-    handleFormSubmit("LOGIN", data.email, data.password);
+  const handleLoginSubmit = async (data: z.infer<typeof loginSchema>) => {
+    setIsLoading(true);
+    try {
+      const result = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        typeSubmit: "LOGIN",
+        redirect: false,
+      });
+
+      if (result?.error) {
+        toast.error("Invalid credentials. Please try again.");
+      } else {
+        toast.success("Successfully logged in!");
+        // The session will be updated automatically by NextAuth
+      }
+    } catch (error) {
+      toast.error("An error occurred during login.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleCreateSubmit = (data: z.infer<typeof createSchema>) => {
-    handleFormSubmit("CREATE", data.email, data.password);
+  const handleCreateSubmit = async (data: z.infer<typeof createSchema>) => {
+    setIsLoading(true);
+    try {
+      const result = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        typeSubmit: "CREATE",
+        redirect: false,
+      });
+
+      if (result?.error) {
+        toast.error("Failed to create account. Please try again.");
+      } else {
+        // Send verification email
+        const emailSent = await sendVerificationEmail(
+          data.email,
+          data.password
+        );
+        if (emailSent) {
+          toast.success(
+            "Account created! Please check your email for verification instructions."
+          );
+        } else {
+          toast.success(
+            "Account created! Please contact support for email verification."
+          );
+        }
+      }
+    } catch (error) {
+      toast.error("An error occurred during account creation.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -150,7 +202,9 @@ export default function UserLoginOrCreate({
                       />
                     </div>
 
-                    <Button type="submit">Submit</Button>
+                    <Button type="submit" disabled={isLoading}>
+                      {isLoading ? "Logging in..." : "Login"}
+                    </Button>
                   </form>
                 </Form>
               </CardContent>
@@ -173,28 +227,24 @@ export default function UserLoginOrCreate({
                     onSubmit={createForm.handleSubmit(handleCreateSubmit)}
                   >
                     <div className="grid gap-2">
-                        <FormField
-                          control={createForm.control}
-                          name="email"
-                          render={({ field }) => {
-                            return (
-                              <FormItem>
-                                <FormLabel>
-                                  Email
-                                  <span style={{ color: "red" }}> *</span>
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="m@example.com"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      
+                      <FormField
+                        control={createForm.control}
+                        name="email"
+                        render={({ field }) => {
+                          return (
+                            <FormItem>
+                              <FormLabel>
+                                Email
+                                <span style={{ color: "red" }}> *</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input placeholder="m@example.com" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
+                      />
                     </div>
                     <div className="grid gap-2">
                       <FormField
@@ -245,7 +295,9 @@ export default function UserLoginOrCreate({
                         }}
                       />
                     </div>
-                    <Button type="submit">Submit</Button>
+                    <Button type="submit" disabled={isLoading}>
+                      {isLoading ? "Creating account..." : "Create Account"}
+                    </Button>
                   </form>
                 </Form>
               </CardContent>

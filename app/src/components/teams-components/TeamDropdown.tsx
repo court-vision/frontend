@@ -16,33 +16,49 @@ import {
   CommandGroup,
   CommandSeparator,
 } from "@/components/ui/command";
-import { useTeams } from "@/app/context/TeamsContext";
+import { useTeamsQuery } from "@/hooks/useTeams";
+import { useUIStore } from "@/stores/useUIStore";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function TeamDropdown() {
-  const { teams, selectedTeam, setSelectedTeam, handleManageTeamsClick } =
-    useTeams();
-  const handleSelectedTeam = (team_id: number) => {
-    const team = teams.find((team) => team.team_id === team_id);
-    if (team) {
-      setSelectedTeamName(team.team_info.team_name);
-    }
-  }
-  const [selectedTeamName, setSelectedTeamName] = useState(teams && teams.length >= 1 ? handleSelectedTeam(0) : "Select Team");
-  
-  // useEffect so that placeholder updates when selectedTeam changes
+  const { data: teams = [], isLoading } = useTeamsQuery();
+  const { selectedTeam, setSelectedTeam } = useUIStore();
+  const [selectedTeamName, setSelectedTeamName] = useState("Select Team");
+
+  // Update selected team name when teams or selectedTeam changes
   useEffect(() => {
-    handleSelectedTeam(selectedTeam || 0);
-  }, [selectedTeam]);
+    if (teams.length > 0 && selectedTeam) {
+      const team = teams.find((team) => team.team_id === selectedTeam);
+      if (team) {
+        setSelectedTeamName(team.team_info.team_name);
+      }
+    } else if (teams.length === 0) {
+      setSelectedTeamName("No Teams");
+    } else {
+      setSelectedTeamName("Select Team");
+    }
+  }, [teams, selectedTeam]);
+
+  // Auto-select first team if none selected
+  useEffect(() => {
+    if (teams.length > 0 && !selectedTeam) {
+      setSelectedTeam(teams[0].team_id);
+    }
+  }, [teams, selectedTeam, setSelectedTeam]);
+
+  const handleManageTeamsClick = () => {
+    // This will be handled by navigation
+  };
+
+  if (isLoading) {
+    return <Skeleton className="w-[190px] h-10" />;
+  }
 
   return (
     <>
       <Select>
         <SelectTrigger className="w-[190px] text-xs hover:border-primary">
-          <SelectValue
-            placeholder={`${
-              selectedTeamName 
-            }`}
-          />
+          <SelectValue placeholder={`${selectedTeamName}`} />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
