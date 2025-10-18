@@ -4,7 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 
 import UAuthForm from "@/components/auth-components/UserLoginOrCreate";
-import { useSession, signOut } from "next-auth/react";
+import { useAuth } from "@/app/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
@@ -18,15 +18,11 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 
 export default function Account() {
-  const { data: session, status } = useSession();
+  const { isLoggedIn, authEmail, loading, logout } = useAuth();
   const router = useRouter();
 
-  const isLoggedIn = !!session;
-  const authEmail = session?.user?.email || "";
-  const loading = status === "loading";
-
   const handleLogout = async () => {
-    await signOut({ redirect: false });
+    logout();
   };
 
   return (

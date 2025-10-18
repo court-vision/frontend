@@ -83,35 +83,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string, typeSubmit: string) => {
-    // Create account
+    // Create account - send verification email instead of creating directly
     if (typeSubmit === "CREATE") {
       try {
-        // API call to create account
-        const response = await fetch("/api/users/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to create account.");
-        }
-        const data = await response.json();
-        if (data.already_exists) {
-          // Account already exists
-          toast.error("An account with this email already exists.");
-        } else {
-          // Account created successfully
-          toast.success("Account created successfully.");
-
-          const { access_token } = data;
-          localStorage.setItem("token", access_token);
-          const decoded = jwtDecode<JwtPaylaod>(access_token);
-          setAuthEmail(decoded.email);
-
-          setIsLoggedIn(true);
+        // Send verification email instead of creating account directly
+        const emailSent = await sendVerificationEmail(email, password);
+        if (emailSent) {
+          // Store email for verification screen
+          setEmail(email);
+          setPassword(password);
+          // Don't log in yet - wait for email verification
         }
       } catch (error) {
         toast.error("Internal server error. Please try again later.");

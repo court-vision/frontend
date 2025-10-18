@@ -46,7 +46,7 @@ export async function sendVerificationEmail(
         },
         body: JSON.stringify({
           email,
-          password_query: password,
+          password: password,
         }),
       }
     );

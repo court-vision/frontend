@@ -19,10 +19,10 @@ import {
   FormMessage,
   FormControl,
 } from "@/components/ui/form";
-import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import { useState } from "react";
-import { sendVerificationEmail } from "@/lib/auth";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext";
 
 // Define Zod schemas
 const loginSchema = z.object({
@@ -49,6 +49,8 @@ const createSchema = z
 
 export default function UserLoginOrCreate() {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { login } = useAuth();
 
   const handleTabChange = () => {
     // Clear form data
@@ -76,19 +78,8 @@ export default function UserLoginOrCreate() {
   const handleLoginSubmit = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
     try {
-      const result = await signIn("credentials", {
-        email: data.email,
-        password: data.password,
-        typeSubmit: "LOGIN",
-        redirect: false,
-      });
-
-      if (result?.error) {
-        toast.error("Invalid credentials. Please try again.");
-      } else {
-        toast.success("Successfully logged in!");
-        // The session will be updated automatically by NextAuth
-      }
+      await login(data.email, data.password, "LOGIN");
+      // AuthContext will handle the success/error messages and state updates
     } catch (error) {
       toast.error("An error occurred during login.");
     } finally {
@@ -99,31 +90,11 @@ export default function UserLoginOrCreate() {
   const handleCreateSubmit = async (data: z.infer<typeof createSchema>) => {
     setIsLoading(true);
     try {
-      const result = await signIn("credentials", {
-        email: data.email,
-        password: data.password,
-        typeSubmit: "CREATE",
-        redirect: false,
-      });
-
-      if (result?.error) {
-        toast.error("Failed to create account. Please try again.");
-      } else {
-        // Send verification email
-        const emailSent = await sendVerificationEmail(
-          data.email,
-          data.password
-        );
-        if (emailSent) {
-          toast.success(
-            "Account created! Please check your email for verification instructions."
-          );
-        } else {
-          toast.success(
-            "Account created! Please contact support for email verification."
-          );
-        }
-      }
+      await login(data.email, data.password, "CREATE");
+      // If successful, redirect to verification screen
+      router.push(
+        `/account/verify-email?email=${encodeURIComponent(data.email)}`
+      );
     } catch (error) {
       toast.error("An error occurred during account creation.");
     } finally {
