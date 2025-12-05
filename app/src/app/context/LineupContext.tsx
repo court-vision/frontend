@@ -2,6 +2,13 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useTeams } from "@/app/context/TeamsContext";
 import { toast } from "sonner";
+import { LINEUPS_API } from "@/endpoints";
+import type {
+  GenerateLineupResponse,
+  GetLineupsResponse,
+  SaveLineupResponse,
+  DeleteLineupResponse,
+} from "@/types/lineup";
 
 interface LineupContextType {
   lineup: Lineup;
@@ -67,27 +74,36 @@ export const LineupProvider = ({ children }: { children: React.ReactNode }) => {
   const generateLineup = async (threshold: string, week: string) => {
     setIsLoading(true);
 
-    try {
-      const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
+    if (!token || !selectedTeam) {
+      setIsLoading(false);
+      return;
+    }
 
-      // API call to add team
-      const response = await fetch("/api/data/lineups", {
+    try {
+      const response = await fetch(`${LINEUPS_API}/generate`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ selected_team: selectedTeam, threshold: threshold, week: week }),
+        body: JSON.stringify({
+          team_id: selectedTeam,
+          threshold: parseFloat(threshold),
+          week: parseInt(week),
+        }),
       });
-      if (!response.ok) {
-        setIsLoading(false);
-        throw new Error("Failed to generate lineup.");
-      }
-      const data = await response.json();
-      console.log("Generated Lineup:", data);
-      setLineup(data);
 
+      const data: GenerateLineupResponse = await response.json();
+
+      if (data.status === "success" && data.data) {
+        setLineup(data.data);
+        toast.success("Lineup generated successfully!");
+      } else {
+        toast.error(data.message || "Failed to generate lineup.");
+      }
     } catch (error) {
+      console.error("Generate lineup error:", error);
       toast.error("Internal server error. Please try again later.");
     }
 
@@ -96,98 +112,96 @@ export const LineupProvider = ({ children }: { children: React.ReactNode }) => {
 
   // ---------------------------------- Save Lineup ----------------------------------
   const saveLineup = async () => {
-    try {
-      const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
+    if (!token || !selectedTeam) {
+      toast.error("Not authenticated or no team selected.");
+      return;
+    }
 
-      // API call to add team
-      const response = await fetch("/api/data/lineups", {
+    try {
+      const response = await fetch(`${LINEUPS_API}/save`, {
         method: "PUT",
         headers: {
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ selected_team: selectedTeam, lineup_info: lineup }),
+        body: JSON.stringify({ team_id: selectedTeam, lineup_info: lineup }),
       });
-      if (!response.ok) {
-        toast.error("Failed to save lineup.");
-        return;
-      }
-      const data = await response.json();
-      console.log(data);
-      if (data.success) {
-        toast.success("Lineup saved successfully.");
+
+      const data: SaveLineupResponse = await response.json();
+
+      if (data.status === "success") {
+        toast.success("Lineup saved successfully!");
+        fetchSavedLineups();
       } else if (data.already_exists) {
         toast.error("This lineup has already been saved.");
       } else {
-        toast.error("Failed to save lineup.");
+        toast.error(data.message || "Failed to save lineup.");
       }
-
     } catch (error) {
+      console.error("Save lineup error:", error);
       toast.error("Internal server error. Please try again later.");
     }
-  }
+  };
 
   // ---------------------------------- Fetch Saved Lineups ----------------------------------
   const fetchSavedLineups = async () => {
+    const token = localStorage.getItem("token");
+    if (!token || !selectedTeam) return;
+
     try {
-      const token = localStorage.getItem("token");
-      
-      // API call to add team
-      console.log("Fetching saved lineups for team: ", selectedTeam);
-      const params = new URLSearchParams({ selected_team: selectedTeam!!.toString() });
-      const response = await fetch("/api/data/lineups?" + params.toString(), {
+      const response = await fetch(`${LINEUPS_API}?team_id=${selectedTeam}`, {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
-      if (!response.ok) {
-        toast.error("Failed to fetch saved lineups.");
-        return;
-      }
-      const data = await response.json();
-      console.log("Saved Lineups:", data);
-      setSavedLineups(data.lineups);
 
+      const data: GetLineupsResponse = await response.json();
+
+      if (data.status === "success") {
+        setSavedLineups(data.data || []);
+      } else {
+        // Don't show error for empty lineups
+        setSavedLineups([]);
+      }
     } catch (error) {
+      console.error("Fetch saved lineups error:", error);
       toast.error("Internal server error. Please try again later.");
     }
-  }
+  };
 
   // ---------------------------------- Delete a Saved Lineup ----------------------------------
   const deleteLineup = async (lineupId: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Not authenticated.");
+      return;
+    }
 
     try {
-      const token = localStorage.getItem("token");
-
-      // API call to add team
-      const params = new URLSearchParams({ lineup_id: lineupId.toString() });
-      const response = await fetch("/api/data/lineups?" + params.toString(), {
+      const response = await fetch(`${LINEUPS_API}/remove?lineup_id=${lineupId}`, {
         method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ lineup_id: lineupId }),
       });
-      if (!response.ok) {
-        toast.error("Failed to delete lineup.");
-        return;
-      }
-      const data = await response.json();
-      console.log(data);
-      if (data.success) {
-        toast.success("Lineup deleted successfully.");
+
+      const data: DeleteLineupResponse = await response.json();
+
+      if (data.status === "success") {
+        toast.success("Lineup deleted successfully!");
         fetchSavedLineups();
       } else {
-        toast.error("Failed to delete lineup.");
+        toast.error(data.message || "Failed to delete lineup.");
       }
-
     } catch (error) {
-      toast.error("Internal server error. Please try again");
+      console.error("Delete lineup error:", error);
+      toast.error("Internal server error. Please try again.");
     }
-  }
+  };
 
   // When the selected team changes, re-fetch the saved lineups under that team
   useEffect(() => {

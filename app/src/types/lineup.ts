@@ -1,3 +1,5 @@
+import type { BaseApiResponse } from "./auth";
+
 export interface SlimPlayer {
   Name: string;
   AvgPoints: number;
@@ -12,16 +14,29 @@ export interface SlimGene {
 }
 
 export interface Lineup {
-  Id: number;
+  Id: number | null;
   Lineup: SlimGene[];
   Improvement: number;
   Timestamp: string;
-  Week: string;
+  Week: number;
   Threshold: number;
 }
 
 export interface LineupGenerationRequest {
-  selected_team: number;
-  threshold: string;
-  week: string;
+  team_id: number;
+  threshold: number;
+  week: number;
 }
+
+export interface LineupSaveRequest {
+  team_id: number;
+  lineup_info: Lineup;
+}
+
+// Backend API Response Types
+export type GenerateLineupResponse = BaseApiResponse<Lineup>;
+export type GetLineupsResponse = BaseApiResponse<Lineup[]>;
+export type SaveLineupResponse = BaseApiResponse<{ lineup_id: number }> & {
+  already_exists?: boolean;
+};
+export type DeleteLineupResponse = BaseApiResponse<{ deleted: boolean }>;

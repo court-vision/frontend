@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import type { Lineup, LineupGenerationRequest } from "@/types/lineup";
 
@@ -28,10 +29,19 @@ export function useGenerateLineupMutation() {
   return useMutation({
     mutationFn: (data: LineupGenerationRequest) =>
       apiClient.generateLineup(data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: lineupsKeys.list(variables.selected_team),
-      });
+    onSuccess: (response, variables) => {
+      if (response.status === "success") {
+        toast.success("Lineup generated successfully!");
+        queryClient.invalidateQueries({
+          queryKey: lineupsKeys.list(variables.team_id),
+        });
+      } else {
+        toast.error(response.message || "Failed to generate lineup.");
+      }
+    },
+    onError: (error) => {
+      console.error("Generate lineup error:", error);
+      toast.error("Failed to generate lineup. Please try again.");
     },
   });
 }
@@ -40,10 +50,21 @@ export function useSaveLineupMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (lineup: Lineup) => apiClient.saveLineup(lineup),
-    onSuccess: (savedLineup) => {
-      queryClient.invalidateQueries({ queryKey: lineupsKeys.lists() });
-      queryClient.setQueryData(lineupsKeys.detail(savedLineup.Id), savedLineup);
+    mutationFn: ({ teamId, lineup }: { teamId: number; lineup: Lineup }) =>
+      apiClient.saveLineup(teamId, lineup),
+    onSuccess: (response) => {
+      if (response.status === "success") {
+        toast.success("Lineup saved successfully!");
+        queryClient.invalidateQueries({ queryKey: lineupsKeys.lists() });
+      } else if (response.already_exists) {
+        toast.error("This lineup has already been saved.");
+      } else {
+        toast.error(response.message || "Failed to save lineup.");
+      }
+    },
+    onError: (error) => {
+      console.error("Save lineup error:", error);
+      toast.error("Failed to save lineup. Please try again.");
     },
   });
 }
@@ -53,9 +74,18 @@ export function useDeleteLineupMutation() {
 
   return useMutation({
     mutationFn: (lineupId: number) => apiClient.deleteLineup(lineupId),
-    onSuccess: (_, lineupId) => {
-      queryClient.invalidateQueries({ queryKey: lineupsKeys.lists() });
-      queryClient.removeQueries({ queryKey: lineupsKeys.detail(lineupId) });
+    onSuccess: (response, lineupId) => {
+      if (response.status === "success") {
+        toast.success("Lineup deleted successfully!");
+        queryClient.invalidateQueries({ queryKey: lineupsKeys.lists() });
+        queryClient.removeQueries({ queryKey: lineupsKeys.detail(lineupId) });
+      } else {
+        toast.error(response.message || "Failed to delete lineup.");
+      }
+    },
+    onError: (error) => {
+      console.error("Delete lineup error:", error);
+      toast.error("Failed to delete lineup. Please try again.");
     },
   });
 }

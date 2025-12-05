@@ -1,8 +1,6 @@
 "use client";
 import React from "react";
 
-import { useRouter } from "next/navigation";
-
 import UAuthForm from "@/components/auth-components/UserLoginOrCreate";
 import { useAuth } from "@/app/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,7 +17,6 @@ import { Button } from "@/components/ui/button";
 
 export default function Account() {
   const { isLoggedIn, authEmail, loading, logout } = useAuth();
-  const router = useRouter();
 
   const handleLogout = async () => {
     logout();

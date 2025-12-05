@@ -1,9 +1,27 @@
 import { getClientAuthHeaders } from "./auth";
-import { BACKEND_ENDPOINT } from "@/endpoints";
-import type { Team, RosterPlayer, LeagueInfoRequest } from "@/types/team";
-import type { Lineup, LineupGenerationRequest } from "@/types/lineup";
+import { BACKEND_ENDPOINT, TEAMS_API, LINEUPS_API } from "@/endpoints";
+import type {
+  Team,
+  RosterPlayer,
+  LeagueInfoRequest,
+  TeamResponseData,
+  TeamGetResponse,
+  TeamAddResponse,
+  TeamRemoveResponse,
+  TeamUpdateResponse,
+} from "@/types/team";
+import type {
+  Lineup,
+  LineupGenerationRequest,
+  LineupSaveRequest,
+  GenerateLineupResponse,
+  GetLineupsResponse,
+  SaveLineupResponse,
+  DeleteLineupResponse,
+} from "@/types/lineup";
 import type { StandingsPlayer, StandingsPlayerStats } from "@/types/standings";
 import type { RankingsPlayer } from "@/types/rankings";
+import type { BaseApiResponse } from "@/types/auth";
 
 class ApiClient {
   private baseUrl: string;
@@ -36,59 +54,124 @@ class ApiClient {
     return response.json();
   }
 
-  // Teams API
-  async getTeams(): Promise<Team[]> {
-    return this.request<Team[]>("/db/teams");
+  private async authenticatedRequest<T>(
+    url: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const authHeaders = await getClientAuthHeaders();
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(authHeaders.Authorization && {
+          Authorization: authHeaders.Authorization,
+        }),
+        ...options.headers,
+      },
+    });
+
+    const data = await response.json();
+    return data;
   }
 
-  async addTeam(teamData: LeagueInfoRequest): Promise<Team> {
-    return this.request<Team>("/db/teams", {
-      method: "POST",
-      body: JSON.stringify(teamData),
-    });
+  // Teams API - calls backend directly
+  async getTeams(): Promise<TeamResponseData[]> {
+    const response = await this.authenticatedRequest<TeamGetResponse>(
+      `${TEAMS_API}/`
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to fetch teams");
   }
 
-  async updateTeam(teamId: number, teamData: LeagueInfoRequest): Promise<Team> {
-    return this.request<Team>(`/db/teams/${teamId}`, {
-      method: "PUT",
-      body: JSON.stringify(teamData),
-    });
+  async addTeam(teamData: LeagueInfoRequest): Promise<TeamAddResponse> {
+    const response = await this.authenticatedRequest<TeamAddResponse>(
+      `${TEAMS_API}/add`,
+      {
+        method: "POST",
+        body: JSON.stringify({ league_info: teamData }),
+      }
+    );
+    return response;
   }
 
-  async deleteTeam(teamId: number): Promise<void> {
-    await this.request<void>(`/db/teams/${teamId}`, {
-      method: "DELETE",
-    });
+  async updateTeam(
+    teamId: number,
+    teamData: LeagueInfoRequest
+  ): Promise<TeamUpdateResponse> {
+    const response = await this.authenticatedRequest<TeamUpdateResponse>(
+      `${TEAMS_API}/update`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ team_id: teamId, league_info: teamData }),
+      }
+    );
+    return response;
+  }
+
+  async deleteTeam(teamId: number): Promise<TeamRemoveResponse> {
+    const response = await this.authenticatedRequest<TeamRemoveResponse>(
+      `${TEAMS_API}/remove?team_id=${teamId}`,
+      {
+        method: "DELETE",
+      }
+    );
+    return response;
   }
 
   async getTeamRoster(teamId: number): Promise<RosterPlayer[]> {
-    return this.request<RosterPlayer[]>(`/view-team?team_id=${teamId}`);
+    const response = await this.authenticatedRequest<
+      BaseApiResponse<RosterPlayer[]>
+    >(`${TEAMS_API}/view?team_id=${teamId}`);
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to fetch team roster");
   }
 
-  // Lineups API
+  // Lineups API - calls backend directly
   async getLineups(teamId: number): Promise<Lineup[]> {
-    return this.request<Lineup[]>(`/lineups?selected_team=${teamId}`);
+    const response = await this.authenticatedRequest<GetLineupsResponse>(
+      `${LINEUPS_API}?team_id=${teamId}`
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    return [];
   }
 
-  async generateLineup(data: LineupGenerationRequest): Promise<Lineup> {
-    return this.request<Lineup>("/lineups", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+  async generateLineup(data: LineupGenerationRequest): Promise<GenerateLineupResponse> {
+    const response = await this.authenticatedRequest<GenerateLineupResponse>(
+      `${LINEUPS_API}/generate`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    );
+    return response;
   }
 
-  async saveLineup(lineup: Lineup): Promise<Lineup> {
-    return this.request<Lineup>("/lineups", {
-      method: "PUT",
-      body: JSON.stringify(lineup),
-    });
+  async saveLineup(teamId: number, lineup: Lineup): Promise<SaveLineupResponse> {
+    const response = await this.authenticatedRequest<SaveLineupResponse>(
+      `${LINEUPS_API}/save`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ team_id: teamId, lineup_info: lineup }),
+      }
+    );
+    return response;
   }
 
-  async deleteLineup(lineupId: number): Promise<void> {
-    await this.request<void>("/lineups", {
-      method: "DELETE",
-      body: JSON.stringify({ lineupId }),
-    });
+  async deleteLineup(lineupId: number): Promise<DeleteLineupResponse> {
+    const response = await this.authenticatedRequest<DeleteLineupResponse>(
+      `${LINEUPS_API}/remove?lineup_id=${lineupId}`,
+      {
+        method: "DELETE",
+      }
+    );
+    return response;
   }
 
   // Standings API

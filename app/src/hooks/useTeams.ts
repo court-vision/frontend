@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
-import type { Team, RosterPlayer, LeagueInfoRequest } from "@/types/team";
+import type {
+  RosterPlayer,
+  LeagueInfoRequest,
+  TeamResponseData,
+} from "@/types/team";
 
 // Query keys
 export const teamsKeys = {
@@ -47,8 +52,21 @@ export function useAddTeamMutation() {
 
   return useMutation({
     mutationFn: (teamData: LeagueInfoRequest) => apiClient.addTeam(teamData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
+    onSuccess: (response) => {
+      if (response.status === "success") {
+        if (response.already_exists) {
+          toast.info("Team already exists in your account.");
+        } else {
+          toast.success("Team added successfully!");
+        }
+        queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
+      } else {
+        toast.error(response.message || "Failed to add team.");
+      }
+    },
+    onError: (error) => {
+      console.error("Add team error:", error);
+      toast.error("Failed to add team. Please try again.");
     },
   });
 }
@@ -64,10 +82,19 @@ export function useUpdateTeamMutation() {
       teamId: number;
       teamData: LeagueInfoRequest;
     }) => apiClient.updateTeam(teamId, teamData),
-    onSuccess: (_, { teamId }) => {
-      queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: teamsKeys.detail(teamId) });
-      queryClient.invalidateQueries({ queryKey: teamsKeys.roster(teamId) });
+    onSuccess: (response, { teamId }) => {
+      if (response.status === "success") {
+        toast.success("Team updated successfully!");
+        queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
+        queryClient.invalidateQueries({ queryKey: teamsKeys.detail(teamId) });
+        queryClient.invalidateQueries({ queryKey: teamsKeys.roster(teamId) });
+      } else {
+        toast.error(response.message || "Failed to update team.");
+      }
+    },
+    onError: (error) => {
+      console.error("Update team error:", error);
+      toast.error("Failed to update team. Please try again.");
     },
   });
 }
@@ -77,10 +104,19 @@ export function useDeleteTeamMutation() {
 
   return useMutation({
     mutationFn: (teamId: number) => apiClient.deleteTeam(teamId),
-    onSuccess: (_, teamId) => {
-      queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
-      queryClient.removeQueries({ queryKey: teamsKeys.detail(teamId) });
-      queryClient.removeQueries({ queryKey: teamsKeys.roster(teamId) });
+    onSuccess: (response, teamId) => {
+      if (response.status === "success") {
+        toast.success("Team removed successfully!");
+        queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
+        queryClient.removeQueries({ queryKey: teamsKeys.detail(teamId) });
+        queryClient.removeQueries({ queryKey: teamsKeys.roster(teamId) });
+      } else {
+        toast.error(response.message || "Failed to remove team.");
+      }
+    },
+    onError: (error) => {
+      console.error("Delete team error:", error);
+      toast.error("Failed to remove team. Please try again.");
     },
   });
 }

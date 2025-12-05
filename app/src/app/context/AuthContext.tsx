@@ -1,7 +1,14 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { jwtDecode } from "jwt-decode";
+import { AUTH_API, USERS_API } from "@/endpoints";
+import type {
+  VerifyEmailResponse,
+  CheckCodeResponse,
+  LoginResponse,
+  AuthCheckResponse,
+} from "@/types/auth";
 
 const AuthContext = createContext({
   email: "",
@@ -33,46 +40,62 @@ interface JwtPaylaod {
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start as true for initial load
   const [token, setToken] = useState<string>("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
   const [page, setPage] = useState("home");
 
+  // Ref to track if initial auth check has been performed
+  // const authCheckPerformed = useRef(false);
+
   useEffect(() => {
-    let isMounted = true; // Avoids setting state if the component unmounts
+    // Prevent double execution (React StrictMode or Fast Refresh)
+    // if (authCheckPerformed.current) return;
+    // authCheckPerformed.current = true;
+
+    let isMounted = true;
+
     const checkAuth = async () => {
-      const token = localStorage.getItem("token");
-      setLoading(true);
+      const storedToken = localStorage.getItem("token");
 
-      if (token) {
-        // Check server to make sure token is valid
-        const tokenValid = await authCheck(token);
-        if (!tokenValid) {
-          logout();
-          setLoading(false);
-          return;
-        }
-
-        // Check if the token is expired
-        const decoded = jwtDecode<JwtPaylaod>(token);
-        const exp = decoded.exp;
-        const currentTime = Date.now() / 1000;
-        if (exp < currentTime) {
-          console.log("Token expired");
-          logout();
-          setLoading(false);
-          return;
-        }
-
-        if (isMounted) {
-          console.log("Token found");
-          setIsLoggedIn(true);
-          setToken(token);
-          setAuthEmail(decoded.email);
-        }
+      if (!storedToken) {
+        if (isMounted) setLoading(false);
+        return;
       }
-      if (isMounted) setLoading(false);
+
+      // First check if token is expired locally (fast check)
+      try {
+        const decoded = jwtDecode<JwtPaylaod>(storedToken);
+        const currentTime = Date.now() / 1000;
+        if (decoded.exp < currentTime) {
+          console.log("Token expired locally");
+          logout();
+          if (isMounted) setLoading(false);
+          return;
+        }
+      } catch {
+        // Invalid token format
+        logout();
+        if (isMounted) setLoading(false);
+        return;
+      }
+
+      // Then verify with server (no toast on session restoration)
+      const tokenValid = await authCheck(storedToken, false);
+      if (!tokenValid) {
+        logout();
+        if (isMounted) setLoading(false);
+        return;
+      }
+
+      if (isMounted) {
+        const decoded = jwtDecode<JwtPaylaod>(storedToken);
+        setIsLoggedIn(true);
+        setToken(storedToken);
+        setAuthEmail(decoded.email);
+        setLoading(false);
+      }
     };
 
     checkAuth();
@@ -99,42 +122,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     } else if (typeSubmit === "LOGIN") {
       setLoading(true);
-      // Login to account
+
       try {
-        // API call to login
-        const response = await fetch("/api/users/login", {
+        const response = await fetch(`${AUTH_API}/login`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ email, password }),
         });
-        if (!response.ok) {
-          throw new Error("Failed to login.");
-        }
-        const data = await response.json();
 
-        if (data.success) {
-          // Login successful
-          const { access_token } = data;
-          localStorage.setItem("token", access_token);
-          const decoded = jwtDecode<JwtPaylaod>(access_token);
+        const data: LoginResponse = await response.json();
+
+        if (data.status === "success" && data.data?.access_token) {
+          localStorage.setItem("token", data.data.access_token);
+          const decoded = jwtDecode<JwtPaylaod>(data.data.access_token);
           setAuthEmail(decoded.email);
-
           setIsLoggedIn(true);
-
           toast.success("Logged in successfully.");
-        } else {
-          // Login failed
+        } else if (data.status === "authentication_error") {
           toast.error("Incorrect email or password. Please try again.");
+        } else {
+          toast.error(data.message || "Login failed. Please try again.");
         }
       } catch (error) {
-        console.log(error);
+        console.error("Login error:", error);
         toast.error("Internal server error. Please try again later.");
       }
       setLoading(false);
-    } else {
-      console.log("WHAT THE HELL");
     }
   };
 
@@ -148,41 +163,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     password_query?: string
   ): Promise<boolean> {
     try {
-      // API call to send verification email
-      const response = await fetch("/api/users/verify/send-email", {
+      const response = await fetch(`${AUTH_API}/verify/send-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: email,
-          password: password_query ? password_query : password,
+          password: password_query ?? password,
         }),
       });
-      if (!response.ok) {
-        throw new Error("Failed to send verification email.");
-      }
-      const data = await response.json();
-      if (data.success && data.already_in_use) {
-        // Email already in use
-        toast.error("You must wait before generating a new code.");
-        return false;
-      }
-      if (data.success) {
-        // Email sent successfully
+
+      const data: VerifyEmailResponse = await response.json();
+
+      if (data.status === "success" && data.data?.verification_sent) {
         toast.success("Verification email sent successfully.");
         return true;
-      } else if (data.already_in_use) {
-        // Email already in use
+      } else if (data.status === "conflict") {
+        // Email already registered
         toast.error("This email is already in use.");
         return false;
+      } else if (data.status === "success" && data.data?.expires_in_seconds) {
+        // Verification email already sent recently
+        toast.error("You must wait before generating a new code.");
+        return false;
       } else {
-        // Email not sent
-        toast.error("Failed to send verification email.");
+        toast.error(data.message || "Failed to send verification email.");
         return false;
       }
     } catch (error) {
-      console.log(error);
+      console.error("Send verification email error:", error);
       toast.error("Internal server error. Please try again later.");
       return false;
     }
@@ -190,102 +200,115 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   async function checkCode(email: string, code: string): Promise<boolean> {
     try {
-      // API call to check code
-      const response = await fetch("/api/users/verify/check-code", {
+      const response = await fetch(`${AUTH_API}/verify/check-code`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: email, code: code }),
+        body: JSON.stringify({ email, code }),
       });
-      if (!response.ok) {
-        throw new Error("Failed to check code.");
-      }
-      const data = await response.json();
-      if (data.already_exists) {
-        // Code is correct but the account already exists... somehow
-        toast.success("Account already exists.");
-        return false;
-      } else if (data.valid) {
-        // Code is correct and account is created
-        toast.success("Email verified!");
-        const { access_token } = data;
-        localStorage.setItem("token", access_token);
-        const decoded = jwtDecode<JwtPaylaod>(access_token);
-        setAuthEmail(decoded.email);
 
+      const data: CheckCodeResponse = await response.json();
+
+      if (data.status === "success" && data.data?.access_token) {
+        toast.success("Email verified! Account created.");
+        localStorage.setItem("token", data.data.access_token);
+        const decoded = jwtDecode<JwtPaylaod>(data.data.access_token);
+        setAuthEmail(decoded.email);
         setIsLoggedIn(true);
         return true;
+      } else if (data.status === "authentication_error") {
+        toast.error(data.message || "Code is incorrect or expired.");
+        return false;
+      } else if (data.status === "not_found") {
+        toast.error(
+          "No verification request found. Please request a new code."
+        );
+        return false;
       } else {
-        // Code is incorrect
-        toast.error("Code is incorrect or expired.");
+        toast.error(data.message || "Verification failed.");
         return false;
       }
     } catch (error) {
-      console.log(error);
+      console.error("Check code error:", error);
       toast.error("Internal server error. Please try again later.");
       return false;
     }
   }
 
-  async function authCheck(token: string): Promise<boolean> {
+  async function authCheck(
+    token: string,
+    showToast: boolean = true
+  ): Promise<boolean> {
     try {
-      // API call to check token
-      const response = await fetch("/api/users/verify/auth-check", {
-        method: "POST",
+      const response = await fetch(`${AUTH_API}/verify/auth-check`, {
+        method: "GET",
         headers: {
-          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ token: token }),
       });
+
       if (!response.ok) {
-        throw new Error("Failed to check token.");
+        return false;
       }
-      const data = await response.json();
-      if (data.success) {
-        // Token is valid
-        toast.success("Logged In.");
+
+      const data: AuthCheckResponse = await response.json();
+
+      if (data.status === "success" && data.error_code === "TOKEN_VALID") {
+        // Only show toast for explicit login actions, not session restoration
+        if (showToast) {
+          toast.success("Logged in.");
+        }
         return true;
+      } else if (data.error_code === "TOKEN_EXPIRED") {
+        if (showToast) {
+          toast.error("Session expired. Please log in again.");
+        }
+        return false;
       } else {
-        // Token is invalid
-        toast.error("Invalid token.");
         return false;
       }
     } catch (error) {
-      toast.error("Internal server error. Please try again later.");
-      console.log(error);
+      console.error("Auth check error:", error);
+      if (showToast) {
+        toast.error("Internal server error. Please try again later.");
+      }
       return false;
     }
   }
 
   async function deleteAccount(password: string): Promise<boolean> {
     try {
-      // API call to delete account
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/users/delete", {
+      if (!token) {
+        toast.error("Not authenticated.");
+        return false;
+      }
+
+      const response = await fetch(`${USERS_API}/delete`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ password: password }),
+        body: JSON.stringify({ password }),
       });
-      if (!response.ok) {
-        throw new Error("Failed to delete account.");
-      }
+
       const data = await response.json();
-      if (data.success) {
-        // Account deleted successfully
+
+      if (data.status === "success") {
         toast.success("Account deleted successfully.");
         logout();
         return true;
+      } else if (data.status === "authentication_error") {
+        toast.error("Incorrect password.");
+        return false;
       } else {
-        // Account not deleted
-        toast.error("Failed to delete account.");
+        toast.error(data.message || "Failed to delete account.");
         return false;
       }
     } catch (error) {
-      console.log(error);
+      console.error("Delete account error:", error);
       toast.error("Internal server error. Please try again later.");
       return false;
     }

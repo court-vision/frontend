@@ -58,7 +58,7 @@ export const StandingsProvider = ({
 
   // ----------------------------------- Fetch the player fantasy points standings -----------------------------------
   const fetchStandings = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const response = await fetch("/api/data/etl/fpts-standings", {
         method: "GET",
@@ -75,10 +75,10 @@ export const StandingsProvider = ({
 
       const data = await response.json();
       setStandings(data.data);
-      setLoading(false);
     } catch (error) {
       console.log("Internal server error. Please try again later.");
       toast.error("Internal server error. Please try again later.");
+    } finally {
       setLoading(false);
     }
   };

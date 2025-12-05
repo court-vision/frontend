@@ -78,7 +78,7 @@ export default function UserLoginOrCreate() {
   const handleLoginSubmit = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
     try {
-      await login(data.email, data.password, "LOGIN");
+      login(data.email, data.password, "LOGIN");
       // AuthContext will handle the success/error messages and state updates
     } catch (error) {
       toast.error("An error occurred during login.");

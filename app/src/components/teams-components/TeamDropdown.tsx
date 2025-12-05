@@ -27,12 +27,12 @@ export function TeamDropdown() {
 
   // Update selected team name when teams or selectedTeam changes
   useEffect(() => {
-    if (teams.length > 0 && selectedTeam) {
+    if (teams && teams.length > 0 && selectedTeam) {
       const team = teams.find((team) => team.team_id === selectedTeam);
-      if (team) {
-        setSelectedTeamName(team.team_info.team_name);
+      if (team && team.league_info) {
+        setSelectedTeamName(team.league_info.team_name);
       }
-    } else if (teams.length === 0) {
+    } else if (!teams || teams.length === 0) {
       setSelectedTeamName("No Teams");
     } else {
       setSelectedTeamName("Select Team");
@@ -41,7 +41,7 @@ export function TeamDropdown() {
 
   // Auto-select first team if none selected
   useEffect(() => {
-    if (teams.length > 0 && !selectedTeam) {
+    if (teams && teams.length > 0 && !selectedTeam) {
       setSelectedTeam(teams[0].team_id);
     }
   }, [teams, selectedTeam, setSelectedTeam]);
@@ -80,13 +80,13 @@ export function TeamDropdown() {
                   className="font-gray-400 font-medium"
                   heading="Teams"
                 >
-                  {teams.map((team) => (
+                  {teams && teams.map((team) => (
                     <CommandItem
                       key={team.team_id}
                       onSelect={() => setSelectedTeam(team.team_id)}
-                      value={team.team_info.team_name}
+                      value={team.league_info?.team_name || "Unknown Team"}
                     >
-                      {team.team_info.team_name}
+                      {team.league_info?.team_name || "Unknown Team"}
                       {selectedTeam === team.team_id && (
                         <Check size={20} className="ml-2" />
                       )}
