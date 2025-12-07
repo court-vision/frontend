@@ -1,5 +1,11 @@
 import { getClientAuthHeaders } from "./auth";
-import { BACKEND_ENDPOINT, TEAMS_API, LINEUPS_API } from "@/endpoints";
+import {
+  BACKEND_ENDPOINT,
+  TEAMS_API,
+  LINEUPS_API,
+  STANDINGS_API,
+  PLAYERS_API,
+} from "@/endpoints";
 import type {
   Team,
   RosterPlayer,
@@ -19,8 +25,8 @@ import type {
   SaveLineupResponse,
   DeleteLineupResponse,
 } from "@/types/lineup";
-import type { StandingsPlayer, StandingsPlayerStats } from "@/types/standings";
-import type { RankingsPlayer } from "@/types/rankings";
+import type { StandingsPlayer } from "@/types/standings";
+import type { PlayerStats } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
 
 class ApiClient {
@@ -182,30 +188,28 @@ class ApiClient {
 
   // Standings API
   async getStandings(): Promise<StandingsPlayer[]> {
-    const response = await this.request<BaseApiResponse<StandingsPlayer[]>>(
-      "/v1/standings/"
-    );
-    if (response.status === "success" && response.data) {
-      return response.data;
+    const response = await fetch(`${STANDINGS_API}/`);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: BaseApiResponse<StandingsPlayer[]> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
     }
     return [];
   }
 
-  async getPlayerStats(playerName: string): Promise<StandingsPlayerStats> {
-    return this.request<StandingsPlayerStats>(
-      `/fpts-standings/player-stats?player_name=${encodeURIComponent(
-        playerName
-      )}`
-    );
-  }
-
-  // Rankings API (using static JSON files)
-  async getRankings(model: string): Promise<RankingsPlayer[]> {
-    const response = await fetch(`/rankings-data/${model}.json`);
+  // Players API
+  async getPlayerStats(playerId: number): Promise<PlayerStats | null> {
+    const response = await fetch(`${PLAYERS_API}/${playerId}/stats`);
     if (!response.ok) {
-      throw new Error(`Failed to fetch rankings for model: ${model}`);
+      throw new Error(`API request failed: ${response.statusText}`);
     }
-    return response.json();
+    const data: BaseApiResponse<PlayerStats> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
   }
 }
 

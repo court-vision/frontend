@@ -10,7 +10,7 @@ import {
   TableHeader,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { useStandingsQuery, usePlayerStatsQuery } from "@/hooks/useStandings";
+import { useStandingsQuery } from "@/hooks/useStandings";
 import type { StandingsPlayer } from "@/types/standings";
 import { TrendingUp, TrendingDown, Minus, ArrowUpDown } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -30,7 +30,7 @@ import PlayerStatDisplay from "./PlayerStatDisplay";
 
 export default function StandingsDisplay() {
   const { data: standings = [], isLoading } = useStandingsQuery();
-  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [sortedStandings, setSortedStandings] = useState(standings);
   const [sortConfig, setSortConfig] = useState({
     key: "total_fpts",
@@ -62,7 +62,7 @@ export default function StandingsDisplay() {
   };
 
   const handlePlayerClick = (player: StandingsPlayer) => {
-    setSelectedPlayer(player.player_name);
+    setSelectedPlayerId(player.id);
   };
 
   const getSortIcon = (columnKey: string) => {
@@ -122,10 +122,10 @@ export default function StandingsDisplay() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedStandings.map((player: StandingsPlayer, index: number) => {
+              {sortedStandings.map((player: StandingsPlayer) => {
                 return (
                   <TableRow
-                    key={index}
+                    key={player.id}
                     className="text-center cursor-pointer"
                     onClick={() => handlePlayerClick(player)}
                   >
@@ -156,21 +156,19 @@ export default function StandingsDisplay() {
 
       {/* Player Stats Dialog */}
       <Dialog
-        open={!!selectedPlayer}
-        onOpenChange={() => setSelectedPlayer(null)}
+        open={!!selectedPlayerId}
+        onOpenChange={() => setSelectedPlayerId(null)}
       >
         <DialogContent className="max-w-[900px]">
           <DialogHeader>
             <DialogTitle>Player Details</DialogTitle>
             <DialogDescription>
-              Detailed stats and performance for {selectedPlayer}.
+              Detailed stats and performance history.
             </DialogDescription>
           </DialogHeader>
 
-          {selectedPlayer && (
-            <PlayerStatDisplay
-              player={{ player_name: selectedPlayer } as StandingsPlayer}
-            />
+          {selectedPlayerId && (
+            <PlayerStatDisplay playerId={selectedPlayerId} />
           )}
 
           <DialogFooter>

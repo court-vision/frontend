@@ -8,17 +8,17 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { usePlayerStatsQuery } from "@/hooks/useStandings";
-import type { StandingsPlayer } from "@/types/standings";
+import { usePlayerStatsQuery } from "@/hooks/usePlayer";
+import type { PlayerStats } from "@/types/player";
+
+interface PlayerStatDisplayProps {
+  playerId: number;
+}
 
 export default function PlayerStatDisplay({
-  player,
-}: {
-  player: StandingsPlayer;
-}) {
-  const { data: playerStats, isLoading } = usePlayerStatsQuery(
-    player.player_name
-  );
+  playerId,
+}: PlayerStatDisplayProps) {
+  const { data: playerStats, isLoading } = usePlayerStatsQuery(playerId);
 
   if (isLoading) {
     return <div>Loading player stats...</div>;
@@ -29,35 +29,35 @@ export default function PlayerStatDisplay({
   }
 
   return (
-    <>
-      {playerStats ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-secondary p-4 rounded shadow">
-              <h4 className="text-center text-xs">PTS/G</h4>
-              <p className="text-center font-bold">
-                {playerStats.avg_stats.avg_points}
-              </p>
-            </div>
-            <div className="bg-secondary p-4 rounded shadow">
-              <h4 className="text-center text-xs">REB/G</h4>
-              <p className="text-center font-bold">
-                {playerStats.avg_stats.avg_rebounds}
-              </p>
-            </div>
-            <div className="bg-secondary p-4 rounded shadow">
-              <h4 className="text-center text-xs">AST/G</h4>
-              <p className="text-center font-bold">
-                {playerStats.avg_stats.avg_assists}
-              </p>
-            </div>
-          </div>
-          <PlayerStatChart player={player} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-secondary p-4 rounded shadow">
+          <h4 className="text-center text-xs">PTS/G</h4>
+          <p className="text-center font-bold">
+            {playerStats.avg_stats.avg_points}
+          </p>
         </div>
-      ) : (
-        <p>Loading...</p>
-      )}
-    </>
+        <div className="bg-secondary p-4 rounded shadow">
+          <h4 className="text-center text-xs">REB/G</h4>
+          <p className="text-center font-bold">
+            {playerStats.avg_stats.avg_rebounds}
+          </p>
+        </div>
+        <div className="bg-secondary p-4 rounded shadow">
+          <h4 className="text-center text-xs">AST/G</h4>
+          <p className="text-center font-bold">
+            {playerStats.avg_stats.avg_assists}
+          </p>
+        </div>
+        <div className="bg-secondary p-4 rounded shadow">
+          <h4 className="text-center text-xs">FPTS/G</h4>
+          <p className="text-center font-bold">
+            {playerStats.avg_stats.avg_fpts}
+          </p>
+        </div>
+      </div>
+      <PlayerStatChart playerStats={playerStats} />
+    </div>
   );
 }
 
@@ -68,23 +68,11 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-function PlayerStatChart({ player }: { player: StandingsPlayer }) {
-  const { data: playerStats, isLoading } = usePlayerStatsQuery(
-    player.player_name
-  );
-
-  if (isLoading) {
-    return <div>Loading chart...</div>;
-  }
-
-  if (!playerStats) {
-    return <div>No chart data available.</div>;
-  }
-
+function PlayerStatChart({ playerStats }: { playerStats: PlayerStats }) {
   return (
     <Card className="border-none">
       <CardHeader>
-        <CardTitle>{player.player_name}&apos;s Fantasy Scores</CardTitle>
+        <CardTitle>{playerStats.name}&apos;s Fantasy Scores</CardTitle>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
@@ -98,11 +86,14 @@ function PlayerStatChart({ player }: { player: StandingsPlayer }) {
           >
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
+              dataKey="date"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+              }}
             />
             <YAxis
               tickLine={false}
