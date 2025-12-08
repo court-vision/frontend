@@ -9,6 +9,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Head from "next/head";
 import { Menu, Plus, User, Minus, AlertTriangle } from "lucide-react";
 import Image from "next/image";
+import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -33,6 +34,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isInMaintenance } = useMaintenance();
   const pathname = usePathname();
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
 
   // Enforce redirection to home page if site is in maintenance mode
   useEffect(() => {
@@ -60,7 +62,16 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
         <div className="hidden border-r bg-muted/40 md:block">
           <div className="flex h-full max-h-screen flex-col gap-2 items-center">
             <div className="flex h-14 items-center border-b px-8 md:h-[120px] lg:h-[120px]">
-              <Image src="/logo.png" alt="Logo" width={100} height={100} />
+              <Image
+                src={
+                  resolvedTheme === "light"
+                    ? "/logo-light.png"
+                    : "/logo-dark.png"
+                }
+                alt="Logo"
+                width={100}
+                height={100}
+              />
               {isInMaintenance && (
                 <AlertTriangle className="h-5 w-5 text-amber-500 ml-2" />
               )}
