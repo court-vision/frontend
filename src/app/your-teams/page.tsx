@@ -62,7 +62,7 @@ export default function Teams() {
         </div>
         <div className="flex flex-1 justify-center rounded-lg border border-primary border-dashed shadow-sm p-8">
           <div className="flex flex-col items-center gap-4 text-center">
-            <p>You don't have any teams yet.</p>
+            <p>You don&apos;t have any teams yet.</p>
             <Link
               href="/manage-teams"
               className="text-blue-500 hover:underline"

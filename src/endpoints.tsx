@@ -1,14 +1,10 @@
 // Original endpoints - commented out during maintenance mode
-export const BACKEND_ENDPOINT = "http://127.0.0.1:8000";
 export const PROD_BACKEND_ENDPOINT = "https://api.courtvision.dev";
 export const LOCAL_BACKEND_ENDPOINT = "http://127.0.0.1:8000";
-export const LINEUP_GENERATION_API_ENDPOINT = "TBD";
-export const DATA_API_ENDPOINT =
-  "https://cv-backend-443549036710.us-central1.run.app/data";
 
 // API v1 Internal endpoints
 export const API_BASE =
-  process.env.NODE_ENV === "production"
+  true // change this to false to use local backend
     ? PROD_BACKEND_ENDPOINT
     : LOCAL_BACKEND_ENDPOINT;
 

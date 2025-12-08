@@ -1,6 +1,6 @@
 import { getClientAuthHeaders } from "./auth";
 import {
-  BACKEND_ENDPOINT,
+  API_BASE,
   TEAMS_API,
   LINEUPS_API,
   STANDINGS_API,
@@ -214,7 +214,7 @@ class ApiClient {
 }
 
 // Create API client instance
-export const apiClient = new ApiClient(BACKEND_ENDPOINT);
+export const apiClient = new ApiClient(API_BASE);
 
 // Helper function to get API client with auth headers
 export async function createAuthenticatedRequest(
@@ -223,7 +223,7 @@ export async function createAuthenticatedRequest(
 ) {
   const authHeaders = await getClientAuthHeaders();
 
-  return fetch(`${BACKEND_ENDPOINT}${endpoint}`, {
+  return fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",

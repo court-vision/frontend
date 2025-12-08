@@ -20,7 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Eye, Trash2 } from "lucide-react";
-import { Lineup, SlimGene, useLineup } from "@/app/context/LineupContext";
+import { useLineup } from "@/app/context/LineupContext";
+import type { Lineup, SlimGene } from "@/types/lineup";
 import { LineupCard } from "@/components/lineup-components/LineupDisplay";
 import {
   Carousel,
@@ -73,7 +74,9 @@ export function ManageLineupsTable() {
                 </TableCell>
                 <TableCell className="text-center">
                   <div className="inline-block">
-                    <DeleteLineupConfirmation team_id={savedLineup.Id} />
+                    {savedLineup.Id !== null && (
+                      <DeleteLineupConfirmation team_id={savedLineup.Id} />
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
