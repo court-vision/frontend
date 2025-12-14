@@ -23,8 +23,15 @@ import {
 import type { RosterPlayer } from "@/types/team";
 import PlayerStatDisplay from "@/components/standings-components/PlayerStatDisplay";
 
+interface SelectedPlayer {
+  name: string;
+  team: string;
+}
+
 export function RosterDisplay({ roster }: { roster: RosterPlayer[] }) {
-  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(
+    null
+  );
 
   // Create a copy to sort to avoid mutating props
   const sortedRoster = [...roster].sort((a, b) => b.avg_points - a.avg_points);
@@ -33,7 +40,7 @@ export function RosterDisplay({ roster }: { roster: RosterPlayer[] }) {
   let total_players = 0;
 
   const handlePlayerClick = (player: RosterPlayer) => {
-    setSelectedPlayerId(player.player_id);
+    setSelectedPlayer({ name: player.name, team: player.team });
   };
 
   return (
@@ -99,8 +106,8 @@ export function RosterDisplay({ roster }: { roster: RosterPlayer[] }) {
 
       {/* Player Stats Dialog */}
       <Dialog
-        open={!!selectedPlayerId}
-        onOpenChange={() => setSelectedPlayerId(null)}
+        open={!!selectedPlayer}
+        onOpenChange={() => setSelectedPlayer(null)}
       >
         <DialogContent className="max-w-[900px]">
           <DialogHeader>
@@ -110,8 +117,11 @@ export function RosterDisplay({ roster }: { roster: RosterPlayer[] }) {
             </DialogDescription>
           </DialogHeader>
 
-          {selectedPlayerId && (
-            <PlayerStatDisplay playerId={selectedPlayerId} />
+          {selectedPlayer && (
+            <PlayerStatDisplay
+              playerName={selectedPlayer.name}
+              playerTeam={selectedPlayer.team}
+            />
           )}
 
           <DialogFooter>

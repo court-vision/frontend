@@ -8,17 +8,36 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { usePlayerStatsQuery } from "@/hooks/usePlayer";
+import { usePlayerStatsQuery, usePlayerStatsByNameQuery } from "@/hooks/usePlayer";
 import type { PlayerStats } from "@/types/player";
 
-interface PlayerStatDisplayProps {
+// Props for lookup by ID (used for standings)
+interface PlayerStatDisplayByIdProps {
   playerId: number;
+  playerName?: never;
+  playerTeam?: never;
 }
 
-export default function PlayerStatDisplay({
-  playerId,
-}: PlayerStatDisplayProps) {
-  const { data: playerStats, isLoading } = usePlayerStatsQuery(playerId);
+// Props for lookup by name/team (used for roster)
+interface PlayerStatDisplayByNameProps {
+  playerId?: never;
+  playerName: string;
+  playerTeam?: string;
+}
+
+type PlayerStatDisplayProps = PlayerStatDisplayByIdProps | PlayerStatDisplayByNameProps;
+
+export default function PlayerStatDisplay(props: PlayerStatDisplayProps) {
+  // Determine which lookup method to use
+  const useIdLookup = "playerId" in props && props.playerId !== undefined;
+  
+  const idQuery = usePlayerStatsQuery(useIdLookup ? props.playerId : null);
+  const nameQuery = usePlayerStatsByNameQuery(
+    !useIdLookup && "playerName" in props ? props.playerName : null,
+    !useIdLookup && "playerTeam" in props ? props.playerTeam : undefined
+  );
+  
+  const { data: playerStats, isLoading } = useIdLookup ? idQuery : nameQuery;
 
   if (isLoading) {
     return <div>Loading player stats...</div>;
