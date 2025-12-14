@@ -33,7 +33,6 @@ export function RosterDisplay({ roster }: { roster: RosterPlayer[] }) {
   let total_players = 0;
 
   const handlePlayerClick = (player: RosterPlayer) => {
-    console.log("Player clicked:", player.name, "player_id:", player.player_id);
     setSelectedPlayerId(player.player_id);
   };
 
