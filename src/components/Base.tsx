@@ -1,13 +1,12 @@
 "use client";
 
 import { useAuth } from "@/app/context/AuthContext";
-import { useMaintenance } from "@/app/context/MaintenanceContext";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import Head from "next/head";
-import { Menu, Plus, User, Minus, AlertTriangle } from "lucide-react";
+import { Menu, Plus, User, Minus } from "lucide-react";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 
@@ -20,7 +19,6 @@ import { SkeletonCard } from "@/components/ui/skeleton-card";
 
 import { Roboto } from "next/font/google";
 import { TeamDropdown } from "@/components/teams-components/TeamDropdown";
-import { useEffect } from "react";
 
 const font = Roboto({
   weight: "900",
@@ -31,17 +29,8 @@ import { FC } from "react";
 
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isLoggedIn, loading } = useAuth();
-  const { isInMaintenance } = useMaintenance();
   const pathname = usePathname();
-  const router = useRouter();
   const { resolvedTheme } = useTheme();
-
-  // Enforce redirection to home page if site is in maintenance mode
-  useEffect(() => {
-    if (isInMaintenance && pathname !== "/") {
-      router.push("/");
-    }
-  }, [isInMaintenance, pathname, router]);
 
   return (
     <>
@@ -72,9 +61,6 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                 width={100}
                 height={100}
               />
-              {isInMaintenance && (
-                <AlertTriangle className="h-5 w-5 text-amber-500 ml-2" />
-              )}
             </div>
             <div className="flex-1">
               <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
@@ -88,7 +74,6 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                     Home
                   </div>
                 </Link>
-                {!isInMaintenance && (
                   <>
                     <Link prefetch href="/your-teams">
                       <div
@@ -174,7 +159,6 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                         </Link>
                       )}
                   </>
-                )}
               </nav>
             </div>
           </div>
@@ -195,14 +179,14 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
               <SheetContent side="left" className="flex flex-col w-1/2">
                 <SheetTrigger asChild>
                   <div className="flex flex-row gap-2 px-4 py-2">
-                    {!isLoggedIn && !isInMaintenance && (
+                    {!isLoggedIn && (
                       <Link href="/account">
                         <div className="hover:border-primary">
                           <Button variant="outline">Sign In</Button>
                         </div>
                       </Link>
                     )}
-                    {isLoggedIn && !isInMaintenance && <TeamDropdown />}
+                    {isLoggedIn && <TeamDropdown />}
                   </div>
                 </SheetTrigger>
                 <nav className="grid gap-2 text-[0.9rem] font-medium">
@@ -218,7 +202,6 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                       </div>
                     </Link>
                   </SheetTrigger>
-                  {!isInMaintenance && (
                     <>
                       <SheetTrigger asChild>
                         <Link href="/your-teams">
@@ -316,7 +299,6 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                         </SheetTrigger>
                       )}
                     </>
-                  )}
                 </nav>
                 <div className="mt-auto flex">
                   <ModeToggle />
@@ -329,15 +311,9 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                 className={`text-4xl ml-[-2%] mt-[2%] md:text-5xl lg:text-6xl lg:ml-[7%] w-full text-center font-bold pb-3 ${font.className}`}
               >
                 <Title />
-                {isInMaintenance && (
-                  <span className="text-sm font-normal text-amber-500 ml-2">
-                    (Maintenance Mode)
-                  </span>
-                )}
               </div>
               <div className="px-2 flex-col gap-1 hidden md:flex">
                 <div className="flex gap-1 justify-center">
-                  {!isInMaintenance && (
                     <Link href="/account">
                       <div className="hover:border-primary">
                         <Button variant="outline" size="icon">
@@ -345,23 +321,24 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                         </Button>
                       </div>
                     </Link>
-                  )}
                   <ModeToggle />
                 </div>
                 <Separator />
-                {!isLoggedIn && !isInMaintenance && (
+                {!isLoggedIn && (
                   <Link href="/account">
                     <div className="hover:border-primary">
                       <Button variant="outline">Sign In</Button>
                     </div>
                   </Link>
                 )}
-                {isLoggedIn && !isInMaintenance && <TeamDropdown />}
+                {isLoggedIn && (
+                  <TeamDropdown />
+                )}
               </div>
             </div>
           </header>
           <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-            {loading && !isInMaintenance && <SkeletonCard />}
+            {loading && <SkeletonCard />}
             {!loading && children}
           </main>
         </div>

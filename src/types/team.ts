@@ -32,6 +32,7 @@ export interface Team {
 }
 
 export interface RosterPlayer {
+  player_id: number;
   name: string;
   avg_points: number;
   team: string;

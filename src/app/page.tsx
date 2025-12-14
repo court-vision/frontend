@@ -10,43 +10,18 @@ import {
   IconTrendingUp,
   IconChartPie,
   IconChessKnight,
-  IconAlertTriangle,
 } from "@tabler/icons-react";
-import { useMaintenance } from "./context/MaintenanceContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Home() {
-  const { isInMaintenance, maintenanceMessage } = useMaintenance();
-
   return (
     <>
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl">Home</h1>
       </div>
       <div className="flex flex-1 justify-center rounded-lg border border-primary border-dashed shadow-sm">
-        {isInMaintenance ? (
-          <div className="flex flex-col items-center justify-center p-8 text-center w-full">
-            <Card className="w-full max-w-3xl">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-center gap-2">
-                  <IconAlertTriangle className="h-8 w-8 text-amber-500" />
-                  <span>Maintenance Mode</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xl mb-6">{maintenanceMessage}</p>
-                <p className="text-muted-foreground">
-                  Thank you for using Court Vision. I am currently working on new features
-                  and improvements for the next fantasy basketball season. Stay tuned!
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-1 text-center">
-            <HomeFeaturesDisplay />
-          </div>
-        )}
+        <div className="flex flex-col items-center gap-1 text-center">
+          <HomeFeaturesDisplay />
+        </div>
       </div>
     </>
   );
@@ -99,7 +74,7 @@ function HomeFeaturesDisplay() {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4  relative z-10 py-10 max-w-7xl mx-auto">
       {features.map((feature, index) => (
         <Link href={feature.page} key={feature.title} passHref>
-          <Feature key={feature.title} {...feature} index={index} />
+          <Feature key={feature.title} {...feature} index={index} /> 
         </Link>
       ))}
     </div>

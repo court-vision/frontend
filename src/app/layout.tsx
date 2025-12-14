@@ -8,7 +8,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "./context/AuthContext";
 import { TeamsProvider } from "./context/TeamsContext";
 import { LineupProvider } from "./context/LineupContext";
-import { MaintenanceProvider } from "./context/MaintenanceContext";
 import { QueryProvider } from "@/providers/QueryProvider";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -33,18 +32,16 @@ export default function RootLayout({
 
       <body className={inter.className}>
         <QueryProvider>
-          <MaintenanceProvider>
-            <AuthProvider>
-              <TeamsProvider>
-                <LineupProvider>
-                  <ThemeProvider attribute="class" defaultTheme="dark">
-                    <Layout>{children}</Layout>
-                    <Toaster richColors />
-                  </ThemeProvider>
-                </LineupProvider>
-              </TeamsProvider>
-            </AuthProvider>
-          </MaintenanceProvider>
+          <AuthProvider>
+            <TeamsProvider>
+              <LineupProvider>
+                <ThemeProvider attribute="class" defaultTheme="dark">
+                  <Layout>{children}</Layout>
+                  <Toaster richColors />
+                </ThemeProvider>
+              </LineupProvider>
+            </TeamsProvider>
+          </AuthProvider>
         </QueryProvider>
 
         <Analytics />
