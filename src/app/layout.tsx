@@ -27,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head></head>
 
       <body className={inter.className}>
@@ -35,7 +35,11 @@ export default function RootLayout({
           <AuthProvider>
             <TeamsProvider>
               <LineupProvider>
-                <ThemeProvider attribute="class" defaultTheme="dark">
+                <ThemeProvider
+                  attribute="class"
+                  defaultTheme="dark"
+                  enableSystem={false}
+                >
                   <Layout>{children}</Layout>
                   <Toaster richColors />
                 </ThemeProvider>
