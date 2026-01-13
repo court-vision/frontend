@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
+import { useUser, useClerk } from "@clerk/nextjs";
 import {
   Home,
   Trophy,
@@ -11,6 +13,10 @@ import {
   Zap,
   Check,
   UserCircle,
+  Sun,
+  Moon,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -71,6 +77,9 @@ interface CommandPaletteProviderProps {
 
 export function CommandPaletteProvider({ children }: CommandPaletteProviderProps) {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const { isSignedIn } = useUser();
+  const { signOut } = useClerk();
   const [isOpen, setIsOpen] = useState(false);
   const [dynamicCommands, setDynamicCommands] = useState<Command[]>([]);
   const { teams, selectedTeam, setSelectedTeam } = useTeams();
@@ -166,8 +175,69 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     });
   }, [teams, selectedTeam, setSelectedTeam]);
 
+  // ---------------------------------------------------------------------------
+  // Theme Commands
+  // ---------------------------------------------------------------------------
+
+  const themeCommands: Command[] = [
+    {
+      id: "theme-light",
+      label: "Light Mode",
+      description: "Switch to light theme",
+      icon: theme === "light" ? (
+        <Check className="h-4 w-4 text-green-500" />
+      ) : (
+        <Sun className="h-4 w-4" />
+      ),
+      group: "Theme",
+      keywords: ["theme", "light", "bright", "day"],
+      action: () => setTheme("light"),
+    },
+    {
+      id: "theme-dark",
+      label: "Dark Mode",
+      description: "Switch to dark theme",
+      icon: theme === "dark" ? (
+        <Check className="h-4 w-4 text-green-500" />
+      ) : (
+        <Moon className="h-4 w-4" />
+      ),
+      group: "Theme",
+      keywords: ["theme", "dark", "night"],
+      action: () => setTheme("dark"),
+    },
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Auth Commands
+  // ---------------------------------------------------------------------------
+
+  const authCommands: Command[] = isSignedIn
+    ? [
+        {
+          id: "auth-logout",
+          label: "Sign Out",
+          description: "Sign out of your account",
+          icon: <LogOut className="h-4 w-4" />,
+          group: "Account",
+          keywords: ["logout", "sign out", "exit", "account"],
+          action: () => signOut({ redirectUrl: "/" }),
+        },
+      ]
+    : [
+        {
+          id: "auth-login",
+          label: "Sign In",
+          description: "Sign in to your account",
+          icon: <LogIn className="h-4 w-4" />,
+          group: "Account",
+          keywords: ["login", "sign in", "account"],
+          action: () => router.push("/sign-in"),
+        },
+      ];
+
   // Combine built-in and dynamic commands
-  const allCommands = [...navigationCommands, ...teamCommands, ...dynamicCommands];
+  const allCommands = [...navigationCommands, ...teamCommands, ...themeCommands, ...authCommands, ...dynamicCommands];
 
   // Group commands by their group property
   const groupedCommands = allCommands.reduce((acc, command) => {
