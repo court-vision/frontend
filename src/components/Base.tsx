@@ -26,6 +26,8 @@ const font = Roboto({
   subsets: ["latin-ext"],
 });
 import { FC, useEffect, useState } from "react";
+import { useCommandPalette } from "@/providers/CommandPaletteProvider";
+import { Command } from "lucide-react";
 
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isSignedIn, isLoaded } = useUser();
@@ -33,6 +35,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const loading = !isLoaded;
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
+  const { open: openCommandPalette } = useCommandPalette();
   const [logoSrc, setLogoSrc] = useState<string>("/logo-dark.png");
 
   useEffect(() => {
@@ -160,6 +163,21 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                     )}
                 </>
               </nav>
+            </div>
+            {/* Command Palette Hint */}
+            <div className="p-4 border-t">
+              <button
+                onClick={openCommandPalette}
+                className="flex items-center justify-between w-full px-3 py-2 text-xs text-muted-foreground rounded-md hover:bg-muted transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Command className="h-3 w-3" />
+                  <span>Command Palette</span>
+                </div>
+                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </button>
             </div>
           </div>
         </div>
