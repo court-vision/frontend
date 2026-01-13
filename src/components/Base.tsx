@@ -113,23 +113,9 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                       Lineup Generation
                     </div>
                   </Link>
-                  {(pathname === "/lineup-generation" ||
-                    pathname === "/manage-lineups") &&
-                    isLoggedIn && (
-                      <Link href="/manage-lineups">
-                        <div
-                          className={`flex items-center gap-3 rounded-lg pl-8 text-xs text-muted-foreground transition-all hover:text-primary ${
-                            pathname === "/manage-lineups" ? "text-primary" : ""
-                          }`}
-                        >
-                          <Minus size={10} />
-                          Manage Lineups
-                        </div>
-                      </Link>
-                    )}
                   <Link prefetch href="/standings">
                     <div
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                      className={`flex items-center gap-3 rounded-lg px-3 pt-2 pb-4 text-muted-foreground transition-all hover:text-primary ${
                         pathname === "/standings" ? "text-primary" : ""
                       }`}
                     >
@@ -140,7 +126,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                   <Separator />
                   <Link prefetch href="/account">
                     <div
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                      className={`flex items-center gap-3 rounded-lg px-3 py-3 text-muted-foreground transition-all hover:text-primary ${
                         pathname === "/account" ? "text-primary" : ""
                       }`}
                     >
@@ -148,18 +134,32 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                       Account
                     </div>
                   </Link>
-                  {(pathname === "/account" || pathname === "/manage-teams") &&
+                  {(pathname === "/account" ||
+                    pathname === "/manage-teams" ||
+                    pathname === "/manage-lineups") &&
                     isLoggedIn && (
-                      <Link href="/manage-teams">
-                        <div
-                          className={`flex items-center gap-3 rounded-lg pl-8 text-xs text-muted-foreground transition-all hover:text-primary ${
-                            pathname === "/manage-teams" ? "text-primary" : ""
-                          }`}
-                        >
-                          <Minus size={10} />
-                          Manage Teams
-                        </div>
-                      </Link>
+                      <>
+                        <Link href="/manage-teams">
+                          <div
+                            className={`flex items-center gap-3 rounded-lg pl-8 text-xs text-muted-foreground transition-all hover:text-primary ${
+                              pathname === "/manage-teams" ? "text-primary" : ""
+                            }`}
+                          >
+                            <Minus size={10} />
+                            Manage Teams
+                          </div>
+                        </Link>
+                        <Link href="/manage-lineups" className="mt-2">
+                          <div
+                            className={`flex items-center gap-3 rounded-lg pl-8 text-xs text-muted-foreground transition-all hover:text-primary ${
+                              pathname === "/manage-lineups" ? "text-primary" : ""
+                            }`}
+                          >
+                            <Minus size={10} />
+                            Manage Lineups
+                          </div>
+                        </Link>
+                      </>
                     )}
                 </>
               </nav>
@@ -247,22 +247,6 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                         </div>
                       </Link>
                     </SheetTrigger>
-                    {isLoggedIn && (
-                      <SheetTrigger asChild>
-                        <Link href="/manage-lineups">
-                          <div
-                            className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/manage-lineups"
-                                ? "text-primary"
-                                : ""
-                            }`}
-                          >
-                            <Minus size={10} />
-                            Manage Lineups
-                          </div>
-                        </Link>
-                      </SheetTrigger>
-                    )}
                     <SheetTrigger asChild>
                       <Link href="/standings">
                         <div
@@ -301,18 +285,32 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                       </Link>
                     </SheetTrigger>
                     {isLoggedIn && (
-                      <SheetTrigger asChild>
-                        <Link href="/manage-teams">
-                          <div
-                            className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/manage-teams" ? "text-primary" : ""
-                            }`}
-                          >
-                            <Minus size={10} />
-                            Manage Teams
-                          </div>
-                        </Link>
-                      </SheetTrigger>
+                      <>
+                        <SheetTrigger asChild>
+                          <Link href="/manage-teams">
+                            <div
+                              className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
+                                pathname === "/manage-teams" ? "text-primary" : ""
+                              }`}
+                            >
+                              <Minus size={10} />
+                              Manage Teams
+                            </div>
+                          </Link>
+                        </SheetTrigger>
+                        <SheetTrigger asChild>
+                          <Link href="/manage-lineups" className="mt-1">
+                            <div
+                              className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
+                                pathname === "/manage-lineups" ? "text-primary" : ""
+                              }`}
+                            >
+                              <Minus size={10} />
+                              Manage Lineups
+                            </div>
+                          </Link>
+                        </SheetTrigger>
+                      </>
                     )}
                   </>
                 </nav>
