@@ -12,13 +12,12 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { useStandingsQuery } from "@/hooks/useStandings";
 import type { StandingsPlayer } from "@/types/standings";
-import { TrendingUp, TrendingDown, Minus, ArrowUpDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ArrowUpDown, Search } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Dialog,
-  DialogTrigger,
   DialogTitle,
   DialogDescription,
   DialogFooter,
@@ -26,21 +25,74 @@ import {
   DialogHeader,
   DialogClose,
 } from "../ui/dialog";
+import {
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "../ui/command";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "../ui/pagination";
+import { Input } from "../ui/input";
 import PlayerStatDisplay from "./PlayerStatDisplay";
 
+const PLAYERS_PER_PAGE = 50;
+
 export default function StandingsDisplay() {
-  const { data: standings = [], isLoading } = useStandingsQuery();
+  const { data: standings, isLoading } = useStandingsQuery();
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
-  const [sortedStandings, setSortedStandings] = useState(standings);
+  const [sortedStandings, setSortedStandings] = useState<StandingsPlayer[]>([]);
   const [sortConfig, setSortConfig] = useState({
     key: "total_fpts",
     direction: "desc",
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [commandOpen, setCommandOpen] = useState(false);
+
+  // Filter standings based on search query
+  const filteredStandings = sortedStandings.filter((player) =>
+    player.player_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(filteredStandings.length / PLAYERS_PER_PAGE);
+  const startIndex = (currentPage - 1) * PLAYERS_PER_PAGE;
+  const endIndex = startIndex + PLAYERS_PER_PAGE;
+  const paginatedStandings = filteredStandings.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // Make sure to update sortedStandings when standings changes
   useEffect(() => {
+    if (!standings) return;
     setSortedStandings(standings);
   }, [standings]);
+
+  // Keyboard shortcut for command palette (Cmd/Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandOpen((prev) => !prev);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleSort = (key: "total_fpts" | "avg_fpts") => {
     let direction = "desc";
@@ -63,6 +115,27 @@ export default function StandingsDisplay() {
 
   const handlePlayerClick = (player: StandingsPlayer) => {
     setSelectedPlayerId(player.id);
+  };
+
+  const handleCommandSelect = (player: StandingsPlayer) => {
+    setCommandOpen(false);
+    setSelectedPlayerId(player.id);
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | "ellipsis")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push("ellipsis");
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+        pages.push(i);
+      }
+      if (currentPage < totalPages - 2) pages.push("ellipsis");
+      pages.push(totalPages);
+    }
+    return pages;
   };
 
   const getSortIcon = (columnKey: string) => {
@@ -91,8 +164,32 @@ export default function StandingsDisplay() {
 
   return (
     <>
+      {/* Search Bar */}
+      <div className="mt-5 flex items-center gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search players..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Button
+          variant="outline"
+          className="hidden sm:flex items-center gap-2 text-muted-foreground"
+          onClick={() => setCommandOpen(true)}
+        >
+          <Search className="h-4 w-4" />
+          <span>Quick Search</span>
+          <kbd className="pointer-events-none ml-2 inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+            <span className="text-xs">⌘</span>K
+          </kbd>
+        </Button>
+      </div>
+
       <Card className="mt-5 w-full">
-        <CardContent className="flex justify-center mb-[-20px] w-full">
+        <CardContent className="flex flex-col justify-center mb-[-20px] w-full">
           <Table className="w-full">
             <TableHeader>
               <TableRow>
@@ -122,7 +219,7 @@ export default function StandingsDisplay() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedStandings.map((player: StandingsPlayer) => {
+              {paginatedStandings.map((player: StandingsPlayer) => {
                 return (
                   <TableRow
                     key={player.id}
@@ -151,6 +248,48 @@ export default function StandingsDisplay() {
               })}
             </TableBody>
           </Table>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between py-4">
+              <p className="text-sm text-muted-foreground">
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredStandings.length)} of {filteredStandings.length} players
+              </p>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  {getPageNumbers().map((page, index) =>
+                    page === "ellipsis" ? (
+                      <PaginationItem key={`ellipsis-${index}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    ) : (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  )}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -178,6 +317,33 @@ export default function StandingsDisplay() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Command Palette for Quick Search */}
+      <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
+        <CommandInput placeholder="Search for a player..." />
+        <CommandList>
+          <CommandEmpty>No players found.</CommandEmpty>
+          <CommandGroup heading="Players">
+            {sortedStandings
+              .slice(0, 50)
+              .map((player) => (
+                <CommandItem
+                  key={player.id}
+                  onSelect={() => handleCommandSelect(player)}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground w-8">#{player.rank}</span>
+                      <span>{player.player_name}</span>
+                    </div>
+                    <span className="text-muted-foreground text-sm">{player.total_fpts} FPTS</span>
+                  </div>
+                </CommandItem>
+              ))}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
     </>
   );
 }
