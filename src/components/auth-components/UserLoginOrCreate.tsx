@@ -23,6 +23,7 @@ export default function UserLoginOrCreate() {
   return (
     <div className="flex justify-center mt-5">
       <SignIn
+        routing="hash"
         appearance={{
           baseTheme: resolvedTheme === "dark" ? dark : undefined,
           elements: {

@@ -76,7 +76,7 @@ export default function Account() {
 
       <SignedOut>
         <div className="flex flex-1 items-start justify-center rounded-lg border border-primary border-dashed shadow-sm py-8">
-          <SignIn appearance={clerkAppearance} />
+          <SignIn routing="hash" appearance={clerkAppearance} />
         </div>
       </SignedOut>
 
