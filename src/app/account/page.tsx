@@ -7,6 +7,8 @@ import {
   UserButton,
   useUser,
 } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
+import { useTheme } from "next-themes";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
@@ -19,6 +21,39 @@ import { Separator } from "@/components/ui/separator";
 
 export default function Account() {
   const { user, isLoaded } = useUser();
+  const { resolvedTheme } = useTheme();
+
+  const clerkAppearance = {
+    baseTheme: resolvedTheme === "dark" ? dark : undefined,
+    elements: {
+      rootBox: "mx-auto",
+      card: "bg-background border border-primary shadow-lg",
+      headerTitle: "text-foreground",
+      headerSubtitle: "text-muted-foreground",
+      formFieldLabel: "text-foreground",
+      formFieldInput:
+        "bg-background border-input text-foreground placeholder:text-muted-foreground",
+      formButtonPrimary:
+        "bg-primary text-primary-foreground hover:bg-primary/90",
+      footerActionLink: "text-primary hover:text-primary/90",
+      socialButtonsBlockButton:
+        "bg-background border border-input text-foreground hover:bg-muted",
+      socialButtonsBlockButtonText: "text-foreground",
+      dividerLine: "bg-border",
+      dividerText: "text-muted-foreground",
+      formFieldInputShowPasswordButton: "text-muted-foreground",
+      identityPreviewText: "text-foreground",
+      identityPreviewEditButton: "text-primary",
+      formResendCodeLink: "text-primary",
+      otpCodeFieldInput: "border-input text-foreground",
+      footerActionText: "text-muted-foreground",
+      formFieldAction: "text-primary",
+      formFieldHintText: "text-muted-foreground",
+      alertText: "text-foreground",
+      formFieldSuccessText: "text-green-500",
+      formFieldErrorText: "text-destructive",
+    },
+  };
 
   if (!isLoaded) {
     return (
@@ -41,21 +76,7 @@ export default function Account() {
 
       <SignedOut>
         <div className="flex flex-1 items-start justify-center rounded-lg border border-primary border-dashed shadow-sm py-8">
-          <SignIn
-            appearance={{
-              elements: {
-                rootBox: "mx-auto",
-                card: "bg-background border border-primary shadow-lg",
-                headerTitle: "text-foreground",
-                headerSubtitle: "text-muted-foreground",
-                formFieldLabel: "text-foreground",
-                formFieldInput: "bg-background border-input",
-                formButtonPrimary:
-                  "bg-primary text-primary-foreground hover:bg-primary/90",
-                footerActionLink: "text-primary hover:text-primary/90",
-              },
-            }}
-          />
+          <SignIn appearance={clerkAppearance} />
         </div>
       </SignedOut>
 
@@ -67,6 +88,7 @@ export default function Account() {
                 <UserButton
                   afterSignOutUrl="/"
                   appearance={{
+                    baseTheme: resolvedTheme === "dark" ? dark : undefined,
                     elements: {
                       avatarBox: "w-12 h-12",
                     },
