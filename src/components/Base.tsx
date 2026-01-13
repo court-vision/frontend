@@ -25,7 +25,7 @@ const font = Roboto({
   style: "italic",
   subsets: ["latin-ext"],
 });
-import { FC } from "react";
+import { FC, useEffect, useState } from "react";
 
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isSignedIn, isLoaded } = useUser();
@@ -33,6 +33,22 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const loading = !isLoaded;
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
+  const [logoSrc, setLogoSrc] = useState<string>("/logo-dark.png");
+
+  useEffect(() => {
+    // Check theme immediately on mount from DOM (fastest way)
+    const isDark = document.documentElement.classList.contains("dark");
+    setLogoSrc(isDark ? "/logo-dark.png" : "/logo-light.png");
+  }, []);
+
+  useEffect(() => {
+    // Update logo when resolvedTheme changes (more reliable)
+    if (resolvedTheme) {
+      setLogoSrc(
+        resolvedTheme === "light" ? "/logo-light.png" : "/logo-dark.png"
+      );
+    }
+  }, [resolvedTheme]);
 
   return (
     <>
@@ -54,14 +70,11 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="flex h-full max-h-screen flex-col gap-2 items-center">
             <div className="flex h-14 items-center border-b px-8 md:h-[120px] lg:h-[120px]">
               <Image
-                src={
-                  resolvedTheme === "light"
-                    ? "/logo-light.png"
-                    : "/logo-dark.png"
-                }
+                src={logoSrc}
                 alt="Logo"
                 width={100}
                 height={100}
+                key={logoSrc}
               />
             </div>
             <div className="flex-1">
@@ -76,81 +89,76 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                     Home
                   </div>
                 </Link>
-                  <>
-                    <Link prefetch href="/your-teams">
-                      <div
-                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                          pathname === "/your-teams" ? "text-primary" : ""
-                        }`}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Your Teams
-                      </div>
-                    </Link>
-                    <Link prefetch href="/lineup-generation">
-                      <div
-                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                          pathname === "/lineup-generation"
-                            ? "text-primary"
-                            : ""
-                        }`}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Lineup Generation
-                      </div>
-                    </Link>
-                    {(pathname === "/lineup-generation" ||
-                      pathname === "/manage-lineups") &&
-                      isLoggedIn && (
-                        <Link href="/manage-lineups">
-                          <div
-                            className={`flex items-center gap-3 rounded-lg pl-8 text-xs text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/manage-lineups"
-                                ? "text-primary"
-                                : ""
-                            }`}
-                          >
-                            <Minus size={10} />
-                            Manage Lineups
-                          </div>
-                        </Link>
-                      )}
-                    <Link prefetch href="/standings">
-                      <div
-                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                          pathname === "/standings" ? "text-primary" : ""
-                        }`}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Standings
-                      </div>
-                    </Link>
-                    <Separator />
-                    <Link prefetch href="/account">
-                      <div
-                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                          pathname === "/account" ? "text-primary" : ""
-                        }`}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Account
-                      </div>
-                    </Link>
-                    {(pathname === "/account" ||
-                      pathname === "/manage-teams") &&
-                      isLoggedIn && (
-                        <Link href="/manage-teams">
-                          <div
-                            className={`flex items-center gap-3 rounded-lg pl-8 text-xs text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/manage-teams" ? "text-primary" : ""
-                            }`}
-                          >
-                            <Minus size={10} />
-                            Manage Teams
-                          </div>
-                        </Link>
-                      )}
-                  </>
+                <>
+                  <Link prefetch href="/your-teams">
+                    <div
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                        pathname === "/your-teams" ? "text-primary" : ""
+                      }`}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Your Teams
+                    </div>
+                  </Link>
+                  <Link prefetch href="/lineup-generation">
+                    <div
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                        pathname === "/lineup-generation" ? "text-primary" : ""
+                      }`}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Lineup Generation
+                    </div>
+                  </Link>
+                  {(pathname === "/lineup-generation" ||
+                    pathname === "/manage-lineups") &&
+                    isLoggedIn && (
+                      <Link href="/manage-lineups">
+                        <div
+                          className={`flex items-center gap-3 rounded-lg pl-8 text-xs text-muted-foreground transition-all hover:text-primary ${
+                            pathname === "/manage-lineups" ? "text-primary" : ""
+                          }`}
+                        >
+                          <Minus size={10} />
+                          Manage Lineups
+                        </div>
+                      </Link>
+                    )}
+                  <Link prefetch href="/standings">
+                    <div
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                        pathname === "/standings" ? "text-primary" : ""
+                      }`}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Standings
+                    </div>
+                  </Link>
+                  <Separator />
+                  <Link prefetch href="/account">
+                    <div
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                        pathname === "/account" ? "text-primary" : ""
+                      }`}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Account
+                    </div>
+                  </Link>
+                  {(pathname === "/account" || pathname === "/manage-teams") &&
+                    isLoggedIn && (
+                      <Link href="/manage-teams">
+                        <div
+                          className={`flex items-center gap-3 rounded-lg pl-8 text-xs text-muted-foreground transition-all hover:text-primary ${
+                            pathname === "/manage-teams" ? "text-primary" : ""
+                          }`}
+                        >
+                          <Minus size={10} />
+                          Manage Teams
+                        </div>
+                      </Link>
+                    )}
+                </>
               </nav>
             </div>
           </div>
@@ -194,103 +202,101 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                       </div>
                     </Link>
                   </SheetTrigger>
-                    <>
+                  <>
+                    <SheetTrigger asChild>
+                      <Link href="/your-teams">
+                        <div
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                            pathname === "/teams" ? "text-primary" : ""
+                          }`}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Your Teams
+                        </div>
+                      </Link>
+                    </SheetTrigger>
+                    <SheetTrigger asChild>
+                      <Link href="/lineup-generation">
+                        <div
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                            pathname === "/lineup-generation"
+                              ? "text-primary"
+                              : ""
+                          }`}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Lineup Generation
+                        </div>
+                      </Link>
+                    </SheetTrigger>
+                    {isLoggedIn && (
                       <SheetTrigger asChild>
-                        <Link href="/your-teams">
+                        <Link href="/manage-lineups">
                           <div
-                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/teams" ? "text-primary" : ""
-                            }`}
-                          >
-                            <Plus className="h-4 w-4" />
-                            Your Teams
-                          </div>
-                        </Link>
-                      </SheetTrigger>
-                      <SheetTrigger asChild>
-                        <Link href="/lineup-generation">
-                          <div
-                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/lineup-generation"
+                            className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
+                              pathname === "/manage-lineups"
                                 ? "text-primary"
                                 : ""
                             }`}
                           >
-                            <Plus className="h-4 w-4" />
-                            Lineup Generation
+                            <Minus size={10} />
+                            Manage Lineups
                           </div>
                         </Link>
                       </SheetTrigger>
-                      {isLoggedIn && (
-                        <SheetTrigger asChild>
-                          <Link href="/manage-lineups">
-                            <div
-                              className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
-                                pathname === "/manage-lineups"
-                                  ? "text-primary"
-                                  : ""
-                              }`}
-                            >
-                              <Minus size={10} />
-                              Manage Lineups
-                            </div>
-                          </Link>
-                        </SheetTrigger>
-                      )}
+                    )}
+                    <SheetTrigger asChild>
+                      <Link href="/standings">
+                        <div
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                            pathname === "/standings" ? "text-primary" : ""
+                          }`}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Standings
+                        </div>
+                      </Link>
+                    </SheetTrigger>
+                    <SheetTrigger asChild>
+                      <Link href="/new-features">
+                        <div
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                            pathname === "/new-features" ? "text-primary" : ""
+                          }`}
+                        >
+                          <Plus className="h-4 w-4" />
+                          More Coming Soon
+                        </div>
+                      </Link>
+                    </SheetTrigger>
+                    <Separator />
+                    <SheetTrigger asChild>
+                      <Link href="/account">
+                        <div
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                            pathname === "/account" ? "text-primary" : ""
+                          }`}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Account
+                        </div>
+                      </Link>
+                    </SheetTrigger>
+                    {isLoggedIn && (
                       <SheetTrigger asChild>
-                        <Link href="/standings">
+                        <Link href="/manage-teams">
                           <div
-                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/standings" ? "text-primary" : ""
+                            className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
+                              pathname === "/manage-teams" ? "text-primary" : ""
                             }`}
                           >
-                            <Plus className="h-4 w-4" />
-                            Standings
+                            <Minus size={10} />
+                            Manage Teams
                           </div>
                         </Link>
                       </SheetTrigger>
-                      <SheetTrigger asChild>
-                        <Link href="/new-features">
-                          <div
-                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/new-features" ? "text-primary" : ""
-                            }`}
-                          >
-                            <Plus className="h-4 w-4" />
-                            More Coming Soon
-                          </div>
-                        </Link>
-                      </SheetTrigger>
-                      <Separator />
-                      <SheetTrigger asChild>
-                        <Link href="/account">
-                          <div
-                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/account" ? "text-primary" : ""
-                            }`}
-                          >
-                            <Plus className="h-4 w-4" />
-                            Account
-                          </div>
-                        </Link>
-                      </SheetTrigger>
-                      {isLoggedIn && (
-                        <SheetTrigger asChild>
-                          <Link href="/manage-teams">
-                            <div
-                              className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
-                                pathname === "/manage-teams"
-                                  ? "text-primary"
-                                  : ""
-                              }`}
-                            >
-                              <Minus size={10} />
-                              Manage Teams
-                            </div>
-                          </Link>
-                        </SheetTrigger>
-                      )}
-                    </>
+                    )}
+                  </>
                 </nav>
                 <div className="mt-auto flex">
                   <ModeToggle />
@@ -306,13 +312,13 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
               </div>
               <div className="px-2 flex-col gap-1 hidden md:flex">
                 <div className="flex gap-1 justify-center">
-                    <Link href="/account">
-                      <div className="hover:border-primary">
-                        <Button variant="outline" size="icon">
-                          <User className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    </Link>
+                  <Link href="/account">
+                    <div className="hover:border-primary">
+                      <Button variant="outline" size="icon">
+                        <User className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </Link>
                   <ModeToggle />
                 </div>
                 <Separator />
@@ -323,9 +329,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                     </div>
                   </Link>
                 )}
-                {isLoggedIn && (
-                  <TeamDropdown />
-                )}
+                {isLoggedIn && <TeamDropdown />}
               </div>
             </div>
           </header>
