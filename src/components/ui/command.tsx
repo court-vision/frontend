@@ -126,7 +126,7 @@ function CommandItem({
     <CommandPrimitive.Item
       ref={ref}
       className={cn(
-        "relative flex items-center hover:bg-input rounded-sm px-2 py-1.5 text-sm outline-none",
+        "relative flex items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground",
         className
       )}
       {...props}

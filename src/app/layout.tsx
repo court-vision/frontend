@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { TeamsProvider } from "./context/TeamsContext";
 import { LineupProvider } from "./context/LineupContext";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { CommandPaletteProvider } from "@/providers/CommandPaletteProvider";
 
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -41,8 +42,10 @@ export default function RootLayout({
                   defaultTheme="dark"
                   enableSystem={false}
                 >
-                  <Layout>{children}</Layout>
-                  <Toaster richColors />
+                  <CommandPaletteProvider>
+                    <Layout>{children}</Layout>
+                    <Toaster richColors />
+                  </CommandPaletteProvider>
                 </ThemeProvider>
               </LineupProvider>
             </TeamsProvider>

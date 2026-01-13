@@ -181,7 +181,6 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
                     alt="clear"
                     width={30}
                     height={30}
-                    fill={true}
                   />
                 </Button>
                 <Button
@@ -196,8 +195,7 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
                       src="/arrow.png"
                       alt="submit"
                       width={30}
-                      height={30}
-                      fill={true}
+                      height={30} 
                     />
                   )}
                 </Button>
