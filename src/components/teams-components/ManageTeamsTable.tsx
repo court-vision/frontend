@@ -314,7 +314,6 @@ function AddTeamForm() {
                   alt="clear"
                   width={30}
                   height={30}
-                  fill={true}
                 />
               </Button>
               <Button type="submit" className="size-sm bg-primary">
@@ -323,7 +322,6 @@ function AddTeamForm() {
                   alt="submit"
                   width={30}
                   height={30}
-                  fill-true
                 />
               </Button>
             </div>
@@ -560,7 +558,6 @@ function EditTeamForm({
                   alt="clear"
                   width={30}
                   height={30}
-                  fill-true
                 />
               </Button>
               <Button type="submit" className="size-sm bg-primary">
@@ -569,7 +566,6 @@ function EditTeamForm({
                   alt="submit"
                   width={30}
                   height={30}
-                  fill={true}
                 />
               </Button>
             </div>

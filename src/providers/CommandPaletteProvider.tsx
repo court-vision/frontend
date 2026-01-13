@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Home,
@@ -9,6 +9,8 @@ import {
   Calendar,
   Settings,
   Zap,
+  Check,
+  UserCircle,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -19,6 +21,7 @@ import {
   CommandItem,
   CommandShortcut,
 } from "@/components/ui/command";
+import { useTeams } from "@/app/context/TeamsContext";
 
 // =============================================================================
 // Types
@@ -70,6 +73,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [dynamicCommands, setDynamicCommands] = useState<Command[]>([]);
+  const { teams, selectedTeam, setSelectedTeam } = useTeams();
 
   // ---------------------------------------------------------------------------
   // Navigation Commands (built-in)
@@ -132,8 +136,38 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     },
   ];
 
+  // ---------------------------------------------------------------------------
+  // Team Switching Commands (dynamic based on user's teams)
+  // ---------------------------------------------------------------------------
+
+  const teamCommands: Command[] = useMemo(() => {
+    if (!teams || teams.length === 0) return [];
+
+    return teams.map((team) => {
+      const isSelected = selectedTeam === team.team_id;
+      const teamName = team.league_info?.team_name || team.team_info?.team_name || "Unknown Team";
+      const leagueName = team.league_info?.league_name || team.team_info?.league_name || "";
+
+      return {
+        id: `team-${team.team_id}`,
+        label: teamName,
+        description: leagueName ? `${leagueName}` : undefined,
+        icon: isSelected ? (
+          <Check className="h-4 w-4 text-green-500" />
+        ) : (
+          <UserCircle className="h-4 w-4" />
+        ),
+        group: "Switch Team",
+        keywords: ["team", "switch", teamName.toLowerCase(), leagueName?.toLowerCase() || ""],
+        action: () => {
+          setSelectedTeam(team.team_id);
+        },
+      };
+    });
+  }, [teams, selectedTeam, setSelectedTeam]);
+
   // Combine built-in and dynamic commands
-  const allCommands = [...navigationCommands, ...dynamicCommands];
+  const allCommands = [...navigationCommands, ...teamCommands, ...dynamicCommands];
 
   // Group commands by their group property
   const groupedCommands = allCommands.reduce((acc, command) => {
