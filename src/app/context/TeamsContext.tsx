@@ -6,7 +6,6 @@ import React, {
   SetStateAction,
 } from "react";
 import { useUIStore } from "@/stores/useUIStore";
-import { useAuth } from "@/app/context/AuthContext";
 import {
   useTeamsQuery,
   useAddTeamMutation,
@@ -61,19 +60,19 @@ const TeamsContext = createContext<TeamsContextType>({
 
 export const TeamsProvider = ({ children }: { children: React.ReactNode }) => {
   const { selectedTeam, setSelectedTeam } = useUIStore();
-  const { setPage, isLoggedIn } = useAuth();
 
-  // React Query Hooks
-  const { data: teams = [], refetch: refetchTeams } = useTeamsQuery(isLoggedIn);
+  // React Query Hooks - now use Clerk auth internally
+  const { data: teams = [], refetch: refetchTeams } = useTeamsQuery();
   const { data: rosterInfo = [], refetch: refetchRoster } =
-    useTeamRosterQuery(selectedTeam, isLoggedIn);
+    useTeamRosterQuery(selectedTeam);
 
   const { mutate: addTeamMutation } = useAddTeamMutation();
   const { mutate: updateTeamMutation } = useUpdateTeamMutation();
   const { mutate: deleteTeamMutation } = useDeleteTeamMutation();
 
   const handleManageTeamsClick = () => {
-    setPage("manage-teams");
+    // Navigation is now handled by Next.js routing
+    // Use <Link href="/manage-teams"> in components instead
   };
 
   // Adapter functions to maintain backward compatibility with components still using context

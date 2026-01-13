@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/app/context/AuthContext";
+import { useUser } from "@clerk/nextjs";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,7 +28,9 @@ const font = Roboto({
 import { FC } from "react";
 
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isLoggedIn, loading } = useAuth();
+  const { isSignedIn, isLoaded } = useUser();
+  const isLoggedIn = isSignedIn === true;
+  const loading = !isLoaded;
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
 

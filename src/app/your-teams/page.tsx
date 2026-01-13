@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAuth } from "@/app/context/AuthContext";
+import { useUser } from "@clerk/nextjs";
 import { useUIStore } from "@/stores/useUIStore";
 import { useTeamsQuery, useTeamRosterQuery } from "@/hooks/useTeams";
 import { RosterDisplay } from "@/components/teams-components/RosterDisplay";
@@ -9,20 +9,34 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 
 export default function Teams() {
-  const { isLoggedIn } = useAuth();
+  const { isSignedIn, isLoaded } = useUser();
   const { selectedTeam, setSelectedTeam } = useUIStore();
-  const { data: teams, isLoading: isTeamsLoading } = useTeamsQuery(isLoggedIn);
+  const { data: teams, isLoading: isTeamsLoading } = useTeamsQuery();
   const { data: roster, isLoading: isRosterLoading } =
-    useTeamRosterQuery(selectedTeam, isLoggedIn);
+    useTeamRosterQuery(selectedTeam);
 
   // Auto-select first team if none selected
   useEffect(() => {
-    if (isLoggedIn && teams && teams.length > 0 && !selectedTeam) {
+    if (isSignedIn && teams && teams.length > 0 && !selectedTeam) {
       setSelectedTeam(teams[0].team_id);
     }
-  }, [isLoggedIn, teams, selectedTeam, setSelectedTeam]);
+  }, [isSignedIn, teams, selectedTeam, setSelectedTeam]);
 
-  if (!isLoggedIn) {
+  if (!isLoaded) {
+    return (
+      <>
+        <div className="flex items-center mb-4">
+          <h1 className="text-lg font-semibold md:text-2xl">Your Teams</h1>
+        </div>
+        <div className="space-y-4 w-full max-w-7xl mx-auto">
+          <Skeleton className="h-8 w-[200px]" />
+          <Skeleton className="h-[400px] w-full rounded-xl" />
+        </div>
+      </>
+    );
+  }
+
+  if (!isSignedIn) {
     return (
       <>
         <div className="flex items-center mb-4">

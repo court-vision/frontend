@@ -1,21 +1,8 @@
-/**
- * DEPRECATED: Custom login/create account component
- *
- * This component is no longer used - authentication is now handled by Clerk.
- * Use the <SignIn /> and <SignUp /> components from "@clerk/nextjs" instead.
- *
- * See:
- * - /app/sign-in/[[...sign-in]]/page.tsx
- * - /app/sign-up/[[...sign-up]]/page.tsx
- * - /app/account/page.tsx
- */
-
 import { SignIn } from "@clerk/nextjs";
 
-export default function UserLoginOrCreate() {
-  // Render Clerk's SignIn component instead of the custom form
+export default function SignInPage() {
   return (
-    <div className="flex justify-center mt-5">
+    <div className="flex justify-center items-center min-h-[60vh] py-8">
       <SignIn
         appearance={{
           elements: {

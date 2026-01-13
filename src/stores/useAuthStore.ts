@@ -1,15 +1,25 @@
+/**
+ * DEPRECATED: Custom auth state store
+ *
+ * This store is no longer used - authentication state is now managed by Clerk.
+ * Keeping for reference during migration.
+ *
+ * For authentication state, use Clerk's hooks:
+ * - `useUser()` - for user info (isSignedIn, user object)
+ * - `useAuth()` - for auth state (getToken, signOut)
+ */
+
+/*
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 interface AuthStore {
-  // Auth State
   token: string | null;
   isLoggedIn: boolean;
   authEmail: string | null;
   loading: boolean;
   page: string;
 
-  // Actions
   setToken: (token: string | null) => void;
   setIsLoggedIn: (isLoggedIn: boolean) => void;
   setAuthEmail: (email: string | null) => void;
@@ -50,3 +60,35 @@ export const useAuthStore = create<AuthStore>()(
     }
   )
 );
+*/
+
+// Export placeholder to prevent import errors during migration
+import { create } from "zustand";
+
+interface DeprecatedAuthStore {
+  token: null;
+  isLoggedIn: false;
+  authEmail: null;
+  loading: false;
+  page: string;
+  setToken: () => void;
+  setIsLoggedIn: () => void;
+  setAuthEmail: () => void;
+  setLoading: () => void;
+  setPage: () => void;
+  logout: () => void;
+}
+
+export const useAuthStore = create<DeprecatedAuthStore>()(() => ({
+  token: null,
+  isLoggedIn: false,
+  authEmail: null,
+  loading: false,
+  page: "home",
+  setToken: () => {},
+  setIsLoggedIn: () => {},
+  setAuthEmail: () => {},
+  setLoading: () => {},
+  setPage: () => {},
+  logout: () => {},
+}));

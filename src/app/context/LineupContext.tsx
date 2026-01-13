@@ -1,7 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState } from "react";
 import { useTeams } from "@/app/context/TeamsContext";
-import { useAuth } from "@/app/context/AuthContext";
 import {
   useGenerateLineupMutation,
   useSaveLineupMutation,
@@ -51,10 +50,9 @@ export const LineupProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const { selectedTeam } = useTeams();
-  const { isLoggedIn } = useAuth();
 
-  // React Query Hooks
-  const { data: savedLineups = [] } = useLineupsQuery(selectedTeam, isLoggedIn);
+  // React Query Hooks - now uses Clerk auth internally
+  const { data: savedLineups = [] } = useLineupsQuery(selectedTeam);
 
   const { mutate: generateLineupMutation } = useGenerateLineupMutation();
   const { mutate: saveLineupMutation } = useSaveLineupMutation();

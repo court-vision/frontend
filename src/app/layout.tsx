@@ -5,7 +5,6 @@ import { Analytics } from "@vercel/analytics/react";
 import { Inter } from "next/font/google";
 
 import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider } from "./context/AuthContext";
 import { TeamsProvider } from "./context/TeamsContext";
 import { LineupProvider } from "./context/LineupContext";
 import { QueryProvider } from "@/providers/QueryProvider";
@@ -13,6 +12,8 @@ import { QueryProvider } from "@/providers/QueryProvider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 import Layout from "@/components/Base";
+
+import { ClerkProvider } from "@clerk/nextjs";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,12 +28,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <head></head>
+    <ClerkProvider>
+      <html lang="en" className="dark" suppressHydrationWarning>
+        <head></head>
 
-      <body className={inter.className}>
-        <QueryProvider>
-          <AuthProvider>
+        <body className={inter.className}>
+          <QueryProvider>
             <TeamsProvider>
               <LineupProvider>
                 <ThemeProvider
@@ -45,11 +46,11 @@ export default function RootLayout({
                 </ThemeProvider>
               </LineupProvider>
             </TeamsProvider>
-          </AuthProvider>
-        </QueryProvider>
+          </QueryProvider>
 
-        <Analytics />
-      </body>
-    </html>
+          <Analytics />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

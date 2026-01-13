@@ -1,8 +1,12 @@
 "use client";
-import React from "react";
 
-import UAuthForm from "@/components/auth-components/UserLoginOrCreate";
-import { useAuth } from "@/app/context/AuthContext";
+import {
+  SignedIn,
+  SignedOut,
+  SignIn,
+  UserButton,
+  useUser,
+} from "@clerk/nextjs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
@@ -13,89 +17,98 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-import { Button } from "@/components/ui/button";
-
 export default function Account() {
-  const { isLoggedIn, authEmail, loading, logout } = useAuth();
+  const { user, isLoaded } = useUser();
 
-  const handleLogout = async () => {
-    logout();
-  };
+  if (!isLoaded) {
+    return (
+      <>
+        <div className="flex items-center">
+          <h1 className="text-lg font-semibold md:text-2xl">Your Account</h1>
+        </div>
+        <div className="flex flex-1 items-center justify-center">
+          <Skeleton className="w-full max-w-md h-64" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
-      {!isLoggedIn ? (
-        <>
-          <div className="flex items-center">
-            <h1 className="text-lg font-semibold md:text-2xl">Your Account</h1>
-          </div>
-          <div className="flex flex-1 items-start justify-center rounded-lg border border-primary border-dashed shadow-sm">
-            <div className="flex flex-col items-center gap-1">
-              <div className="flex-col items-center">
-                <UAuthForm />
-                {loading && <Skeleton className="w-full max-w-md h-12" />}
-              </div>
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="flex items-center">
-            <h1 className="text-lg font-semibold md:text-2xl">Your Account</h1>
-          </div>
-          <div className="flex flex-1 items-start rounded-lg border border-primary border-dashed shadow-sm">
-            <div className="flex flex-col gap-1 w-full">
-              <div className="flex-col">
-                <div className="flex flex-col gap-1 w-full">
-                  <Card className="w-full">
-                    <CardHeader className="flex flex-row items-center gap-5 bg-muted/50">
-                      <div className="flex flex-col">
-                        <CardTitle className="flex text-lg">
-                          Welcome Court Visionary!
-                        </CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-6 text-sm">
-                      <div className="grid gap-3">
-                        <div className="font-semibold">Email</div>
-                        <ul className="grid gap-3">
-                          <li className="flex items-center justify-between">
-                            <span className="text-muted-foreground">
-                              {authEmail}
-                            </span>
-                          </li>
-                        </ul>
-                        <Separator className="my-2" />
-                        <div className="font-semibold">Password</div>
-                        <ul className="grid gap-3">
-                          <li className="flex items-center justify-between">
-                            <span className="text-muted-foreground">
-                              ********
-                            </span>
-                            <span></span>
-                          </li>
-                        </ul>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex flex-row items-center border-t bg-muted/50 px-6 py-3 gap-5">
-                      <div className="flex flex-col">
-                        <Button className="max-w-lg" onClick={handleLogout}>
-                          Logout
-                        </Button>
-                      </div>
-                      {/* <div className="flex flex-row">
-                        <Button variant="destructive" className="max-w-lg" onClick={() => logout()}>
-                          Delete Account
-                        </Button>
-                      </div> */}
-                    </CardFooter>
-                  </Card>
+      <div className="flex items-center">
+        <h1 className="text-lg font-semibold md:text-2xl">Your Account</h1>
+      </div>
+
+      <SignedOut>
+        <div className="flex flex-1 items-start justify-center rounded-lg border border-primary border-dashed shadow-sm py-8">
+          <SignIn
+            appearance={{
+              elements: {
+                rootBox: "mx-auto",
+                card: "bg-background border border-primary shadow-lg",
+                headerTitle: "text-foreground",
+                headerSubtitle: "text-muted-foreground",
+                formFieldLabel: "text-foreground",
+                formFieldInput: "bg-background border-input",
+                formButtonPrimary:
+                  "bg-primary text-primary-foreground hover:bg-primary/90",
+                footerActionLink: "text-primary hover:text-primary/90",
+              },
+            }}
+          />
+        </div>
+      </SignedOut>
+
+      <SignedIn>
+        <div className="flex flex-1 items-start rounded-lg border border-primary border-dashed shadow-sm">
+          <div className="flex flex-col gap-1 w-full">
+            <Card className="w-full">
+              <CardHeader className="flex flex-row items-center gap-5 bg-muted/50">
+                <UserButton
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      avatarBox: "w-12 h-12",
+                    },
+                  }}
+                />
+                <div className="flex flex-col">
+                  <CardTitle className="flex text-lg">
+                    Welcome Court Visionary!
+                  </CardTitle>
                 </div>
-              </div>
-            </div>
+              </CardHeader>
+              <CardContent className="p-6 text-sm">
+                <div className="grid gap-3">
+                  <div className="font-semibold">Email</div>
+                  <ul className="grid gap-3">
+                    <li className="flex items-center justify-between">
+                      <span className="text-muted-foreground">
+                        {user?.primaryEmailAddress?.emailAddress}
+                      </span>
+                    </li>
+                  </ul>
+                  <Separator className="my-2" />
+                  <div className="font-semibold">Account</div>
+                  <ul className="grid gap-3">
+                    <li className="flex items-center justify-between">
+                      <span className="text-muted-foreground">
+                        Click your profile picture above to manage your account,
+                        sign out, or update your profile.
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-row items-center border-t bg-muted/50 px-6 py-3 gap-5">
+                <span className="text-sm text-muted-foreground">
+                  Account managed by Clerk
+                </span>
+              </CardFooter>
+            </Card>
           </div>
-        </>
-      )}
+        </div>
+      </SignedIn>
     </>
   );
 }

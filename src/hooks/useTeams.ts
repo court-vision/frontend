@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import type {
@@ -20,29 +21,35 @@ export const teamsKeys = {
 };
 
 // Hooks
-export function useTeamsQuery(isLoggedIn: boolean = false) {
+export function useTeamsQuery() {
+  const { getToken, isSignedIn } = useAuth();
+
   return useQuery({
     queryKey: teamsKeys.lists(),
-    queryFn: () => apiClient.getTeams(),
-    enabled: isLoggedIn,
+    queryFn: () => apiClient.getTeams(getToken),
+    enabled: isSignedIn === true,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
-export function useTeamQuery(teamId: number | null, isLoggedIn: boolean = false) {
+export function useTeamQuery(teamId: number | null) {
+  const { getToken, isSignedIn } = useAuth();
+
   return useQuery({
     queryKey: teamsKeys.detail(teamId!),
-    queryFn: () => apiClient.getTeamRoster(teamId!),
-    enabled: !!teamId && isLoggedIn,
+    queryFn: () => apiClient.getTeamRoster(getToken, teamId!),
+    enabled: !!teamId && isSignedIn === true,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
-export function useTeamRosterQuery(teamId: number | null, isLoggedIn: boolean = false) {
+export function useTeamRosterQuery(teamId: number | null) {
+  const { getToken, isSignedIn } = useAuth();
+
   return useQuery({
     queryKey: teamsKeys.roster(teamId!),
-    queryFn: () => apiClient.getTeamRoster(teamId!),
-    enabled: !!teamId && isLoggedIn,
+    queryFn: () => apiClient.getTeamRoster(getToken, teamId!),
+    enabled: !!teamId && isSignedIn === true,
     staleTime: 1000 * 60 * 2, // 2 minutes for roster data
   });
 }
@@ -50,9 +57,11 @@ export function useTeamRosterQuery(teamId: number | null, isLoggedIn: boolean = 
 // Mutations
 export function useAddTeamMutation() {
   const queryClient = useQueryClient();
+  const { getToken } = useAuth();
 
   return useMutation({
-    mutationFn: (teamData: LeagueInfoRequest) => apiClient.addTeam(teamData),
+    mutationFn: (teamData: LeagueInfoRequest) =>
+      apiClient.addTeam(getToken, teamData),
     onSuccess: (response) => {
       if (response.status === "success") {
         if (response.already_exists) {
@@ -74,6 +83,7 @@ export function useAddTeamMutation() {
 
 export function useUpdateTeamMutation() {
   const queryClient = useQueryClient();
+  const { getToken } = useAuth();
 
   return useMutation({
     mutationFn: ({
@@ -82,7 +92,7 @@ export function useUpdateTeamMutation() {
     }: {
       teamId: number;
       teamData: LeagueInfoRequest;
-    }) => apiClient.updateTeam(teamId, teamData),
+    }) => apiClient.updateTeam(getToken, teamId, teamData),
     onSuccess: (response, { teamId }) => {
       if (response.status === "success") {
         toast.success("Team updated successfully!");
@@ -102,9 +112,10 @@ export function useUpdateTeamMutation() {
 
 export function useDeleteTeamMutation() {
   const queryClient = useQueryClient();
+  const { getToken } = useAuth();
 
   return useMutation({
-    mutationFn: (teamId: number) => apiClient.deleteTeam(teamId),
+    mutationFn: (teamId: number) => apiClient.deleteTeam(getToken, teamId),
     onSuccess: (response, teamId) => {
       if (response.status === "success") {
         toast.success("Team removed successfully!");

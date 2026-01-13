@@ -18,12 +18,10 @@ import {
 } from "@/components/ui/command";
 import { useTeamsQuery } from "@/hooks/useTeams";
 import { useUIStore } from "@/stores/useUIStore";
-import { useAuth } from "@/app/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function TeamDropdown() {
-  const { isLoggedIn } = useAuth();
-  const { data: teams = [], isLoading } = useTeamsQuery(isLoggedIn);
+  const { data: teams = [], isLoading } = useTeamsQuery();
   const { selectedTeam, setSelectedTeam } = useUIStore();
   const [selectedTeamName, setSelectedTeamName] = useState("Select Team");
 

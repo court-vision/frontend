@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import type { Lineup, LineupGenerationRequest } from "@/types/lineup";
@@ -13,11 +14,13 @@ export const lineupsKeys = {
 };
 
 // Hooks
-export function useLineupsQuery(teamId: number | null, isLoggedIn: boolean = false) {
+export function useLineupsQuery(teamId: number | null) {
+  const { getToken, isSignedIn } = useAuth();
+
   return useQuery({
     queryKey: lineupsKeys.list(teamId!),
-    queryFn: () => apiClient.getLineups(teamId!),
-    enabled: !!teamId && isLoggedIn,
+    queryFn: () => apiClient.getLineups(getToken, teamId!),
+    enabled: !!teamId && isSignedIn === true,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 }
@@ -25,10 +28,11 @@ export function useLineupsQuery(teamId: number | null, isLoggedIn: boolean = fal
 // Mutations
 export function useGenerateLineupMutation() {
   const queryClient = useQueryClient();
+  const { getToken } = useAuth();
 
   return useMutation({
     mutationFn: (data: LineupGenerationRequest) =>
-      apiClient.generateLineup(data),
+      apiClient.generateLineup(getToken, data),
     onSuccess: (response, variables) => {
       if (response.status === "success") {
         // toast.success("Lineup generated successfully!");
@@ -48,10 +52,11 @@ export function useGenerateLineupMutation() {
 
 export function useSaveLineupMutation() {
   const queryClient = useQueryClient();
+  const { getToken } = useAuth();
 
   return useMutation({
     mutationFn: ({ teamId, lineup }: { teamId: number; lineup: Lineup }) =>
-      apiClient.saveLineup(teamId, lineup),
+      apiClient.saveLineup(getToken, teamId, lineup),
     onSuccess: (response) => {
       if (response.status === "success") {
         toast.success("Lineup saved successfully!");
@@ -71,9 +76,10 @@ export function useSaveLineupMutation() {
 
 export function useDeleteLineupMutation() {
   const queryClient = useQueryClient();
+  const { getToken } = useAuth();
 
   return useMutation({
-    mutationFn: (lineupId: number) => apiClient.deleteLineup(lineupId),
+    mutationFn: (lineupId: number) => apiClient.deleteLineup(getToken, lineupId),
     onSuccess: (response, lineupId) => {
       if (response.status === "success") {
         toast.success("Lineup deleted successfully!");
