@@ -10,6 +10,7 @@ import {
   IconTrendingUp,
   IconChartPie,
   IconChessKnight,
+  IconCalendarCheck,
 } from "@tabler/icons-react";
 
 export default function Home() {
@@ -49,6 +50,12 @@ function HomeFeaturesDisplay() {
       page: "/lineup-generation",
     },
     {
+      title: "Matchup",
+      description: "View your matchup for the week and the projected winner.",
+      icon: <IconCalendarCheck />,
+      page: "/matchup",
+    },
+    {
       title: "Standings",
       description:
         "View the rankings of all fantasy basketball players, updated daily.",
@@ -60,13 +67,6 @@ function HomeFeaturesDisplay() {
       description: "Login to your account or create an account.",
       icon: <User />,
       page: "/account",
-    },
-    {
-      title: "More Coming Soon",
-      description:
-        "As a solo developer, I am working hard to bring you more features.",
-      icon: <IconClockHour4 />,
-      page: "/new-features",
     },
   ];
 
