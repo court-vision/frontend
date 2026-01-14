@@ -97,7 +97,7 @@ export function ManageLineupsTable() {
 function ViewLineupButton({ lineup }: { lineup: Lineup }) {
   return (
     <Dialog>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant="ghost" className="hover:bg-input">
           <Eye size={20} />
         </Button>
@@ -126,7 +126,7 @@ function DeleteLineupConfirmation({ team_id }: { team_id: number }) {
 
   return (
     <Dialog>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant="ghost" className="hover:bg-input mr-[-5px]">
           <Trash2 size={20} />
         </Button>

@@ -101,7 +101,7 @@ function DeleteTeamConfirmation({ team_id }: { team_id: number }) {
 
   return (
     <Dialog>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant="outline" className="hover:bg-input">
           <Trash2 size={20} />
         </Button>
@@ -191,7 +191,7 @@ function AddTeamForm() {
   return (
     <Dialog>
       <DialogTrigger className="w-full">
-        <Button
+        <Button asChild
           variant="outline"
           className="flex justify-start w-full hover:bg-input"
         >
@@ -427,7 +427,7 @@ function EditTeamForm({
 
   return (
     <Dialog>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant="outline" className="hover:bg-input ml-[-5px]">
           <Pencil size={20} />
         </Button>
