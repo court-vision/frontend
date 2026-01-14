@@ -17,6 +17,7 @@ import {
   Moon,
   LogIn,
   LogOut,
+  CalendarCheck,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -99,15 +100,6 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       action: () => router.push("/"),
     },
     {
-      id: "nav-standings",
-      label: "Go to Standings",
-      description: "View player rankings and stats",
-      icon: <Trophy className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["standings", "rankings", "leaderboard", "players"],
-      action: () => router.push("/standings"),
-    },
-    {
       id: "nav-your-teams",
       label: "Go to Your Teams",
       description: "Manage your fantasy teams",
@@ -115,6 +107,33 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       group: "Navigation",
       keywords: ["teams", "my teams", "roster"],
       action: () => router.push("/your-teams"),
+    },
+    {
+      id: "nav-lineup-generation",
+      label: "Go to Lineup Generation",
+      description: "Generate optimized lineups",
+      icon: <Zap className="h-4 w-4" />,
+      group: "Navigation",
+      keywords: ["generate", "lineup", "optimize", "auto"],
+      action: () => router.push("/lineup-generation"),
+    },
+    {
+      id: "nav-matchup",
+      label: "Go to Matchup",
+      description: "View the matchup for the week",
+      icon: <CalendarCheck className="h-4 w-4" />,
+      group: "Navigation",
+      keywords: ["matchup", "schedule", "week"],
+      action: () => router.push("/matchup"),
+    },
+    {
+      id: "nav-standings",
+      label: "Go to Standings",
+      description: "View player rankings and stats",
+      icon: <Trophy className="h-4 w-4" />,
+      group: "Navigation",
+      keywords: ["standings", "rankings", "leaderboard", "players"],
+      action: () => router.push("/standings"),
     },
     {
       id: "nav-manage-teams",
@@ -133,15 +152,6 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       group: "Navigation",
       keywords: ["lineups", "manage", "schedule"],
       action: () => router.push("/manage-lineups"),
-    },
-    {
-      id: "nav-lineup-generation",
-      label: "Go to Lineup Generation",
-      description: "Generate optimized lineups",
-      icon: <Zap className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["generate", "lineup", "optimize", "auto"],
-      action: () => router.push("/lineup-generation"),
     },
   ];
 
