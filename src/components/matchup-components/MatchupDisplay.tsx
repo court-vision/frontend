@@ -39,6 +39,7 @@ const LINEUP_SLOT_ORDER: Record<string, number> = {
   C: 5,
   G: 6,
   F: 7,
+  UT: 8,
   UTIL: 8,
   BE: 9,
   IR: 10,
@@ -88,10 +89,13 @@ function TeamRosterTable({ team, onPlayerClick }: TeamRosterTableProps) {
             <TableCell>
               <Badge
                 variant={
-                  player.lineup_slot === "BE" || player.lineup_slot === "IR"
-                    ? "secondary"
-                    : "default"
+                  player.lineup_slot === "IR"
+                    ? "outline"
+                    : player.lineup_slot === "BE"
+                      ? "secondary"
+                      : "default"
                 }
+                className={player.lineup_slot === "IR" ? "text-muted-foreground" : ""}
               >
                 {player.lineup_slot}
               </Badge>
