@@ -18,6 +18,7 @@ import {
   LogIn,
   LogOut,
   CalendarCheck,
+  User,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -134,6 +135,15 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       group: "Navigation",
       keywords: ["standings", "rankings", "leaderboard", "players"],
       action: () => router.push("/standings"),
+    },
+    {
+      id: "nav-account",
+      label: "Go to Account",
+      description: "View your account information",
+      icon: <User className="h-4 w-4" />,
+      group: "Navigation",
+      keywords: ["account", "profile", "settings"],
+      action: () => router.push("/account"),
     },
     {
       id: "nav-manage-teams",
