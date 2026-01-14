@@ -69,7 +69,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
       </Head>
 
       <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[200px_1fr]">
-        <div className="hidden border-r bg-muted/40 md:block">
+        <div className="hidden border-r bg-muted/40 md:block sticky top-0 h-screen overflow-y-auto">
           <div className="flex h-full max-h-screen flex-col gap-2 items-center">
             <div className="flex h-14 items-center border-b px-8 md:h-[120px] lg:h-[120px]">
               <Image
