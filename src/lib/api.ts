@@ -5,6 +5,7 @@ import {
   LINEUPS_API,
   STANDINGS_API,
   PLAYERS_API,
+  MATCHUPS_API,
 } from "@/endpoints";
 import type {
   Team,
@@ -28,6 +29,7 @@ import type {
 import type { StandingsPlayer } from "@/types/standings";
 import type { PlayerStats } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
+import type { MatchupData, MatchupResponse, AvgWindow } from "@/types/matchup";
 
 class ApiClient {
   private baseUrl: string;
@@ -180,6 +182,22 @@ class ApiClient {
       }
     );
     return response;
+  }
+
+  // Matchups API
+  async getMatchup(
+    getToken: GetTokenFn,
+    teamId: number,
+    avgWindow: AvgWindow = "season"
+  ): Promise<MatchupData> {
+    const response = await this.authenticatedRequest<MatchupResponse>(
+      `${MATCHUPS_API}/current/${teamId}?avg_window=${avgWindow}`,
+      getToken
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to fetch matchup data");
   }
 
   // Standings API (public - no auth required)
