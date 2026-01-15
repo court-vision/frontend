@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { User } from "lucide-react";
+import { User, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   IconChartArrowsVertical,
@@ -54,6 +54,12 @@ function HomeFeaturesDisplay() {
       description: "View your matchup for the week and the projected winner.",
       icon: <IconCalendarCheck />,
       page: "/matchup",
+    },
+    {
+      title: "Streamers",
+      description: "Find a recommended streamer to add to your lineup.",
+      icon: <UserPlus />,
+      page: "/streamers",
     },
     {
       title: "Rankings",
