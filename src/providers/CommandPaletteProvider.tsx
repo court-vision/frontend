@@ -19,6 +19,7 @@ import {
   LogOut,
   CalendarCheck,
   User,
+  UserPlus,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -126,6 +127,15 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       group: "Navigation",
       keywords: ["matchup", "schedule", "week"],
       action: () => router.push("/matchup"),
+    },
+    {
+      id: "nav-streamers",
+      label: "Go to Streamers",
+      description: "View the streamers for the week",
+      icon: <UserPlus className="h-4 w-4" />,
+      group: "Navigation",
+      keywords: ["streamers", "stream", "week"],
+      action: () => router.push("/streamers"),
     },
     {
       id: "nav-rankings",
