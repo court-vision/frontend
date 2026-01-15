@@ -7,7 +7,7 @@ export interface StreamerPlayer {
   name: string;
   team: string;
   valid_positions: string[];
-  avg_points_last_7: number | null;
+  avg_points_last_n: number | null;
   avg_points_season: number;
   games_remaining: number;
   has_b2b: boolean;
@@ -22,6 +22,7 @@ export interface StreamerPlayer {
 export interface StreamerData {
   matchup_number: number;
   current_day_index: number;
+  avg_days: number;
   teams_with_b2b: string[];
   streamers: StreamerPlayer[];
 }
@@ -33,6 +34,7 @@ export interface StreamerRequest {
   exclude_injured?: boolean;
   b2b_only?: boolean;
   day?: number | null;
+  avg_days?: number;
 }
 
 // Backend API Response Type

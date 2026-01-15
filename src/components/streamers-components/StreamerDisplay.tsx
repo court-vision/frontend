@@ -22,15 +22,36 @@ import {
   TableRow,
   TableHeader,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
 
 import { WeekSchedule, WeekScheduleHeader } from "./WeekSchedule";
+import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { useTeams } from "@/app/context/TeamsContext";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import type { StreamerPlayer } from "@/types/streamer";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C", "G", "F"] as const;
 type Position = (typeof POSITIONS)[number];
+
+const AVG_DAYS_OPTIONS = [
+  { value: 7, label: "Last 7 days" },
+  { value: 14, label: "Last 14 days" },
+  { value: 30, label: "Last 30 days" },
+] as const;
+
+interface SelectedPlayer {
+  name: string;
+  team: string;
+}
 
 export default function StreamerDisplay() {
   const { selectedTeam, teams } = useTeams();
@@ -49,6 +70,8 @@ export default function StreamerDisplay() {
   );
   const [b2bOnly, setB2bOnly] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [avgDays, setAvgDays] = useState(7);
+  const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
 
   // Fetch streamers
   const { data, isLoading, error } = useStreamersQuery(
@@ -59,6 +82,7 @@ export default function StreamerDisplay() {
       excludeInjured: true,
       b2bOnly: b2bOnly,
       day: selectedDay,
+      avgDays: avgDays,
     }
   );
 
@@ -197,6 +221,23 @@ export default function StreamerDisplay() {
           B2B Only
         </Button>
 
+        {/* Avg Days Selector */}
+        <Select
+          value={avgDays.toString()}
+          onValueChange={(val) => setAvgDays(parseInt(val))}
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Avg period" />
+          </SelectTrigger>
+          <SelectContent>
+            {AVG_DAYS_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value.toString()}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         {/* Position Filters */}
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Positions:</span>
@@ -250,7 +291,7 @@ export default function StreamerDisplay() {
                 </TableHead>
                 <TableHead className="w-[60px] text-center">Team</TableHead>
                 <TableHead className="w-[140px]">Positions</TableHead>
-                <TableHead className="w-[80px] text-center">Avg FPTS</TableHead>
+                <TableHead className="w-[80px] text-center">{avgDays}D Avg</TableHead>
                 <TableHead className="w-[60px] text-center">Games</TableHead>
                 <TableHead className="w-[180px] text-center">
                   <div className="flex flex-col items-center gap-1">
@@ -276,7 +317,11 @@ export default function StreamerDisplay() {
               ) : (
                 filteredStreamers.map(
                   (player: StreamerPlayer, index: number) => (
-                    <TableRow key={player.player_id}>
+                    <TableRow
+                      key={player.player_id}
+                      className="cursor-pointer hover:bg-muted"
+                      onClick={() => setSelectedPlayer({ name: player.name, team: player.team })}
+                    >
                       <TableCell className="text-center font-medium">
                         {index + 1}
                       </TableCell>
@@ -317,8 +362,8 @@ export default function StreamerDisplay() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        {player.avg_points_last_7 !== null
-                          ? player.avg_points_last_7.toFixed(1)
+                        {player.avg_points_last_n !== null
+                          ? player.avg_points_last_n.toFixed(1)
                           : "-"}
                       </TableCell>
                       <TableCell className="text-center font-medium">
@@ -341,6 +386,32 @@ export default function StreamerDisplay() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Player Stats Dialog */}
+      <Dialog
+        open={!!selectedPlayer}
+        onOpenChange={() => setSelectedPlayer(null)}
+      >
+        <DialogContent className="max-w-[900px]">
+          <DialogHeader>
+            <DialogTitle>Player Details</DialogTitle>
+            <DialogDescription>
+              Detailed stats and performance history.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPlayer && (
+            <PlayerStatDisplay
+              playerName={selectedPlayer.name}
+              playerTeam={selectedPlayer.team}
+            />
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button>Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,8 +7,8 @@ import type { StreamerData } from "@/types/streamer";
 // Query keys
 export const streamersKeys = {
   all: ["streamers"] as const,
-  find: (teamId: number, day?: number | null) =>
-    [...streamersKeys.all, "find", teamId, day] as const,
+  find: (teamId: number, day?: number | null, avgDays?: number) =>
+    [...streamersKeys.all, "find", teamId, day, avgDays] as const,
 };
 
 // Hooks
@@ -20,13 +20,14 @@ export function useStreamersQuery(
     excludeInjured?: boolean;
     b2bOnly?: boolean;
     day?: number | null;
+    avgDays?: number;
   }
 ) {
   const { getToken, isSignedIn } = useAuth();
-  const { faCount = 50, excludeInjured = true, b2bOnly = false, day = null } = options || {};
+  const { faCount = 50, excludeInjured = true, b2bOnly = false, day = null, avgDays = 7 } = options || {};
 
   return useQuery({
-    queryKey: streamersKeys.find(teamId!, day),
+    queryKey: streamersKeys.find(teamId!, day, avgDays),
     queryFn: async (): Promise<StreamerData> => {
       const response = await apiClient.findStreamers(getToken, {
         league_info: leagueInfo!,
@@ -34,6 +35,7 @@ export function useStreamersQuery(
         exclude_injured: excludeInjured,
         b2b_only: b2bOnly,
         day: day,
+        avg_days: avgDays,
       });
       if (response.status === "success" && response.data) {
         return response.data;
