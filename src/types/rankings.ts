@@ -1,8 +1,9 @@
 export interface RankingsPlayer {
-  name: string;
-  proj_avg: number;
-  proj_total: number;
+  id: number;
   rank: number;
+  player_name: string;
+  team: string;
+  total_fpts: number;
+  avg_fpts: number;
+  rank_change: number;
 }
-
-export type RankingModel = "Handpicked" | "LSTM" | "SVR";

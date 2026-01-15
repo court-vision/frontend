@@ -10,8 +10,8 @@ import {
   TableHeader,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { useStandingsQuery } from "@/hooks/useStandings";
-import type { StandingsPlayer } from "@/types/standings";
+import { useRankingsQuery } from "@/hooks/useRankings";
+import type { RankingsPlayer } from "@/types/rankings";
 import {
   TrendingUp,
   TrendingDown,
@@ -46,11 +46,11 @@ import { useCommandPalette } from "@/providers/CommandPaletteProvider";
 
 const PLAYERS_PER_PAGE = 50;
 
-export default function StandingsDisplay() {
-  const { data: standings, isLoading } = useStandingsQuery();
+export default function RankingsDisplay() {
+  const { data: rankings, isLoading } = useRankingsQuery();
   const { open: openCommandPalette } = useCommandPalette();
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
-  const [sortedStandings, setSortedStandings] = useState<StandingsPlayer[]>([]);
+  const [sortedRankings, setSortedRankings] = useState<RankingsPlayer[]>([]);
   const [sortConfig, setSortConfig] = useState({
     key: "total_fpts",
     direction: "desc",
@@ -61,16 +61,16 @@ export default function StandingsDisplay() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const tableRef = useRef<HTMLTableSectionElement>(null);
 
-  // Filter standings based on search query
-  const filteredStandings = sortedStandings.filter((player) =>
+  // Filter rankings based on search query
+  const filteredRankings = sortedRankings.filter((player) =>
     player.player_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Calculate pagination values
-  const totalPages = Math.ceil(filteredStandings.length / PLAYERS_PER_PAGE);
+  const totalPages = Math.ceil(filteredRankings.length / PLAYERS_PER_PAGE);
   const startIndex = (currentPage - 1) * PLAYERS_PER_PAGE;
   const endIndex = startIndex + PLAYERS_PER_PAGE;
-  const paginatedStandings = filteredStandings.slice(startIndex, endIndex);
+  const paginatedRankings = filteredRankings.slice(startIndex, endIndex);
 
   // Reset to page 1 and highlighted index when search query changes
   useEffect(() => {
@@ -83,11 +83,11 @@ export default function StandingsDisplay() {
     setHighlightedIndex(-1);
   }, [currentPage]);
 
-  // Make sure to update sortedStandings when standings changes
+  // Make sure to update sortedRankings when rankings changes
   useEffect(() => {
-    if (!standings) return;
-    setSortedStandings(standings);
-  }, [standings]);
+    if (!rankings) return;
+    setSortedRankings(rankings);
+  }, [rankings]);
 
   // Keyboard navigation for search results
   useEffect(() => {
@@ -106,17 +106,17 @@ export default function StandingsDisplay() {
         e.preventDefault();
         setHighlightedIndex((prev) => {
           const next = prev + 1;
-          return next >= paginatedStandings.length ? 0 : next;
+          return next >= paginatedRankings.length ? 0 : next;
         });
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setHighlightedIndex((prev) => {
           const next = prev - 1;
-          return next < 0 ? paginatedStandings.length - 1 : next;
+          return next < 0 ? paginatedRankings.length - 1 : next;
         });
       } else if (e.key === "Enter" && highlightedIndex >= 0) {
         e.preventDefault();
-        const player = paginatedStandings[highlightedIndex];
+        const player = paginatedRankings[highlightedIndex];
         if (player) {
           setSelectedPlayerId(player.id);
         }
@@ -128,7 +128,7 @@ export default function StandingsDisplay() {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [paginatedStandings, highlightedIndex]);
+  }, [paginatedRankings, highlightedIndex]);
 
   const handleSort = (key: "total_fpts" | "avg_fpts") => {
     let direction = "desc";
@@ -138,18 +138,18 @@ export default function StandingsDisplay() {
       direction = sortConfig.direction === "desc" ? "asc" : "desc";
     }
 
-    const sorted = [...sortedStandings].sort((a, b) => {
+    const sorted = [...sortedRankings].sort((a, b) => {
       if (direction === "desc") {
         return b[key] - a[key];
       }
       return a[key] - b[key];
     });
 
-    setSortedStandings(sorted);
+    setSortedRankings(sorted);
     setSortConfig({ key, direction });
   };
 
-  const handlePlayerClick = (player: StandingsPlayer) => {
+  const handlePlayerClick = (player: RankingsPlayer) => {
     setSelectedPlayerId(player.id);
   };
 
@@ -255,8 +255,8 @@ export default function StandingsDisplay() {
               </TableRow>
             </TableHeader>
             <TableBody ref={tableRef}>
-              {paginatedStandings.map(
-                (player: StandingsPlayer, index: number) => {
+              {paginatedRankings.map(
+                (player: RankingsPlayer, index: number) => {
                   const isHighlighted = index === highlightedIndex;
                   return (
                     <TableRow
@@ -296,8 +296,8 @@ export default function StandingsDisplay() {
             <div className="flex items-center justify-between py-4">
               <p className="text-sm text-muted-foreground">
                 Showing {startIndex + 1}-
-                {Math.min(endIndex, filteredStandings.length)} of{" "}
-                {filteredStandings.length} players
+                {Math.min(endIndex, filteredRankings.length)} of{" "}
+                {filteredRankings.length} players
               </p>
               <Pagination>
                 <PaginationContent>

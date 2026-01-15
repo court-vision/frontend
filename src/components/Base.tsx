@@ -123,14 +123,14 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                       Matchup
                     </div>
                   </Link>
-                  <Link prefetch href="/standings">
+                  <Link prefetch href="/rankings">
                     <div
                       className={`flex items-center gap-3 rounded-lg px-3 pt-2 pb-4 text-muted-foreground transition-all hover:text-primary ${
-                        pathname === "/standings" ? "text-primary" : ""
+                        pathname === "/rankings" ? "text-primary" : ""
                       }`}
                     >
                       <Plus className="h-4 w-4" />
-                      Standings
+                      Rankings
                     </div>
                   </Link>
                   <Separator />
@@ -270,14 +270,14 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                       </Link>
                     </SheetTrigger>
                     <SheetTrigger asChild>
-                      <Link href="/standings">
+                      <Link href="/rankings">
                         <div
                           className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                            pathname === "/standings" ? "text-primary" : ""
+                            pathname === "/rankings" ? "text-primary" : ""
                           }`}
                         >
                           <Plus className="h-4 w-4" />
-                          Standings
+                          Rankings
                         </div>
                       </Link>
                     </SheetTrigger>

@@ -4,7 +4,7 @@ export const LOCAL_BACKEND_ENDPOINT = "http://127.0.0.1:8000";
 
 // API v1 Internal endpoints
 export const API_BASE =
-  true // switch for local/production backend
+  false // switch for local/production backend
     ? PROD_BACKEND_ENDPOINT
     : LOCAL_BACKEND_ENDPOINT;
 
@@ -15,7 +15,7 @@ export const LINEUPS_API = `${API_BASE}/v1/internal/lineups`;
 export const MATCHUPS_API = `${API_BASE}/v1/internal/matchups`;
 
 // API v1 Public endpoints
-export const STANDINGS_API = `${API_BASE}/v1/standings`;
+export const RANKINGS_API = `${API_BASE}/v1/rankings`;
 export const PLAYERS_API = `${API_BASE}/v1/players`;
 
 // Maintenance mode endpoints - return "/api/maintenance" to be caught by middleware

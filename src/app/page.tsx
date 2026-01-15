@@ -56,11 +56,11 @@ function HomeFeaturesDisplay() {
       page: "/matchup",
     },
     {
-      title: "Standings",
+      title: "Rankings",
       description:
         "View the rankings of all fantasy basketball players, updated daily.",
       icon: <IconChartArrowsVertical />,
-      page: "/standings",
+      page: "/rankings",
     },
     {
       title: "Account",

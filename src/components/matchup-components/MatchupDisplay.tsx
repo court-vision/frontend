@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import PlayerStatDisplay from "@/components/standings-components/PlayerStatDisplay";
+import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import type { MatchupData, MatchupTeam, MatchupPlayer } from "@/types/matchup";
 
 interface SelectedPlayer {

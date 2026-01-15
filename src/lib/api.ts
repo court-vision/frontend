@@ -3,7 +3,7 @@ import {
   API_BASE,
   TEAMS_API,
   LINEUPS_API,
-  STANDINGS_API,
+  RANKINGS_API,
   PLAYERS_API,
   MATCHUPS_API,
 } from "@/endpoints";
@@ -26,7 +26,7 @@ import type {
   SaveLineupResponse,
   DeleteLineupResponse,
 } from "@/types/lineup";
-import type { StandingsPlayer } from "@/types/standings";
+import type { RankingsPlayer } from "@/types/rankings";
 import type { PlayerStats } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
 import type { MatchupData, MatchupResponse, AvgWindow } from "@/types/matchup";
@@ -200,13 +200,13 @@ class ApiClient {
     throw new Error(response.message || "Failed to fetch matchup data");
   }
 
-  // Standings API (public - no auth required)
-  async getStandings(): Promise<StandingsPlayer[]> {
-    const response = await fetch(`${STANDINGS_API}/`);
+  // Rankings API (public - no auth required)
+  async getRankings(): Promise<RankingsPlayer[]> {
+    const response = await fetch(`${RANKINGS_API}/`);
     if (!response.ok) {
       throw new Error(`API request failed: ${response.statusText}`);
     }
-    const data: BaseApiResponse<StandingsPlayer[]> = await response.json();
+    const data: BaseApiResponse<RankingsPlayer[]> = await response.json();
     if (data.status === "success" && data.data) {
       return data.data;
     }

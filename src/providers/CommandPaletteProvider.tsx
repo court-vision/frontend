@@ -128,13 +128,13 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       action: () => router.push("/matchup"),
     },
     {
-      id: "nav-standings",
-      label: "Go to Standings",
+      id: "nav-rankings",
+      label: "Go to Rankings",
       description: "View player rankings and stats",
       icon: <Trophy className="h-4 w-4" />,
       group: "Navigation",
-      keywords: ["standings", "rankings", "leaderboard", "players"],
-      action: () => router.push("/standings"),
+      keywords: ["rankings", "leaderboard", "players"],
+      action: () => router.push("/rankings"),
     },
     {
       id: "nav-account",

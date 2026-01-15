@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { RosterPlayer } from "@/types/team";
-import PlayerStatDisplay from "@/components/standings-components/PlayerStatDisplay";
+import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 
 interface SelectedPlayer {
   name: string;

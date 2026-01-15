@@ -11,7 +11,7 @@ import {
 import { usePlayerStatsQuery, usePlayerStatsByNameQuery } from "@/hooks/usePlayer";
 import type { PlayerStats } from "@/types/player";
 
-// Props for lookup by ID (used for standings)
+// Props for lookup by ID (used for rankings)
 interface PlayerStatDisplayByIdProps {
   playerId: number;
   playerName?: never;
@@ -30,13 +30,13 @@ type PlayerStatDisplayProps = PlayerStatDisplayByIdProps | PlayerStatDisplayByNa
 export default function PlayerStatDisplay(props: PlayerStatDisplayProps) {
   // Determine which lookup method to use
   const useIdLookup = "playerId" in props && props.playerId !== undefined;
-  
+
   const idQuery = usePlayerStatsQuery(useIdLookup ? props.playerId : null);
   const nameQuery = usePlayerStatsByNameQuery(
     !useIdLookup && "playerName" in props ? props.playerName : null,
     !useIdLookup && "playerTeam" in props ? props.playerTeam : undefined
   );
-  
+
   const { data: playerStats, isLoading } = useIdLookup ? idQuery : nameQuery;
 
   if (isLoading) {
