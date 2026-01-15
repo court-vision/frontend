@@ -162,7 +162,9 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                         <Link href="/manage-lineups" className="mt-2">
                           <div
                             className={`flex items-center gap-3 rounded-lg pl-8 text-xs text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/manage-lineups" ? "text-primary" : ""
+                              pathname === "/manage-lineups"
+                                ? "text-primary"
+                                : ""
                             }`}
                           >
                             <Minus size={10} />
@@ -312,7 +314,9 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                           <Link href="/manage-teams">
                             <div
                               className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
-                                pathname === "/manage-teams" ? "text-primary" : ""
+                                pathname === "/manage-teams"
+                                  ? "text-primary"
+                                  : ""
                               }`}
                             >
                               <Minus size={10} />
@@ -324,7 +328,9 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                           <Link href="/manage-lineups" className="mt-1">
                             <div
                               className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
-                                pathname === "/manage-lineups" ? "text-primary" : ""
+                                pathname === "/manage-lineups"
+                                  ? "text-primary"
+                                  : ""
                               }`}
                             >
                               <Minus size={10} />
@@ -344,7 +350,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
 
             <div className="flex w-full items-center">
               <div
-                className={`text-4xl ml-[-2%] mt-[2%] md:text-5xl lg:text-6xl lg:ml-[7%] w-full text-center font-bold pb-3 ${font.className}`}
+                className={`flex-1 flex items-center justify-center text-4xl md:text-5xl lg:text-6xl lg:ml-[7%] text-center font-bold ${font.className}`}
               >
                 <Title />
               </div>
