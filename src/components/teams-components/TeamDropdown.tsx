@@ -58,7 +58,11 @@ export function TeamDropdown() {
     <>
       <Select>
         <SelectTrigger className="w-[190px] text-xs hover:border-primary">
-          <SelectValue placeholder={`${selectedTeamName}`} />
+          <SelectValue
+            placeholder={
+              <span className="text-foreground">{selectedTeamName}</span>
+            }
+          />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
