@@ -123,6 +123,16 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                       Matchup
                     </div>
                   </Link>
+                  <Link prefetch href="/streamers">
+                    <div
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                        pathname === "/streamers" ? "text-primary" : ""
+                      }`}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Streamers
+                    </div>
+                  </Link>
                   <Link prefetch href="/rankings">
                     <div
                       className={`flex items-center gap-3 rounded-lg px-3 pt-2 pb-4 text-muted-foreground transition-all hover:text-primary ${
@@ -237,7 +247,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                       <Link href="/your-teams">
                         <div
                           className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                            pathname === "/teams" ? "text-primary" : ""
+                            pathname === "/your-teams" ? "text-primary" : ""
                           }`}
                         >
                           <Plus className="h-4 w-4" />
@@ -268,6 +278,18 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                         >
                           <Plus className="h-4 w-4" />
                           Matchup
+                        </div>
+                      </Link>
+                    </SheetTrigger>
+                    <SheetTrigger asChild>
+                      <Link href="/streamers">
+                        <div
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                            pathname === "/streamers" ? "text-primary" : ""
+                          }`}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Streamers
                         </div>
                       </Link>
                     </SheetTrigger>

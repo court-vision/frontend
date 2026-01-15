@@ -6,6 +6,7 @@ import {
   RANKINGS_API,
   PLAYERS_API,
   MATCHUPS_API,
+  STREAMERS_API,
 } from "@/endpoints";
 import type {
   Team,
@@ -30,6 +31,7 @@ import type { RankingsPlayer } from "@/types/rankings";
 import type { PlayerStats } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
 import type { MatchupData, MatchupResponse, AvgWindow } from "@/types/matchup";
+import type { StreamerRequest, StreamerResponse } from "@/types/streamer";
 
 class ApiClient {
   private baseUrl: string;
@@ -198,6 +200,23 @@ class ApiClient {
       return response.data;
     }
     throw new Error(response.message || "Failed to fetch matchup data");
+  }
+
+  // Streamers API
+  async findStreamers(
+    getToken: GetTokenFn,
+    request: StreamerRequest
+  ): Promise<StreamerResponse> {
+    const response = await this.authenticatedRequest<StreamerResponse>(
+      `${STREAMERS_API}/find`,
+      getToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      }
+    );
+    return response;
   }
 
   // Rankings API (public - no auth required)
