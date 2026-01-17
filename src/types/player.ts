@@ -8,6 +8,12 @@ export interface GameLog {
   blk: number;
   tov: number;
   min: number;
+  fgm: number;
+  fga: number;
+  fg3m: number;
+  fg3a: number;
+  ftm: number;
+  fta: number;
 }
 
 export interface AvgStats {
@@ -19,6 +25,9 @@ export interface AvgStats {
   avg_blocks: number;
   avg_turnovers: number;
   avg_minutes: number;
+  avg_fg_pct: number;
+  avg_fg3_pct: number;
+  avg_ft_pct: number;
 }
 
 export interface PlayerStats {
