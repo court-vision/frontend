@@ -54,7 +54,10 @@ function sortByLineupSlot(roster: MatchupPlayer[]): MatchupPlayer[] {
 }
 
 function formatDate(dateString: string): string {
-  const date = new Date(dateString);
+  // Parse date string as local date to avoid timezone conversion issues
+  // Date strings like "2025-11-15" are parsed as UTC, which can cause day shifts
+  const [year, month, day] = dateString.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -146,12 +149,12 @@ function TeamCard({ team, isYourTeam, onPlayerClick }: TeamCardProps) {
         <div className="flex gap-4 mt-2">
           <div>
             <p className="text-sm text-muted-foreground">Current</p>
-            <p className="text-2xl font-bold">{team.current_score.toFixed(1)}</p>
+            <p className="text-2xl font-bold">{Math.round(team.current_score)}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Projected</p>
             <p className="text-xl text-muted-foreground">
-              {team.projected_score.toFixed(1)}
+              {Math.round(team.projected_score)}
             </p>
           </div>
         </div>
