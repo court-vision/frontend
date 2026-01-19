@@ -29,7 +29,9 @@ import {
   CommandGroup,
   CommandItem,
   CommandShortcut,
+  CommandSeparator,
 } from "@/components/ui/command";
+import { Command as CommandIcon } from "lucide-react";
 import { useTeams } from "@/app/context/TeamsContext";
 
 // =============================================================================
@@ -301,20 +303,70 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Keyboard Shortcut (Cmd/Ctrl + K)
+  // Keyboard Shortcuts
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
+    // Cmd/Ctrl shortcuts (letters only - avoid numbers due to Safari tab switching)
+    const cmdShortcuts: Record<string, () => void> = {
+      k: () => toggle(),
+      g: () => router.push("/lineup-generation"),
+      s: () => router.push("/streamers"),
+      r: () => router.push("/rankings"),
+      m: () => router.push("/matchup"),
+      t: () => router.push("/your-teams"),
+    };
+
+    // Option/Alt + number shortcuts (safe from browser conflicts)
+    const altShortcuts: Record<string, () => void> = {
+      "1": () => router.push("/"),
+      "2": () => router.push("/your-teams"),
+      "3": () => router.push("/lineup-generation"),
+      "4": () => router.push("/matchup"),
+      "5": () => router.push("/streamers"),
+      "6": () => router.push("/rankings"),
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        toggle();
+      // Ignore if user is typing in an input
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        // Only allow command palette shortcut in inputs
+        if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+          e.preventDefault();
+          toggle();
+        }
+        return;
+      }
+
+      // Handle Cmd/Ctrl shortcuts (letters)
+      if (e.metaKey || e.ctrlKey) {
+        const handler = cmdShortcuts[e.key.toLowerCase()];
+        if (handler) {
+          e.preventDefault();
+          close();
+          handler();
+        }
+      }
+
+      // Handle Option/Alt shortcuts (numbers)
+      if (e.altKey && !e.metaKey && !e.ctrlKey) {
+        const handler = altShortcuts[e.key];
+        if (handler) {
+          e.preventDefault();
+          close();
+          handler();
+        }
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [toggle]);
+  }, [toggle, close, router]);
 
   // ---------------------------------------------------------------------------
   // Command Execution
@@ -343,10 +395,17 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       {children}
 
       <CommandDialog open={isOpen} onOpenChange={setIsOpen}>
-        <CommandInput placeholder="Type a command or search..." />
-        <CommandList>
+        {/* Header */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30">
+          <CommandIcon className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">Court Vision</span>
+        </div>
+
+        <CommandInput placeholder="Type a command or search..." className="border-0" />
+
+        <CommandList className="max-h-[400px]">
           <CommandEmpty>No commands found.</CommandEmpty>
-          {Object.entries(groupedCommands).map(([group, commands]) => (
+          {Object.entries(groupedCommands).map(([group, commands], index) => (
             <CommandGroup key={group} heading={group}>
               {commands.map((command) => (
                 <CommandItem
@@ -358,7 +417,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
                   {command.icon && (
                     <span className="mr-2 text-muted-foreground">{command.icon}</span>
                   )}
-                  <div className="flex flex-col">
+                  <div className="flex flex-col flex-1">
                     <span>{command.label}</span>
                     {command.description && (
                       <span className="text-xs text-muted-foreground">
@@ -374,6 +433,16 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
             </CommandGroup>
           ))}
         </CommandList>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-3 py-2 border-t bg-muted/30 text-[10px] text-muted-foreground font-mono">
+          <div className="flex items-center gap-4">
+            <span><kbd className="px-1 py-0.5 rounded bg-muted">↑↓</kbd> navigate</span>
+            <span><kbd className="px-1 py-0.5 rounded bg-muted">↵</kbd> select</span>
+            <span><kbd className="px-1 py-0.5 rounded bg-muted">esc</kbd> close</span>
+          </div>
+          <span className="text-muted-foreground/70">⌥1-6 for pages</span>
+        </div>
       </CommandDialog>
     </CommandPaletteContext.Provider>
   );

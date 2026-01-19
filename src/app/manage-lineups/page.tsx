@@ -3,7 +3,7 @@ import { ManageLineupsTable } from "@/components/lineup-components/ManageLineups
 export default function ManageLineups() {
   return (
     <>
-      <div className="flex items-center">
+      <div className="flex items-center mb-4">
         <h1 className="text-lg font-semibold md:text-2xl">Manage Lineups</h1>
       </div>
       <div className="flex-1 rounded-lg border border-primary border-dashed shadow-sm">

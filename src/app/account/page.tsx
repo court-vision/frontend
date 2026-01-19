@@ -70,7 +70,7 @@ export default function Account() {
 
   return (
     <>
-      <div className="flex items-center">
+      <div className="flex items-center mb-4">
         <h1 className="text-lg font-semibold md:text-2xl">Your Account</h1>
       </div>
 

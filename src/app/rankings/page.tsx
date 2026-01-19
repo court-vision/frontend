@@ -5,7 +5,7 @@ import RankingsDisplay from "@/components/rankings-components/RankingsDisplay";
 export default function Rankings() {
   return (
     <>
-      <div className="flex items-center">
+      <div className="flex items-center mb-4">
         <h1 className="text-lg font-semibold md:text-2xl">Rankings</h1>
       </div>
       <div className="flex flex-1 justify-center rounded-lg border border-primary border-dashed shadow-sm">

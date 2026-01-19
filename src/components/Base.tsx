@@ -6,7 +6,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import Head from "next/head";
-import { Menu, Plus, User, Minus } from "lucide-react";
+import {
+  Menu,
+  User,
+  Home,
+  Users,
+  Zap,
+  Swords,
+  UserPlus,
+  Trophy,
+  Command,
+  ChevronRight,
+} from "lucide-react";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 
@@ -16,18 +27,28 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ModeToggle } from "@/components/ui/toggle-mode";
 import { Separator } from "@/components/ui/separator";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
+import { StatusBar } from "@/components/StatusBar";
 
-import { Roboto } from "next/font/google";
 import { TeamDropdown } from "@/components/teams-components/TeamDropdown";
 
-const font = Roboto({
-  weight: "900",
-  style: "italic",
-  subsets: ["latin-ext"],
-});
 import { FC, useEffect, useState } from "react";
 import { useCommandPalette } from "@/providers/CommandPaletteProvider";
-import { Command } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const navItems = [
+  { href: "/", label: "Home", icon: Home, shortcut: "1" },
+  { href: "/your-teams", label: "Your Teams", icon: Users, shortcut: "2" },
+  { href: "/lineup-generation", label: "Lineup Generation", icon: Zap, shortcut: "3" },
+  { href: "/matchup", label: "Matchup", icon: Swords, shortcut: "4" },
+  { href: "/streamers", label: "Streamers", icon: UserPlus, shortcut: "5" },
+  { href: "/rankings", label: "Rankings", icon: Trophy, shortcut: "6" },
+];
+
+const accountItems = [
+  { href: "/account", label: "Account", icon: User },
+  { href: "/manage-teams", label: "Manage Teams", nested: true },
+  { href: "/manage-lineups", label: "Manage Lineups", nested: true },
+];
 
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isSignedIn, isLoaded } = useUser();
@@ -39,19 +60,22 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const [logoSrc, setLogoSrc] = useState<string>("/logo-dark.png");
 
   useEffect(() => {
-    // Check theme immediately on mount from DOM (fastest way)
     const isDark = document.documentElement.classList.contains("dark");
     setLogoSrc(isDark ? "/logo-dark.png" : "/logo-light.png");
   }, []);
 
   useEffect(() => {
-    // Update logo when resolvedTheme changes (more reliable)
     if (resolvedTheme) {
       setLogoSrc(
         resolvedTheme === "light" ? "/logo-light.png" : "/logo-dark.png"
       );
     }
   }, [resolvedTheme]);
+
+  const isAccountSection =
+    pathname === "/account" ||
+    pathname === "/manage-teams" ||
+    pathname === "/manage-lineups";
 
   return (
     <>
@@ -68,147 +92,120 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
       </Head>
 
-      <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[200px_1fr]">
-        <div className="hidden border-r bg-muted/40 md:block sticky top-0 h-screen overflow-y-auto">
-          <div className="flex h-full max-h-screen flex-col gap-2 items-center">
-            <div className="flex h-14 items-center border-b px-8 md:h-[120px] lg:h-[120px]">
+      <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[240px_1fr]">
+        {/* Desktop Sidebar */}
+        <aside className="hidden md:flex flex-col border-r bg-card/50 backdrop-blur-sm sticky top-0 h-screen">
+          {/* Logo */}
+          <div className="h-20 flex items-center justify-center px-4">
+            <Link href="/">
               <Image
                 src={logoSrc}
-                alt="Logo"
-                width={100}
-                height={100}
+                alt="Court Vision"
+                width={64}
+                height={64}
                 key={logoSrc}
+                className="hover:opacity-80 transition-opacity"
               />
-            </div>
-            <div className="flex-1">
-              <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-                <Link href="/">
+            </Link>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              const Icon = item.icon;
+              return (
+                <Link key={item.href} href={item.href} prefetch>
                   <div
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                      pathname === "/" ? "text-primary" : ""
-                    }`}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                      "text-muted-foreground hover:text-foreground hover:bg-muted",
+                      isActive && "bg-primary/10 text-primary border-l-2 border-primary -ml-[2px] pl-[14px]"
+                    )}
                   >
-                    <Plus className="h-4 w-4" />
-                    Home
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">{item.label}</span>
+                    <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground/70">
+                      <span className="text-xs">⌥</span>{item.shortcut}
+                    </kbd>
                   </div>
                 </Link>
-                <>
-                  <Link prefetch href="/your-teams">
-                    <div
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                        pathname === "/your-teams" ? "text-primary" : ""
-                      }`}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Your Teams
-                    </div>
-                  </Link>
-                  <Link prefetch href="/lineup-generation">
-                    <div
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                        pathname === "/lineup-generation" ? "text-primary" : ""
-                      }`}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Lineup Generation
-                    </div>
-                  </Link>
-                  <Link prefetch href="/matchup">
-                    <div
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                        pathname === "/matchup" ? "text-primary" : ""
-                      }`}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Matchup
-                    </div>
-                  </Link>
-                  <Link prefetch href="/streamers">
-                    <div
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                        pathname === "/streamers" ? "text-primary" : ""
-                      }`}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Streamers
-                    </div>
-                  </Link>
-                  <Link prefetch href="/rankings">
-                    <div
-                      className={`flex items-center gap-3 rounded-lg px-3 pt-2 pb-4 text-muted-foreground transition-all hover:text-primary ${
-                        pathname === "/rankings" ? "text-primary" : ""
-                      }`}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Rankings
-                    </div>
-                  </Link>
-                  <Separator />
-                  <Link prefetch href="/account">
-                    <div
-                      className={`flex items-center gap-3 rounded-lg px-3 py-3 text-muted-foreground transition-all hover:text-primary ${
-                        pathname === "/account" ? "text-primary" : ""
-                      }`}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Account
-                    </div>
-                  </Link>
-                  {(pathname === "/account" ||
-                    pathname === "/manage-teams" ||
-                    pathname === "/manage-lineups") &&
-                    isLoggedIn && (
-                      <>
-                        <Link href="/manage-teams">
-                          <div
-                            className={`flex items-center gap-3 rounded-lg pl-8 text-xs text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/manage-teams" ? "text-primary" : ""
-                            }`}
-                          >
-                            <Minus size={10} />
-                            Manage Teams
-                          </div>
-                        </Link>
-                        <Link href="/manage-lineups" className="mt-2">
-                          <div
-                            className={`flex items-center gap-3 rounded-lg pl-8 text-xs text-muted-foreground transition-all hover:text-primary ${
-                              pathname === "/manage-lineups"
-                                ? "text-primary"
-                                : ""
-                            }`}
-                          >
-                            <Minus size={10} />
-                            Manage Lineups
-                          </div>
-                        </Link>
-                      </>
-                    )}
-                </>
-              </nav>
-            </div>
-            {/* Command Palette Hint */}
-            <div className="p-4 border-t">
-              <button
-                onClick={openCommandPalette}
-                className="flex items-center justify-between w-full px-3 py-2 text-xs text-muted-foreground rounded-md hover:bg-muted transition-colors"
+              );
+            })}
+
+            <Separator className="my-3" />
+
+            {/* Account Section */}
+            <Link href="/account" prefetch>
+              <div
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                  "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  pathname === "/account" && "bg-primary/10 text-primary border-l-2 border-primary -ml-[2px] pl-[14px]"
+                )}
               >
-                <div className="flex items-center gap-2">
-                  <Command className="h-3 w-3" />
-                  <span>Command Palette</span>
-                </div>
-                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
-                  <span className="text-xs">⌘</span>K
-                </kbd>
-              </button>
-            </div>
+                <User className="h-4 w-4 shrink-0" />
+                <span>Account</span>
+              </div>
+            </Link>
+
+            {/* Nested account items - show when in account section and logged in */}
+            {isAccountSection && isLoggedIn && (
+              <div className="ml-4 space-y-1">
+                <Link href="/manage-teams">
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                      "text-muted-foreground hover:text-foreground hover:bg-muted",
+                      pathname === "/manage-teams" && "text-primary"
+                    )}
+                  >
+                    <ChevronRight className="h-3 w-3" />
+                    Manage Teams
+                  </div>
+                </Link>
+                <Link href="/manage-lineups">
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                      "text-muted-foreground hover:text-foreground hover:bg-muted",
+                      pathname === "/manage-lineups" && "text-primary"
+                    )}
+                  >
+                    <ChevronRight className="h-3 w-3" />
+                    Manage Lineups
+                  </div>
+                </Link>
+              </div>
+            )}
+          </nav>
+
+          {/* Command Palette Trigger */}
+          <div className="p-3 border-t">
+            <button
+              onClick={openCommandPalette}
+              className="flex items-center justify-between w-full px-3 py-2.5 text-sm text-muted-foreground rounded-lg hover:bg-muted hover:text-foreground transition-all group"
+            >
+              <div className="flex items-center gap-2">
+                <Command className="h-4 w-4" />
+                <span>Command</span>
+              </div>
+              <kbd className="inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground/70 group-hover:border-primary/50">
+                <span className="text-xs">⌘</span>K
+              </kbd>
+            </button>
           </div>
-        </div>
-        <div className="flex flex-col">
-          <header className="flex h-14 items-center border-b bg-muted/40 px-4 md:h-[120px] lg:h-[120px] lg:px-6">
+        </aside>
+
+        {/* Main Content */}
+        <div className="flex flex-col min-h-screen">
+          {/* Header */}
+          <header className="sticky top-0 z-40 flex h-14 items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6">
+            {/* Mobile Menu */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
                   className="shrink-0 md:hidden"
                 >
@@ -216,181 +213,145 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                   <span className="sr-only">Toggle navigation menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="flex flex-col w-1/2">
-                <SheetTrigger asChild>
-                  <div className="flex flex-row gap-2 px-4 py-2">
-                    {!isLoggedIn && (
-                      <Link href="/account">
-                        <div className="hover:border-primary">
-                          <Button variant="outline">Sign In</Button>
-                        </div>
-                      </Link>
-                    )}
-                    {isLoggedIn && <TeamDropdown />}
-                  </div>
-                </SheetTrigger>
-                <nav className="grid gap-2 text-[0.9rem] font-medium">
+              <SheetContent side="left" className="flex flex-col w-72 p-0">
+                {/* Mobile Logo */}
+                <div className="h-14 flex items-center gap-2 px-4 border-b">
+                  <div className="h-5 w-1 rounded-full bg-gradient-to-b from-primary to-primary/50" />
+                  <span className="font-brand text-xl">Court Vision</span>
+                </div>
+
+                {/* Mobile Nav */}
+                <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                  {navItems.map((item) => {
+                    const isActive = pathname === item.href;
+                    const Icon = item.icon;
+                    return (
+                      <SheetTrigger key={item.href} asChild>
+                        <Link href={item.href}>
+                          <div
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                              "text-muted-foreground hover:text-foreground hover:bg-muted",
+                              isActive && "bg-primary/10 text-primary"
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                            {item.label}
+                          </div>
+                        </Link>
+                      </SheetTrigger>
+                    );
+                  })}
+
+                  <Separator className="my-3" />
+
                   <SheetTrigger asChild>
-                    <Link href="/">
+                    <Link href="/account">
                       <div
-                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                          pathname === "/" ? "text-primary" : ""
-                        }`}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                          "text-muted-foreground hover:text-foreground hover:bg-muted",
+                          pathname === "/account" && "bg-primary/10 text-primary"
+                        )}
                       >
-                        <Plus className="h-4 w-4" />
-                        Home
+                        <User className="h-4 w-4" />
+                        Account
                       </div>
                     </Link>
                   </SheetTrigger>
-                  <>
-                    <SheetTrigger asChild>
-                      <Link href="/your-teams">
-                        <div
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                            pathname === "/your-teams" ? "text-primary" : ""
-                          }`}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Your Teams
-                        </div>
-                      </Link>
-                    </SheetTrigger>
-                    <SheetTrigger asChild>
-                      <Link href="/lineup-generation">
-                        <div
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                            pathname === "/lineup-generation"
-                              ? "text-primary"
-                              : ""
-                          }`}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Lineup Generation
-                        </div>
-                      </Link>
-                    </SheetTrigger>
-                    <SheetTrigger asChild>
-                      <Link href="/matchup">
-                        <div
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                            pathname === "/matchup" ? "text-primary" : ""
-                          }`}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Matchup
-                        </div>
-                      </Link>
-                    </SheetTrigger>
-                    <SheetTrigger asChild>
-                      <Link href="/streamers">
-                        <div
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                            pathname === "/streamers" ? "text-primary" : ""
-                          }`}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Streamers
-                        </div>
-                      </Link>
-                    </SheetTrigger>
-                    <SheetTrigger asChild>
-                      <Link href="/rankings">
-                        <div
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                            pathname === "/rankings" ? "text-primary" : ""
-                          }`}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Rankings
-                        </div>
-                      </Link>
-                    </SheetTrigger>
-                    <Separator />
-                    <SheetTrigger asChild>
-                      <Link href="/account">
-                        <div
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                            pathname === "/account" ? "text-primary" : ""
-                          }`}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Account
-                        </div>
-                      </Link>
-                    </SheetTrigger>
-                    {isLoggedIn && (
-                      <>
-                        <SheetTrigger asChild>
-                          <Link href="/manage-teams">
-                            <div
-                              className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
-                                pathname === "/manage-teams"
-                                  ? "text-primary"
-                                  : ""
-                              }`}
-                            >
-                              <Minus size={10} />
-                              Manage Teams
-                            </div>
-                          </Link>
-                        </SheetTrigger>
-                        <SheetTrigger asChild>
-                          <Link href="/manage-lineups" className="mt-1">
-                            <div
-                              className={`flex items-center gap-3 rounded-lg pl-8 text-sm text-muted-foreground transition-all hover:text-primary ${
-                                pathname === "/manage-lineups"
-                                  ? "text-primary"
-                                  : ""
-                              }`}
-                            >
-                              <Minus size={10} />
-                              Manage Lineups
-                            </div>
-                          </Link>
-                        </SheetTrigger>
-                      </>
-                    )}
-                  </>
+
+                  {isLoggedIn && (
+                    <>
+                      <SheetTrigger asChild>
+                        <Link href="/manage-teams">
+                          <div
+                            className={cn(
+                              "flex items-center gap-2 ml-4 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                              "text-muted-foreground hover:text-foreground hover:bg-muted",
+                              pathname === "/manage-teams" && "text-primary"
+                            )}
+                          >
+                            <ChevronRight className="h-3 w-3" />
+                            Manage Teams
+                          </div>
+                        </Link>
+                      </SheetTrigger>
+                      <SheetTrigger asChild>
+                        <Link href="/manage-lineups">
+                          <div
+                            className={cn(
+                              "flex items-center gap-2 ml-4 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                              "text-muted-foreground hover:text-foreground hover:bg-muted",
+                              pathname === "/manage-lineups" && "text-primary"
+                            )}
+                          >
+                            <ChevronRight className="h-3 w-3" />
+                            Manage Lineups
+                          </div>
+                        </Link>
+                      </SheetTrigger>
+                    </>
+                  )}
                 </nav>
-                <div className="mt-auto flex">
+
+                {/* Mobile Footer */}
+                <div className="p-4 border-t space-y-3">
+                  {!isLoggedIn && (
+                    <SheetTrigger asChild>
+                      <Link href="/account" className="block">
+                        <Button variant="outline" className="w-full">
+                          Sign In
+                        </Button>
+                      </Link>
+                    </SheetTrigger>
+                  )}
+                  {isLoggedIn && <TeamDropdown />}
                   <ModeToggle />
                 </div>
               </SheetContent>
             </Sheet>
 
-            <div className="flex w-full items-center">
-              <div
-                className={`flex-1 flex items-center justify-center text-4xl md:text-5xl lg:text-6xl lg:ml-[7%] text-center font-bold ${font.className}`}
-              >
-                <Title />
-              </div>
-              <div className="px-2 flex-col gap-1 hidden md:flex">
-                <div className="flex gap-1 justify-center">
-                  <Link href="/account">
-                    <div className="hover:border-primary">
-                      <Button variant="outline" size="icon">
-                        <User className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  </Link>
-                  <ModeToggle />
-                </div>
-                <Separator />
-                {!isLoggedIn && (
-                  <Link href="/account">
-                    <div className="hover:border-primary">
-                      <Button variant="outline">Sign In</Button>
-                    </div>
-                  </Link>
-                )}
-                {isLoggedIn && <TeamDropdown />}
+            {/* Page Title / Breadcrumb */}
+            <div className="flex-1 flex items-center gap-3 ml-2 md:ml-0">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary to-primary/50" />
+                <h1 className="font-brand text-xl tracking-tight">
+                  Court Vision
+                </h1>
               </div>
             </div>
+
+            {/* Header Actions */}
+            <div className="flex items-center gap-2">
+              {isLoggedIn && (
+                <div className="hidden sm:block">
+                  <TeamDropdown />
+                </div>
+              )}
+              {!isLoggedIn && (
+                <Link href="/account" className="hidden sm:block">
+                  <Button variant="outline" size="sm">
+                    Sign In
+                  </Button>
+                </Link>
+              )}
+              <Link href="/account">
+                <Button variant="ghost" size="icon">
+                  <User className="h-4 w-4" />
+                </Button>
+              </Link>
+              <ModeToggle />
+            </div>
           </header>
-          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+
+          {/* Main Content Area */}
+          <main className="flex-1 p-4 lg:p-6 overflow-auto">
             {loading && <SkeletonCard />}
             {!loading && children}
           </main>
+
+          {/* Status Bar */}
+          <StatusBar />
         </div>
       </div>
     </>
@@ -398,7 +359,3 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 export default Layout;
-
-const Title = () => {
-  return <>Court Vision</>;
-};

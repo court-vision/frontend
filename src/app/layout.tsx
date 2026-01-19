@@ -3,7 +3,14 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-brand",
+  weight: ["700"],
+});
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { TeamsProvider } from "./context/TeamsContext";
@@ -17,7 +24,15 @@ import Layout from "@/components/Base";
 
 import { ClerkProvider } from "@clerk/nextjs";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains",
+});
 
 export const metadata: Metadata = {
   title: "Court Vision",
@@ -34,7 +49,7 @@ export default function RootLayout({
       <html lang="en" className="dark" suppressHydrationWarning>
         <head></head>
 
-        <body className={inter.className}>
+        <body className={`${inter.variable} ${jetbrainsMono.variable} ${GeistSans.variable} ${spaceGrotesk.variable} font-sans`}>
           <QueryProvider>
             <TeamsProvider>
               <LineupProvider>

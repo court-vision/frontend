@@ -104,11 +104,11 @@ export default function Teams() {
 
   return (
     <>
-      <div className="flex items-center">
+      <div className="flex items-center mb-4">
         <h1 className="text-lg font-semibold md:text-2xl">Your Teams</h1>
       </div>
 
-      <div className="flex flex-1 justify-center rounded-lg border border-primary border-dashed shadow-sm">
+      <div className="flex flex-1 justify-center rounded-lg border border-primary border-dashed shadow-sm p-4">
         <div className="flex flex-col items-center gap-1 text-center w-full">
           {roster && roster.length > 0 ? (
             <div className="flex flex-wrap justify-center items-center gap-6 relative z-10 py-10 w-full max-w-7xl mx-auto px-4">
