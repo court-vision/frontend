@@ -154,7 +154,7 @@ function TeamCard({ team, isYourTeam, onPlayerClick }: TeamCardProps) {
           <div>
             <p className="text-sm text-muted-foreground">Projected</p>
             <p className="text-xl text-muted-foreground">
-              {Math.round(team.projected_score)}
+              {team.projected_score.toFixed(1)}
             </p>
           </div>
         </div>
