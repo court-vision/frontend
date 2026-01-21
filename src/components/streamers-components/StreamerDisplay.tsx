@@ -71,6 +71,7 @@ export default function StreamerDisplay() {
   const [b2bOnly, setB2bOnly] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [avgDays, setAvgDays] = useState(7);
+  const [gameDayFilter, setGameDayFilter] = useState<number | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
 
   // Fetch streamers
@@ -103,9 +104,13 @@ export default function StreamerDisplay() {
           selectedPositions.has(pos as Position)
         );
 
-      return matchesSearch && matchesPosition;
+      // Game day filter (only show players with a game on the selected day)
+      const matchesGameDay =
+        gameDayFilter === null || player.game_days.includes(gameDayFilter);
+
+      return matchesSearch && matchesPosition && matchesGameDay;
     });
-  }, [data?.streamers, searchQuery, selectedPositions]);
+  }, [data?.streamers, searchQuery, selectedPositions, gameDayFilter]);
 
   const togglePosition = (pos: Position) => {
     setSelectedPositions((prev) => {
@@ -207,6 +212,26 @@ export default function StreamerDisplay() {
             {dayOptions.map((option) => (
               <SelectItem key={option.value} value={option.value.toString()}>
                 {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Game Day Filter */}
+        <Select
+          value={gameDayFilter?.toString() ?? "all"}
+          onValueChange={(val) =>
+            setGameDayFilter(val === "all" ? null : parseInt(val))
+          }
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Playing on..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Game Days</SelectItem>
+            {dayOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value.toString()}>
+                Playing {option.label}
               </SelectItem>
             ))}
           </SelectContent>
