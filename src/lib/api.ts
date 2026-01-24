@@ -30,7 +30,13 @@ import type {
 import type { RankingsPlayer } from "@/types/rankings";
 import type { PlayerStats } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
-import type { MatchupData, MatchupResponse, AvgWindow } from "@/types/matchup";
+import type {
+  MatchupData,
+  MatchupResponse,
+  AvgWindow,
+  MatchupScoreHistory,
+  MatchupScoreHistoryResponse,
+} from "@/types/matchup";
 import type { StreamerRequest, StreamerResponse } from "@/types/streamer";
 
 class ApiClient {
@@ -200,6 +206,28 @@ class ApiClient {
       return response.data;
     }
     throw new Error(response.message || "Failed to fetch matchup data");
+  }
+
+  async getMatchupScoreHistory(
+    getToken: GetTokenFn,
+    teamId: number,
+    matchupPeriod?: number
+  ): Promise<MatchupScoreHistory | null> {
+    const params = new URLSearchParams();
+    if (matchupPeriod !== undefined) {
+      params.append("matchup_period", matchupPeriod.toString());
+    }
+    const queryString = params.toString();
+    const url = `${MATCHUPS_API}/history/${teamId}${queryString ? `?${queryString}` : ""}`;
+    const response =
+      await this.authenticatedRequest<MatchupScoreHistoryResponse>(
+        url,
+        getToken
+      );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    return null;
   }
 
   // Streamers API

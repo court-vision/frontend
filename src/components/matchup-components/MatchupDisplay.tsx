@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
+import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreChart";
 import type { MatchupData, MatchupTeam, MatchupPlayer } from "@/types/matchup";
 
 interface SelectedPlayer {
@@ -211,12 +212,14 @@ interface MatchupDisplayProps {
   matchup: MatchupData | undefined;
   isLoading: boolean;
   error: Error | null;
+  teamId: number | null;
 }
 
 export function MatchupDisplay({
   matchup,
   isLoading,
   error,
+  teamId,
 }: MatchupDisplayProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(
     null
@@ -291,6 +294,12 @@ export function MatchupDisplay({
             onPlayerClick={handlePlayerClick}
           />
         </div>
+
+        {/* Score progression chart */}
+        <MatchupScoreChart
+          teamId={teamId}
+          matchupPeriod={matchup.matchup_period}
+        />
 
         {/* Projection footer */}
         <Card className="p-4">

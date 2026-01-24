@@ -39,3 +39,23 @@ export type MatchupResponse = BaseApiResponse<MatchupData>;
 
 // Averaging window options
 export type AvgWindow = "season" | "last_7" | "last_14" | "last_30";
+
+// Daily score snapshot for chart visualization
+export interface DailyScorePoint {
+  date: string; // ISO date string
+  day_of_matchup: number; // 0-indexed day within matchup
+  your_score: number;
+  opponent_score: number;
+}
+
+// Historical score data for a matchup period
+export interface MatchupScoreHistory {
+  team_id: number;
+  team_name: string;
+  opponent_team_name: string;
+  matchup_period: number;
+  history: DailyScorePoint[];
+}
+
+// API Response type for score history
+export type MatchupScoreHistoryResponse = BaseApiResponse<MatchupScoreHistory>;

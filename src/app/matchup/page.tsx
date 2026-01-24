@@ -41,6 +41,7 @@ export default function Matchup() {
             matchup={matchup}
             isLoading={isLoading}
             error={error}
+            teamId={selectedTeam}
           />
         )}
       </div>
