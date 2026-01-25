@@ -34,11 +34,17 @@ import { TeamDropdown } from "@/components/teams-components/TeamDropdown";
 import { FC, useEffect, useState } from "react";
 import { useCommandPalette } from "@/providers/CommandPaletteProvider";
 import { cn } from "@/lib/utils";
+import { Roboto } from "next/font/google";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home, shortcut: "1" },
   { href: "/your-teams", label: "Your Teams", icon: Users, shortcut: "2" },
-  { href: "/lineup-generation", label: "Lineup Generation", icon: Zap, shortcut: "3" },
+  {
+    href: "/lineup-generation",
+    label: "Lineup Generation",
+    icon: Zap,
+    shortcut: "3",
+  },
   { href: "/matchup", label: "Matchup", icon: Swords, shortcut: "4" },
   { href: "/streamers", label: "Streamers", icon: UserPlus, shortcut: "5" },
   { href: "/rankings", label: "Rankings", icon: Trophy, shortcut: "6" },
@@ -49,6 +55,12 @@ const accountItems = [
   { href: "/manage-teams", label: "Manage Teams", nested: true },
   { href: "/manage-lineups", label: "Manage Lineups", nested: true },
 ];
+
+const font = Roboto({
+  weight: "900",
+  style: "italic",
+  subsets: ["latin-ext"],
+});
 
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isSignedIn, isLoaded } = useUser();
@@ -67,7 +79,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   useEffect(() => {
     if (resolvedTheme) {
       setLogoSrc(
-        resolvedTheme === "light" ? "/logo-light.png" : "/logo-dark.png"
+        resolvedTheme === "light" ? "/logo-light.png" : "/logo-dark.png",
       );
     }
   }, [resolvedTheme]);
@@ -120,13 +132,15 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                       "text-muted-foreground hover:text-foreground hover:bg-muted",
-                      isActive && "bg-primary/10 text-primary border-l-2 border-primary -ml-[2px] pl-[14px]"
+                      isActive &&
+                        "bg-primary/10 text-primary border-l-2 border-primary -ml-[2px] pl-[14px]",
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     <span className="flex-1">{item.label}</span>
                     <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground/70">
-                      <span className="text-xs">⌥</span>{item.shortcut}
+                      <span className="text-xs">⌥</span>
+                      {item.shortcut}
                     </kbd>
                   </div>
                 </Link>
@@ -141,7 +155,8 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                   "text-muted-foreground hover:text-foreground hover:bg-muted",
-                  pathname === "/account" && "bg-primary/10 text-primary border-l-2 border-primary -ml-[2px] pl-[14px]"
+                  pathname === "/account" &&
+                    "bg-primary/10 text-primary border-l-2 border-primary -ml-[2px] pl-[14px]",
                 )}
               >
                 <User className="h-4 w-4 shrink-0" />
@@ -157,7 +172,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                     className={cn(
                       "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
                       "text-muted-foreground hover:text-foreground hover:bg-muted",
-                      pathname === "/manage-teams" && "text-primary"
+                      pathname === "/manage-teams" && "text-primary",
                     )}
                   >
                     <ChevronRight className="h-3 w-3" />
@@ -169,7 +184,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                     className={cn(
                       "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
                       "text-muted-foreground hover:text-foreground hover:bg-muted",
-                      pathname === "/manage-lineups" && "text-primary"
+                      pathname === "/manage-lineups" && "text-primary",
                     )}
                   >
                     <ChevronRight className="h-3 w-3" />
@@ -216,8 +231,8 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
               <SheetContent side="left" className="flex flex-col w-72 p-0">
                 {/* Mobile Logo */}
                 <div className="h-14 flex items-center gap-2 px-4 border-b">
-                  <div className="h-5 w-1 rounded-full bg-gradient-to-b from-primary to-primary/50" />
-                  <span className="font-brand text-xl">Court Vision</span>
+                  <div className="h-4 w-1 rounded-full bg-gradient-to-b from-primary to-primary/50" />
+                  <span className={cn("text-lg tracking-tight", font.className)}>Court Vision</span>
                 </div>
 
                 {/* Mobile Nav */}
@@ -232,7 +247,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                             className={cn(
                               "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                               "text-muted-foreground hover:text-foreground hover:bg-muted",
-                              isActive && "bg-primary/10 text-primary"
+                              isActive && "bg-primary/10 text-primary",
                             )}
                           >
                             <Icon className="h-4 w-4" />
@@ -251,7 +266,8 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                         className={cn(
                           "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                           "text-muted-foreground hover:text-foreground hover:bg-muted",
-                          pathname === "/account" && "bg-primary/10 text-primary"
+                          pathname === "/account" &&
+                            "bg-primary/10 text-primary",
                         )}
                       >
                         <User className="h-4 w-4" />
@@ -268,7 +284,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                             className={cn(
                               "flex items-center gap-2 ml-4 px-3 py-2 rounded-lg text-xs font-medium transition-all",
                               "text-muted-foreground hover:text-foreground hover:bg-muted",
-                              pathname === "/manage-teams" && "text-primary"
+                              pathname === "/manage-teams" && "text-primary",
                             )}
                           >
                             <ChevronRight className="h-3 w-3" />
@@ -282,7 +298,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
                             className={cn(
                               "flex items-center gap-2 ml-4 px-3 py-2 rounded-lg text-xs font-medium transition-all",
                               "text-muted-foreground hover:text-foreground hover:bg-muted",
-                              pathname === "/manage-lineups" && "text-primary"
+                              pathname === "/manage-lineups" && "text-primary",
                             )}
                           >
                             <ChevronRight className="h-3 w-3" />
@@ -312,10 +328,10 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
             </Sheet>
 
             {/* Page Title / Breadcrumb */}
-            <div className="flex-1 flex items-center gap-3 ml-2 md:ml-0">
+            <div className="flex-1 flex justify-center ml-2 md:ml-0">
               <div className="flex items-center gap-2">
-                <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary to-primary/50" />
-                <h1 className="font-brand text-xl tracking-tight">
+                <div className="h-4 md:h-6 w-1 rounded-full bg-gradient-to-b from-primary to-primary/50" />
+                <h1 className={cn("text-2xl md:text-4xl tracking-tight", font.className)}>
                   Court Vision
                 </h1>
               </div>
