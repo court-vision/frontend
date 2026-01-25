@@ -108,13 +108,13 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex flex-col border-r bg-card/50 backdrop-blur-sm sticky top-0 h-screen">
           {/* Logo */}
-          <div className="h-20 flex items-center justify-center px-4">
+          <div className="h-20 flex items-center justify-center px-4 pt-4">
             <Link href="/">
               <Image
                 src={logoSrc}
                 alt="Court Vision"
-                width={64}
-                height={64}
+                width={92}
+                height={92}
                 key={logoSrc}
                 className="hover:opacity-80 transition-opacity"
               />
@@ -331,7 +331,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
             <div className="flex-1 flex justify-center ml-2 md:ml-0">
               <div className="flex items-center gap-2">
                 <div className="h-4 md:h-6 w-1 rounded-full bg-gradient-to-b from-primary to-primary/50" />
-                <h1 className={cn("text-2xl md:text-4xl tracking-tight", font.className)}>
+                <h1 className={cn("text-3xl md:text-4xl tracking-tight", font.className)}>
                   Court Vision
                 </h1>
               </div>
