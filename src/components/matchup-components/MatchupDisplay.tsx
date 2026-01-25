@@ -27,8 +27,7 @@ import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreC
 import type { MatchupData, MatchupTeam, MatchupPlayer } from "@/types/matchup";
 
 interface SelectedPlayer {
-  name: string;
-  team: string;
+  playerId: number;
 }
 
 // Order for lineup slots (starters first, then bench/IR)
@@ -251,7 +250,7 @@ export function MatchupDisplay({
   }
 
   const handlePlayerClick = (player: MatchupPlayer) => {
-    setSelectedPlayer({ name: player.name, team: player.team });
+    setSelectedPlayer({ playerId: player.player_id });
   };
 
   const yourTeamWinning = matchup.your_team.current_score > matchup.opponent_team.current_score;
@@ -327,10 +326,7 @@ export function MatchupDisplay({
           </DialogHeader>
 
           {selectedPlayer && (
-            <PlayerStatDisplay
-              playerName={selectedPlayer.name}
-              playerTeam={selectedPlayer.team}
-            />
+            <PlayerStatDisplay playerId={selectedPlayer.playerId} />
           )}
 
           <DialogFooter>

@@ -261,8 +261,8 @@ class ApiClient {
   }
 
   // Players API (public - no auth required)
-  async getPlayerStats(playerId: number): Promise<PlayerStats | null> {
-    const response = await fetch(`${PLAYERS_API}/${playerId}/stats`);
+  async getPlayerStats(espnId: number): Promise<PlayerStats | null> {
+    const response = await fetch(`${PLAYERS_API}/stats?espn_id=${espnId}`);
     if (!response.ok) {
       throw new Error(`API request failed: ${response.statusText}`);
     }
