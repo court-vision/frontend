@@ -20,8 +20,10 @@ export function StreamerPreviewList({ limit = 5 }: StreamerPreviewListProps) {
   );
   const leagueInfo = selectedTeamData?.league_info || null;
 
+  // Fetch the same data as StreamerDisplay (75 players) to ensure consistent
+  // rankings and share the React Query cache when navigating to /streamers
   const { data, isLoading, error } = useStreamersQuery(leagueInfo, selectedTeam, {
-    faCount: limit,
+    faCount: 75,
     excludeInjured: true,
     avgDays: 7,
   });
