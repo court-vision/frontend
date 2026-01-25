@@ -28,10 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  usePlayerStatsQuery,
-  usePlayerStatsByNameQuery,
-} from "@/hooks/usePlayer";
+import { usePlayerStatsQuery, type PlayerIdType } from "@/hooks/usePlayer";
 import type { PlayerStats, AvgStats } from "@/types/player";
 import {
   calculateMovingAverage,
@@ -40,35 +37,16 @@ import {
 } from "@/lib/chart-utils";
 import { cn } from "@/lib/utils";
 
-// Props for lookup by ID (used for rankings)
-interface PlayerStatDisplayByIdProps {
+interface PlayerStatDisplayProps {
   playerId: number;
-  playerName?: never;
-  playerTeam?: never;
+  idType?: PlayerIdType;
 }
 
-// Props for lookup by name/team (used for roster)
-interface PlayerStatDisplayByNameProps {
-  playerId?: never;
-  playerName: string;
-  playerTeam?: string;
-}
-
-type PlayerStatDisplayProps =
-  | PlayerStatDisplayByIdProps
-  | PlayerStatDisplayByNameProps;
-
-export default function PlayerStatDisplay(props: PlayerStatDisplayProps) {
-  // Determine which lookup method to use
-  const useIdLookup = "playerId" in props && props.playerId !== undefined;
-
-  const idQuery = usePlayerStatsQuery(useIdLookup ? props.playerId : null);
-  const nameQuery = usePlayerStatsByNameQuery(
-    !useIdLookup && "playerName" in props ? props.playerName : null,
-    !useIdLookup && "playerTeam" in props ? props.playerTeam : undefined
-  );
-
-  const { data: playerStats, isLoading } = useIdLookup ? idQuery : nameQuery;
+export default function PlayerStatDisplay({
+  playerId,
+  idType = "espn",
+}: PlayerStatDisplayProps) {
+  const { data: playerStats, isLoading } = usePlayerStatsQuery(playerId, idType);
 
   if (isLoading) {
     return <div>Loading player stats...</div>;

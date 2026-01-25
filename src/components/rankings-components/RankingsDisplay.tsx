@@ -361,7 +361,7 @@ export default function RankingsDisplay() {
           </DialogHeader>
 
           {selectedPlayerId && (
-            <PlayerStatDisplay playerId={selectedPlayerId} />
+            <PlayerStatDisplay playerId={selectedPlayerId} idType="nba" />
           )}
 
           <DialogFooter>

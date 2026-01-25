@@ -261,27 +261,12 @@ class ApiClient {
   }
 
   // Players API (public - no auth required)
-  async getPlayerStats(espnId: number): Promise<PlayerStats | null> {
-    const response = await fetch(`${PLAYERS_API}/stats?espn_id=${espnId}`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<PlayerStats> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
-  }
-
-  async getPlayerStatsByName(
-    name: string,
-    team?: string
+  async getPlayerStats(
+    id: number,
+    idType: "espn" | "nba" = "espn"
   ): Promise<PlayerStats | null> {
-    const params = new URLSearchParams({ name });
-    if (team) {
-      params.append("team", team);
-    }
-    const response = await fetch(`${PLAYERS_API}/stats?${params.toString()}`);
+    const param = idType === "espn" ? "espn_id" : "player_id";
+    const response = await fetch(`${PLAYERS_API}/stats?${param}=${id}`);
     if (!response.ok) {
       throw new Error(`API request failed: ${response.statusText}`);
     }

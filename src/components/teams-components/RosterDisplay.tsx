@@ -24,8 +24,7 @@ import type { RosterPlayer } from "@/types/team";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 
 interface SelectedPlayer {
-  name: string;
-  team: string;
+  playerId: number;
 }
 
 export function RosterDisplay({ roster }: { roster: RosterPlayer[] }) {
@@ -40,7 +39,7 @@ export function RosterDisplay({ roster }: { roster: RosterPlayer[] }) {
   let total_players = 0;
 
   const handlePlayerClick = (player: RosterPlayer) => {
-    setSelectedPlayer({ name: player.name, team: player.team });
+    setSelectedPlayer({ playerId: player.player_id });
   };
 
   return (
@@ -118,10 +117,7 @@ export function RosterDisplay({ roster }: { roster: RosterPlayer[] }) {
           </DialogHeader>
 
           {selectedPlayer && (
-            <PlayerStatDisplay
-              playerName={selectedPlayer.name}
-              playerTeam={selectedPlayer.team}
-            />
+            <PlayerStatDisplay playerId={selectedPlayer.playerId} />
           )}
 
           <DialogFooter>

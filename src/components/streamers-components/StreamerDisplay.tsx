@@ -49,8 +49,7 @@ const AVG_DAYS_OPTIONS = [
 ] as const;
 
 interface SelectedPlayer {
-  name: string;
-  team: string;
+  playerId: number;
 }
 
 export default function StreamerDisplay() {
@@ -345,7 +344,7 @@ export default function StreamerDisplay() {
                     <TableRow
                       key={player.player_id}
                       className="cursor-pointer hover:bg-muted"
-                      onClick={() => setSelectedPlayer({ name: player.name, team: player.team })}
+                      onClick={() => setSelectedPlayer({ playerId: player.player_id })}
                     >
                       <TableCell className="text-center font-medium">
                         {index + 1}
@@ -425,10 +424,7 @@ export default function StreamerDisplay() {
             </DialogDescription>
           </DialogHeader>
           {selectedPlayer && (
-            <PlayerStatDisplay
-              playerName={selectedPlayer.name}
-              playerTeam={selectedPlayer.team}
-            />
+            <PlayerStatDisplay playerId={selectedPlayer.playerId} />
           )}
           <DialogFooter>
             <DialogClose asChild>
