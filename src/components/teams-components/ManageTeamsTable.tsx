@@ -188,28 +188,6 @@ function AddTeamForm() {
   const [parseError, setParseError] = useState<string | null>(null);
   const [parseSuccess, setParseSuccess] = useState(false);
 
-  const handleParseCookies = () => {
-    setParseError(null);
-    setParseSuccess(false);
-
-    if (!cookieInput.trim()) {
-      setParseError("Please paste the cookie string first.");
-      return;
-    }
-
-    const parsed = parseCookieString(cookieInput);
-    if (parsed) {
-      form.setValue("s2", parsed.s2);
-      form.setValue("swid", parsed.swid);
-      setParseSuccess(true);
-      setParseError(null);
-    } else {
-      setParseError(
-        "Could not parse cookies. Make sure you copied the full string from the bookmarklet."
-      );
-    }
-  };
-
   const handleSubmit = async (values: z.infer<typeof leagueInfoSchema>) => {
     setSubmitted(true);
 
@@ -346,19 +324,27 @@ function AddTeamForm() {
                     placeholder="espn_s2=...; SWID=..."
                     value={cookieInput}
                     onChange={(e) => {
-                      setCookieInput(e.target.value);
-                      setParseError(null);
-                      setParseSuccess(false);
+                      const value = e.target.value;
+                      setCookieInput(value);
+
+                      if (!value.trim()) {
+                        setParseError(null);
+                        setParseSuccess(false);
+                        return;
+                      }
+
+                      const parsed = parseCookieString(value);
+                      if (parsed) {
+                        form.setValue("s2", parsed.s2);
+                        form.setValue("swid", parsed.swid);
+                        setParseSuccess(true);
+                        setParseError(null);
+                      } else {
+                        setParseSuccess(false);
+                        setParseError(null);
+                      }
                     }}
                   />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="w-full"
-                    onClick={handleParseCookies}
-                  >
-                    Parse & Apply
-                  </Button>
                   {parseError && (
                     <p className="text-sm text-destructive">{parseError}</p>
                   )}
@@ -496,28 +482,6 @@ function EditTeamForm({
   const [cookieInput, setCookieInput] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
   const [parseSuccess, setParseSuccess] = useState(false);
-
-  const handleParseCookies = () => {
-    setParseError(null);
-    setParseSuccess(false);
-
-    if (!cookieInput.trim()) {
-      setParseError("Please paste the cookie string first.");
-      return;
-    }
-
-    const parsed = parseCookieString(cookieInput);
-    if (parsed) {
-      form.setValue("s2", parsed.s2);
-      form.setValue("swid", parsed.swid);
-      setParseSuccess(true);
-      setParseError(null);
-    } else {
-      setParseError(
-        "Could not parse cookies. Make sure you copied the full string from the bookmarklet."
-      );
-    }
-  };
 
   const handleSubmit = async (values: z.infer<typeof leagueInfoSchema>) => {
     // Check if the form values have not changed
@@ -679,19 +643,27 @@ function EditTeamForm({
                     placeholder="espn_s2=...; SWID=..."
                     value={cookieInput}
                     onChange={(e) => {
-                      setCookieInput(e.target.value);
-                      setParseError(null);
-                      setParseSuccess(false);
+                      const value = e.target.value;
+                      setCookieInput(value);
+
+                      if (!value.trim()) {
+                        setParseError(null);
+                        setParseSuccess(false);
+                        return;
+                      }
+
+                      const parsed = parseCookieString(value);
+                      if (parsed) {
+                        form.setValue("s2", parsed.s2);
+                        form.setValue("swid", parsed.swid);
+                        setParseSuccess(true);
+                        setParseError(null);
+                      } else {
+                        setParseSuccess(false);
+                        setParseError(null);
+                      }
                     }}
                   />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="w-full"
-                    onClick={handleParseCookies}
-                  >
-                    Parse & Apply
-                  </Button>
                   {parseError && (
                     <p className="text-sm text-destructive">{parseError}</p>
                   )}
