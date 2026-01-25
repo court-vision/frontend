@@ -318,13 +318,15 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     };
 
     // Option/Alt + number shortcuts (safe from browser conflicts)
+    // Use e.code (physical key) instead of e.key because macOS transforms
+    // Option+number into special characters (e.g., Option+1 = ¡)
     const altShortcuts: Record<string, () => void> = {
-      "1": () => router.push("/"),
-      "2": () => router.push("/your-teams"),
-      "3": () => router.push("/lineup-generation"),
-      "4": () => router.push("/matchup"),
-      "5": () => router.push("/streamers"),
-      "6": () => router.push("/rankings"),
+      Digit1: () => router.push("/"),
+      Digit2: () => router.push("/your-teams"),
+      Digit3: () => router.push("/lineup-generation"),
+      Digit4: () => router.push("/matchup"),
+      Digit5: () => router.push("/streamers"),
+      Digit6: () => router.push("/rankings"),
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -355,7 +357,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
 
       // Handle Option/Alt shortcuts (numbers)
       if (e.altKey && !e.metaKey && !e.ctrlKey) {
-        const handler = altShortcuts[e.key];
+        const handler = altShortcuts[e.code];
         if (handler) {
           e.preventDefault();
           close();
