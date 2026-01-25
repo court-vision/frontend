@@ -281,6 +281,12 @@ export function MatchupDisplay({
           </Badge>
         </div>
 
+        {/* Score progression chart */}
+        <MatchupScoreChart
+          teamId={teamId}
+          matchupPeriod={matchup.matchup_period}
+        />
+
         {/* Side-by-side team cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <TeamCard
@@ -294,12 +300,6 @@ export function MatchupDisplay({
             onPlayerClick={handlePlayerClick}
           />
         </div>
-
-        {/* Score progression chart */}
-        <MatchupScoreChart
-          teamId={teamId}
-          matchupPeriod={matchup.matchup_period}
-        />
 
         {/* Projection footer */}
         <Card className="p-4">
