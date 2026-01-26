@@ -1,4 +1,5 @@
 "use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,15 +22,8 @@ import {
 } from "@/components/ui/table";
 import { Eye, Trash2 } from "lucide-react";
 import { useLineup } from "@/app/context/LineupContext";
-import type { Lineup, SlimGene } from "@/types/lineup";
-import { LineupCard } from "@/components/lineup-components/LineupDisplay";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
-} from "../ui/carousel";
+import type { Lineup } from "@/types/lineup";
+import { LineupViewer } from "@/components/lineup-components/LineupDisplay";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function ManageLineupsTable() {
@@ -102,19 +96,19 @@ function ViewLineupButton({ lineup }: { lineup: Lineup }) {
           <Eye size={20} />
         </Button>
       </DialogTrigger>
-      <DialogContent>
-        <ScrollArea className="h-[80vh]">
-          <Carousel className="w-[75%] max-w-[13.7%] mt-3">
-            <CarouselContent>
-              {lineup.Lineup.map((gene: SlimGene, index: number) => (
-                <CarouselItem key={index}>
-                  <LineupCard gene={gene} />
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious />
-            <CarouselNext />
-          </Carousel>
+      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-4 py-3 border-b border-border bg-muted/50">
+          <DialogTitle className="text-base">
+            Week {lineup.Week} Lineup
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            +{lineup.Improvement} projected improvement
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[70vh]">
+          <div className="p-4">
+            <LineupViewer lineup={lineup} />
+          </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>

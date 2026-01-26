@@ -1,14 +1,10 @@
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+"use client";
+
+import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SlimGene, SlimPlayer, Lineup } from "@/types/lineup";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLineup } from "@/app/context/LineupContext";
 import {
   Table,
@@ -26,87 +22,133 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Save } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function LineupDisplay({ lineup }: { lineup: Lineup }) {
   const { saveLineup } = useLineup();
+  const [currentDay, setCurrentDay] = useState(0);
 
   const handleSaveLineup = () => {
     saveLineup(lineup);
   };
 
+  if (lineup.Lineup.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-8 px-4">
+        Enter your threshold for considering a player &quot;streamable&quot;
+        and the week you wish to generate a lineup for to get started.
+      </div>
+    );
+  }
+
+  const totalDays = lineup.Lineup.length;
+  const canGoPrev = currentDay > 0;
+  const canGoNext = currentDay < totalDays - 1;
+
   return (
-    <div className="flex flex-col items-center gap-1 w-3/4">
-      {lineup.Lineup.length == 0 ? (
-        <h2 className="text-center">
-          Enter your threshold for considering a player &quot;streamable&quot;
-          and the week you wish to generate a lineup for to get started.
-        </h2>
-      ) : (
-        <div>
-          <h1 className="flex items-center text-xl ml-[22px] mb-[-10px] font-bold text-green-500">
-            {lineup.Improvement} <TrendingUp size={24} />
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <div className="h-5 w-5 rounded-full border ml-2 text-sm text-foreground">
-                    ?
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="text-center">
-                  <p>
-                    How many more points you can expect to score with this
-                    lineup compared <br />
-                    to your current lineup with no acquisitions made.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <Button
-              onClick={handleSaveLineup}
-              variant="outline"
-              className="ml-auto text-foreground flex items-center"
-            >
-              <Save size={24} />
-              <span>Save Lineup</span>
-            </Button>
-          </h1>
-          <div className="w-full overflow-x-auto mt-3">
-            <Carousel className="max-w-[1100px] mx-auto">
-              <CarouselContent className="max-w-[1100px]">
-                {lineup.Lineup.map((gene: SlimGene, index: number) => (
-                  <CarouselItem key={index}>
-                    <LineupCard gene={gene} />
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious />
-              <CarouselNext />
-            </Carousel>
-          </div>
-          <div>
-            <p className="text-gray-500 text-sm ml-[22px]">
-              * Please be patient, after periods of inactivity the server may
-              need to wake up.
-              <br />
-              * Results will vary across generations so feel free to try again.
-              <br />
-              <br />
-              * Players not playing can go in blank spots, or left on the bench.
-              <br />
-              * Players marked with a + are new acquisitions to your team.
-              <br />
-              * Players marked with a - in red are players removed from your
-              team.
-              <br />* Players marked with a - in grey are players not changed.
-            </p>
-          </div>
+    <div className="w-full max-w-lg mx-auto space-y-4">
+      {/* Header with improvement score and save button */}
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-2">
+          <span className="text-xl font-bold text-tertiary flex items-center gap-1">
+            +{lineup.Improvement}
+            <TrendingUp className="h-5 w-5" />
+          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="h-5 w-5 rounded-full border border-border text-xs text-muted-foreground hover:bg-muted transition-colors">
+                  ?
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[250px] text-center">
+                <p>
+                  Expected additional points compared to your current lineup
+                  with no acquisitions.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
-      )}
+        <Button
+          onClick={handleSaveLineup}
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+        >
+          <Save className="h-4 w-4" />
+          Save
+        </Button>
+      </div>
+
+      {/* Lineup Card with integrated navigation */}
+      <Card className="border border-border overflow-hidden">
+        {/* Day Navigation Header */}
+        <CardHeader className="py-3 px-4 bg-muted/50 border-b border-border">
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setCurrentDay((d) => d - 1)}
+              disabled={!canGoPrev}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">
+                Day {lineup.Lineup[currentDay].Day + 1}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                ({currentDay + 1} of {totalDays})
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setCurrentDay((d) => d + 1)}
+              disabled={!canGoNext}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          {/* Day indicator dots */}
+          <div className="flex justify-center gap-1.5 mt-2">
+            {lineup.Lineup.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentDay(idx)}
+                className={cn(
+                  "h-1.5 rounded-full transition-all",
+                  idx === currentDay
+                    ? "w-4 bg-primary"
+                    : "w-1.5 bg-border hover:bg-muted-foreground"
+                )}
+              />
+            ))}
+          </div>
+        </CardHeader>
+
+        {/* Roster Table */}
+        <CardContent className="p-0">
+          <LineupDayContent gene={lineup.Lineup[currentDay]} />
+        </CardContent>
+      </Card>
+
+      {/* Help text */}
+      <div className="text-xs text-muted-foreground space-y-1 px-1">
+        <p>
+          <span className="text-tertiary font-medium">+</span> New acquisition
+          &nbsp;&bull;&nbsp;
+          <span className="text-destructive font-medium">−</span> Removed from team
+        </p>
+      </div>
     </div>
   );
 }
 
-export function LineupCard({ gene }: { gene: SlimGene }) {
+function LineupDayContent({ gene }: { gene: SlimGene }) {
   const orderToDisplay = [
     "PG",
     "SG",
@@ -125,163 +167,185 @@ export function LineupCard({ gene }: { gene: SlimGene }) {
   };
 
   return (
-    <Card className="border-none">
-      <CardHeader className="text-left my-[-10px]">
-        <h1 className="text-xl font-bold">Day {gene.Day + 1}</h1>
-        <h2 className="text-sm">Roster:</h2>
-      </CardHeader>
-      <CardContent className="flex max-w-[1000px] justify-center mb-[-20px]">
+    <div>
+      {/* Roster Section */}
+      <div className="px-4 py-2 bg-card">
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+          Roster
+        </h3>
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-[5px]">Position</TableHead>
-              <TableHead className="w-[20px]">Name</TableHead>
-              <TableHead className="w-[5px]">Team</TableHead>
-              <TableHead className="w-[5px]">Avg Points</TableHead>
-              <TableHead className="text-right w-[1px]">Action</TableHead>
+            <TableRow className="hover:bg-transparent border-border">
+              <TableHead className="w-10 py-2 text-xs">Pos</TableHead>
+              <TableHead className="py-2 text-xs">Player</TableHead>
+              <TableHead className="w-12 py-2 text-xs">Team</TableHead>
+              <TableHead className="w-12 py-2 text-xs text-right">Avg</TableHead>
+              <TableHead className="w-8 py-2"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orderToDisplay.map((position: string, index: number) => {
+            {orderToDisplay.map((position: string) => {
               const player = gene.Roster[position];
+              if (player) {
+                const isNew = isPlayerNew(player);
+                return (
+                  <TableRow
+                    key={position}
+                    className={cn(
+                      "border-border",
+                      isNew && "bg-tertiary/5"
+                    )}
+                  >
+                    <TableCell className="py-1.5 text-xs font-medium text-muted-foreground">
+                      {position}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-sm">{player.Name}</TableCell>
+                    <TableCell className="py-1.5 text-xs text-muted-foreground">
+                      {player.Team}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-xs text-right tabular-nums">
+                      {player.AvgPoints}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-center">
+                      {isNew && (
+                        <span className="text-tertiary font-bold">+</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              }
               return (
-                <>
-                  {player ? (
-                    <TableRow>
-                      <TableCell>{position}</TableCell>
-                      <TableCell>{player.Name}</TableCell>
-                      <TableCell>{player.Team}</TableCell>
-                      <TableCell>{player.AvgPoints}</TableCell>
-                      <TableCell className="text-center">
-                        {isPlayerNew(player) ? (
-                          <span className="text-2xl text-tertiary ">+</span>
-                        ) : (
-                          <span className="text-2xl text-grey">-</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    <TableRow>
-                      <TableCell>{position}</TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[50px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[50px]" />
-                      </TableCell>
-                      <TableCell className="flex justify-center">
-                        <Skeleton className="h-4 w-[15px]" />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </>
+                <TableRow key={position} className="border-border">
+                  <TableCell className="py-1.5 text-xs font-medium text-muted-foreground">
+                    {position}
+                  </TableCell>
+                  <TableCell className="py-1.5">
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell className="py-1.5">
+                    <Skeleton className="h-4 w-8" />
+                  </TableCell>
+                  <TableCell className="py-1.5">
+                    <Skeleton className="h-4 w-8" />
+                  </TableCell>
+                  <TableCell className="py-1.5" />
+                </TableRow>
               );
             })}
           </TableBody>
         </Table>
-      </CardContent>
-      <CardHeader className="text-left mb-[-15px]">
-        <h2 className="text-sm">Removals:</h2>
-      </CardHeader>
-      <CardContent className="flex justify-center">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead className="w-[75px]">Team</TableHead>
-              <TableHead className="w-[75px]">Avg Points</TableHead>
-              <TableHead className="text-right w-[15px]">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {gene.Removals.map((player: SlimPlayer, index: number) => (
-              <TableRow key={index}>
-                <TableCell>{player.Name}</TableCell>
-                <TableCell>{player.Team}</TableCell>
-                <TableCell>{player.AvgPoints}</TableCell>
-                <TableCell className="text-center">
-                  <span className="text-2xl text-red-500">-</span>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Removals Section */}
+      {gene.Removals.length > 0 && (
+        <div className="px-4 py-2 bg-muted/30 border-t border-border">
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+            Removals
+          </h3>
+          <Table>
+            <TableBody>
+              {gene.Removals.map((player: SlimPlayer, index: number) => (
+                <TableRow key={index} className="border-border bg-destructive/5">
+                  <TableCell className="py-1.5 text-sm">{player.Name}</TableCell>
+                  <TableCell className="py-1.5 text-xs text-muted-foreground w-12">
+                    {player.Team}
+                  </TableCell>
+                  <TableCell className="py-1.5 text-xs text-right tabular-nums w-12">
+                    {player.AvgPoints}
+                  </TableCell>
+                  <TableCell className="py-1.5 text-center w-8">
+                    <span className="text-destructive font-bold">−</span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
   );
 }
 
-// function LineupCard({ gene }: { gene: SlimGene }) {
-//   const orderToDisplay = [
-//     "PG",
-//     "SG",
-//     "SF",
-//     "PF",
-//     "C",
-//     "G",
-//     "F",
-//     "UT1",
-//     "UT2",
-//     "UT3",
-//   ];
+// Exported for use in dialog views
+export { LineupDayContent };
 
-//   const isPlayerNew = (player: SlimPlayer) => {
-//     return gene.Additions.some((addition) => addition.Name === player.Name);
-//   };
+// Standalone lineup viewer component for dialogs
+export function LineupViewer({
+  lineup,
+  className,
+}: {
+  lineup: Lineup;
+  className?: string;
+}) {
+  const [currentDay, setCurrentDay] = useState(0);
 
-//   return (
-//     <Card className="border">
-//       <CardHeader className="text-center">
-//         <h1 className="text-xl">Day {gene.Day + 1}</h1>
-//       </CardHeader>
-//       <CardContent className="flex justify-center">
-//         <div className="flex flex-col gap-1">
-//           {orderToDisplay.map((position: string, index: number) => {
-//             const player = gene.Roster[position];
-//             return (
-//               <div className="flex justify-between" key={index}>
-//                 {player ? (
-//                   <p>
-//                     <span className="mr-2">{position}</span>
-//                     <span className="mr-2">{player.Name}</span>
-//                     <span className="mr-2">{player.Team}</span>
-//                     <span className="mr-2">{player.AvgPoints}</span>
-//                     <span
-//                       className={`${
-//                         isPlayerNew(player) ? "text-tertiary" : "hidden"
-//                       }`}
-//                     >
-//                       +
-//                     </span>
-//                   </p>
-//                 ) : (
-//                   <div className="flex items-center" key={`skeleton-${index}`}>
-//                     <p className="inline-block mr-2">{position}</p>
-//                     <Skeleton className="h-4 w-[250px]" />
-//                   </div>
-//                 )}
-//               </div>
-//             );
-//           })}
-//           <div className="flex flex-col justify-between">
-//             <div className="flex flex-col gap-1">
-//               {gene.Removals.map((player: SlimPlayer, index: number) => (
-//                 <div className="flex justify-between" key={index}>
-//                   <p>
-//                     <span className="mr-2">{player.Name}</span>
-//                     <span className="mr-2">{player.Team}</span>
-//                     <span className="mr-2">{player.AvgPoints}</span>
-//                     <span className="text-primary">-</span>
-//                   </p>
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-//         </div>
-//       </CardContent>
-//     </Card>
-//   );
-// }
+  if (lineup.Lineup.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-8">
+        No lineup data available.
+      </div>
+    );
+  }
+
+  const totalDays = lineup.Lineup.length;
+  const canGoPrev = currentDay > 0;
+  const canGoNext = currentDay < totalDays - 1;
+
+  return (
+    <div className={cn("w-full", className)}>
+      <Card className="border border-border overflow-hidden">
+        {/* Day Navigation Header */}
+        <CardHeader className="py-3 px-4 bg-muted/50 border-b border-border">
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setCurrentDay((d) => d - 1)}
+              disabled={!canGoPrev}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">
+                Day {lineup.Lineup[currentDay].Day + 1}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                ({currentDay + 1} of {totalDays})
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setCurrentDay((d) => d + 1)}
+              disabled={!canGoNext}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          {/* Day indicator dots */}
+          <div className="flex justify-center gap-1.5 mt-2">
+            {lineup.Lineup.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentDay(idx)}
+                className={cn(
+                  "h-1.5 rounded-full transition-all",
+                  idx === currentDay
+                    ? "w-4 bg-primary"
+                    : "w-1.5 bg-border hover:bg-muted-foreground"
+                )}
+              />
+            ))}
+          </div>
+        </CardHeader>
+
+        {/* Roster Table */}
+        <CardContent className="p-0">
+          <LineupDayContent gene={lineup.Lineup[currentDay]} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
