@@ -113,8 +113,8 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
               <Image
                 src={logoSrc}
                 alt="Court Vision"
-                width={92}
-                height={92}
+                width={100}
+                height={100}
                 key={logoSrc}
                 className="hover:opacity-80 transition-opacity"
               />
