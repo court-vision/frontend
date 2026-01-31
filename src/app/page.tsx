@@ -14,7 +14,6 @@ import {
   StreamerPreviewList,
 } from "@/components/dashboard";
 import { useMatchupQuery } from "@/hooks/useMatchup";
-import { useUIStore } from "@/stores/useUIStore";
 import { useTeams } from "@/app/context/TeamsContext";
 
 export default function Home() {
