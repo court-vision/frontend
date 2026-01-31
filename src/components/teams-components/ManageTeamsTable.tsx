@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,26 +41,39 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTeams } from "@/app/context/TeamsContext";
 import {
   useAddTeamMutation,
   useDeleteTeamMutation,
   useUpdateTeamMutation,
 } from "@/hooks/useTeams";
+import { useYahooAuthUrl, useYahooLeagues, useYahooTeams } from "@/hooks/useYahoo";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import type { YahooOAuthState, YahooLeague, YahooTeam } from "@/types/yahoo";
+import type { FantasyProvider } from "@/types/team";
 
 interface TeamInfo {
+  provider?: FantasyProvider;
   team_name: string;
   league_name?: string | null;
   league_id: number;
   year: number;
   espn_s2?: string | null;
   swid?: string | null;
+  yahoo_access_token?: string | null;
+  yahoo_refresh_token?: string | null;
+  yahoo_token_expiry?: string | null;
+  yahoo_team_key?: string | null;
 }
 
-export function ManageTeamsTable() {
+interface ManageTeamsTableProps {
+  yahooOAuthState?: YahooOAuthState | null;
+}
+
+export function ManageTeamsTable({ yahooOAuthState }: ManageTeamsTableProps) {
   const { teams } = useTeams();
 
   return (
@@ -61,6 +81,7 @@ export function ManageTeamsTable() {
       <TableCaption>Add, delete, or edit teams.</TableCaption>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-[80px]">Provider</TableHead>
           <TableHead>Team Name</TableHead>
           <TableHead>League Name</TableHead>
           <TableHead>League ID</TableHead>
@@ -71,6 +92,9 @@ export function ManageTeamsTable() {
       <TableBody>
         {teams.map((team) => (
           <TableRow key={team.team_id}>
+            <TableCell>
+              <ProviderBadge provider={team.league_info.provider} />
+            </TableCell>
             <TableCell className="font-medium">
               {team.league_info.team_name}
             </TableCell>
@@ -80,21 +104,72 @@ export function ManageTeamsTable() {
               {team.league_info.year}
             </TableCell>
             <TableCell className="flex flex-col gap-1 justify-center sm:flex-row sm:items-center">
-              <EditTeamForm
-                team_id={team.team_id}
-                team_info={team.league_info}
-              />
-              <DeleteTeamConfirmation team_id={team.team_id} />
+              {team.league_info.provider === "yahoo" ? (
+                <YahooTeamActions team_id={team.team_id} />
+              ) : (
+                <>
+                  <EditTeamForm
+                    team_id={team.team_id}
+                    team_info={team.league_info}
+                  />
+                  <DeleteTeamConfirmation team_id={team.team_id} />
+                </>
+              )}
             </TableCell>
           </TableRow>
         ))}
         <TableRow>
-          <TableCell colSpan={5}>
-            <AddTeamForm />
+          <TableCell colSpan={6}>
+            <AddTeamForm yahooOAuthState={yahooOAuthState} />
           </TableCell>
         </TableRow>
       </TableBody>
     </Table>
+  );
+}
+
+function ProviderBadge({ provider }: { provider?: FantasyProvider }) {
+  const isYahoo = provider === "yahoo";
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "text-xs",
+        isYahoo
+          ? "border-purple-500 text-purple-500"
+          : "border-orange-500 text-orange-500"
+      )}
+    >
+      {isYahoo ? "Yahoo" : "ESPN"}
+    </Badge>
+  );
+}
+
+function YahooTeamActions({ team_id }: { team_id: number }) {
+  const { mutate: deleteTeam } = useDeleteTeamMutation();
+
+  return (
+    <div className="flex gap-1">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>
+              <Button
+                variant="outline"
+                className="opacity-50 cursor-not-allowed hover:bg-input ml-[-5px]"
+                disabled
+              >
+                <Pencil size={20} />
+              </Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Yahoo teams cannot be edited. Delete and reconnect to update.</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <DeleteTeamConfirmation team_id={team_id} />
+    </div>
   );
 }
 
@@ -147,7 +222,67 @@ const parseCookieString = (
 
 const BOOKMARKLET_CODE = `javascript:(function(){const s2=document.cookie.match(/espn_s2=([^;]+)/);const swid=document.cookie.match(/SWID=([^;]+)/);if(s2&&swid){prompt('Copy these values:','espn_s2='+decodeURIComponent(s2[1])+'; SWID='+decodeURIComponent(swid[1]));}else{alert('Please log into ESPN first.');}})()`;
 
-function AddTeamForm() {
+interface AddTeamFormProps {
+  yahooOAuthState?: YahooOAuthState | null;
+}
+
+function AddTeamForm({ yahooOAuthState }: AddTeamFormProps) {
+  const [activeTab, setActiveTab] = useState<"espn" | "yahoo">("espn");
+
+  // Auto-switch to Yahoo tab if OAuth state is present
+  useEffect(() => {
+    if (yahooOAuthState) {
+      setActiveTab("yahoo");
+    }
+  }, [yahooOAuthState]);
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          className="flex justify-start w-full hover:bg-input"
+        >
+          + Add Team
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Team</DialogTitle>
+          <DialogDescription>
+            Connect your fantasy basketball team.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as "espn" | "yahoo")}
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="espn" className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-orange-500" />
+              ESPN
+            </TabsTrigger>
+            <TabsTrigger value="yahoo" className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-purple-500" />
+              Yahoo
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="espn">
+            <EspnAddTeamForm />
+          </TabsContent>
+
+          <TabsContent value="yahoo">
+            <YahooAddTeamFlow yahooOAuthState={yahooOAuthState} />
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EspnAddTeamForm() {
   const { mutate: addTeam, isPending } = useAddTeamMutation();
 
   const leagueInfoSchema = z.object({
@@ -191,9 +326,9 @@ function AddTeamForm() {
   const handleSubmit = async (values: z.infer<typeof leagueInfoSchema>) => {
     setSubmitted(true);
 
-    console.log(values);
     addTeam(
       {
+        provider: "espn",
         league_id: parseInt(values.leagueID),
         team_name: values.teamName,
         year: parseInt(values.leagueYear),
@@ -211,228 +346,390 @@ function AddTeamForm() {
   };
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          className="flex justify-start w-full hover:bg-input"
-        >
-          + Add Team
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add Team</DialogTitle>
-          <DialogDescription>
-            Find your ESPN fantasy basketball league.
-          </DialogDescription>
-        </DialogHeader>
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="flex flex-col gap-3 pt-4"
+      >
+        <FormField
+          control={form.control}
+          name="leagueID"
+          render={({ field }) => {
+            return (
+              <FormItem>
+                <FormLabel>
+                  League ID
+                  <span style={{ color: "red" }}> *</span>
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="ID" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
+        />
 
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="flex flex-col gap-3"
-          >
-            <FormField
-              control={form.control}
-              name="leagueID"
-              render={({ field }) => {
-                return (
-                  <FormItem>
-                    <FormLabel>
-                      League ID
-                      <span style={{ color: "red" }}> *</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="ID" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+        <FormField
+          control={form.control}
+          name="leagueYear"
+          render={({ field }) => {
+            return (
+              <FormItem>
+                <FormLabel>
+                  League Year
+                  <span style={{ color: "red" }}> *</span>
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="YYYY" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
+        />
 
-            <FormField
-              control={form.control}
-              name="leagueYear"
-              render={({ field }) => {
-                return (
-                  <FormItem>
-                    <FormLabel>
-                      League Year
-                      <span style={{ color: "red" }}> *</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="YYYY" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+        <FormField
+          control={form.control}
+          name="teamName"
+          render={({ field }) => {
+            return (
+              <FormItem>
+                <FormLabel>
+                  Team Name
+                  <span style={{ color: "red" }}> *</span>
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="Name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
+        />
 
-            <FormField
-              control={form.control}
-              name="teamName"
-              render={({ field }) => {
-                return (
-                  <FormItem>
-                    <FormLabel>
-                      Team Name
-                      <span style={{ color: "red" }}> *</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="Name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+        <hr></hr>
+        <p className="text-sm text-muted-foreground">For private leagues.</p>
 
-            <hr></hr>
-            <DialogDescription>For private leagues.</DialogDescription>
+        <div className="rounded-md border border-dashed p-3 bg-muted/30">
+          <p className="text-sm text-muted-foreground mb-2">
+            Step 1: Drag this button to your bookmarks bar:
+          </p>
+          <div
+            dangerouslySetInnerHTML={{
+              __html: `<a href="${BOOKMARKLET_CODE}" class="inline-block px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md cursor-grab hover:bg-primary/90" onclick="event.preventDefault()">Get ESPN Cookies</a>`,
+            }}
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Step 2: Log into ESPN, then click the bookmark and copy the result.
+          </p>
+        </div>
 
-            <div className="rounded-md border border-dashed p-3 bg-muted/30">
-              <p className="text-sm text-muted-foreground mb-2">
-                Step 1: Drag this button to your bookmarks bar:
-              </p>
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: `<a href="${BOOKMARKLET_CODE}" class="inline-block px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md cursor-grab hover:bg-primary/90" onclick="event.preventDefault()">Get ESPN Cookies</a>`,
+        <Tabs defaultValue="paste" className="w-full">
+          <TabsList className="w-full">
+            <TabsTrigger value="paste" className="flex-1">
+              Paste Cookies
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="flex-1">
+              Manual Entry
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="paste" className="space-y-3">
+            <div className="space-y-2">
+              <Label>Paste cookie string</Label>
+              <Input
+                placeholder="espn_s2=...; SWID=..."
+                value={cookieInput}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setCookieInput(value);
+
+                  if (!value.trim()) {
+                    setParseError(null);
+                    setParseSuccess(false);
+                    return;
+                  }
+
+                  const parsed = parseCookieString(value);
+                  if (parsed) {
+                    form.setValue("s2", parsed.s2);
+                    form.setValue("swid", parsed.swid);
+                    setParseSuccess(true);
+                    setParseError(null);
+                  } else {
+                    setParseSuccess(false);
+                    setParseError(null);
+                  }
                 }}
               />
-              <p className="text-xs text-muted-foreground mt-2">
-                Step 2: Log into ESPN, then click the bookmark and copy the result.
-              </p>
-            </div>
-
-            <Tabs defaultValue="paste" className="w-full">
-              <TabsList className="w-full">
-                <TabsTrigger value="paste" className="flex-1">
-                  Paste Cookies
-                </TabsTrigger>
-                <TabsTrigger value="manual" className="flex-1">
-                  Manual Entry
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="paste" className="space-y-3">
-                <div className="space-y-2">
-                  <Label>Paste cookie string</Label>
-                  <Input
-                    placeholder="espn_s2=...; SWID=..."
-                    value={cookieInput}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setCookieInput(value);
-
-                      if (!value.trim()) {
-                        setParseError(null);
-                        setParseSuccess(false);
-                        return;
-                      }
-
-                      const parsed = parseCookieString(value);
-                      if (parsed) {
-                        form.setValue("s2", parsed.s2);
-                        form.setValue("swid", parsed.swid);
-                        setParseSuccess(true);
-                        setParseError(null);
-                      } else {
-                        setParseSuccess(false);
-                        setParseError(null);
-                      }
-                    }}
-                  />
-                  {parseError && (
-                    <p className="text-sm text-destructive">{parseError}</p>
-                  )}
-                  {parseSuccess && (
-                    <div className="text-sm text-green-600 space-y-1">
-                      <p>Cookies parsed successfully:</p>
-                      <p className="font-mono text-xs truncate">
-                        espn_s2: {form.getValues("s2")?.slice(0, 20)}...
-                      </p>
-                      <p className="font-mono text-xs truncate">
-                        SWID: {form.getValues("swid")}
-                      </p>
-                    </div>
-                  )}
+              {parseError && (
+                <p className="text-sm text-destructive">{parseError}</p>
+              )}
+              {parseSuccess && (
+                <div className="text-sm text-green-600 space-y-1">
+                  <p>Cookies parsed successfully:</p>
+                  <p className="font-mono text-xs truncate">
+                    espn_s2: {form.getValues("s2")?.slice(0, 20)}...
+                  </p>
+                  <p className="font-mono text-xs truncate">
+                    SWID: {form.getValues("swid")}
+                  </p>
                 </div>
-              </TabsContent>
-
-              <TabsContent value="manual" className="space-y-3">
-                <FormField
-                  control={form.control}
-                  name="s2"
-                  render={({ field }) => {
-                    return (
-                      <FormItem>
-                        <FormLabel>ESPN s2</FormLabel>
-                        <FormControl>
-                          <Input placeholder="s2" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="swid"
-                  render={({ field }) => {
-                    return (
-                      <FormItem>
-                        <FormLabel>SWID</FormLabel>
-                        <FormControl>
-                          <Input placeholder="SWID" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-              </TabsContent>
-            </Tabs>
-
-            <div className="flex justify-between pl-0 pr-0 mb-[-1rem]">
-              <Button
-                type="button"
-                className="size-sm bg-primary"
-                onClick={handleClearClick}
-              >
-                <Image
-                  src="/clear.png"
-                  alt="clear"
-                  width={30}
-                  height={30}
-                />
-              </Button>
-              <Button type="submit" className="size-sm bg-primary">
-                <Image
-                  src="/arrow.png"
-                  alt="submit"
-                  width={30}
-                  height={30}
-                />
-              </Button>
+              )}
             </div>
-            <div className="text-center justify-center items-center">
-              <Skeleton
-                className={` ${
-                  submitted
-                    ? "h-4 mt-5 w-full justify-center items-center"
-                    : "hidden"
-                }`}
-              ></Skeleton>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+          </TabsContent>
+
+          <TabsContent value="manual" className="space-y-3">
+            <FormField
+              control={form.control}
+              name="s2"
+              render={({ field }) => {
+                return (
+                  <FormItem>
+                    <FormLabel>ESPN s2</FormLabel>
+                    <FormControl>
+                      <Input placeholder="s2" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+
+            <FormField
+              control={form.control}
+              name="swid"
+              render={({ field }) => {
+                return (
+                  <FormItem>
+                    <FormLabel>SWID</FormLabel>
+                    <FormControl>
+                      <Input placeholder="SWID" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex justify-between pl-0 pr-0 mb-[-1rem]">
+          <Button
+            type="button"
+            className="size-sm bg-primary"
+            onClick={handleClearClick}
+          >
+            <Image src="/clear.png" alt="clear" width={30} height={30} />
+          </Button>
+          <Button type="submit" className="size-sm bg-primary">
+            <Image src="/arrow.png" alt="submit" width={30} height={30} />
+          </Button>
+        </div>
+        <div className="text-center justify-center items-center">
+          <Skeleton
+            className={` ${
+              submitted
+                ? "h-4 mt-5 w-full justify-center items-center"
+                : "hidden"
+            }`}
+          ></Skeleton>
+        </div>
+      </form>
+    </Form>
   );
+}
+
+interface YahooAddTeamFlowProps {
+  yahooOAuthState?: YahooOAuthState | null;
+}
+
+function YahooAddTeamFlow({ yahooOAuthState }: YahooAddTeamFlowProps) {
+  const [step, setStep] = useState<"connect" | "select-league" | "select-team">(
+    yahooOAuthState ? "select-league" : "connect"
+  );
+  const [selectedLeague, setSelectedLeague] = useState<YahooLeague | null>(null);
+
+  const { refetch: fetchAuthUrl, isFetching: isLoadingAuthUrl } =
+    useYahooAuthUrl();
+  const { data: leagues, isLoading: isLoadingLeagues } = useYahooLeagues(
+    yahooOAuthState?.accessToken || null
+  );
+  const { data: teams, isLoading: isLoadingTeams } = useYahooTeams(
+    yahooOAuthState?.accessToken || null,
+    selectedLeague?.league_key || null
+  );
+
+  const { mutate: addTeam, isPending } = useAddTeamMutation();
+
+  // Update step when OAuth state changes
+  useEffect(() => {
+    if (yahooOAuthState) {
+      setStep("select-league");
+    }
+  }, [yahooOAuthState]);
+
+  const handleConnectClick = async () => {
+    try {
+      const result = await fetchAuthUrl();
+      if (result.data) {
+        window.location.href = result.data;
+      }
+    } catch (error) {
+      toast.error("Failed to connect to Yahoo. Please try again.");
+    }
+  };
+
+  const handleLeagueSelect = (league: YahooLeague) => {
+    setSelectedLeague(league);
+    setStep("select-team");
+  };
+
+  const handleTeamSelect = (team: YahooTeam) => {
+    if (!yahooOAuthState || !selectedLeague) return;
+
+    addTeam(
+      {
+        provider: "yahoo",
+        league_id: parseInt(selectedLeague.league_id),
+        team_name: team.name,
+        league_name: selectedLeague.name,
+        year: parseInt(selectedLeague.season),
+        yahoo_access_token: yahooOAuthState.accessToken,
+        yahoo_refresh_token: yahooOAuthState.refreshToken,
+        yahoo_token_expiry: yahooOAuthState.tokenExpiry,
+        yahoo_team_key: team.team_key,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Yahoo team added successfully!");
+        },
+        onError: () => {
+          toast.error("Failed to add Yahoo team. Please try again.");
+        },
+      }
+    );
+  };
+
+  // Step 1: Connect with Yahoo
+  if (step === "connect") {
+    return (
+      <div className="space-y-4 py-4">
+        <p className="text-sm text-muted-foreground">
+          Connect your Yahoo account to import your fantasy teams.
+        </p>
+        <Button
+          onClick={handleConnectClick}
+          disabled={isLoadingAuthUrl}
+          className="w-full bg-purple-600 hover:bg-purple-700"
+        >
+          {isLoadingAuthUrl ? "Loading..." : "Connect with Yahoo"}
+        </Button>
+        <p className="text-xs text-muted-foreground text-center">
+          You will be redirected to Yahoo to authorize access.
+        </p>
+      </div>
+    );
+  }
+
+  // Step 2: Select League
+  if (step === "select-league") {
+    return (
+      <div className="space-y-4 py-4">
+        <p className="text-sm text-muted-foreground">Select a league:</p>
+        {isLoadingLeagues ? (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : leagues && leagues.length > 0 ? (
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {leagues.map((league) => (
+              <Button
+                key={league.league_key}
+                variant="outline"
+                className="w-full justify-start text-left h-auto py-3"
+                onClick={() => handleLeagueSelect(league)}
+              >
+                <div>
+                  <div className="font-medium">{league.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {league.season} - {league.num_teams} teams -{" "}
+                    {league.scoring_type}
+                  </div>
+                </div>
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No fantasy basketball leagues found.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Step 3: Select Team
+  if (step === "select-team") {
+    return (
+      <div className="space-y-4 py-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Select your team in {selectedLeague?.name}:
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSelectedLeague(null);
+              setStep("select-league");
+            }}
+          >
+            Back
+          </Button>
+        </div>
+        {isLoadingTeams ? (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : teams && teams.length > 0 ? (
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {teams.map((team) => (
+              <Button
+                key={team.team_key}
+                variant="outline"
+                className={cn(
+                  "w-full justify-start",
+                  team.is_owned_by_current_login && "border-purple-500"
+                )}
+                onClick={() => handleTeamSelect(team)}
+                disabled={isPending}
+              >
+                <div className="flex items-center gap-2">
+                  {team.is_owned_by_current_login && (
+                    <Badge variant="secondary" className="text-xs">
+                      Your Team
+                    </Badge>
+                  )}
+                  <span>{team.name}</span>
+                </div>
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No teams found in this league.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function EditTeamForm({
@@ -499,13 +796,12 @@ function EditTeamForm({
 
     setSubmitted(true);
 
-    console.log(values);
-
     // Edit team
     editTeam(
       {
         teamId: team_id,
         teamData: {
+          provider: "espn",
           league_id: parseInt(values.leagueID),
           team_name: values.teamName,
           year: parseInt(values.leagueYear),
@@ -610,7 +906,7 @@ function EditTeamForm({
             />
 
             <hr></hr>
-            <DialogDescription>For private leagues.</DialogDescription>
+            <p className="text-sm text-muted-foreground">For private leagues.</p>
 
             <div className="rounded-md border border-dashed p-3 bg-muted/30">
               <p className="text-sm text-muted-foreground mb-2">
@@ -622,7 +918,8 @@ function EditTeamForm({
                 }}
               />
               <p className="text-xs text-muted-foreground mt-2">
-                Step 2: Log into ESPN, then click the bookmark and copy the result.
+                Step 2: Log into ESPN, then click the bookmark and copy the
+                result.
               </p>
             </div>
 
@@ -722,20 +1019,10 @@ function EditTeamForm({
                 className="size-sm bg-primary"
                 onClick={handleClearClick}
               >
-                <Image
-                  src="/clear.png"
-                  alt="clear"
-                  width={30}
-                  height={30}
-                />
+                <Image src="/clear.png" alt="clear" width={30} height={30} />
               </Button>
               <Button type="submit" className="size-sm bg-primary">
-                <Image
-                  src="/arrow.png"
-                  alt="submit"
-                  width={30}
-                  height={30}
-                />
+                <Image src="/arrow.png" alt="submit" width={30} height={30} />
               </Button>
             </div>
             <div className="text-center justify-center items-center">

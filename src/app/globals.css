@@ -92,9 +92,21 @@
     --status-projected: 45 93% 58%;
     --status-neutral: 20 10% 50%;
   }
+
+  /* Yahoo provider theme - purple instead of orange */
+  [data-provider="yahoo"] {
+    --primary: 270 65% 55%;
+    --ring: 270 65% 55%;
+    --chart-1: 270 65% 55%;
+  }
+
+  [data-provider="yahoo"].dark {
+    --primary: 270 70% 60%;
+    --ring: 270 70% 60%;
+    --chart-1: 270 70% 60%;
+  }
 }
 
- 
 @layer base {
   * {
     @apply border-border;

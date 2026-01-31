@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import {
   Select,
@@ -91,6 +92,14 @@ export function TeamDropdown() {
                         onSelect={() => setSelectedTeam(team.team_id)}
                         value={team.league_info?.team_name || "Unknown Team"}
                       >
+                        <span
+                          className={cn(
+                            "h-2 w-2 rounded-full mr-2 flex-shrink-0",
+                            team.league_info?.provider === "yahoo"
+                              ? "bg-purple-500"
+                              : "bg-orange-500"
+                          )}
+                        />
                         {team.league_info?.team_name || "Unknown Team"}
                         {selectedTeam === team.team_id && (
                           <Check size={20} className="ml-2" />

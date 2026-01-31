@@ -7,6 +7,7 @@ import {
   PLAYERS_API,
   MATCHUPS_API,
   STREAMERS_API,
+  YAHOO_API,
 } from "@/endpoints";
 import type {
   Team,
@@ -38,6 +39,13 @@ import type {
   MatchupScoreHistoryResponse,
 } from "@/types/matchup";
 import type { StreamerRequest, StreamerResponse } from "@/types/streamer";
+import type {
+  YahooAuthUrlResponse,
+  YahooLeaguesResponse,
+  YahooTeamsResponse,
+  YahooLeague,
+  YahooTeam,
+} from "@/types/yahoo";
 
 class ApiClient {
   private baseUrl: string;
@@ -245,6 +253,47 @@ class ApiClient {
       }
     );
     return response;
+  }
+
+  // Yahoo API
+  async getYahooAuthUrl(getToken: GetTokenFn): Promise<string> {
+    const response = await this.authenticatedRequest<YahooAuthUrlResponse>(
+      `${YAHOO_API}/authorize`,
+      getToken
+    );
+    if (response.status === "success" && response.auth_url) {
+      return response.auth_url;
+    }
+    throw new Error(response.message || "Failed to get Yahoo auth URL");
+  }
+
+  async getYahooLeagues(
+    getToken: GetTokenFn,
+    accessToken: string
+  ): Promise<YahooLeague[]> {
+    const response = await this.authenticatedRequest<YahooLeaguesResponse>(
+      `${YAHOO_API}/leagues?access_token=${encodeURIComponent(accessToken)}`,
+      getToken
+    );
+    if (response.status === "success" && response.leagues) {
+      return response.leagues;
+    }
+    return [];
+  }
+
+  async getYahooTeams(
+    getToken: GetTokenFn,
+    accessToken: string,
+    leagueKey: string
+  ): Promise<YahooTeam[]> {
+    const response = await this.authenticatedRequest<YahooTeamsResponse>(
+      `${YAHOO_API}/teams?access_token=${encodeURIComponent(accessToken)}&league_key=${encodeURIComponent(leagueKey)}`,
+      getToken
+    );
+    if (response.status === "success" && response.teams) {
+      return response.teams;
+    }
+    return [];
   }
 
   // Rankings API (public - no auth required)

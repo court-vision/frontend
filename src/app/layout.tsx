@@ -17,6 +17,7 @@ import { TeamsProvider } from "./context/TeamsContext";
 import { LineupProvider } from "./context/LineupContext";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { CommandPaletteProvider } from "@/providers/CommandPaletteProvider";
+import { ProviderThemeSync } from "@/components/ProviderThemeSync";
 
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -52,6 +53,7 @@ export default function RootLayout({
         <body className={`${inter.variable} ${jetbrainsMono.variable} ${GeistSans.variable} ${spaceGrotesk.variable} font-sans`}>
           <QueryProvider>
             <TeamsProvider>
+              <ProviderThemeSync />
               <LineupProvider>
                 <ThemeProvider
                   attribute="class"

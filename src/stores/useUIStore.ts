@@ -6,6 +6,10 @@ interface UIStore {
   selectedTeam: number | null;
   setSelectedTeam: (teamId: number | null) => void;
 
+  // Provider theme tracking
+  selectedProvider: "espn" | "yahoo" | null;
+  setSelectedProvider: (provider: "espn" | "yahoo" | null) => void;
+
   // Rankings model selection
   selectedRankingModel: string;
   setSelectedRankingModel: (model: string) => void;
@@ -32,6 +36,10 @@ export const useUIStore = create<UIStore>()(
       selectedTeam: null,
       setSelectedTeam: (teamId) => set({ selectedTeam: teamId }),
 
+      // Provider theme tracking
+      selectedProvider: null,
+      setSelectedProvider: (provider) => set({ selectedProvider: provider }),
+
       // Rankings model selection
       selectedRankingModel: "Handpicked",
       setSelectedRankingModel: (model) => set({ selectedRankingModel: model }),
@@ -52,9 +60,10 @@ export const useUIStore = create<UIStore>()(
     }),
     {
       name: "ui-store",
-      // Only persist team selection and ranking model
+      // Only persist team selection, provider, and ranking model
       partialize: (state) => ({
         selectedTeam: state.selectedTeam,
+        selectedProvider: state.selectedProvider,
         selectedRankingModel: state.selectedRankingModel,
       }),
     }

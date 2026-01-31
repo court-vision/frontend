@@ -14,6 +14,7 @@ export const TEAMS_API = `${API_BASE}/v1/internal/teams`;
 export const LINEUPS_API = `${API_BASE}/v1/internal/lineups`;
 export const MATCHUPS_API = `${API_BASE}/v1/internal/matchups`;
 export const STREAMERS_API = `${API_BASE}/v1/internal/streamers`;
+export const YAHOO_API = `${API_BASE}/v1/internal/yahoo`;
 
 // API v1 Public endpoints
 export const RANKINGS_API = `${API_BASE}/v1/rankings`;
