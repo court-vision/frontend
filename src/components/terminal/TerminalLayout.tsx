@@ -12,6 +12,12 @@ import { useTerminalStore } from "@/stores/useTerminalStore";
 import { TerminalCommandBar } from "./TerminalCommandBar";
 import { TerminalStatusBar } from "./TerminalStatusBar";
 import { PanelContainer, PlaceholderPanel } from "./core";
+import {
+  PlayerFocusPanel,
+  PerformanceChartPanel,
+  GameLogPanel,
+  AdvancedStatsPanel,
+} from "./panels";
 
 const RESIZE_STEP = 5; // Percentage step for keyboard resizing
 
@@ -120,7 +126,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
                 showMaximize={false}
                 className="flex-1"
               >
-                <PlaceholderPanel definitionId="player-focus" />
+                <PlayerFocusPanel />
               </PanelContainer>
             </Panel>
             <Separator className="w-3 bg-transparent hover:bg-primary/20 transition-colors cursor-col-resize flex items-center justify-center">
@@ -137,14 +143,14 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
               showClose={false}
               className="min-h-[200px]"
             >
-              <PlaceholderPanel definitionId="performance-chart" />
+              <PerformanceChartPanel />
             </PanelContainer>
             <PanelContainer
               definitionId="advanced-stats"
               showClose={false}
               className="min-h-[200px]"
             >
-              <PlaceholderPanel definitionId="advanced-stats" />
+              <AdvancedStatsPanel />
             </PanelContainer>
           </div>
           <PanelContainer
@@ -152,7 +158,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
             showClose={false}
             className="flex-1 min-h-[200px]"
           >
-            <PlaceholderPanel definitionId="game-log" />
+            <GameLogPanel />
           </PanelContainer>
         </Panel>
 
