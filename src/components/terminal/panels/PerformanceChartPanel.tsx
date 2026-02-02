@@ -4,12 +4,11 @@ import { useState, useMemo } from "react";
 import {
   CartesianGrid,
   Line,
-  LineChart,
   XAxis,
   YAxis,
   ReferenceLine,
   Area,
-  AreaChart,
+  ComposedChart,
 } from "recharts";
 import { LineChart as LineChartIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -137,7 +136,7 @@ export function PerformanceChartPanel() {
       {/* Chart */}
       <div className="flex-1 min-h-0">
         <ChartContainer config={chartConfig} className="h-full w-full">
-          <AreaChart
+          <ComposedChart
             data={chartData}
             margin={{ left: 0, right: 8, top: 8, bottom: 0 }}
           >
@@ -218,7 +217,7 @@ export function PerformanceChartPanel() {
                 connectNulls
               />
             )}
-          </AreaChart>
+          </ComposedChart>
         </ChartContainer>
       </div>
 

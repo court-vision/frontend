@@ -8,6 +8,7 @@ import {
   MATCHUPS_API,
   STREAMERS_API,
   YAHOO_API,
+  GAMES_API,
 } from "@/endpoints";
 import type {
   Team,
@@ -31,6 +32,7 @@ import type {
 import type { RankingsPlayer } from "@/types/rankings";
 import type { PlayerStats } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
+import type { GamesOnDateData } from "@/types/games";
 import type {
   MatchupData,
   MatchupResponse,
@@ -320,6 +322,19 @@ class ApiClient {
       throw new Error(`API request failed: ${response.statusText}`);
     }
     const data: BaseApiResponse<PlayerStats> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
+  }
+
+  // Games API (public - no auth required)
+  async getGamesOnDate(date: string): Promise<GamesOnDateData | null> {
+    const response = await fetch(`${GAMES_API}/${date}`);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: BaseApiResponse<GamesOnDateData> = await response.json();
     if (data.status === "success" && data.data) {
       return data.data;
     }

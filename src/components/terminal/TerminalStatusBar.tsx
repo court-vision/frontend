@@ -36,6 +36,16 @@ export function TerminalStatusBar({ className }: TerminalStatusBarProps) {
           <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">&lt;</kbd>
           <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] ml-0.5">&gt;</kbd> resize R
         </span>
+        <span className="hidden 2xl:inline">
+          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">w</kbd> watchlist
+        </span>
+        <span className="hidden 2xl:inline">
+          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">c</kbd> compare
+        </span>
+        <span className="hidden 2xl:inline">
+          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">F1</kbd>-
+          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">F4</kbd> layouts
+        </span>
       </div>
 
       {/* Center section - Status indicators */}
@@ -54,10 +64,13 @@ export function TerminalStatusBar({ className }: TerminalStatusBarProps) {
 
       {/* Right section - Stats */}
       <div className="flex items-center gap-3">
+        <span className="hidden md:inline">
+          Layout: <span className="text-foreground capitalize">{layout.preset}</span>
+        </span>
         <span className="hidden sm:inline">
           Window: <span className="text-foreground">{statWindow.toUpperCase()}</span>
         </span>
-        <span className="hidden sm:inline">
+        <span className="hidden lg:inline">
           Watchlist: <span className="text-foreground">{watchlist.length}</span>
         </span>
         <span className="flex items-center gap-1">

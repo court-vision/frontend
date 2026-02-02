@@ -11,13 +11,18 @@ import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { TerminalCommandBar } from "./TerminalCommandBar";
 import { TerminalStatusBar } from "./TerminalStatusBar";
-import { PanelContainer, PlaceholderPanel } from "./core";
+import { PanelContainer } from "./core";
 import {
   PlayerFocusPanel,
   PerformanceChartPanel,
   GameLogPanel,
   AdvancedStatsPanel,
+  WatchlistPanel,
+  TrendingPanel,
+  ComparisonPanel,
+  SchedulePanel,
 } from "./panels";
+import type { LayoutPreset } from "@/types/terminal";
 
 const RESIZE_STEP = 5; // Percentage step for keyboard resizing
 
@@ -28,11 +33,18 @@ interface TerminalLayoutProps {
 export function TerminalLayout({ className }: TerminalLayoutProps) {
   const {
     layout,
+    focusedPlayerId,
+    comparisonPlayerIds,
     toggleLeftPanel,
     toggleRightPanel,
+    addToWatchlist,
+    addToComparison,
+    setLayoutPreset,
   } = useTerminalStore();
 
-  const { leftPanelCollapsed, rightPanelCollapsed } = layout;
+  const hasComparison = comparisonPlayerIds.length > 0;
+
+  const { leftPanelCollapsed, rightPanelCollapsed, preset } = layout;
 
   // Ref for imperative panel control (keyboard resizing)
   const groupRef = useRef<GroupImperativeHandle>(null);
@@ -55,6 +67,28 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
       } else if (e.key === "]" && !e.shiftKey) {
         e.preventDefault();
         toggleRightPanel();
+      }
+      // Player action shortcuts
+      else if (e.key === "w" && !e.metaKey && !e.ctrlKey && focusedPlayerId) {
+        e.preventDefault();
+        addToWatchlist(focusedPlayerId);
+      } else if (e.key === "c" && !e.metaKey && !e.ctrlKey && focusedPlayerId) {
+        e.preventDefault();
+        addToComparison(focusedPlayerId);
+      }
+      // Layout preset shortcuts (F1-F4)
+      else if (e.key === "F1") {
+        e.preventDefault();
+        setLayoutPreset("default");
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        setLayoutPreset("chart");
+      } else if (e.key === "F3") {
+        e.preventDefault();
+        setLayoutPreset("comparison");
+      } else if (e.key === "F4") {
+        e.preventDefault();
+        setLayoutPreset("data");
       }
       // Panel resize via imperative API
       else if ((e.key === "," || e.key === "." || e.key === "<" || e.key === ">") && groupRef.current) {
@@ -91,7 +125,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         groupRef.current.setLayout(newLayout);
       }
     },
-    [toggleLeftPanel, toggleRightPanel, leftPanelCollapsed, rightPanelCollapsed]
+    [toggleLeftPanel, toggleRightPanel, leftPanelCollapsed, rightPanelCollapsed, focusedPlayerId, addToWatchlist, addToComparison, setLayoutPreset]
   );
 
   useEffect(() => {
@@ -145,13 +179,23 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
             >
               <PerformanceChartPanel />
             </PanelContainer>
-            <PanelContainer
-              definitionId="advanced-stats"
-              showClose={false}
-              className="min-h-[200px]"
-            >
-              <AdvancedStatsPanel />
-            </PanelContainer>
+            {hasComparison ? (
+              <PanelContainer
+                definitionId="comparison"
+                showClose={false}
+                className="min-h-[200px]"
+              >
+                <ComparisonPanel />
+              </PanelContainer>
+            ) : (
+              <PanelContainer
+                definitionId="advanced-stats"
+                showClose={false}
+                className="min-h-[200px]"
+              >
+                <AdvancedStatsPanel />
+              </PanelContainer>
+            )}
           </div>
           <PanelContainer
             definitionId="game-log"
@@ -181,15 +225,23 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
                 showMaximize={false}
                 className="flex-1"
               >
-                <PlaceholderPanel definitionId="watchlist" />
+                <WatchlistPanel />
+              </PanelContainer>
+              <PanelContainer
+                definitionId="schedule"
+                showClose={false}
+                showMaximize={false}
+                className="flex-1"
+              >
+                <SchedulePanel />
               </PanelContainer>
               <PanelContainer
                 definitionId="trending"
                 showClose={false}
                 showMaximize={false}
-                className="flex-1"
+                className="flex-[0.5]"
               >
-                <PlaceholderPanel definitionId="trending" />
+                <TrendingPanel />
               </PanelContainer>
             </Panel>
           </>

@@ -92,8 +92,37 @@ export const useTerminalStore = create<TerminalState>()(
       },
 
       setLayoutPreset: (preset) => {
+        // Different presets configure different panel visibility
+        let leftPanelCollapsed = false;
+        let rightPanelCollapsed = false;
+
+        switch (preset) {
+          case "chart":
+            // Chart-focused: hide right panel
+            rightPanelCollapsed = true;
+            break;
+          case "comparison":
+            // Comparison: hide left panel to give more space
+            leftPanelCollapsed = true;
+            break;
+          case "data":
+            // Data-focused: hide both sidebars
+            leftPanelCollapsed = true;
+            rightPanelCollapsed = true;
+            break;
+          case "default":
+          default:
+            // Default: show all panels
+            break;
+        }
+
         set((state) => ({
-          layout: { ...state.layout, preset },
+          layout: {
+            ...state.layout,
+            preset,
+            leftPanelCollapsed,
+            rightPanelCollapsed,
+          },
         }));
       },
 

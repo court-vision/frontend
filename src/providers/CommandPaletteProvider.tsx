@@ -20,6 +20,7 @@ import {
   CalendarCheck,
   User,
   UserPlus,
+  Terminal,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -156,6 +157,15 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       group: "Navigation",
       keywords: ["account", "profile", "settings"],
       action: () => router.push("/account"),
+    },
+    {
+      id: "nav-terminal",
+      label: "Go to Terminal",
+      description: "Open the terminal",
+      icon: <Terminal className="h-4 w-4" />,
+      group: "Navigation",
+      keywords: ["terminal", "command bar", "search"],
+      action: () => router.push("/terminal"),
     },
     {
       id: "nav-manage-teams",
@@ -327,6 +337,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       Digit4: () => router.push("/matchup"),
       Digit5: () => router.push("/streamers"),
       Digit6: () => router.push("/rankings"),
+      Digit7: () => router.push("/terminal"),
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {

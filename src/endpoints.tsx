@@ -19,6 +19,7 @@ export const YAHOO_API = `${API_BASE}/v1/internal/yahoo`;
 // API v1 Public endpoints
 export const RANKINGS_API = `${API_BASE}/v1/rankings`;
 export const PLAYERS_API = `${API_BASE}/v1/players`;
+export const GAMES_API = `${API_BASE}/v1/games`;
 
 // Maintenance mode endpoints - return "/api/maintenance" to be caught by middleware
 // export const PROD_BACKEND_ENDPOINT = "/api/maintenance";
