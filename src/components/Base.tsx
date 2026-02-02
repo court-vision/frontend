@@ -17,6 +17,7 @@ import {
   Trophy,
   Command,
   ChevronRight,
+  Terminal,
 } from "lucide-react";
 import Image from "next/image";
 import { useTheme } from "next-themes";
@@ -48,6 +49,7 @@ const navItems = [
   { href: "/matchup", label: "Matchup", icon: Swords, shortcut: "4" },
   { href: "/streamers", label: "Streamers", icon: UserPlus, shortcut: "5" },
   { href: "/rankings", label: "Rankings", icon: Trophy, shortcut: "6" },
+  { href: "/terminal", label: "Terminal", icon: Terminal, shortcut: "7" },
 ];
 
 const accountItems = [
