@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreChart";
+import Link from "next/link";
 import type { MatchupData, MatchupTeam, MatchupPlayer } from "@/types/matchup";
 import type { FantasyProvider } from "@/types/team";
 
@@ -234,11 +235,27 @@ export function MatchupDisplay({
   }
 
   if (error) {
+    const isYahooAuthError =
+      error.message.toLowerCase().includes("yahoo") &&
+      (error.message.toLowerCase().includes("authentication") ||
+        error.message.toLowerCase().includes("expired") ||
+        error.message.toLowerCase().includes("reconnect"));
+
     return (
       <Card className="p-6">
-        <p className="text-destructive text-center">
-          Error loading matchup: {error.message}
-        </p>
+        <div className="text-center space-y-4">
+          <p className="text-destructive">Error loading matchup: {error.message}</p>
+          {isYahooAuthError && (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Your Yahoo connection has expired. Please reconnect your Yahoo account to continue.
+              </p>
+              <Link href="/manage-teams">
+                <Button variant="outline">Manage Teams</Button>
+              </Link>
+            </div>
+          )}
+        </div>
       </Card>
     );
   }
