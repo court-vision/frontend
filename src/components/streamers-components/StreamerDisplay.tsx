@@ -38,6 +38,7 @@ import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDispla
 import { useTeams } from "@/app/context/TeamsContext";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import type { StreamerPlayer } from "@/types/streamer";
+import type { FantasyProvider } from "@/types/team";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C", "G", "F"] as const;
 type Position = (typeof POSITIONS)[number];
@@ -50,6 +51,8 @@ const AVG_DAYS_OPTIONS = [
 
 interface SelectedPlayer {
   playerId: number;
+  playerName: string;
+  playerTeam: string;
 }
 
 export default function StreamerDisplay() {
@@ -61,6 +64,7 @@ export default function StreamerDisplay() {
   }, [teams, selectedTeam]);
 
   const leagueInfo = selectedTeamData?.league_info || null;
+  const provider: FantasyProvider = leagueInfo?.provider || "espn";
 
   // Local state for filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -344,7 +348,11 @@ export default function StreamerDisplay() {
                     <TableRow
                       key={player.player_id}
                       className="cursor-pointer hover:bg-muted"
-                      onClick={() => setSelectedPlayer({ playerId: player.player_id })}
+                      onClick={() => setSelectedPlayer({
+                        playerId: player.player_id,
+                        playerName: player.name,
+                        playerTeam: player.team,
+                      })}
                     >
                       <TableCell className="text-center font-medium">
                         {index + 1}
@@ -424,7 +432,12 @@ export default function StreamerDisplay() {
             </DialogDescription>
           </DialogHeader>
           {selectedPlayer && (
-            <PlayerStatDisplay playerId={selectedPlayer.playerId} />
+            <PlayerStatDisplay
+              playerId={selectedPlayer.playerId}
+              playerName={selectedPlayer.playerName}
+              playerTeam={selectedPlayer.playerTeam}
+              provider={provider}
+            />
           )}
           <DialogFooter>
             <DialogClose asChild>

@@ -20,14 +20,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { RosterPlayer } from "@/types/team";
+import type { RosterPlayer, FantasyProvider } from "@/types/team";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 
 interface SelectedPlayer {
   playerId: number;
+  playerName: string;
+  playerTeam: string;
 }
 
-export function RosterDisplay({ roster }: { roster: RosterPlayer[] }) {
+interface RosterDisplayProps {
+  roster: RosterPlayer[];
+  provider?: FantasyProvider;
+}
+
+export function RosterDisplay({ roster, provider = "espn" }: RosterDisplayProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(
     null
   );
@@ -39,7 +46,11 @@ export function RosterDisplay({ roster }: { roster: RosterPlayer[] }) {
   let total_players = 0;
 
   const handlePlayerClick = (player: RosterPlayer) => {
-    setSelectedPlayer({ playerId: player.player_id });
+    setSelectedPlayer({
+      playerId: player.player_id,
+      playerName: player.name,
+      playerTeam: player.team,
+    });
   };
 
   return (
@@ -117,7 +128,12 @@ export function RosterDisplay({ roster }: { roster: RosterPlayer[] }) {
           </DialogHeader>
 
           {selectedPlayer && (
-            <PlayerStatDisplay playerId={selectedPlayer.playerId} />
+            <PlayerStatDisplay
+              playerId={selectedPlayer.playerId}
+              playerName={selectedPlayer.playerName}
+              playerTeam={selectedPlayer.playerTeam}
+              provider={provider}
+            />
           )}
 
           <DialogFooter>

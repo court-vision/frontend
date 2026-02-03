@@ -28,8 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { usePlayerStatsQuery, type PlayerIdType } from "@/hooks/usePlayer";
+import { usePlayerStatsQuery, usePlayerStatsByNameQuery, type PlayerIdType } from "@/hooks/usePlayer";
 import type { PlayerStats, AvgStats } from "@/types/player";
+import type { FantasyProvider } from "@/types/team";
 import {
   calculateMovingAverage,
   calculateRecentFormTrend,
@@ -38,15 +39,36 @@ import {
 import { cn } from "@/lib/utils";
 
 interface PlayerStatDisplayProps {
-  playerId: number;
+  // For ESPN leagues: use playerId
+  playerId?: number;
   idType?: PlayerIdType;
+  // For Yahoo leagues: use name + team
+  playerName?: string;
+  playerTeam?: string;
+  // Provider determines which lookup method to use
+  provider?: FantasyProvider;
 }
 
 export default function PlayerStatDisplay({
   playerId,
   idType = "espn",
+  playerName,
+  playerTeam,
+  provider = "espn",
 }: PlayerStatDisplayProps) {
-  const { data: playerStats, isLoading } = usePlayerStatsQuery(playerId, idType);
+  // Use name-based lookup for Yahoo, ID-based for ESPN
+  const useNameLookup = provider === "yahoo" && playerName && playerTeam;
+
+  const idQuery = usePlayerStatsQuery(
+    useNameLookup ? null : (playerId ?? null),
+    idType
+  );
+  const nameQuery = usePlayerStatsByNameQuery(
+    useNameLookup ? playerName : null,
+    useNameLookup ? playerTeam : null
+  );
+
+  const { data: playerStats, isLoading } = useNameLookup ? nameQuery : idQuery;
 
   if (isLoading) {
     return <div>Loading player stats...</div>;

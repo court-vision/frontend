@@ -328,6 +328,22 @@ class ApiClient {
     return null;
   }
 
+  async getPlayerStatsByName(
+    name: string,
+    team: string
+  ): Promise<PlayerStats | null> {
+    const params = new URLSearchParams({ name, team });
+    const response = await fetch(`${PLAYERS_API}/stats?${params.toString()}`);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: BaseApiResponse<PlayerStats> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
+  }
+
   // Games API (public - no auth required)
   async getGamesOnDate(date: string): Promise<GamesOnDateData | null> {
     const response = await fetch(`${GAMES_API}/${date}`);

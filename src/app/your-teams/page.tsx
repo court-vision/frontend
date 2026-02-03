@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useUIStore } from "@/stores/useUIStore";
 import { useTeamsQuery, useTeamRosterQuery } from "@/hooks/useTeams";
 import { RosterDisplay } from "@/components/teams-components/RosterDisplay";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import type { FantasyProvider } from "@/types/team";
 
 export default function Teams() {
   const { isSignedIn, isLoaded } = useUser();
@@ -14,6 +15,13 @@ export default function Teams() {
   const { data: teams, isLoading: isTeamsLoading } = useTeamsQuery();
   const { data: roster, isLoading: isRosterLoading } =
     useTeamRosterQuery(selectedTeam);
+
+  // Find the selected team's provider
+  const provider = useMemo<FantasyProvider>(() => {
+    if (!selectedTeam || !teams) return "espn";
+    const team = teams.find((t) => t.team_id === selectedTeam);
+    return team?.league_info?.provider || "espn";
+  }, [selectedTeam, teams]);
 
   // Auto-select first team if none selected
   useEffect(() => {
@@ -112,7 +120,7 @@ export default function Teams() {
         <div className="flex flex-col items-center gap-1 text-center w-full">
           {roster && roster.length > 0 ? (
             <div className="flex flex-wrap justify-center items-center gap-6 relative z-10 py-10 w-full max-w-7xl mx-auto px-4">
-              <RosterDisplay roster={roster} />
+              <RosterDisplay roster={roster} provider={provider} />
             </div>
           ) : (
             <div className="p-10">

@@ -25,9 +25,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreChart";
 import type { MatchupData, MatchupTeam, MatchupPlayer } from "@/types/matchup";
+import type { FantasyProvider } from "@/types/team";
 
 interface SelectedPlayer {
   playerId: number;
+  playerName: string;
+  playerTeam: string;
 }
 
 // Order for lineup slots (starters first, then bench/IR)
@@ -212,6 +215,7 @@ interface MatchupDisplayProps {
   isLoading: boolean;
   error: Error | null;
   teamId: number | null;
+  provider?: FantasyProvider;
 }
 
 export function MatchupDisplay({
@@ -219,6 +223,7 @@ export function MatchupDisplay({
   isLoading,
   error,
   teamId,
+  provider = "espn",
 }: MatchupDisplayProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(
     null
@@ -250,7 +255,11 @@ export function MatchupDisplay({
   }
 
   const handlePlayerClick = (player: MatchupPlayer) => {
-    setSelectedPlayer({ playerId: player.player_id });
+    setSelectedPlayer({
+      playerId: player.player_id,
+      playerName: player.name,
+      playerTeam: player.team,
+    });
   };
 
   const yourTeamWinning = matchup.your_team.current_score > matchup.opponent_team.current_score;
@@ -326,7 +335,12 @@ export function MatchupDisplay({
           </DialogHeader>
 
           {selectedPlayer && (
-            <PlayerStatDisplay playerId={selectedPlayer.playerId} />
+            <PlayerStatDisplay
+              playerId={selectedPlayer.playerId}
+              playerName={selectedPlayer.playerName}
+              playerTeam={selectedPlayer.playerTeam}
+              provider={provider}
+            />
           )}
 
           <DialogFooter>
