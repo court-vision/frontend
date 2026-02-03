@@ -280,9 +280,9 @@ export function SchedulePanel() {
       </div>
 
       {/* Footer with game count */}
-      <div className="px-3 py-1.5 border-t text-[10px] text-muted-foreground font-mono text-center">
+      {/* <div className="px-3 py-1.5 border-t text-[10px] text-muted-foreground font-mono text-center">
         {games.length} game{games.length !== 1 ? "s" : ""}
-      </div>
+      </div> */}
     </div>
   );
 }

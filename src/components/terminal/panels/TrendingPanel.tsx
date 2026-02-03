@@ -1,15 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
-import { useRankingsQuery } from "@/hooks/useRankings";
+import { useOwnershipTrendingQuery } from "@/hooks/useOwnershipTrending";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { RankingsPlayer } from "@/types/rankings";
+import type { TrendingPlayer } from "@/types/ownership";
 
 interface TrendingItemProps {
-  player: RankingsPlayer;
+  player: TrendingPlayer;
   type: "rising" | "falling";
   isActive: boolean;
   onFocus: () => void;
@@ -18,10 +17,22 @@ interface TrendingItemProps {
 function TrendingItem({ player, type, isActive, onFocus }: TrendingItemProps) {
   const isRising = type === "rising";
 
+  // Format velocity for display (e.g., +150% or -25%)
+  const velocityDisplay =
+    player.velocity > 0
+      ? `+${Math.round(player.velocity)}%`
+      : `${Math.round(player.velocity)}%`;
+
+  // Format ownership change (e.g., +5.2 or -3.1)
+  const changeDisplay =
+    player.change > 0
+      ? `+${player.change.toFixed(1)}`
+      : player.change.toFixed(1);
+
   return (
     <button
       className={cn(
-        "flex items-center gap-2 p-2 rounded text-sm w-full text-left transition-colors",
+        "flex items-center gap-2 p-1.5 rounded text-sm w-full text-left transition-colors",
         "hover:bg-muted/50",
         isActive && "bg-primary/10 border border-primary/30"
       )}
@@ -29,34 +40,34 @@ function TrendingItem({ player, type, isActive, onFocus }: TrendingItemProps) {
     >
       <div
         className={cn(
-          "h-6 w-6 rounded flex items-center justify-center shrink-0",
+          "h-5 w-5 rounded flex items-center justify-center shrink-0",
           isRising ? "bg-green-500/10" : "bg-red-500/10"
         )}
       >
         {isRising ? (
-          <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+          <TrendingUp className="h-3 w-3 text-green-500" />
         ) : (
-          <TrendingDown className="h-3.5 w-3.5 text-red-500" />
+          <TrendingDown className="h-3 w-3 text-red-500" />
         )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="font-medium truncate text-xs">{player.player_name}</div>
         <div className="text-[10px] text-muted-foreground font-mono">
-          {player.team}
+          {player.team ?? "FA"}
         </div>
       </div>
       <div className="text-right shrink-0">
         <div
           className={cn(
-            "font-mono text-xs font-medium tabular-nums",
+            "font-mono text-[11px] font-medium tabular-nums",
             isRising ? "text-green-500" : "text-red-500"
           )}
+          title={`Velocity: ${velocityDisplay}`}
         >
-          {isRising ? "+" : ""}
-          {player.rank_change}
+          {changeDisplay}
         </div>
         <div className="text-[10px] text-muted-foreground font-mono">
-          #{player.rank}
+          {player.current_ownership.toFixed(0)}%
         </div>
       </div>
     </button>
@@ -65,27 +76,20 @@ function TrendingItem({ player, type, isActive, onFocus }: TrendingItemProps) {
 
 export function TrendingPanel() {
   const { focusedPlayerId, setFocusedPlayer } = useTerminalStore();
-  const { data: rankings, isLoading, error } = useRankingsQuery();
 
-  // Calculate rising and falling players from rankings data
-  // Using rank_change as a proxy for trending (positive = rising, negative = falling)
-  const { rising, falling } = useMemo(() => {
-    if (!rankings) return { rising: [], falling: [] };
+  // Fetch ownership trending data with velocity-based sorting
+  // min_ownership=3 filters out deep roster noise
+  // limit=5 for compact display
+  const { data, isLoading, error } = useOwnershipTrendingQuery({
+    days: 7,
+    min_change: 3.0,
+    min_ownership: 3.0,
+    sort_by: "velocity",
+    limit: 5,
+  });
 
-    // Sort by rank change and take top movers
-    const sorted = [...rankings].sort((a, b) => b.rank_change - a.rank_change);
-
-    const rising = sorted
-      .filter((p) => p.rank_change > 0)
-      .slice(0, 5);
-
-    const falling = sorted
-      .filter((p) => p.rank_change < 0)
-      .slice(-5)
-      .reverse();
-
-    return { rising, falling };
-  }, [rankings]);
+  const rising = data?.trending_up ?? [];
+  const falling = data?.trending_down ?? [];
 
   if (isLoading) {
     return <TrendingSkeleton />;
@@ -101,30 +105,46 @@ export function TrendingPanel() {
 
   const hasData = rising.length > 0 || falling.length > 0;
 
+  // Empty state - show only when no data at all
+  if (!hasData) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+        <Minus className="h-8 w-8 text-muted-foreground/30 mb-2" />
+        <p className="text-xs text-muted-foreground">No trending data</p>
+        <p className="text-[10px] text-muted-foreground/70 mt-1">
+          Based on ownership changes
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full">
       {/* Rising Section */}
-      <div className="flex-1 min-h-0 flex flex-col">
-        <div className="flex items-center gap-1.5 px-3 py-2 border-b">
-          <TrendingUp className="h-3.5 w-3.5 text-green-500" />
-          <span className="text-xs font-medium uppercase tracking-wider">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 border-b shrink-0">
+          <TrendingUp className="h-3 w-3 text-green-500" />
+          <span className="text-[10px] font-medium uppercase tracking-wider">
             Rising
           </span>
+          <span className="text-[10px] text-muted-foreground ml-auto">
+            {rising.length}
+          </span>
         </div>
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-1.5">
           {rising.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-xs text-muted-foreground">No risers</p>
-            </div>
+            <p className="text-[10px] text-muted-foreground text-center py-2">
+              No risers
+            </p>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {rising.map((player) => (
                 <TrendingItem
-                  key={player.id}
+                  key={player.player_id}
                   player={player}
                   type="rising"
-                  isActive={player.id === focusedPlayerId}
-                  onFocus={() => setFocusedPlayer(player.id)}
+                  isActive={player.player_id === focusedPlayerId}
+                  onFocus={() => setFocusedPlayer(player.player_id)}
                 />
               ))}
             </div>
@@ -133,41 +153,36 @@ export function TrendingPanel() {
       </div>
 
       {/* Falling Section */}
-      <div className="flex-1 min-h-0 flex flex-col border-t">
-        <div className="flex items-center gap-1.5 px-3 py-2 border-b">
-          <TrendingDown className="h-3.5 w-3.5 text-red-500" />
-          <span className="text-xs font-medium uppercase tracking-wider">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden border-t">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 border-b shrink-0">
+          <TrendingDown className="h-3 w-3 text-red-500" />
+          <span className="text-[10px] font-medium uppercase tracking-wider">
             Falling
           </span>
+          <span className="text-[10px] text-muted-foreground ml-auto">
+            {falling.length}
+          </span>
         </div>
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-1.5">
           {falling.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-xs text-muted-foreground">No fallers</p>
-            </div>
+            <p className="text-[10px] text-muted-foreground text-center py-2">
+              No fallers
+            </p>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {falling.map((player) => (
                 <TrendingItem
-                  key={player.id}
+                  key={player.player_id}
                   player={player}
                   type="falling"
-                  isActive={player.id === focusedPlayerId}
-                  onFocus={() => setFocusedPlayer(player.id)}
+                  isActive={player.player_id === focusedPlayerId}
+                  onFocus={() => setFocusedPlayer(player.player_id)}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
-
-      {/* Future: ownership trending indicator */}
-      {!hasData && (
-        <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-          <Minus className="h-8 w-8 text-muted-foreground/30 mb-2" />
-          <p className="text-xs text-muted-foreground">No trending data</p>
-        </div>
-      )}
     </div>
   );
 }
@@ -175,25 +190,25 @@ export function TrendingPanel() {
 function TrendingSkeleton() {
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 p-3">
-        <div className="flex items-center gap-2 mb-3">
-          <Skeleton className="h-4 w-4" />
-          <Skeleton className="h-4 w-16" />
+      <div className="flex-1 p-2">
+        <div className="flex items-center gap-2 mb-2">
+          <Skeleton className="h-3 w-3" />
+          <Skeleton className="h-3 w-12" />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
+            <Skeleton key={i} className="h-9 w-full" />
           ))}
         </div>
       </div>
-      <div className="flex-1 p-3 border-t">
-        <div className="flex items-center gap-2 mb-3">
-          <Skeleton className="h-4 w-4" />
-          <Skeleton className="h-4 w-16" />
+      <div className="flex-1 p-2 border-t">
+        <div className="flex items-center gap-2 mb-2">
+          <Skeleton className="h-3 w-3" />
+          <Skeleton className="h-3 w-12" />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
+            <Skeleton key={i} className="h-9 w-full" />
           ))}
         </div>
       </div>

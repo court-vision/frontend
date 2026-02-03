@@ -9,6 +9,7 @@ import {
   STREAMERS_API,
   YAHOO_API,
   GAMES_API,
+  OWNERSHIP_API,
 } from "@/endpoints";
 import type {
   Team,
@@ -48,6 +49,11 @@ import type {
   YahooLeague,
   YahooTeam,
 } from "@/types/yahoo";
+import type {
+  OwnershipTrendingData,
+  OwnershipTrendingResponse,
+  OwnershipTrendingParams,
+} from "@/types/ownership";
 
 class ApiClient {
   private baseUrl: string;
@@ -351,6 +357,38 @@ class ApiClient {
       throw new Error(`API request failed: ${response.statusText}`);
     }
     const data: BaseApiResponse<GamesOnDateData> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
+  }
+
+  // Ownership API (public - no auth required)
+  async getOwnershipTrending(
+    params: OwnershipTrendingParams = {}
+  ): Promise<OwnershipTrendingData | null> {
+    const searchParams = new URLSearchParams();
+    if (params.days !== undefined)
+      searchParams.append("days", params.days.toString());
+    if (params.min_change !== undefined)
+      searchParams.append("min_change", params.min_change.toString());
+    if (params.min_ownership !== undefined)
+      searchParams.append("min_ownership", params.min_ownership.toString());
+    if (params.sort_by !== undefined)
+      searchParams.append("sort_by", params.sort_by);
+    if (params.direction !== undefined)
+      searchParams.append("direction", params.direction);
+    if (params.limit !== undefined)
+      searchParams.append("limit", params.limit.toString());
+
+    const queryString = searchParams.toString();
+    const url = `${OWNERSHIP_API}/trending${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: OwnershipTrendingResponse = await response.json();
     if (data.status === "success" && data.data) {
       return data.data;
     }

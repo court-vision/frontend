@@ -134,7 +134,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
   }, [handleKeyDown]);
 
   return (
-    <div className={cn("flex flex-col h-[calc(100vh-3.5rem)]", className)}>
+    <div className={cn("flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden", className)}>
       {/* Command Bar */}
       <TerminalCommandBar />
 
@@ -152,7 +152,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
               defaultSize="25%"
               minSize="15%"
               maxSize="40%"
-              className="flex flex-col gap-2 p-2"
+              className="flex flex-col gap-2 p-2 overflow-hidden"
             >
               <PanelContainer
                 definitionId="player-focus"
@@ -170,12 +170,12 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         )}
 
         {/* Center Workspace */}
-        <Panel id="center-panel" defaultSize="50%" minSize="30%" className="flex flex-col gap-2 p-2">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 flex-1">
+        <Panel id="center-panel" defaultSize="50%" minSize="30%" className="flex flex-col gap-2 p-2 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 h-[45%] min-h-0">
             <PanelContainer
               definitionId="performance-chart"
               showClose={false}
-              className="min-h-[200px]"
+              className="h-full"
             >
               <PerformanceChartPanel />
             </PanelContainer>
@@ -183,7 +183,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
               <PanelContainer
                 definitionId="comparison"
                 showClose={false}
-                className="min-h-[200px]"
+                className="h-full"
               >
                 <ComparisonPanel />
               </PanelContainer>
@@ -191,7 +191,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
               <PanelContainer
                 definitionId="advanced-stats"
                 showClose={false}
-                className="min-h-[200px]"
+                className="h-full"
               >
                 <AdvancedStatsPanel />
               </PanelContainer>
@@ -200,7 +200,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
           <PanelContainer
             definitionId="game-log"
             showClose={false}
-            className="flex-1 min-h-[200px]"
+            className="flex-1 min-h-0"
           >
             <GameLogPanel />
           </PanelContainer>
@@ -216,22 +216,15 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
               id="right-panel"
               defaultSize="25%"
               minSize="15%"
-              maxSize="35%"
-              className="flex flex-col gap-2 p-2"
+              maxSize="30%"
+              className="flex flex-col gap-2 p-2 overflow-hidden"
             >
-              <PanelContainer
-                definitionId="watchlist"
-                showClose={false}
-                showMaximize={false}
-                className="flex-1"
-              >
-                <WatchlistPanel />
-              </PanelContainer>
+              <WatchlistPanel />
               <PanelContainer
                 definitionId="schedule"
                 showClose={false}
                 showMaximize={false}
-                className="flex-1"
+                className="shrink-0 h-[300px]"
               >
                 <SchedulePanel />
               </PanelContainer>
@@ -239,7 +232,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
                 definitionId="trending"
                 showClose={false}
                 showMaximize={false}
-                className="flex-[0.5]"
+                className="flex-1 min-h-0"
               >
                 <TrendingPanel />
               </PanelContainer>

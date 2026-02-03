@@ -23,6 +23,7 @@ interface PanelContainerProps {
   showMaximize?: boolean;
   className?: string;
   contentClassName?: string;
+  style?: React.CSSProperties;
 }
 
 export function PanelContainer({
@@ -35,6 +36,7 @@ export function PanelContainer({
   showMaximize = true,
   className,
   contentClassName,
+  style,
 }: PanelContainerProps) {
   const [isMaximized, setIsMaximized] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuPosition | null>(null);
@@ -105,6 +107,7 @@ export function PanelContainer({
           isMaximized && "fixed inset-4 z-50",
           className
         )}
+        style={isMaximized ? undefined : style}
         onContextMenu={handleContextMenu}
       >
         {showToolbar && (
