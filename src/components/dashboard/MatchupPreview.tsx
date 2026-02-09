@@ -49,7 +49,7 @@ function MatchupPreviewContent({ matchup }: { matchup: MatchupData }) {
             {matchup.your_team.team_name}
           </p>
           <p className="font-mono text-3xl font-bold tabular-nums">
-            {yourScore.toFixed(1)}
+            {yourScore}
           </p>
         </div>
 
@@ -60,7 +60,7 @@ function MatchupPreviewContent({ matchup }: { matchup: MatchupData }) {
           </Badge>
           <span className="text-lg font-bold text-muted-foreground my-1">VS</span>
           <p className="font-mono text-xs text-muted-foreground">
-            {scoreDiff > 0 ? "+" : ""}{scoreDiff.toFixed(1)}
+            {scoreDiff > 0 ? "+" : ""}{scoreDiff}
           </p>
         </div>
 
@@ -70,7 +70,7 @@ function MatchupPreviewContent({ matchup }: { matchup: MatchupData }) {
             {matchup.opponent_team.team_name}
           </p>
           <p className="font-mono text-3xl font-bold tabular-nums text-muted-foreground">
-            {opponentScore.toFixed(1)}
+            {opponentScore}
           </p>
         </div>
       </div>
