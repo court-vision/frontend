@@ -18,6 +18,7 @@ import {
   Command,
   ChevronRight,
   Terminal,
+  Database,
 } from "lucide-react";
 import Image from "next/image";
 import { useTheme } from "next-themes";
@@ -50,6 +51,7 @@ const navItems = [
   { href: "/streamers", label: "Streamers", icon: UserPlus, shortcut: "5" },
   { href: "/rankings", label: "Rankings", icon: Trophy, shortcut: "6" },
   { href: "/terminal", label: "Terminal", icon: Terminal, shortcut: "7" },
+  { href: "/query-builder", label: "Query Builder", icon: Database, shortcut: "8" },
 ];
 
 const accountItems = [

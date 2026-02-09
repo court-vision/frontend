@@ -21,6 +21,7 @@ import {
   User,
   UserPlus,
   Terminal,
+  Database,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -166,6 +167,15 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       group: "Navigation",
       keywords: ["terminal", "command bar", "search"],
       action: () => router.push("/terminal"),
+    },
+    {
+      id: "nav-query-builder",
+      label: "Go to Query Builder",
+      description: "Open the SQL query builder",
+      icon: <Database className="h-4 w-4" />,
+      group: "Navigation",
+      keywords: ["query", "sql", "database", "builder", "sqlmate"],
+      action: () => router.push("/query-builder"),
     },
     {
       id: "nav-manage-teams",
@@ -338,6 +348,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       Digit5: () => router.push("/streamers"),
       Digit6: () => router.push("/rankings"),
       Digit7: () => router.push("/terminal"),
+      Digit8: () => router.push("/query-builder"),
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -454,7 +465,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
             <span><kbd className="px-1 py-0.5 rounded bg-muted">↵</kbd> select</span>
             <span><kbd className="px-1 py-0.5 rounded bg-muted">esc</kbd> close</span>
           </div>
-          <span className="text-muted-foreground/70">⌥1-6 for pages</span>
+          <span className="text-muted-foreground/70">⌥1-8 for pages</span>
         </div>
       </CommandDialog>
     </CommandPaletteContext.Provider>

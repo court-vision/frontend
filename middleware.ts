@@ -6,6 +6,7 @@ const isProtectedRoute = createRouteMatcher([
   "/lineup-generation(.*)",
   "/manage-lineups(.*)",
   "/manage-teams(.*)",
+  "/query-builder(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
