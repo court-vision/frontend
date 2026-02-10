@@ -13,6 +13,7 @@ import {
   Activity,
   Target,
   Command,
+  Github,
 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 
@@ -747,9 +748,19 @@ function WelcomeView() {
               Court Vision
             </span>
           </div>
-          <p className="text-[10px] text-muted-foreground/40">
-            Fantasy basketball analytics platform
-          </p>
+          <div className="flex items-center gap-4">
+            <a
+              href="https://github.com/court-vision"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Github className="h-4 w-4" />
+            </a>
+            <p className="text-[10px] text-muted-foreground">
+              Fantasy basketball analytics platform
+            </p>
+          </div>
         </div>
       </footer>
     </div>
