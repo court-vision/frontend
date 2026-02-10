@@ -6,6 +6,8 @@ const isProtectedRoute = createRouteMatcher([
   "/lineup-generation(.*)",
   "/manage-lineups(.*)",
   "/manage-teams(.*)",
+  "/matchup(.*)",
+  "/streamers(.*)",
   "/query-builder(.*)",
 ]);
 
