@@ -19,13 +19,24 @@ export interface Lineup {
   Improvement: number;
   Timestamp: string;
   Week: number;
-  Threshold: number;
+  StreamingSlots: number;
 }
 
 export interface LineupGenerationRequest {
   team_id: number;
-  threshold: number;
+  streaming_slots: number;
   week: number;
+}
+
+export interface ScheduleWeek {
+  week: number;
+  start_date: string;
+  end_date: string;
+}
+
+export interface ScheduleWeeksData {
+  weeks: ScheduleWeek[];
+  current_week: number | null;
 }
 
 export interface LineupSaveRequest {
@@ -34,6 +45,7 @@ export interface LineupSaveRequest {
 }
 
 // Backend API Response Types
+export type ScheduleWeeksResponse = BaseApiResponse<ScheduleWeeksData>;
 export type GenerateLineupResponse = BaseApiResponse<Lineup>;
 export type GetLineupsResponse = BaseApiResponse<Lineup[]>;
 export type SaveLineupResponse = BaseApiResponse<{ lineup_id: number }> & {

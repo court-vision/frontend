@@ -16,7 +16,7 @@ interface LineupContextType {
   setSavedLineups: (lineups: Lineup[]) => void;
   isLoading: boolean;
   setIsLoading: (isLoading: boolean) => void;
-  generateLineup: (threshold: string, week: string) => void;
+  generateLineup: (streamingSlots: string, week: string) => void;
   saveLineup: (lineupToSave: Lineup) => void;
   deleteLineup: (lineupId: number) => void;
 }
@@ -27,7 +27,7 @@ const initialLineup: Lineup = {
   Improvement: 0,
   Timestamp: "",
   Week: 0,
-  Threshold: 0,
+  StreamingSlots: 0,
 };
 
 const LineupContext = createContext<LineupContextType>({
@@ -58,14 +58,14 @@ export const LineupProvider = ({ children }: { children: React.ReactNode }) => {
   const { mutate: saveLineupMutation } = useSaveLineupMutation();
   const { mutate: deleteLineupMutation } = useDeleteLineupMutation();
 
-  const generateLineup = (threshold: string, week: string) => {
+  const generateLineup = (streamingSlots: string, week: string) => {
     if (!selectedTeam) return;
 
     setIsLoading(true);
     generateLineupMutation(
       {
         team_id: selectedTeam,
-        threshold: parseFloat(threshold),
+        streaming_slots: parseInt(streamingSlots),
         week: parseInt(week),
       },
       {

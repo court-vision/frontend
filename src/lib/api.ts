@@ -10,6 +10,7 @@ import {
   YAHOO_API,
   GAMES_API,
   OWNERSHIP_API,
+  SCHEDULE_API,
 } from "@/endpoints";
 import type {
   Team,
@@ -29,6 +30,8 @@ import type {
   GetLineupsResponse,
   SaveLineupResponse,
   DeleteLineupResponse,
+  ScheduleWeeksData,
+  ScheduleWeeksResponse,
 } from "@/types/lineup";
 import type { RankingsPlayer } from "@/types/rankings";
 import type { PlayerStats } from "@/types/player";
@@ -357,6 +360,19 @@ class ApiClient {
       throw new Error(`API request failed: ${response.statusText}`);
     }
     const data: BaseApiResponse<GamesOnDateData> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
+  }
+
+  // Schedule API (public - no auth required)
+  async getScheduleWeeks(): Promise<ScheduleWeeksData | null> {
+    const response = await fetch(`${SCHEDULE_API}/weeks`);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: ScheduleWeeksResponse = await response.json();
     if (data.status === "success" && data.data) {
       return data.data;
     }

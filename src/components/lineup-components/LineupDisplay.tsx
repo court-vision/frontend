@@ -35,8 +35,8 @@ export default function LineupDisplay({ lineup }: { lineup: Lineup }) {
   if (lineup.Lineup.length === 0) {
     return (
       <div className="text-center text-muted-foreground py-8 px-4">
-        Enter your threshold for considering a player &quot;streamable&quot;
-        and the week you wish to generate a lineup for to get started.
+        Select your number of streaming slots and matchup week to generate
+        an optimized lineup.
       </div>
     );
   }

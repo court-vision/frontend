@@ -39,7 +39,7 @@ export function ManageLineupsTable() {
           <TableHead className="text-left w-[20vw]">Timestamp</TableHead>
           <TableHead className="text-center w-[10vw]">Improvement</TableHead>
           <TableHead className="text-center w-[10vw]">Week</TableHead>
-          <TableHead className="text-center w-[10vw]">Threshold</TableHead>
+          <TableHead className="text-center w-[10vw]">Streaming Slots</TableHead>
           <TableHead className="text-center w-[8vw]">View</TableHead>
           <TableHead className="text-center w-[8vw]">Delete</TableHead>
         </TableRow>
@@ -59,7 +59,7 @@ export function ManageLineupsTable() {
                   {savedLineup.Week}
                 </TableCell>
                 <TableCell className="text-center">
-                  {savedLineup.Threshold}
+                  {savedLineup.StreamingSlots}
                 </TableCell>
                 <TableCell className="text-center">
                   <div className="inline-block">

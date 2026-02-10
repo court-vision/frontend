@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,12 +13,18 @@ import {
   FormMessage,
 } from "../ui/form";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import {
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "../ui/card";
 import { Button } from "../ui/button";
 import Image from "next/image";
@@ -25,34 +32,59 @@ import { useUIStore } from "@/stores/useUIStore";
 import { toast } from "sonner";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { GenerateLineupResponse, LineupGenerationRequest } from "@/types/lineup";
+import { useScheduleWeeksQuery } from "@/hooks/useLineups";
+import { useMatchupQuery } from "@/hooks/useMatchup";
 
 interface StopzFormProps {
   generateLineupMutation: UseMutationResult<GenerateLineupResponse, Error, LineupGenerationRequest>;
 }
 
 const stopzInput = z.object({
-  threshold: z
+  streaming_slots: z
     .string()
-    .regex(/^\d+(\.\d+)?$/, "Value must be a decimal number"),
-  week: z.string().min(1).regex(/^\d+$/, { message: "Week must be a number" }),
+    .min(1, "Required")
+    .regex(/^\d+$/, "Must be a whole number")
+    .refine((v) => parseInt(v) >= 1 && parseInt(v) <= 10, "Must be between 1 and 10"),
+  week: z.string().min(1, "Required"),
 });
 
 export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
-  const { selectedTeam } = useUIStore();
+  const { selectedTeam, selectedProvider } = useUIStore();
+  const { data: scheduleData } = useScheduleWeeksQuery();
+  const { data: matchupData } = useMatchupQuery(selectedTeam);
 
   const form = useForm<z.infer<typeof stopzInput>>({
     resolver: zodResolver(stopzInput),
     defaultValues: {
-      threshold: "",
+      streaming_slots: "",
       week: "",
     },
   });
 
   const reset = form.reset;
 
+  // Auto-fill the week when data is available
+  useEffect(() => {
+    // Don't override if user already selected a week
+    if (form.getValues("week")) return;
+
+    let currentWeek: number | null = null;
+
+    if (selectedProvider === "yahoo" && matchupData) {
+      // Yahoo: use platform-specific matchup period
+      currentWeek = matchupData.matchup_period;
+    } else if (scheduleData) {
+      // ESPN (or no provider): use date-based current week from schedule
+      currentWeek = scheduleData.current_week;
+    }
+
+    if (currentWeek) {
+      form.setValue("week", currentWeek.toString());
+    }
+  }, [scheduleData, matchupData, selectedProvider, form]);
+
   const handleClearClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
-    console.log("Clearing form");
     reset();
   };
 
@@ -65,7 +97,7 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
     generateLineupMutation.mutate(
       {
         team_id: selectedTeam,
-        threshold: parseFloat(data.threshold),
+        streaming_slots: parseInt(data.streaming_slots),
         week: parseInt(data.week),
       },
       {
@@ -84,6 +116,12 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
     );
   };
 
+  // Format date for display (e.g., "2025-10-21" → "Oct 21")
+  const formatDate = (isoDate: string) => {
+    const date = new Date(isoDate + "T00:00:00");
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
   return (
     <div className="w-full pl-4 pr-4">
       <Card>
@@ -94,7 +132,6 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
         </CardHeader>
 
         <CardContent>
-          {/* <CardDescription>Select a team or enter a new one</CardDescription> */}
           <Form {...form}>
             <form
               className="flex flex-col gap-3"
@@ -102,30 +139,20 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
             >
               <FormField
                 control={form.control}
-                name="threshold"
+                name="streaming_slots"
                 render={({ field }) => {
                   return (
                     <FormItem>
                       <FormLabel>
-                        Threshold
-                        {/* <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <div className="h-4 w-5 rounded-full border ml-1 text-md">?</div>
-                            </TooltipTrigger>
-                            <TooltipContent className="text-center">
-                              <p>
-                                &quot;I am okay dropping any player under (threshold) average <br />
-                                fantasy points per game&quot;
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider> */}
+                        Streaming Slots
                         <span style={{ color: "red" }}> *</span>
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder='"I am ok dropping anybody who averages less than {threshold} points"'
+                          type="number"
+                          min={1}
+                          max={10}
+                          placeholder="Number of roster spots to use for streaming"
                           {...field}
                         />
                       </FormControl>
@@ -143,27 +170,28 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
                     <FormItem>
                       <FormLabel>
                         Matchup Week
-                        {/* <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <div className="h-4 w-5 rounded-full border ml-1 text-md">?</div>
-                            </TooltipTrigger>
-                            <TooltipContent className="text-center">
-                              <p>
-                                Matchup week is the matchup number for which you want <br />
-                                to generate a lineup.
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider> */}
                         <span style={{ color: "red" }}> *</span>
                       </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Week to generate a lineup for"
-                          {...field}
-                        />
-                      </FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a matchup week" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {scheduleData?.weeks.map((week) => (
+                            <SelectItem
+                              key={week.week}
+                              value={week.week.toString()}
+                            >
+                              Week {week.week}: {formatDate(week.start_date)} - {formatDate(week.end_date)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   );
@@ -195,7 +223,7 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
                       src="/arrow.png"
                       alt="submit"
                       width={30}
-                      height={30} 
+                      height={30}
                     />
                   )}
                 </Button>

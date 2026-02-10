@@ -89,7 +89,7 @@ export interface LineupResponse {
   lineup_data: any;
   created_at?: string;
   week?: string;
-  threshold?: number;
+  streaming_slots?: number;
 }
 
 // Request Types
