@@ -2,17 +2,16 @@ import { ManageLineupsTable } from "@/components/lineup-components/ManageLineups
 
 export default function ManageLineups() {
   return (
-    <>
-      <div className="flex items-center mb-4">
-        <h1 className="text-lg font-semibold md:text-2xl">Manage Lineups</h1>
-      </div>
-      <div className="flex-1 rounded-lg border border-primary border-dashed shadow-sm">
-        <div className="flex flex-col gap-1">
-          <div>
-            <ManageLineupsTable />
-          </div>
-        </div>
-      </div>
-    </>
+    <div className="space-y-4 animate-slide-up-fade">
+      <section>
+        <h1 className="font-display text-xl font-bold tracking-tight">
+          Manage Lineups
+        </h1>
+        <p className="text-muted-foreground text-xs mt-0.5">
+          View and manage your saved lineups.
+        </p>
+      </section>
+      <ManageLineupsTable />
+    </div>
   );
 }

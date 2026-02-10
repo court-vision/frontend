@@ -134,7 +134,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
   }, [handleKeyDown]);
 
   return (
-    <div className={cn("flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden", className)}>
+    <div className={cn("flex flex-col h-[calc(100vh-4.5rem)] overflow-hidden", className)}>
       {/* Command Bar */}
       <TerminalCommandBar />
 

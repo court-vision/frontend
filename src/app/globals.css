@@ -3,104 +3,74 @@
 @tailwind utilities;
 
 @layer base {
+  /* Mission Control with warm accent */
   :root {
-    --background: 40 20% 98%;
-    --foreground: 20 20% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 20 20% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 20 20% 10%;
-    --primary: 32 95% 52%;
+    /* Core backgrounds - cool dark with slight warmth */
+    --background: 220 16% 5%;
+    --foreground: 215 20% 90%;
+
+    /* Surface hierarchy */
+    --card: 220 14% 8%;
+    --card-foreground: 215 20% 90%;
+    --popover: 220 14% 10%;
+    --popover-foreground: 215 20% 90%;
+
+    /* Primary - warm amber-orange (basketball / ESPN energy) */
+    --primary: 28 92% 52%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 40 10% 92%;
-    --secondary-foreground: 20 20% 10%;
-    --tertiary: 142.1 70.6% 45.3%;
-    --tertiary-foreground: 0 0% 100%;
-    --muted: 40 10% 94%;
-    --muted-foreground: 20 10% 45%;
-    --accent: 40 10% 92%;
-    --accent-foreground: 20 20% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 20 10% 88%;
-    --input: 20 10% 88%;
-    --ring: 32 95% 52%;
-    --radius: 0.75rem;
 
-    /* Chart colors */
-    --chart-1: 32 95% 52%;
-    --chart-2: 142 71% 45%;
-    --chart-3: 45 93% 58%;
-    --chart-4: 200 70% 50%;
-    --chart-5: 280 65% 55%;
+    /* Secondary */
+    --secondary: 220 12% 12%;
+    --secondary-foreground: 215 20% 90%;
 
-    /* Status colors */
-    --status-win: 142 71% 45%;
-    --status-loss: 0 72% 51%;
-    --status-projected: 45 93% 58%;
-    --status-neutral: 20 10% 50%;
-  }
+    /* Tertiary - operational green */
+    --tertiary: 152 72% 46%;
+    --tertiary-foreground: 220 16% 5%;
 
-  .dark {
-    /* Refined dark base with warm undertones */
-    --background: 20 20% 4%;
-    --foreground: 40 15% 95%;
-    --card: 20 18% 7%;
-    --card-foreground: 40 15% 95%;
-    --popover: 20 18% 7%;
-    --popover-foreground: 40 15% 95%;
+    /* Muted */
+    --muted: 220 12% 14%;
+    --muted-foreground: 215 10% 48%;
 
-    /* Refined amber-orange primary */
-    --primary: 32 95% 52%;
-    --primary-foreground: 20 20% 4%;
-
-    /* Warm dark secondary */
-    --secondary: 20 15% 12%;
-    --secondary-foreground: 40 15% 95%;
-
-    /* Keep green for success/tertiary */
-    --tertiary: 142 71% 45%;
-    --tertiary-foreground: 20 20% 4%;
-
-    /* Muted surfaces */
-    --muted: 20 15% 10%;
-    --muted-foreground: 20 10% 55%;
-
-    /* Accent */
-    --accent: 20 15% 12%;
-    --accent-foreground: 40 15% 95%;
+    /* Accent - same warm orange family */
+    --accent: 220 12% 12%;
+    --accent-foreground: 215 20% 90%;
 
     /* Destructive */
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 40 15% 95%;
+    --destructive: 0 78% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Borders with subtle warmth */
-    --border: 20 12% 14%;
-    --input: 20 12% 14%;
-    --ring: 32 95% 52%;
+    /* Borders - subtle cool gray */
+    --border: 215 12% 17%;
+    --input: 215 12% 17%;
+    --ring: 28 92% 52%;
 
-    /* Chart colors - warm palette */
-    --chart-1: 32 95% 52%;
-    --chart-2: 142 71% 45%;
+    --radius: 0.5rem;
+
+    /* Chart colors */
+    --chart-1: 28 92% 52%;
+    --chart-2: 152 72% 46%;
     --chart-3: 45 93% 58%;
-    --chart-4: 200 70% 50%;
-    --chart-5: 280 65% 55%;
+    --chart-4: 200 70% 55%;
+    --chart-5: 280 65% 58%;
 
     /* Status colors */
-    --status-win: 142 71% 45%;
-    --status-loss: 0 72% 51%;
+    --status-win: 152 72% 46%;
+    --status-loss: 0 78% 55%;
     --status-projected: 45 93% 58%;
-    --status-neutral: 20 10% 50%;
+    --status-neutral: 215 10% 48%;
+
+    /* Signal colors */
+    --signal-hot: 15 90% 55%;
+    --signal-cold: 210 75% 55%;
+    --signal-live: 152 72% 46%;
+    --signal-stale: 215 10% 35%;
+
+    /* Grid system */
+    --grid-line: 215 12% 9%;
   }
 
-  /* Yahoo provider theme - purple instead of orange */
+  /* Yahoo provider theme override */
   [data-provider="yahoo"] {
-    --primary: 270 65% 55%;
-    --ring: 270 65% 55%;
-    --chart-1: 270 65% 55%;
-  }
-
-  [data-provider="yahoo"].dark {
     --primary: 270 70% 60%;
     --ring: 270 70% 60%;
     --chart-1: 270 70% 60%;
@@ -111,7 +81,56 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    background-image:
+      linear-gradient(hsl(var(--grid-line)) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--grid-line)) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: -1px -1px;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(215 12% 22%);
+    border-radius: 2px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.4);
+  }
+}
+
+@layer utilities {
+  /* Panel bezel effect */
+  .panel-bezel {
+    border: 1px solid hsl(var(--border));
+    box-shadow:
+      inset 0 0 0 1px hsl(215 12% 10%),
+      0 0 0 1px hsl(220 16% 3%);
+  }
+
+  /* Vignette overlay */
+  .vignette::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(
+      ellipse 80% 60% at 50% 40%,
+      transparent 0%,
+      hsl(220 16% 3% / 0.5) 100%
+    );
+    pointer-events: none;
+    z-index: 0;
   }
 }

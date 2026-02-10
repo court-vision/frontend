@@ -5,7 +5,9 @@ import { useUser } from "@clerk/nextjs";
 import { useUIStore } from "@/stores/useUIStore";
 import { useTeamsQuery, useTeamRosterQuery } from "@/hooks/useTeams";
 import { RosterDisplay } from "@/components/teams-components/RosterDisplay";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import type { FantasyProvider } from "@/types/team";
 
@@ -23,6 +25,12 @@ export default function Teams() {
     return team?.league_info?.provider || "espn";
   }, [selectedTeam, teams]);
 
+  // Get team info for summary strip
+  const selectedTeamData = useMemo(() => {
+    if (!selectedTeam || !teams) return null;
+    return teams.find((t) => t.team_id === selectedTeam);
+  }, [selectedTeam, teams]);
+
   // Auto-select first team if none selected
   useEffect(() => {
     if (isSignedIn && teams && teams.length > 0 && !selectedTeam) {
@@ -30,105 +38,102 @@ export default function Teams() {
     }
   }, [isSignedIn, teams, selectedTeam, setSelectedTeam]);
 
-  if (!isLoaded) {
+  const pageHeader = (
+    <section>
+      <h1 className="font-display text-xl font-bold tracking-tight">
+        Your Teams
+      </h1>
+      <p className="text-muted-foreground text-xs mt-0.5">
+        Roster overview and team analysis.
+      </p>
+    </section>
+  );
+
+  if (!isLoaded || isTeamsLoading || (selectedTeam && isRosterLoading)) {
     return (
-      <>
-        <div className="flex items-center mb-4">
-          <h1 className="text-lg font-semibold md:text-2xl">Your Teams</h1>
+      <div className="space-y-4 animate-slide-up-fade">
+        {pageHeader}
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-full rounded-md" />
+          <Skeleton className="h-[400px] w-full rounded-md" />
         </div>
-        <div className="space-y-4 w-full max-w-7xl mx-auto">
-          <Skeleton className="h-8 w-[200px]" />
-          <Skeleton className="h-[400px] w-full rounded-xl" />
-        </div>
-      </>
+      </div>
     );
   }
 
   if (!isSignedIn) {
     return (
-      <>
-        <div className="flex items-center mb-4">
-          <h1 className="text-lg font-semibold md:text-2xl">Your Teams</h1>
-        </div>
-        <div className="flex flex-1 justify-center rounded-lg border border-primary border-dashed shadow-sm p-8">
-          <div className="flex flex-col items-center gap-1 text-center">
-            <p className="text-sm text-gray-500">You are not logged in.</p>
-            <p className="text-sm text-gray-500">
-              Please login to view your teams.
-            </p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (isTeamsLoading || (selectedTeam && isRosterLoading)) {
-    return (
-      <>
-        <div className="flex items-center mb-4">
-          <h1 className="text-lg font-semibold md:text-2xl">Your Teams</h1>
-        </div>
-        <div className="space-y-4 w-full max-w-7xl mx-auto">
-          <Skeleton className="h-8 w-[200px]" />
-          <Skeleton className="h-[400px] w-full rounded-xl" />
-        </div>
-      </>
+      <div className="space-y-4 animate-slide-up-fade">
+        {pageHeader}
+        <Card variant="panel" className="p-8">
+          <p className="text-sm text-muted-foreground text-center">
+            Please sign in to view your teams.
+          </p>
+        </Card>
+      </div>
     );
   }
 
   if (!teams || teams.length === 0) {
     return (
-      <>
-        <div className="flex items-center mb-4">
-          <h1 className="text-lg font-semibold md:text-2xl">Your Teams</h1>
-        </div>
-        <div className="flex flex-1 justify-center rounded-lg border border-primary border-dashed shadow-sm p-8">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <p>You don&apos;t have any teams yet.</p>
-            <Link
-              href="/manage-teams"
-              className="text-blue-500 hover:underline"
-            >
-              Add a team
+      <div className="space-y-4 animate-slide-up-fade">
+        {pageHeader}
+        <Card variant="panel" className="p-8">
+          <div className="text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              You don&apos;t have any teams yet.
+            </p>
+            <Link href="/manage-teams">
+              <Button size="sm">Add a Team</Button>
             </Link>
           </div>
-        </div>
-      </>
+        </Card>
+      </div>
     );
   }
 
   if (!selectedTeam) {
     return (
-      <>
-        <div className="flex items-center mb-4">
-          <h1 className="text-lg font-semibold md:text-2xl">Your Teams</h1>
-        </div>
-        <div className="flex flex-1 justify-center items-center p-8 border border-dashed rounded-lg">
-          <p>Please select a team from the menu.</p>
-        </div>
-      </>
+      <div className="space-y-4 animate-slide-up-fade">
+        {pageHeader}
+        <Card variant="panel" className="p-8">
+          <p className="text-sm text-muted-foreground text-center">
+            Select a team from the nav bar to view your roster.
+          </p>
+        </Card>
+      </div>
     );
   }
 
+  const teamName =
+    selectedTeamData?.league_info?.team_name || "Team";
+  const leagueName =
+    selectedTeamData?.league_info?.league_name || "";
+
   return (
-    <>
-      <div className="flex items-center mb-4">
-        <h1 className="text-lg font-semibold md:text-2xl">Your Teams</h1>
+    <div className="space-y-4 animate-slide-up-fade">
+      {pageHeader}
+
+      {/* Team summary strip */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground px-1">
+        <span>
+          <span className="text-foreground font-medium">{teamName}</span>
+          {leagueName && <span> &middot; {leagueName}</span>}
+        </span>
+        <span className="ml-auto">
+          {roster ? `${roster.length} players` : ""}
+        </span>
       </div>
 
-      <div className="flex flex-1 justify-center rounded-lg border border-primary border-dashed shadow-sm p-4">
-        <div className="flex flex-col items-center gap-1 text-center w-full">
-          {roster && roster.length > 0 ? (
-            <div className="flex flex-wrap justify-center items-center gap-6 relative z-10 py-10 w-full max-w-7xl mx-auto px-4">
-              <RosterDisplay roster={roster} provider={provider} />
-            </div>
-          ) : (
-            <div className="p-10">
-              <p>No roster data available.</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+      {roster && roster.length > 0 ? (
+        <RosterDisplay roster={roster} provider={provider} />
+      ) : (
+        <Card variant="panel" className="p-8">
+          <p className="text-sm text-muted-foreground text-center">
+            No roster data available.
+          </p>
+        </Card>
+      )}
+    </div>
   );
 }

@@ -27,7 +27,6 @@ import {
   CardHeader,
 } from "../ui/card";
 import { Button } from "../ui/button";
-import Image from "next/image";
 import { useUIStore } from "@/stores/useUIStore";
 import { toast } from "sonner";
 import type { UseMutationResult } from "@tanstack/react-query";
@@ -123,115 +122,99 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
   };
 
   return (
-    <div className="w-full pl-4 pr-4">
-      <Card>
-        <CardHeader>
-          <CardDescription>
-            Get an optimized streaming lineup for your fantasy basketball team.
-          </CardDescription>
-        </CardHeader>
+    <Card variant="panel">
+      <CardHeader>
+        <CardDescription className="text-xs">
+          Configure your streaming slots and matchup week to generate an optimized lineup.
+        </CardDescription>
+      </CardHeader>
 
-        <CardContent>
-          <Form {...form}>
-            <form
-              className="flex flex-col gap-3"
-              onSubmit={form.handleSubmit(handleSubmit)}
-            >
-              <FormField
-                control={form.control}
-                name="streaming_slots"
-                render={({ field }) => {
-                  return (
-                    <FormItem>
-                      <FormLabel>
-                        Streaming Slots
-                        <span style={{ color: "red" }}> *</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={10}
-                          placeholder="Number of roster spots to use for streaming"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-
-              <FormField
-                control={form.control}
-                name="week"
-                render={({ field }) => {
-                  return (
-                    <FormItem>
-                      <FormLabel>
-                        Matchup Week
-                        <span style={{ color: "red" }}> *</span>
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a matchup week" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {scheduleData?.weeks.map((week) => (
-                            <SelectItem
-                              key={week.week}
-                              value={week.week.toString()}
-                            >
-                              Week {week.week}: {formatDate(week.start_date)} - {formatDate(week.end_date)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-
-              <CardFooter className="flex justify-between pl-0 pr-0 mb-[-1rem]">
-                <Button
-                  type="button"
-                  className="size-sm bg-primary"
-                  onClick={handleClearClick}
-                >
-                  <Image
-                    src="/clear.png"
-                    alt="clear"
-                    width={30}
-                    height={30}
-                  />
-                </Button>
-                <Button
-                  type="submit"
-                  className="size-sm bg-primary"
-                  disabled={generateLineupMutation.isPending}
-                >
-                  {generateLineupMutation.isPending ? (
-                    "Generating..."
-                  ) : (
-                    <Image
-                      src="/arrow.png"
-                      alt="submit"
-                      width={30}
-                      height={30}
+      <CardContent>
+        <Form {...form}>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={form.handleSubmit(handleSubmit)}
+          >
+            <FormField
+              control={form.control}
+              name="streaming_slots"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">
+                    Streaming Slots
+                    <span className="text-destructive"> *</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={10}
+                      placeholder="Number of roster spots for streaming"
+                      className="h-8 text-xs"
+                      {...field}
                     />
-                  )}
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="week"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">
+                    Matchup Week
+                    <span className="text-destructive"> *</span>
+                  </FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Select a matchup week" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {scheduleData?.weeks.map((week) => (
+                        <SelectItem
+                          key={week.week}
+                          value={week.week.toString()}
+                        >
+                          Week {week.week}: {formatDate(week.start_date)} – {formatDate(week.end_date)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <CardFooter className="flex justify-between p-0 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleClearClick}
+              >
+                Clear
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={generateLineupMutation.isPending}
+              >
+                {generateLineupMutation.isPending
+                  ? "Generating..."
+                  : "Generate Lineup"}
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }

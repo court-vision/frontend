@@ -80,20 +80,20 @@ function TeamRosterTable({ team, onPlayerClick }: TeamRosterTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[50px]">Slot</TableHead>
+          <TableHead className="w-[50px] pl-3">Slot</TableHead>
           <TableHead>Player</TableHead>
           <TableHead className="w-[50px]">Team</TableHead>
-          <TableHead className="w-[70px] text-right">Pts</TableHead>
+          <TableHead className="w-[70px] text-right pr-3">Pts</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {sortedRoster.map((player) => (
           <TableRow
             key={player.player_id}
-            className="cursor-pointer hover:bg-muted"
+            className="cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary"
             onClick={() => onPlayerClick(player)}
           >
-            <TableCell>
+            <TableCell className="pl-3">
               <Badge
                 variant={
                   player.lineup_slot === "IR"
@@ -109,20 +109,20 @@ function TeamRosterTable({ team, onPlayerClick }: TeamRosterTableProps) {
             </TableCell>
             <TableCell>
               <div className="flex items-center gap-2">
-                <span className={player.injured ? "text-muted-foreground" : ""}>
+                <span className={`text-sm ${player.injured ? "text-muted-foreground" : ""}`}>
                   {player.name}
                 </span>
                 {player.injured && player.injury_status && (
-                  <Badge variant="destructive" className="text-xs">
+                  <Badge variant="destructive" className="text-[10px]">
                     {player.injury_status}
                   </Badge>
                 )}
               </div>
             </TableCell>
-            <TableCell className="text-muted-foreground">
+            <TableCell className="text-xs text-muted-foreground">
               {player.team}
             </TableCell>
-            <TableCell className="text-right font-medium">
+            <TableCell className="text-right font-mono text-sm tabular-nums pr-3">
               {player.avg_points.toFixed(1)}
             </TableCell>
           </TableRow>
@@ -140,30 +140,36 @@ interface TeamCardProps {
 
 function TeamCard({ team, isYourTeam, onPlayerClick }: TeamCardProps) {
   return (
-    <Card className="flex-1">
+    <Card variant="panel" className="flex-1 overflow-hidden">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">
-            {isYourTeam && (
-              <span className="text-muted-foreground text-sm mr-2">Your Team</span>
-            )}
+        <div className="flex items-center gap-2">
+          {isYourTeam && (
+            <Badge variant="default" className="text-[10px]">You</Badge>
+          )}
+          <CardTitle className="text-sm font-semibold truncate">
             {team.team_name}
           </CardTitle>
         </div>
-        <div className="flex gap-4 mt-2">
+        <div className="flex gap-6 mt-2">
           <div>
-            <p className="text-sm text-muted-foreground">Current</p>
-            <p className="text-2xl font-bold">{Math.round(team.current_score)}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              Current
+            </p>
+            <p className="font-mono text-xl font-bold tabular-nums">
+              {Math.round(team.current_score)}
+            </p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Projected</p>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              Projected
+            </p>
+            <p className="font-mono text-lg text-muted-foreground tabular-nums">
               {team.projected_score.toFixed(1)}
             </p>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-2">
+      <CardContent className="p-0">
         <TeamRosterTable team={team} onPlayerClick={onPlayerClick} />
       </CardContent>
     </Card>
@@ -173,39 +179,41 @@ function TeamCard({ team, isYourTeam, onPlayerClick }: TeamCardProps) {
 function MatchupSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-6 w-32" />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-            <div className="flex gap-4 mt-2">
-              <Skeleton className="h-10 w-20" />
-              <Skeleton className="h-10 w-20" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {[...Array(10)].map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full mb-2" />
-            ))}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-            <div className="flex gap-4 mt-2">
-              <Skeleton className="h-10 w-20" />
-              <Skeleton className="h-10 w-20" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {[...Array(10)].map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full mb-2" />
-            ))}
-          </CardContent>
-        </Card>
+      <Card variant="panel" className="p-5">
+        <div className="flex justify-between items-center mb-4">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-5 w-28" />
+        </div>
+        <div className="flex justify-between items-end">
+          <div className="space-y-1">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-8 w-16" />
+          </div>
+          <Skeleton className="h-4 w-8" />
+          <div className="space-y-1 flex flex-col items-end">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-8 w-16" />
+          </div>
+        </div>
+        <Skeleton className="h-1.5 w-full rounded-full mt-4" />
+      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {[0, 1].map((i) => (
+          <Card variant="panel" key={i}>
+            <CardHeader>
+              <Skeleton className="h-4 w-32" />
+              <div className="flex gap-4 mt-2">
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-8 w-16" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {[...Array(8)].map((_, j) => (
+                <Skeleton key={j} className="h-9 w-full" />
+              ))}
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );
@@ -242,16 +250,16 @@ export function MatchupDisplay({
         error.message.toLowerCase().includes("reconnect"));
 
     return (
-      <Card className="p-6">
-        <div className="text-center space-y-4">
-          <p className="text-destructive">Error loading matchup: {error.message}</p>
+      <Card variant="panel" className="p-8">
+        <div className="text-center space-y-3">
+          <p className="text-sm text-destructive">Error loading matchup: {error.message}</p>
           {isYahooAuthError && (
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Your Yahoo connection has expired. Please reconnect your Yahoo account to continue.
+              <p className="text-xs text-muted-foreground">
+                Your Yahoo connection has expired. Please reconnect your Yahoo account.
               </p>
               <Link href="/manage-teams">
-                <Button variant="outline">Manage Teams</Button>
+                <Button variant="outline" size="sm">Manage Teams</Button>
               </Link>
             </div>
           )}
@@ -262,10 +270,9 @@ export function MatchupDisplay({
 
   if (!matchup) {
     return (
-      <Card className="p-6">
-        <p className="text-muted-foreground text-center">
-          No matchup data available. This could mean the season hasn&apos;t started
-          yet or there&apos;s no active matchup period.
+      <Card variant="panel" className="p-8">
+        <p className="text-sm text-muted-foreground text-center">
+          No matchup data available. The season may not have started yet.
         </p>
       </Card>
     );
@@ -287,24 +294,73 @@ export function MatchupDisplay({
   return (
     <>
       <div className="space-y-4">
-        {/* Header with matchup period info */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <div>
-            <h2 className="text-xl font-semibold">
-              Matchup Period {matchup.matchup_period}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {formatDate(matchup.matchup_period_start)} -{" "}
-              {formatDate(matchup.matchup_period_end)}
-            </p>
+        {/* Scoreboard Header */}
+        <Card variant="panel" className="p-5">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                Week {matchup.matchup_period}
+              </span>
+              <span className="text-[10px] text-muted-foreground/50">
+                {formatDate(matchup.matchup_period_start)} – {formatDate(matchup.matchup_period_end)}
+              </span>
+            </div>
+            <Badge
+              variant={yourTeamWinning ? "win" : "loss"}
+            >
+              {yourTeamWinning ? "Winning" : "Losing"} by {scoreDiff}
+            </Badge>
           </div>
-          <Badge
-            variant={yourTeamWinning ? "default" : "secondary"}
-            className="text-sm"
-          >
-            {yourTeamWinning ? "Winning" : "Losing"} by {scoreDiff}
-          </Badge>
-        </div>
+
+          {/* Score display */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground truncate max-w-[160px]">
+                {matchup.your_team.team_name}
+              </p>
+              <p className="font-mono text-3xl font-bold tabular-nums mt-0.5">
+                {Math.round(matchup.your_team.current_score)}
+              </p>
+            </div>
+            <div className="text-center px-4">
+              <span className="text-sm font-medium text-muted-foreground/40">VS</span>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground truncate max-w-[160px] ml-auto">
+                {matchup.opponent_team.team_name}
+              </p>
+              <p className="font-mono text-3xl font-bold tabular-nums text-muted-foreground mt-0.5">
+                {Math.round(matchup.opponent_team.current_score)}
+              </p>
+            </div>
+          </div>
+
+          {/* Score bar */}
+          <div className="mt-4">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden flex">
+              <div
+                className="bg-primary rounded-full transition-all duration-500"
+                style={{
+                  width: `${
+                    matchup.your_team.current_score + matchup.opponent_team.current_score > 0
+                      ? (matchup.your_team.current_score /
+                          (matchup.your_team.current_score + matchup.opponent_team.current_score)) *
+                        100
+                      : 50
+                  }%`,
+                }}
+              />
+            </div>
+            <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
+              <span>Proj: {matchup.your_team.projected_score.toFixed(1)}</span>
+              <span className="text-center">
+                Winner: <span className="text-foreground font-medium">{matchup.projected_winner}</span>
+                {" "}(+{matchup.projected_margin.toFixed(1)})
+              </span>
+              <span>Proj: {matchup.opponent_team.projected_score.toFixed(1)}</span>
+            </div>
+          </div>
+        </Card>
 
         {/* Score progression chart */}
         <MatchupScoreChart
@@ -313,7 +369,7 @@ export function MatchupDisplay({
         />
 
         {/* Side-by-side team cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <TeamCard
             team={matchup.your_team}
             isYourTeam={true}
@@ -325,17 +381,6 @@ export function MatchupDisplay({
             onPlayerClick={handlePlayerClick}
           />
         </div>
-
-        {/* Projection footer */}
-        <Card className="p-4">
-          <div className="flex justify-center items-center gap-2">
-            <span className="text-muted-foreground">Projected Winner:</span>
-            <span className="font-semibold">{matchup.projected_winner}</span>
-            <Badge variant="outline">
-              +{matchup.projected_margin.toFixed(1)}
-            </Badge>
-          </div>
-        </Card>
       </div>
 
       {/* Player Stats Dialog */}

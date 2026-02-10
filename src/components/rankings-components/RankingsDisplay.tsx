@@ -19,7 +19,6 @@ import {
   ArrowUpDown,
   Search,
 } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
@@ -175,11 +174,11 @@ export default function RankingsDisplay() {
 
   const getSortIcon = (columnKey: string) => {
     if (sortConfig.key !== columnKey) {
-      return <ArrowUpDown size={16} className="text-gray-400" />;
+      return <ArrowUpDown size={14} className="text-muted-foreground" />;
     }
     return (
       <ArrowUpDown
-        size={16}
+        size={14}
         className={`text-primary ${
           sortConfig.direction === "asc" ? "rotate-180" : ""
         }`}
@@ -189,8 +188,8 @@ export default function RankingsDisplay() {
 
   if (isLoading) {
     return (
-      <Card className="mt-5 w-full">
-        <CardContent className="p-6">
+      <Card variant="panel" className="w-full">
+        <CardContent className="p-4">
           <SkeletonTable rows={10} columns={5} />
         </CardContent>
       </Card>
@@ -200,57 +199,44 @@ export default function RankingsDisplay() {
   return (
     <>
       {/* Search Bar */}
-      <div className="mt-5 flex items-center justify-center gap-4 w-full">
-        <div className="relative w-1/2 max-w-6xl">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            ref={searchInputRef}
-            placeholder="Search players... (press / to focus)"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        {/* <Button
-          variant="outline"
-          className="hidden sm:flex items-center gap-2 text-muted-foreground"
-          onClick={openCommandPalette}
-        >
-          <Search className="h-4 w-4" />
-          <span>Commands</span>
-          <kbd className="pointer-events-none ml-2 inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-            <span className="text-xs">⌘</span>K
-          </kbd>
-        </Button> */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          ref={searchInputRef}
+          placeholder="Search players...  (press / to focus)"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 h-8 text-xs"
+        />
       </div>
 
-      <Card className="mt-5 w-full">
-        <CardContent className="flex flex-col justify-center mb-[-20px] w-full">
-          <Table className="w-full">
+      <Card variant="panel" className="w-full">
+        <CardContent className="p-0">
+          <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[50px]">Rank</TableHead>
-                <TableHead className="w-[50%] text-center">Name</TableHead>
+                <TableHead className="w-[60px] pl-4">Rank</TableHead>
+                <TableHead>Player</TableHead>
                 <TableHead
-                  className="text-center cursor-pointer hover:bg-muted"
+                  className="text-right cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => handleSort("total_fpts")}
                 >
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center justify-end gap-1.5">
                     Total FPTS
                     {getSortIcon("total_fpts")}
                   </div>
                 </TableHead>
                 <TableHead
-                  className="text-center cursor-pointer hover:bg-muted"
+                  className="text-right cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => handleSort("avg_fpts")}
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    Average FPTS/G
+                  <div className="flex items-center justify-end gap-1.5">
+                    Avg FPTS/G
                     {getSortIcon("avg_fpts")}
                   </div>
                 </TableHead>
-                <TableHead className="w-[100px] text-center">
-                  Rank Change
+                <TableHead className="w-[100px] text-center pr-4">
+                  Change
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -261,28 +247,41 @@ export default function RankingsDisplay() {
                   return (
                     <TableRow
                       key={player.id}
-                      className={`text-center cursor-pointer ${
-                        isHighlighted ? "bg-muted" : ""
+                      className={`cursor-pointer transition-colors ${
+                        isHighlighted
+                          ? "bg-muted border-l-2 border-l-primary"
+                          : "border-l-2 border-l-transparent"
                       }`}
                       onClick={() => handlePlayerClick(player)}
                       onMouseEnter={() => setHighlightedIndex(index)}
                     >
-                      <TableCell>{player.rank}</TableCell>
-                      <TableCell>{player.player_name}</TableCell>
-                      <TableCell>{player.total_fpts}</TableCell>
-                      <TableCell>
+                      <TableCell className="pl-4 font-mono text-xs text-muted-foreground tabular-nums">
+                        {player.rank}
+                      </TableCell>
+                      <TableCell className="font-medium text-sm">
+                        {player.player_name}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">
+                        {player.total_fpts}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">
                         {Math.round(player.avg_fpts * 10) / 10}
                       </TableCell>
-                      <TableCell className="flex justify-center items-center space-x-1">
-                        {player.rank_change}
-                        <Separator orientation="vertical" />
-                        {player.rank_change > 0 ? (
-                          <TrendingUp className="text-green-500" size={20} />
-                        ) : player.rank_change < 0 ? (
-                          <TrendingDown className="text-red-500" size={20} />
-                        ) : (
-                          <Minus className="text-gray-500" size={20} />
-                        )}
+                      <TableCell className="pr-4">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span className="font-mono text-xs tabular-nums">
+                            {player.rank_change > 0
+                              ? `+${player.rank_change}`
+                              : player.rank_change}
+                          </span>
+                          {player.rank_change > 0 ? (
+                            <TrendingUp className="h-3.5 w-3.5 text-status-win" />
+                          ) : player.rank_change < 0 ? (
+                            <TrendingDown className="h-3.5 w-3.5 text-status-loss" />
+                          ) : (
+                            <Minus className="h-3.5 w-3.5 text-muted-foreground" />
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -293,11 +292,10 @@ export default function RankingsDisplay() {
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between py-4">
-              <p className="text-sm text-muted-foreground">
-                Showing {startIndex + 1}-
-                {Math.min(endIndex, filteredRankings.length)} of{" "}
-                {filteredRankings.length} players
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+              <p className="text-xs text-muted-foreground">
+                {startIndex + 1}–{Math.min(endIndex, filteredRankings.length)}{" "}
+                of {filteredRankings.length}
               </p>
               <Pagination>
                 <PaginationContent>
@@ -366,7 +364,7 @@ export default function RankingsDisplay() {
 
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button">Close</Button>
+              <Button type="button" size="sm">Close</Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>

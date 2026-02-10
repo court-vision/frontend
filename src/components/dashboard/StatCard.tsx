@@ -24,25 +24,25 @@ export function StatCard({
 }: StatCardProps) {
   const content = (
     <Card
-      variant={href ? "interactive" : "default"}
-      className={cn("p-4", className)}
+      variant={href ? "interactive" : "panel"}
+      className={cn("p-3.5", className)}
     >
-      <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
         {label}
       </p>
       <div className="flex items-center gap-2 mt-1">
-        <span className="font-display text-2xl font-bold tabular-nums">
+        <span className="font-mono text-xl font-bold tabular-nums">
           {value}
         </span>
         {trend === "up" && (
-          <TrendingUp className="h-4 w-4 text-status-win" />
+          <TrendingUp className="h-3.5 w-3.5 text-status-win" />
         )}
         {trend === "down" && (
-          <TrendingDown className="h-4 w-4 text-status-loss" />
+          <TrendingDown className="h-3.5 w-3.5 text-status-loss" />
         )}
       </div>
       {subValue && (
-        <p className="text-xs text-muted-foreground mt-1">{subValue}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">{subValue}</p>
       )}
     </Card>
   );

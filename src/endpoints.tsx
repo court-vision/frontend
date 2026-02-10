@@ -4,7 +4,7 @@ export const LOCAL_BACKEND_ENDPOINT = "http://127.0.0.1:8000";
 
 // API v1 Internal endpoints
 export const API_BASE =
-  true // switch for local/production backend
+  true // switch for local/production backend endpoint
     ? PROD_BACKEND_ENDPOINT
     : LOCAL_BACKEND_ENDPOINT;
 
