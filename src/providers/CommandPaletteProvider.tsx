@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useUser, useClerk } from "@clerk/nextjs";
 import {
   Home,
@@ -13,8 +12,6 @@ import {
   Zap,
   Check,
   UserCircle,
-  Sun,
-  Moon,
   LogIn,
   LogOut,
   CalendarCheck,
@@ -84,7 +81,6 @@ interface CommandPaletteProviderProps {
 
 export function CommandPaletteProvider({ children }: CommandPaletteProviderProps) {
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
   const { isSignedIn } = useUser();
   const { signOut } = useClerk();
   const [isOpen, setIsOpen] = useState(false);
@@ -227,38 +223,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     });
   }, [teams, selectedTeam, setSelectedTeam]);
 
-  // ---------------------------------------------------------------------------
-  // Theme Commands
-  // ---------------------------------------------------------------------------
-
-  const themeCommands: Command[] = [
-    {
-      id: "theme-light",
-      label: "Light Mode",
-      description: "Switch to light theme",
-      icon: theme === "light" ? (
-        <Check className="h-4 w-4 text-green-500" />
-      ) : (
-        <Sun className="h-4 w-4" />
-      ),
-      group: "Theme",
-      keywords: ["theme", "light", "bright", "day"],
-      action: () => setTheme("light"),
-    },
-    {
-      id: "theme-dark",
-      label: "Dark Mode",
-      description: "Switch to dark theme",
-      icon: theme === "dark" ? (
-        <Check className="h-4 w-4 text-green-500" />
-      ) : (
-        <Moon className="h-4 w-4" />
-      ),
-      group: "Theme",
-      keywords: ["theme", "dark", "night"],
-      action: () => setTheme("dark"),
-    },
-  ];
+  // Theme commands removed - dark-only mode
 
   // ---------------------------------------------------------------------------
   // Auth Commands
@@ -289,7 +254,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       ];
 
   // Combine built-in and dynamic commands
-  const allCommands = [...navigationCommands, ...teamCommands, ...themeCommands, ...authCommands, ...dynamicCommands];
+  const allCommands = [...navigationCommands, ...teamCommands, ...authCommands, ...dynamicCommands];
 
   // Group commands by their group property
   const groupedCommands = allCommands.reduce((acc, command) => {
@@ -420,15 +385,23 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
 
       <CommandDialog open={isOpen} onOpenChange={setIsOpen}>
         {/* Header */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30">
-          <CommandIcon className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium">Court Vision</span>
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-card">
+          <div className="flex items-center gap-2">
+            <CommandIcon className="h-3.5 w-3.5 text-primary" />
+            <span className="font-display text-xs font-semibold text-foreground/80 tracking-wide">Commands</span>
+          </div>
+          <span className="text-[9px] font-mono text-muted-foreground/40">Esc to close</span>
         </div>
 
-        <CommandInput placeholder="Type a command or search..." className="border-0" />
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-mono text-sm select-none">{">"}</span>
+          <CommandInput placeholder="Type a command or search..." className="border-0 pl-7" />
+        </div>
 
         <CommandList className="max-h-[400px]">
-          <CommandEmpty>No commands found.</CommandEmpty>
+          <CommandEmpty className="py-6 text-center text-xs font-mono text-muted-foreground/50">
+            No commands found.
+          </CommandEmpty>
           {Object.entries(groupedCommands).map(([group, commands], index) => (
             <CommandGroup key={group} heading={group}>
               {commands.map((command) => (
@@ -442,9 +415,9 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
                     <span className="mr-2 text-muted-foreground">{command.icon}</span>
                   )}
                   <div className="flex flex-col flex-1">
-                    <span>{command.label}</span>
+                    <span className="text-xs">{command.label}</span>
                     {command.description && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-[10px] text-muted-foreground">
                         {command.description}
                       </span>
                     )}
@@ -459,13 +432,13 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
         </CommandList>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t bg-muted/30 text-[10px] text-muted-foreground font-mono">
-          <div className="flex items-center gap-4">
-            <span><kbd className="px-1 py-0.5 rounded bg-muted">↑↓</kbd> navigate</span>
-            <span><kbd className="px-1 py-0.5 rounded bg-muted">↵</kbd> select</span>
-            <span><kbd className="px-1 py-0.5 rounded bg-muted">esc</kbd> close</span>
+        <div className="flex items-center justify-between px-3 py-1.5 border-t border-border bg-card text-[9px] text-muted-foreground font-mono">
+          <div className="flex items-center gap-3">
+            <span><kbd className="px-1 py-0.5 rounded border border-border bg-muted/50">↑↓</kbd> navigate</span>
+            <span><kbd className="px-1 py-0.5 rounded border border-border bg-muted/50">↵</kbd> select</span>
+            <span><kbd className="px-1 py-0.5 rounded border border-border bg-muted/50">esc</kbd> close</span>
           </div>
-          <span className="text-muted-foreground/70">⌥1-8 for pages</span>
+          <span className="text-muted-foreground/50">⌥1-8 pages | ? shortcuts</span>
         </div>
       </CommandDialog>
     </CommandPaletteContext.Provider>

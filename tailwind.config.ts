@@ -1,10 +1,5 @@
 import type { Config } from "tailwindcss"
 
-// const {
-//   flattenColorPalette,
-// } = require("tailwindcss/lib/utils/flattenColorPalette");
-
-
 const config = {
   darkMode: ["class"],
   content: [
@@ -24,10 +19,9 @@ const config = {
   	},
   	extend: {
   		fontFamily: {
-  			sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+  			sans: ['var(--font-jakarta)', 'system-ui', 'sans-serif'],
   			mono: ['var(--font-jetbrains)', 'Fira Code', 'monospace'],
-  			display: ['var(--font-geist)', 'var(--font-inter)', 'sans-serif'],
-  			brand: ['var(--font-brand)', 'var(--font-geist)', 'sans-serif'],
+  			display: ['var(--font-outfit)', 'var(--font-jakarta)', 'sans-serif'],
   		},
   		colors: {
   			border: 'hsl(var(--border))',
@@ -79,6 +73,12 @@ const config = {
   				loss: 'hsl(var(--status-loss))',
   				projected: 'hsl(var(--status-projected))',
   				neutral: 'hsl(var(--status-neutral))'
+  			},
+  			signal: {
+  				hot: 'hsl(var(--signal-hot))',
+  				cold: 'hsl(var(--signal-cold))',
+  				live: 'hsl(var(--signal-live))',
+  				stale: 'hsl(var(--signal-stale))'
   			}
   		},
   		borderRadius: {
@@ -143,6 +143,43 @@ const config = {
   					opacity: '1',
   					transform: 'scale(1)'
   				}
+  			},
+  			'data-flash': {
+  				'0%': {
+  					backgroundColor: 'hsl(28 92% 52% / 0.12)'
+  				},
+  				'100%': {
+  					backgroundColor: 'transparent'
+  				}
+  			},
+  			'beacon': {
+  				'0%, 100%': {
+  					opacity: '0.4'
+  				},
+  				'50%': {
+  					opacity: '1'
+  				}
+  			},
+  			'scanline': {
+  				'0%': {
+  					transform: 'translateY(-100%)'
+  				},
+  				'100%': {
+  					transform: 'translateY(100vh)'
+  				}
+  			},
+  			'ticker-roll': {
+  				'0%': {
+  					transform: 'translateY(-100%)',
+  					opacity: '0'
+  				},
+  				'50%': {
+  					opacity: '1'
+  				},
+  				'100%': {
+  					transform: 'translateY(0)',
+  					opacity: '1'
+  				}
   			}
   		},
   		animation: {
@@ -152,7 +189,11 @@ const config = {
   			'caret-blink': 'caret-blink 1.25s ease-out infinite',
   			'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
   			'slide-up-fade': 'slide-up-fade 0.3s ease-out',
-  			'scale-in': 'scale-in 0.2s ease-out'
+  			'scale-in': 'scale-in 0.2s ease-out',
+  			'data-flash': 'data-flash 0.6s ease-out',
+  			'beacon': 'beacon 2s ease-in-out infinite',
+  			'scanline': 'scanline 8s linear infinite',
+  			'ticker-roll': 'ticker-roll 0.3s ease-out'
   		}
   	}
   },
@@ -172,7 +213,7 @@ function addVariablesForColors({ addBase, theme }: any) {
   let newVars = Object.fromEntries(
     Object.entries(allColors).map(([key, val]) => [`--${key}`, val])
   );
- 
+
   addBase({
     ":root": newVars,
   });

@@ -4,15 +4,16 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const cardVariants = cva(
-  "rounded-xl border bg-card text-card-foreground transition-all duration-200",
+  "rounded-md border text-card-foreground transition-all duration-150",
   {
     variants: {
       variant: {
-        default: "shadow-sm",
-        elevated: "shadow-lg shadow-black/5 dark:shadow-black/20",
-        interactive: "shadow-sm hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 cursor-pointer",
-        terminal: "bg-background/50 border-border font-mono",
-        glow: "border-primary/20 shadow-[0_0_15px_hsl(var(--primary)/0.1)]",
+        default: "bg-card border-border",
+        panel: "bg-card/80 border-border shadow-[inset_0_1px_0_hsl(var(--border)/0.5)]",
+        interactive: "bg-card border-border hover:border-primary/30 cursor-pointer",
+        instrument: "bg-background border-border shadow-[inset_0_1px_0_hsl(215_15%_14%)]",
+        glow: "bg-card border-primary/20 shadow-[0_0_15px_hsl(var(--primary)/0.15)]",
+        ghost: "bg-transparent border-transparent",
       },
     },
     defaultVariants: {
@@ -42,7 +43,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    className={cn("flex flex-col space-y-1.5 p-4", className)}
     {...props}
   />
 ))
@@ -76,7 +77,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+  <div ref={ref} className={cn("p-4 pt-0", className)} {...props} />
 ))
 CardContent.displayName = "CardContent"
 
@@ -86,7 +87,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
+    className={cn("flex items-center p-4 pt-0", className)}
     {...props}
   />
 ))

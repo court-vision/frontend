@@ -46,18 +46,17 @@ function ManageTeamsContent() {
   }, [searchParams, router]);
 
   return (
-    <>
-      <div className="flex items-center mb-4">
-        <h1 className="text-lg font-semibold md:text-2xl">Manage Your Teams</h1>
-      </div>
-      <div className="flex-1 rounded-lg border border-primary border-dashed shadow-sm max-w-[100vw]">
-        <div className="flex flex-col gap-1">
-          <div className="w-full">
-            <ManageTeamsTable yahooOAuthState={yahooOAuthState} />
-          </div>
-        </div>
-      </div>
-    </>
+    <div className="space-y-4 animate-slide-up-fade">
+      <section>
+        <h1 className="font-display text-xl font-bold tracking-tight">
+          Manage Teams
+        </h1>
+        <p className="text-muted-foreground text-xs mt-0.5">
+          Add, remove, or configure your fantasy teams.
+        </p>
+      </section>
+      <ManageTeamsTable yahooOAuthState={yahooOAuthState} />
+    </div>
   );
 }
 

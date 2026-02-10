@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -53,65 +53,71 @@ export function RosterDisplay({ roster, provider = "espn" }: RosterDisplayProps)
     });
   };
 
+  // Calculate totals before render
+  sortedRoster.forEach((p) => {
+    total_avg_points += p.avg_points;
+    total_players += 1;
+  });
+
   return (
     <>
-      <Card className="mt-5 w-full">
-        <CardContent className="flex justify-center mb-[-20px]">
+      <Card variant="panel" className="w-full overflow-hidden">
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[50px]">Rank</TableHead>
-                <TableHead className="text-center">Name</TableHead>
-                <TableHead className="w-[75px]">Team</TableHead>
-                <TableHead className="w-[120px] text-center">
-                  Avg Points
+                <TableHead className="w-[50px] pl-4">#</TableHead>
+                <TableHead>Player</TableHead>
+                <TableHead className="w-[60px]">Team</TableHead>
+                <TableHead className="w-[100px] text-right">
+                  Avg Pts
                 </TableHead>
-                <TableHead className="w-[120px] text-center">
+                <TableHead className="w-[120px] text-right pr-4">
                   Positions
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedRoster.map((player: RosterPlayer, index: number) => {
-                total_avg_points += player.avg_points;
-                total_players += 1;
-                return (
-                  <TableRow
-                    key={`${player.name}-${index}`}
-                    className="cursor-pointer hover:bg-muted"
-                    onClick={() => handlePlayerClick(player)}
-                  >
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{player.name}</TableCell>
-                    <TableCell>{player.team}</TableCell>
-                    <TableCell>{player.avg_points}</TableCell>
-                    <TableCell>
-                      {player.valid_positions
-                        .slice(0, player.valid_positions.length - 3)
-                        .join(", ")}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {sortedRoster.map((player: RosterPlayer, index: number) => (
+                <TableRow
+                  key={`${player.name}-${index}`}
+                  className="cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary"
+                  onClick={() => handlePlayerClick(player)}
+                >
+                  <TableCell className="pl-4 font-mono text-xs text-muted-foreground tabular-nums">
+                    {index + 1}
+                  </TableCell>
+                  <TableCell className="font-medium text-sm">
+                    {player.name}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {player.team}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums">
+                    {player.avg_points}
+                  </TableCell>
+                  <TableCell className="text-right pr-4 text-xs text-muted-foreground">
+                    {player.valid_positions
+                      .slice(0, player.valid_positions.length - 3)
+                      .join(", ")}
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
+
+          {/* Summary footer */}
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/30">
+            <span className="text-xs text-muted-foreground">
+              Roster Average
+            </span>
+            <span className="font-mono text-sm font-medium tabular-nums">
+              {total_players > 0
+                ? (total_avg_points / total_players).toFixed(2)
+                : "0.00"}
+            </span>
+          </div>
         </CardContent>
-        <CardHeader className="text-left mb-[-25px]"></CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[200px]">Roster Average Points</TableHead>
-              <TableHead className="w-[40px]"></TableHead>
-              <TableHead className="w-[75px]"></TableHead>
-              <TableHead className="w-[120px] text-center">
-                {total_players > 0
-                  ? (total_avg_points / total_players).toFixed(2)
-                  : "0.00"}
-              </TableHead>
-              <TableHead className="w-[120px] text-center"></TableHead>
-            </TableRow>
-          </TableHeader>
-        </Table>
       </Card>
 
       {/* Player Stats Dialog */}

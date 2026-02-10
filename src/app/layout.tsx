@@ -3,13 +3,24 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
-import { GeistSans } from "geist/font/sans";
+import { Plus_Jakarta_Sans, JetBrains_Mono, Outfit } from "next/font/google";
 
-const spaceGrotesk = Space_Grotesk({
+const jakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-brand",
-  weight: ["700"],
+  variable: "--font-jakarta",
+  weight: ["400", "500", "600", "700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains",
+  weight: ["400", "500", "700"],
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+  weight: ["500", "600", "700", "800"],
 });
 
 import { ThemeProvider } from "@/components/theme-provider";
@@ -24,16 +35,6 @@ import "./globals.css";
 import Layout from "@/components/Base";
 
 import { ClerkProvider } from "@clerk/nextjs";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains",
-});
 
 export const metadata: Metadata = {
   title: "Court Vision",
@@ -50,7 +51,7 @@ export default function RootLayout({
       <html lang="en" className="dark" suppressHydrationWarning>
         <head></head>
 
-        <body className={`${inter.variable} ${jetbrainsMono.variable} ${GeistSans.variable} ${spaceGrotesk.variable} font-sans`}>
+        <body className={`${jakartaSans.variable} ${jetbrainsMono.variable} ${outfit.variable} font-sans`}>
           <QueryProvider>
             <TeamsProvider>
               <ProviderThemeSync />
@@ -58,6 +59,7 @@ export default function RootLayout({
                 <ThemeProvider
                   attribute="class"
                   defaultTheme="dark"
+                  forcedTheme="dark"
                   enableSystem={false}
                 >
                   <CommandPaletteProvider>

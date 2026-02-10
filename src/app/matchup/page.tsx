@@ -23,38 +23,42 @@ export default function Matchup() {
   }, [selectedTeam, teams]);
 
   return (
-    <>
-      <div className="flex items-center mb-4">
-        <h1 className="text-lg font-semibold md:text-2xl">Matchup</h1>
-      </div>
-      <div className="flex flex-1 flex-col rounded-lg border border-primary border-dashed shadow-sm p-4">
-        {!hasTeams ? (
-          <Card className="p-6">
-            <div className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                You need to add a team to view matchup data.
-              </p>
-              <Link href="/your-teams">
-                <Button>Add a Team</Button>
-              </Link>
-            </div>
-          </Card>
-        ) : !selectedTeam ? (
-          <Card className="p-6">
-            <p className="text-muted-foreground text-center">
-              Select a team from the dropdown to view your current matchup.
+    <div className="space-y-4 animate-slide-up-fade">
+      <section>
+        <h1 className="font-display text-xl font-bold tracking-tight">
+          Matchup
+        </h1>
+        <p className="text-muted-foreground text-xs mt-0.5">
+          Head-to-head matchup for the current week.
+        </p>
+      </section>
+
+      {!hasTeams ? (
+        <Card variant="panel" className="p-8">
+          <div className="text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              You need to add a team to view matchup data.
             </p>
-          </Card>
-        ) : (
-          <MatchupDisplay
-            matchup={matchup}
-            isLoading={isLoading}
-            error={error}
-            teamId={selectedTeam}
-            provider={provider}
-          />
-        )}
-      </div>
-    </>
+            <Link href="/manage-teams">
+              <Button size="sm">Add a Team</Button>
+            </Link>
+          </div>
+        </Card>
+      ) : !selectedTeam ? (
+        <Card variant="panel" className="p-8">
+          <p className="text-sm text-muted-foreground text-center">
+            Select a team from the nav bar to view your current matchup.
+          </p>
+        </Card>
+      ) : (
+        <MatchupDisplay
+          matchup={matchup}
+          isLoading={isLoading}
+          error={error}
+          teamId={selectedTeam}
+          provider={provider}
+        />
+      )}
+    </div>
   );
 }
