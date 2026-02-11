@@ -103,9 +103,9 @@ export function CommandStrip() {
       {/* Brand mark */}
       <Link href="/" className="flex items-center gap-1.5 mr-3 shrink-0 group">
         <div className="h-6 w-6 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-          <span className="font-display text-[10px] font-bold text-primary leading-none">CV</span>
+          <span className="font-display text-[12px] font-bold italic text-primary leading-none">CV</span>
         </div>
-        <span className="font-display text-xs font-semibold text-foreground/80 tracking-wide hidden lg:block">Court Vision</span>
+        <span className="font-display text-md font-bold text-foreground/80 tracking-wide hidden lg:block">Court Vision</span>
       </Link>
 
       {/* Separator */}
