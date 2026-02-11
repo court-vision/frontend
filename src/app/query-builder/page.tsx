@@ -108,7 +108,7 @@ export default function QueryBuilderPage() {
       ref={iframeRef}
       src={`${SQLMATE_ORIGIN}?embedded=true`}
       onLoad={handleIframeLoad}
-      className="w-full h-[calc(100vh-64px)] border-0"
+      className="w-full h-[calc(94vh-60px)] border-0"
       allow="clipboard-write"
     />
   );
