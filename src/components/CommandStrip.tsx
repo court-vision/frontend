@@ -65,8 +65,11 @@ export function CommandStrip() {
             </Button>
           </SheetTrigger>
           <SheetContent side="bottom" className="h-auto max-h-[70vh] rounded-t-xl p-0">
-            <div className="p-4 border-b">
-              <span className="font-display text-sm font-bold text-primary tracking-wide">Court Vision</span>
+            <div className="p-4 border-b flex items-center gap-2">
+              <div className="h-7 w-7 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center">
+                <span className="font-display text-[13px] font-bold italic text-primary leading-none pr-0.5">CV</span>
+              </div>
+              <span className="font-display text-base font-extrabold tracking-tight brand-text">Court Vision</span>
             </div>
             <nav className="grid grid-cols-2 gap-1 p-3">
               {mobileNavItems.map((item) => {
@@ -102,10 +105,10 @@ export function CommandStrip() {
 
       {/* Brand mark */}
       <Link href="/" className="flex items-center gap-1.5 mr-3 shrink-0 group">
-        <div className="h-6 w-6 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-          <span className="font-display text-[12px] font-bold italic text-primary leading-none">CV</span>
+        <div className="h-6 w-6 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center group-hover:bg-primary/25 group-hover:shadow-[0_0_8px_hsl(var(--primary)/0.3)] transition-all duration-200">
+          <span className="font-display text-[12px] font-bold text-primary leading-none pr-0.5 pt-0.1">CV</span>
         </div>
-        <span className="font-display text-md font-bold text-foreground/80 tracking-wide hidden lg:block">Court Vision</span>
+        <span className="ml-1 font-display text-[15px] font-extrabold tracking-tight hidden lg:block brand-text">Court Vision</span>
       </Link>
 
       {/* Separator */}
