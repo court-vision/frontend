@@ -22,6 +22,7 @@ export interface StreamerPlayer {
 export interface StreamerData {
   matchup_number: number;
   current_day_index: number;
+  game_span: number;
   avg_days: number;
   teams_with_b2b: string[];
   streamers: StreamerPlayer[];

@@ -134,10 +134,7 @@ export default function StreamerDisplay() {
   // Generate day options based on matchup game_span
   const dayOptions = useMemo(() => {
     if (!data) return [];
-    // Assume game_span is typically 6 or 7, we can derive from current_day_index bounds
-    // For now, generate 7 days as a reasonable default
-    const maxDays = 7;
-    return Array.from({ length: maxDays }, (_, i) => ({
+    return Array.from({ length: data.game_span }, (_, i) => ({
       value: i,
       label: `Day ${i + 1}${i === data.current_day_index ? " (Today)" : ""}`,
     }));
@@ -183,7 +180,7 @@ export default function StreamerDisplay() {
     );
   }
 
-  const totalDays = 7; // Standard matchup length
+  const totalDays = data.game_span;
 
   return (
     <div className="flex flex-col w-full gap-3">
