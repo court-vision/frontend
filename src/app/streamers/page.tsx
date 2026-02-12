@@ -10,7 +10,7 @@ export default function Streamers() {
           Streamers
         </h1>
         <p className="text-muted-foreground text-xs mt-0.5">
-          Find the best free agents to stream this week.
+          Find the best free agents to stream for the week or pick up today.
         </p>
       </section>
       <StreamerDisplay />

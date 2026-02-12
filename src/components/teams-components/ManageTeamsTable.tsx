@@ -28,7 +28,7 @@ import {
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, ChevronRight, Lock } from "lucide-react";
 import {
   Form,
   FormField,
@@ -408,112 +408,120 @@ function EspnAddTeamForm() {
           }}
         />
 
-        <hr></hr>
-        <p className="text-sm text-muted-foreground">For private leagues.</p>
+        <details className="group rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+          <summary className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground list-none [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+            <Lock className="h-3.5 w-3.5" />
+            <span>Private league settings</span>
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 ml-auto font-normal">Optional</Badge>
+          </summary>
 
-        <div className="rounded-md border border-dashed p-3 bg-muted/30">
-          <p className="text-sm text-muted-foreground mb-2">
-            Step 1: Drag this button to your bookmarks bar:
-          </p>
-          <div
-            dangerouslySetInnerHTML={{
-              __html: `<a href="${BOOKMARKLET_CODE}" class="inline-block px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md cursor-grab hover:bg-primary/90" onclick="event.preventDefault()">Get ESPN Cookies</a>`,
-            }}
-          />
-          <p className="text-xs text-muted-foreground mt-2">
-            Step 2: Log into ESPN, then click the bookmark and copy the result.
-          </p>
-        </div>
-
-        <Tabs defaultValue="paste" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="paste" className="flex-1">
-              Paste Cookies
-            </TabsTrigger>
-            <TabsTrigger value="manual" className="flex-1">
-              Manual Entry
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="paste" className="space-y-3">
-            <div className="space-y-2">
-              <Label>Paste cookie string</Label>
-              <Input
-                placeholder="espn_s2=...; SWID=..."
-                value={cookieInput}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setCookieInput(value);
-
-                  if (!value.trim()) {
-                    setParseError(null);
-                    setParseSuccess(false);
-                    return;
-                  }
-
-                  const parsed = parseCookieString(value);
-                  if (parsed) {
-                    form.setValue("s2", parsed.s2);
-                    form.setValue("swid", parsed.swid);
-                    setParseSuccess(true);
-                    setParseError(null);
-                  } else {
-                    setParseSuccess(false);
-                    setParseError(null);
-                  }
+          <div className="flex flex-col gap-3 pt-3">
+            <div className="rounded-md border border-dashed p-3 bg-muted/30">
+              <p className="text-sm text-muted-foreground mb-2">
+                Step 1: Drag this button to your bookmarks bar:
+              </p>
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: `<a href="${BOOKMARKLET_CODE}" class="inline-block px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md cursor-grab hover:bg-primary/90" onclick="event.preventDefault()">Get ESPN Cookies</a>`,
                 }}
               />
-              {parseError && (
-                <p className="text-sm text-destructive">{parseError}</p>
-              )}
-              {parseSuccess && (
-                <div className="text-sm text-green-600 space-y-1">
-                  <p>Cookies parsed successfully:</p>
-                  <p className="font-mono text-xs truncate">
-                    espn_s2: {form.getValues("s2")?.slice(0, 20)}...
-                  </p>
-                  <p className="font-mono text-xs truncate">
-                    SWID: {form.getValues("swid")}
-                  </p>
-                </div>
-              )}
+              <p className="text-xs text-muted-foreground mt-2">
+                Step 2: Log into ESPN, then click the bookmark and copy the result.
+              </p>
             </div>
-          </TabsContent>
 
-          <TabsContent value="manual" className="space-y-3">
-            <FormField
-              control={form.control}
-              name="s2"
-              render={({ field }) => {
-                return (
-                  <FormItem>
-                    <FormLabel>ESPN s2</FormLabel>
-                    <FormControl>
-                      <Input placeholder="s2" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+            <Tabs defaultValue="paste" className="w-full">
+              <TabsList className="w-full">
+                <TabsTrigger value="paste" className="flex-1">
+                  Paste Cookies
+                </TabsTrigger>
+                <TabsTrigger value="manual" className="flex-1">
+                  Manual Entry
+                </TabsTrigger>
+              </TabsList>
 
-            <FormField
-              control={form.control}
-              name="swid"
-              render={({ field }) => {
-                return (
-                  <FormItem>
-                    <FormLabel>SWID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="SWID" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-          </TabsContent>
-        </Tabs>
+              <TabsContent value="paste" className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Paste cookie string</Label>
+                  <Input
+                    placeholder="espn_s2=...; SWID=..."
+                    value={cookieInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setCookieInput(value);
+
+                      if (!value.trim()) {
+                        setParseError(null);
+                        setParseSuccess(false);
+                        return;
+                      }
+
+                      const parsed = parseCookieString(value);
+                      if (parsed) {
+                        form.setValue("s2", parsed.s2);
+                        form.setValue("swid", parsed.swid);
+                        setParseSuccess(true);
+                        setParseError(null);
+                      } else {
+                        setParseSuccess(false);
+                        setParseError(null);
+                      }
+                    }}
+                  />
+                  {parseError && (
+                    <p className="text-sm text-destructive">{parseError}</p>
+                  )}
+                  {parseSuccess && (
+                    <div className="text-sm text-green-600 space-y-1">
+                      <p>Cookies parsed successfully:</p>
+                      <p className="font-mono text-xs truncate">
+                        espn_s2: {form.getValues("s2")?.slice(0, 20)}...
+                      </p>
+                      <p className="font-mono text-xs truncate">
+                        SWID: {form.getValues("swid")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="manual" className="space-y-3">
+                <FormField
+                  control={form.control}
+                  name="s2"
+                  render={({ field }) => {
+                    return (
+                      <FormItem>
+                        <FormLabel>ESPN s2</FormLabel>
+                        <FormControl>
+                          <Input placeholder="s2" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="swid"
+                  render={({ field }) => {
+                    return (
+                      <FormItem>
+                        <FormLabel>SWID</FormLabel>
+                        <FormControl>
+                          <Input placeholder="SWID" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </details>
 
         <div className="flex justify-between pl-0 pr-0 mb-[-1rem]">
           <Button
@@ -905,113 +913,121 @@ function EditTeamForm({
               }}
             />
 
-            <hr></hr>
-            <p className="text-sm text-muted-foreground">For private leagues.</p>
+            <details className="group rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+              <summary className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground list-none [&::-webkit-details-marker]:hidden">
+                <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+                <Lock className="h-3.5 w-3.5" />
+                <span>Private league settings</span>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 ml-auto font-normal">Optional</Badge>
+              </summary>
 
-            <div className="rounded-md border border-dashed p-3 bg-muted/30">
-              <p className="text-sm text-muted-foreground mb-2">
-                Step 1: Drag this button to your bookmarks bar:
-              </p>
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: `<a href="${BOOKMARKLET_CODE}" class="inline-block px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md cursor-grab hover:bg-primary/90" onclick="event.preventDefault()">Get ESPN Cookies</a>`,
-                }}
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                Step 2: Log into ESPN, then click the bookmark and copy the
-                result.
-              </p>
-            </div>
-
-            <Tabs defaultValue="paste" className="w-full">
-              <TabsList className="w-full">
-                <TabsTrigger value="paste" className="flex-1">
-                  Paste Cookies
-                </TabsTrigger>
-                <TabsTrigger value="manual" className="flex-1">
-                  Manual Entry
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="paste" className="space-y-3">
-                <div className="space-y-2">
-                  <Label>Paste cookie string</Label>
-                  <Input
-                    placeholder="espn_s2=...; SWID=..."
-                    value={cookieInput}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setCookieInput(value);
-
-                      if (!value.trim()) {
-                        setParseError(null);
-                        setParseSuccess(false);
-                        return;
-                      }
-
-                      const parsed = parseCookieString(value);
-                      if (parsed) {
-                        form.setValue("s2", parsed.s2);
-                        form.setValue("swid", parsed.swid);
-                        setParseSuccess(true);
-                        setParseError(null);
-                      } else {
-                        setParseSuccess(false);
-                        setParseError(null);
-                      }
+              <div className="flex flex-col gap-3 pt-3">
+                <div className="rounded-md border border-dashed p-3 bg-muted/30">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Step 1: Drag this button to your bookmarks bar:
+                  </p>
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: `<a href="${BOOKMARKLET_CODE}" class="inline-block px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md cursor-grab hover:bg-primary/90" onclick="event.preventDefault()">Get ESPN Cookies</a>`,
                     }}
                   />
-                  {parseError && (
-                    <p className="text-sm text-destructive">{parseError}</p>
-                  )}
-                  {parseSuccess && (
-                    <div className="text-sm text-green-600 space-y-1">
-                      <p>Cookies parsed successfully:</p>
-                      <p className="font-mono text-xs truncate">
-                        espn_s2: {form.getValues("s2")?.slice(0, 20)}...
-                      </p>
-                      <p className="font-mono text-xs truncate">
-                        SWID: {form.getValues("swid")}
-                      </p>
-                    </div>
-                  )}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Step 2: Log into ESPN, then click the bookmark and copy the
+                    result.
+                  </p>
                 </div>
-              </TabsContent>
 
-              <TabsContent value="manual" className="space-y-3">
-                <FormField
-                  control={form.control}
-                  name="s2"
-                  render={({ field }) => {
-                    return (
-                      <FormItem>
-                        <FormLabel>ESPN s2</FormLabel>
-                        <FormControl>
-                          <Input placeholder="s2" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
+                <Tabs defaultValue="paste" className="w-full">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="paste" className="flex-1">
+                      Paste Cookies
+                    </TabsTrigger>
+                    <TabsTrigger value="manual" className="flex-1">
+                      Manual Entry
+                    </TabsTrigger>
+                  </TabsList>
 
-                <FormField
-                  control={form.control}
-                  name="swid"
-                  render={({ field }) => {
-                    return (
-                      <FormItem>
-                        <FormLabel>SWID</FormLabel>
-                        <FormControl>
-                          <Input placeholder="SWID" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-              </TabsContent>
-            </Tabs>
+                  <TabsContent value="paste" className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>Paste cookie string</Label>
+                      <Input
+                        placeholder="espn_s2=...; SWID=..."
+                        value={cookieInput}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setCookieInput(value);
+
+                          if (!value.trim()) {
+                            setParseError(null);
+                            setParseSuccess(false);
+                            return;
+                          }
+
+                          const parsed = parseCookieString(value);
+                          if (parsed) {
+                            form.setValue("s2", parsed.s2);
+                            form.setValue("swid", parsed.swid);
+                            setParseSuccess(true);
+                            setParseError(null);
+                          } else {
+                            setParseSuccess(false);
+                            setParseError(null);
+                          }
+                        }}
+                      />
+                      {parseError && (
+                        <p className="text-sm text-destructive">{parseError}</p>
+                      )}
+                      {parseSuccess && (
+                        <div className="text-sm text-green-600 space-y-1">
+                          <p>Cookies parsed successfully:</p>
+                          <p className="font-mono text-xs truncate">
+                            espn_s2: {form.getValues("s2")?.slice(0, 20)}...
+                          </p>
+                          <p className="font-mono text-xs truncate">
+                            SWID: {form.getValues("swid")}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="manual" className="space-y-3">
+                    <FormField
+                      control={form.control}
+                      name="s2"
+                      render={({ field }) => {
+                        return (
+                          <FormItem>
+                            <FormLabel>ESPN s2</FormLabel>
+                            <FormControl>
+                              <Input placeholder="s2" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="swid"
+                      render={({ field }) => {
+                        return (
+                          <FormItem>
+                            <FormLabel>SWID</FormLabel>
+                            <FormControl>
+                              <Input placeholder="SWID" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </details>
 
             <div className="flex justify-between pl-0 pr-0 mb-[-1rem]">
               <Button

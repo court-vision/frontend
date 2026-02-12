@@ -31,13 +31,14 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
 
 import { WeekSchedule, WeekScheduleHeader } from "./WeekSchedule";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { useTeams } from "@/app/context/TeamsContext";
 import { useStreamersQuery } from "@/hooks/useStreamers";
-import type { StreamerPlayer } from "@/types/streamer";
+import type { StreamerPlayer, StreamerMode } from "@/types/streamer";
 import type { FantasyProvider } from "@/types/team";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C", "G", "F"] as const;
@@ -71,10 +72,10 @@ export default function StreamerDisplay() {
   const [selectedPositions, setSelectedPositions] = useState<Set<Position>>(
     new Set()
   );
+  const [mode, setMode] = useState<StreamerMode>("daily");
   const [b2bOnly, setB2bOnly] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [targetDay, setTargetDay] = useState<number | null>(null);
   const [avgDays, setAvgDays] = useState(7);
-  const [gameDayFilter, setGameDayFilter] = useState<number | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
 
   // Fetch streamers
@@ -85,8 +86,9 @@ export default function StreamerDisplay() {
       faCount: 75,
       excludeInjured: true,
       b2bOnly: b2bOnly,
-      day: selectedDay,
       avgDays: avgDays,
+      mode: mode,
+      targetDay: mode === "daily" ? targetDay : undefined,
     }
   );
 
@@ -107,13 +109,9 @@ export default function StreamerDisplay() {
           selectedPositions.has(pos as Position)
         );
 
-      // Game day filter (only show players with a game on the selected day)
-      const matchesGameDay =
-        gameDayFilter === null || player.game_days.includes(gameDayFilter);
-
-      return matchesSearch && matchesPosition && matchesGameDay;
+      return matchesSearch && matchesPosition;
     });
-  }, [data?.streamers, searchQuery, selectedPositions, gameDayFilter]);
+  }, [data?.streamers, searchQuery, selectedPositions]);
 
   const togglePosition = (pos: Position) => {
     setSelectedPositions((prev) => {
@@ -131,7 +129,7 @@ export default function StreamerDisplay() {
     setSelectedPositions(new Set());
   };
 
-  // Generate day options based on matchup game_span
+  // Generate day options for daily mode day picker
   const dayOptions = useMemo(() => {
     if (!data) return [];
     return Array.from({ length: data.game_span }, (_, i) => ({
@@ -187,6 +185,26 @@ export default function StreamerDisplay() {
       {/* Filters Section */}
       <Card variant="panel" className="p-3">
         <div className="flex flex-wrap items-center gap-3">
+          {/* Mode Toggle */}
+          <Tabs
+            value={mode}
+            onValueChange={(v) => {
+              setMode(v as StreamerMode);
+              if (v === "week") {
+                setTargetDay(null);
+              }
+            }}
+          >
+            <TabsList className="h-8">
+              <TabsTrigger value="daily" className="text-xs px-3">
+                Daily Pickup
+              </TabsTrigger>
+              <TabsTrigger value="week" className="text-xs px-3">
+                Rest of Week
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           {/* Search */}
           <div className="relative flex-1 min-w-[180px] max-w-[260px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -198,45 +216,27 @@ export default function StreamerDisplay() {
             />
           </div>
 
-          {/* Day Selector */}
-          <Select
-            value={selectedDay?.toString() ?? "current"}
-            onValueChange={(val) =>
-              setSelectedDay(val === "current" ? null : parseInt(val))
-            }
-          >
-            <SelectTrigger className="w-[130px] h-8 text-xs">
-              <SelectValue placeholder="Select day" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="current">Current Day</SelectItem>
-              {dayOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value.toString()}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Game Day Filter */}
-          <Select
-            value={gameDayFilter?.toString() ?? "all"}
-            onValueChange={(val) =>
-              setGameDayFilter(val === "all" ? null : parseInt(val))
-            }
-          >
-            <SelectTrigger className="w-[150px] h-8 text-xs">
-              <SelectValue placeholder="Playing on..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Game Days</SelectItem>
-              {dayOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value.toString()}>
-                  Playing {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Daily mode: Day Picker */}
+          {mode === "daily" && (
+            <Select
+              value={targetDay?.toString() ?? "today"}
+              onValueChange={(val) =>
+                setTargetDay(val === "today" ? null : parseInt(val))
+              }
+            >
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue placeholder="Select day" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                {dayOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value.toString()}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {/* B2B Only Toggle */}
           <Button
@@ -296,9 +296,12 @@ export default function StreamerDisplay() {
       {/* Info Bar */}
       <div className="flex items-center gap-3 text-xs text-muted-foreground px-1">
         <span>
-          Matchup {data.matchup_number} &middot; Day {data.current_day_index + 1}
+          Matchup {data.matchup_number} &middot;{" "}
+          {mode === "daily"
+            ? `Day ${(data.target_day ?? data.current_day_index) + 1} Pickup`
+            : `Day ${data.current_day_index + 1} of ${data.game_span}`}
         </span>
-        {data.teams_with_b2b.length > 0 && (
+        {mode === "week" && data.teams_with_b2b.length > 0 && (
           <span className="hidden sm:inline">B2B: {data.teams_with_b2b.join(", ")}</span>
         )}
         <span className="ml-auto">
@@ -318,7 +321,7 @@ export default function StreamerDisplay() {
                 <TableHead className="w-[120px]">Pos</TableHead>
                 <TableHead className="w-[70px] text-right">{avgDays}D Avg</TableHead>
                 <TableHead className="w-[50px] text-center">GP</TableHead>
-                <TableHead className="w-[180px] text-center">
+                <TableHead className="text-center">
                   <div className="flex flex-col items-center gap-1">
                     <span>Schedule</span>
                     <WeekScheduleHeader

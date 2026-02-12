@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Settings } from "lucide-react";
 import type { FantasyProvider } from "@/types/team";
 
 export default function Teams() {
@@ -39,13 +40,21 @@ export default function Teams() {
   }, [isSignedIn, teams, selectedTeam, setSelectedTeam]);
 
   const pageHeader = (
-    <section>
-      <h1 className="font-display text-xl font-bold tracking-tight">
-        Your Teams
-      </h1>
-      <p className="text-muted-foreground text-xs mt-0.5">
-        Roster overview and team analysis.
-      </p>
+    <section className="flex items-center justify-between">
+      <div>
+        <h1 className="font-display text-xl font-bold tracking-tight">
+          Your Teams
+        </h1>
+        <p className="text-muted-foreground text-xs mt-0.5">
+          Roster overview and team analysis.
+        </p>
+      </div>
+      <Link href="/manage-teams">
+        <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+          <Settings className="h-3.5 w-3.5" />
+          Manage Teams
+        </Button>
+      </Link>
     </section>
   );
 

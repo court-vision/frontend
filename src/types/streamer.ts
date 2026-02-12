@@ -1,6 +1,8 @@
 import type { BaseApiResponse } from "./auth";
 import type { LeagueInfo } from "./team";
 
+export type StreamerMode = "week" | "daily";
+
 // Streamer player from backend response
 export interface StreamerPlayer {
   player_id: number;
@@ -24,6 +26,8 @@ export interface StreamerData {
   current_day_index: number;
   game_span: number;
   avg_days: number;
+  mode: StreamerMode;
+  target_day: number | null;
   teams_with_b2b: string[];
   streamers: StreamerPlayer[];
 }
@@ -34,7 +38,8 @@ export interface StreamerRequest {
   fa_count?: number;
   exclude_injured?: boolean;
   b2b_only?: boolean;
-  day?: number | null;
+  mode?: StreamerMode;
+  target_day?: number | null;
   avg_days?: number;
 }
 

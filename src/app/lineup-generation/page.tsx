@@ -1,7 +1,9 @@
 "use client";
-import { Zap } from "lucide-react";
+import Link from "next/link";
+import { Zap, FolderOpen } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import StopzForm from "@/components/lineup-components/StopzForm";
 import LineupDisplay from "@/components/lineup-components/LineupDisplay";
 import { useGenerateLineupMutation } from "@/hooks/useLineups";
@@ -15,13 +17,21 @@ export default function LineupGeneration() {
 
   return (
     <div className="space-y-4 animate-slide-up-fade">
-      <section>
-        <h1 className="font-display text-xl font-bold tracking-tight">
-          Lineup Generation
-        </h1>
-        <p className="text-muted-foreground text-xs mt-0.5">
-          Optimize your streaming moves for the week.
-        </p>
+      <section className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-xl font-bold tracking-tight">
+            Lineup Generation
+          </h1>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Optimize your streaming moves for the week.
+          </p>
+        </div>
+        <Link href="/manage-lineups">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+            <FolderOpen className="h-3.5 w-3.5" />
+            Saved Lineups
+          </Button>
+        </Link>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
