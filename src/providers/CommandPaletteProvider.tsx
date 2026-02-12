@@ -394,8 +394,8 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
         </div>
 
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-mono text-sm select-none">{">"}</span>
-          <CommandInput placeholder="Type a command or search..." className="border-0 pl-7" />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-mono text-sm select-none pl-8">{">"}</span>
+          <CommandInput placeholder="Type a command or search..." className="border-0 pl-5" />
         </div>
 
         <CommandList className="max-h-[400px]">
