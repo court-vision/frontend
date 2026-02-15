@@ -34,7 +34,7 @@ import type {
   ScheduleWeeksResponse,
 } from "@/types/lineup";
 import type { RankingsPlayer } from "@/types/rankings";
-import type { PlayerStats } from "@/types/player";
+import type { PlayerStats, PercentileData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
 import type { GamesOnDateData } from "@/types/games";
 import type {
@@ -356,6 +356,27 @@ class ApiClient {
       throw new Error(`API request failed: ${response.statusText}`);
     }
     const data: BaseApiResponse<PlayerStats> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
+  }
+
+  async getPlayerPercentiles(
+    playerId: number,
+    minGames: number = 20
+  ): Promise<PercentileData | null> {
+    const params = new URLSearchParams();
+    if (minGames !== 20) {
+      params.append("min_games", minGames.toString());
+    }
+    const queryString = params.toString();
+    const url = `${PLAYERS_API}/${playerId}/percentiles${queryString ? `?${queryString}` : ""}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: BaseApiResponse<PercentileData> = await response.json();
     if (data.status === "success" && data.data) {
       return data.data;
     }

@@ -40,6 +40,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
     addToWatchlist,
     addToComparison,
     setLayoutPreset,
+    setStatWindow,
   } = useTerminalStore();
 
   const hasComparison = comparisonPlayerIds.length > 0;
@@ -90,6 +91,20 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         e.preventDefault();
         setLayoutPreset("data");
       }
+      // Stat window shortcuts (1-4)
+      else if (e.key === "1") {
+        e.preventDefault();
+        setStatWindow("season");
+      } else if (e.key === "2") {
+        e.preventDefault();
+        setStatWindow("l5");
+      } else if (e.key === "3") {
+        e.preventDefault();
+        setStatWindow("l10");
+      } else if (e.key === "4") {
+        e.preventDefault();
+        setStatWindow("l20");
+      }
       // Panel resize via imperative API
       else if ((e.key === "," || e.key === "." || e.key === "<" || e.key === ">") && groupRef.current) {
         e.preventDefault();
@@ -125,7 +140,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         groupRef.current.setLayout(newLayout);
       }
     },
-    [toggleLeftPanel, toggleRightPanel, leftPanelCollapsed, rightPanelCollapsed, focusedPlayerId, addToWatchlist, addToComparison, setLayoutPreset]
+    [toggleLeftPanel, toggleRightPanel, leftPanelCollapsed, rightPanelCollapsed, focusedPlayerId, addToWatchlist, addToComparison, setLayoutPreset, setStatWindow]
   );
 
   useEffect(() => {

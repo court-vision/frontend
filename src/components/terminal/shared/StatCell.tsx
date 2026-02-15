@@ -12,6 +12,7 @@ interface StatCellProps {
   size?: "sm" | "md" | "lg";
   highlight?: boolean;
   className?: string;
+  percentile?: number | null;
 }
 
 export function StatCell({
@@ -23,6 +24,7 @@ export function StatCell({
   size = "md",
   highlight = false,
   className,
+  percentile,
 }: StatCellProps) {
   const formattedValue =
     typeof value === "number" ? value.toFixed(decimals) : value;
@@ -73,6 +75,19 @@ export function StatCell({
         <span className={cn("text-[10px] font-mono", trendColor)}>
           {trendValue > 0 ? "+" : ""}
           {trendValue.toFixed(1)}
+        </span>
+      )}
+      {percentile != null && (
+        <span
+          className={cn(
+            "text-[9px] font-mono leading-none mt-0.5",
+            percentile >= 75 && "text-green-500",
+            percentile >= 50 && percentile < 75 && "text-amber-500",
+            percentile >= 25 && percentile < 50 && "text-muted-foreground",
+            percentile < 25 && "text-red-500"
+          )}
+        >
+          P{percentile}
         </span>
       )}
     </div>

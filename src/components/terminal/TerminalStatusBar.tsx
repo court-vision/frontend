@@ -43,6 +43,10 @@ export function TerminalStatusBar({ className }: TerminalStatusBarProps) {
           <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">c</kbd> compare
         </span>
         <span className="hidden 2xl:inline">
+          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">1</kbd>-
+          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">4</kbd> window
+        </span>
+        <span className="hidden 2xl:inline">
           <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">F1</kbd>-
           <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">F4</kbd> layouts
         </span>

@@ -53,8 +53,8 @@ export interface LayoutState {
   centerPanels: PanelInstance[];
 }
 
-// Stat window for time-based filtering
-export type StatWindow = "season" | "l5" | "l10" | "l20";
+// Stat window for time-based filtering (supports "season" or any "lN" like "l5", "l10", "l15", etc.)
+export type StatWindow = string;
 
 // Command bar types
 export interface CommandDefinition {

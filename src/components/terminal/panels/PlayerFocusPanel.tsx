@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { User, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
-import { usePlayerStatsQuery } from "@/hooks/usePlayer";
+import { usePlayerStatsQuery, usePlayerPercentilesQuery } from "@/hooks/usePlayer";
 import { StatCell, StatRow } from "../shared";
 import { calculateRecentFormTrend } from "@/lib/chart-utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +24,7 @@ export function PlayerFocusPanel() {
     "nba",
     statWindow
   );
+  const { data: percentiles } = usePlayerPercentilesQuery(focusedPlayerId);
 
   // Calculate trend from recent games (always uses full game logs)
   const trend = useMemo(() => {
@@ -129,31 +130,37 @@ export function PlayerFocusPanel() {
           label="PTS"
           value={avg_stats.avg_points}
           size="sm"
+          percentile={percentiles?.avg_points}
         />
         <StatCell
           label="REB"
           value={avg_stats.avg_rebounds}
           size="sm"
+          percentile={percentiles?.avg_rebounds}
         />
         <StatCell
           label="AST"
           value={avg_stats.avg_assists}
           size="sm"
+          percentile={percentiles?.avg_assists}
         />
         <StatCell
           label="STL"
           value={avg_stats.avg_steals}
           size="sm"
+          percentile={percentiles?.avg_steals}
         />
         <StatCell
           label="BLK"
           value={avg_stats.avg_blocks}
           size="sm"
+          percentile={percentiles?.avg_blocks}
         />
         <StatCell
           label="TOV"
           value={avg_stats.avg_turnovers}
           size="sm"
+          percentile={percentiles?.avg_turnovers}
         />
       </div>
 

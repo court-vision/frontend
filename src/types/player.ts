@@ -58,6 +58,20 @@ export interface AdvancedStatsData {
   plus_minus: number | null;
 }
 
+export interface PercentileData {
+  avg_fpts: number;
+  avg_points: number;
+  avg_rebounds: number;
+  avg_assists: number;
+  avg_steals: number;
+  avg_blocks: number;
+  avg_turnovers: number;
+  avg_minutes: number;
+  avg_fg_pct: number;
+  avg_fg3_pct: number;
+  avg_ft_pct: number;
+}
+
 export interface PlayerStats {
   id: number;
   name: string;

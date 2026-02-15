@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useRankingsQuery } from "@/hooks/useRankings";
-import type { StatWindow, LayoutPreset } from "@/types/terminal";
+import type { LayoutPreset } from "@/types/terminal";
 
 interface CommandBarProps {
   className?: string;
@@ -20,7 +20,7 @@ interface CommandSuggestion {
 }
 
 const COMMANDS: CommandSuggestion[] = [
-  { command: ":window", description: "Set stat window", example: ":window l10" },
+  { command: ":window", description: "Set stat window (season or 1-82)", example: ":window 15" },
   { command: ":layout", description: "Switch layout preset", example: ":layout chart" },
   { command: ":compare", description: "Compare players", example: ":compare curry lebron" },
   { command: ":clear", description: "Clear comparison", example: ":clear" },
@@ -77,12 +77,23 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
       switch (command) {
         case "window": {
           const windowArg = args[0]?.toLowerCase();
-          const validWindows: StatWindow[] = ["season", "l5", "l10", "l20"];
-          if (validWindows.includes(windowArg as StatWindow)) {
-            setStatWindow(windowArg as StatWindow);
-            setCommandFeedback(`Window set to ${windowArg.toUpperCase()}`);
+          if (windowArg === "season") {
+            setStatWindow("season");
+            setCommandFeedback("Window set to SEASON");
           } else {
-            setCommandFeedback(`Invalid window. Use: season, l5, l10, l20`);
+            // Accept "lN" format or plain number (e.g. "l15" or "15")
+            const match = windowArg?.match(/^l?(\d+)$/);
+            if (match) {
+              const n = parseInt(match[1], 10);
+              if (n >= 1 && n <= 82) {
+                setStatWindow(`l${n}`);
+                setCommandFeedback(`Window set to L${n}`);
+              } else {
+                setCommandFeedback("Window must be between 1 and 82 games");
+              }
+            } else {
+              setCommandFeedback("Usage: :window season | :window <number>");
+            }
           }
           break;
         }

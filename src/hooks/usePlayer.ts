@@ -10,6 +10,8 @@ export const playerKeys = {
     [...playerKeys.all, "stats", idType, playerId, window] as const,
   statsByName: (name: string, team: string, window: string = "season") =>
     [...playerKeys.all, "stats", "name", name, team, window] as const,
+  percentiles: (playerId: number) =>
+    [...playerKeys.all, "percentiles", playerId] as const,
 };
 
 // Hooks
@@ -23,6 +25,15 @@ export function usePlayerStatsQuery(
     queryFn: () => apiClient.getPlayerStats(playerId!, idType, window),
     enabled: !!playerId,
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+export function usePlayerPercentilesQuery(playerId: number | null) {
+  return useQuery({
+    queryKey: playerKeys.percentiles(playerId!),
+    queryFn: () => apiClient.getPlayerPercentiles(playerId!),
+    enabled: !!playerId,
+    staleTime: 1000 * 60 * 15, // 15 minutes - percentiles change slowly
   });
 }
 
