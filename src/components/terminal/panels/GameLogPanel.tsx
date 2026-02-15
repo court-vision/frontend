@@ -38,7 +38,8 @@ export function GameLogPanel() {
   const { focusedPlayerId, statWindow } = useTerminalStore();
   const { data: playerStats, isLoading, error } = usePlayerStatsQuery(
     focusedPlayerId,
-    "nba"
+    "nba",
+    statWindow
   );
 
   const [sortKey, setSortKey] = useState<SortKey>("date");

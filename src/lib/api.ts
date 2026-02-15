@@ -323,10 +323,15 @@ class ApiClient {
   // Players API (public - no auth required)
   async getPlayerStats(
     id: number,
-    idType: "espn" | "nba" = "espn"
+    idType: "espn" | "nba" = "espn",
+    window: string = "season"
   ): Promise<PlayerStats | null> {
     const param = idType === "espn" ? "espn_id" : "player_id";
-    const response = await fetch(`${PLAYERS_API}/stats?${param}=${id}`);
+    const searchParams = new URLSearchParams({ [param]: id.toString() });
+    if (window !== "season") {
+      searchParams.append("window", window);
+    }
+    const response = await fetch(`${PLAYERS_API}/stats?${searchParams.toString()}`);
     if (!response.ok) {
       throw new Error(`API request failed: ${response.statusText}`);
     }
@@ -339,9 +344,13 @@ class ApiClient {
 
   async getPlayerStatsByName(
     name: string,
-    team: string
+    team: string,
+    window: string = "season"
   ): Promise<PlayerStats | null> {
     const params = new URLSearchParams({ name, team });
+    if (window !== "season") {
+      params.append("window", window);
+    }
     const response = await fetch(`${PLAYERS_API}/stats?${params.toString()}`);
     if (!response.ok) {
       throw new Error(`API request failed: ${response.statusText}`);

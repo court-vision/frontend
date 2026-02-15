@@ -8,15 +8,24 @@ import { usePlayerStatsQuery } from "@/hooks/usePlayer";
 import { StatCell, StatRow } from "../shared";
 import { calculateRecentFormTrend } from "@/lib/chart-utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { StatWindow } from "@/types/terminal";
+
+const WINDOW_LABELS: Record<StatWindow, string> = {
+  season: "Season",
+  l5: "L5",
+  l10: "L10",
+  l20: "L20",
+};
 
 export function PlayerFocusPanel() {
-  const { focusedPlayerId } = useTerminalStore();
+  const { focusedPlayerId, statWindow } = useTerminalStore();
   const { data: playerStats, isLoading, error } = usePlayerStatsQuery(
     focusedPlayerId,
-    "nba"
+    "nba",
+    statWindow
   );
 
-  // Calculate trend from recent games
+  // Calculate trend from recent games (always uses full game logs)
   const trend = useMemo(() => {
     if (!playerStats?.game_logs || !playerStats?.avg_stats) return null;
     return calculateRecentFormTrend(
@@ -49,7 +58,8 @@ export function PlayerFocusPanel() {
     );
   }
 
-  const { name, team, games_played, avg_stats } = playerStats;
+  const { name, team, games_played, window_games, avg_stats } = playerStats;
+  const isWindowed = statWindow !== "season";
 
   const trendDirection =
     trend?.trend === "hot" ? "up" : trend?.trend === "cold" ? "down" : "neutral";
@@ -66,7 +76,9 @@ export function PlayerFocusPanel() {
           <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
             <span>{team}</span>
             <span className="text-border">·</span>
-            <span>{games_played} GP</span>
+            <span>
+              {isWindowed ? `${window_games} of ${games_played} GP` : `${games_played} GP`}
+            </span>
           </div>
         </div>
       </div>
@@ -77,6 +89,11 @@ export function PlayerFocusPanel() {
           <div>
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Fantasy Points
+              {isWindowed && (
+                <span className="ml-1 text-primary/70">
+                  ({WINDOW_LABELS[statWindow]} avg)
+                </span>
+              )}
             </span>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-mono font-bold text-primary tabular-nums">

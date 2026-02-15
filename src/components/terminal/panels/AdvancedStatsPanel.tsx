@@ -1,12 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
-import { BarChart3, Lock } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { usePlayerStatsQuery } from "@/hooks/usePlayer";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { GameLog } from "@/types/player";
 
 interface StatBarProps {
   label: string;
@@ -46,12 +44,12 @@ function StatBar({
   );
 }
 
-function LockedStat({ label }: { label: string }) {
+function EmptyStat({ label }: { label: string }) {
   return (
-    <div className="space-y-1 opacity-50">
+    <div className="space-y-1 opacity-40">
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">{label}</span>
-        <Lock className="h-3 w-3 text-muted-foreground" />
+        <span className="font-mono text-muted-foreground">--</span>
       </div>
       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
         <div className="h-full w-0 rounded-full bg-muted-foreground" />
@@ -61,58 +59,14 @@ function LockedStat({ label }: { label: string }) {
 }
 
 export function AdvancedStatsPanel() {
-  const { focusedPlayerId } = useTerminalStore();
+  const { focusedPlayerId, statWindow } = useTerminalStore();
   const { data: playerStats, isLoading, error } = usePlayerStatsQuery(
     focusedPlayerId,
-    "nba"
+    "nba",
+    statWindow
   );
 
-  // Calculate derived stats from game logs
-  const derivedStats = useMemo(() => {
-    if (!playerStats?.game_logs || playerStats.game_logs.length === 0) {
-      return null;
-    }
-
-    const logs = playerStats.game_logs;
-    const totals = logs.reduce(
-      (acc, log) => ({
-        fgm: acc.fgm + log.fgm,
-        fga: acc.fga + log.fga,
-        fg3m: acc.fg3m + log.fg3m,
-        fg3a: acc.fg3a + log.fg3a,
-        ftm: acc.ftm + log.ftm,
-        fta: acc.fta + log.fta,
-        pts: acc.pts + log.pts,
-      }),
-      { fgm: 0, fga: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0, pts: 0 }
-    );
-
-    // True Shooting % = PTS / (2 * (FGA + 0.44 * FTA))
-    const tsa = totals.fga + 0.44 * totals.fta;
-    const ts_pct = tsa > 0 ? (totals.pts / (2 * tsa)) * 100 : 0;
-
-    // Effective FG% = (FGM + 0.5 * 3PM) / FGA
-    const efg_pct =
-      totals.fga > 0
-        ? ((totals.fgm + 0.5 * totals.fg3m) / totals.fga) * 100
-        : 0;
-
-    // 3-Point Rate = 3PA / FGA
-    const three_rate = totals.fga > 0 ? (totals.fg3a / totals.fga) * 100 : 0;
-
-    // Free Throw Rate = FTA / FGA
-    const ft_rate = totals.fga > 0 ? (totals.fta / totals.fga) * 100 : 0;
-
-    return {
-      ts_pct,
-      efg_pct,
-      three_rate,
-      ft_rate,
-      fg_pct: totals.fga > 0 ? (totals.fgm / totals.fga) * 100 : 0,
-      fg3_pct: totals.fg3a > 0 ? (totals.fg3m / totals.fg3a) * 100 : 0,
-      ft_pct: totals.fta > 0 ? (totals.ftm / totals.fta) * 100 : 0,
-    };
-  }, [playerStats?.game_logs]);
+  const isWindowed = statWindow !== "season";
 
   if (!focusedPlayerId) {
     return (
@@ -127,7 +81,7 @@ export function AdvancedStatsPanel() {
     return <AdvancedStatsSkeleton />;
   }
 
-  if (error || !playerStats || !derivedStats) {
+  if (error || !playerStats) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
         <p className="text-sm text-destructive">Failed to load advanced stats</p>
@@ -135,9 +89,11 @@ export function AdvancedStatsPanel() {
     );
   }
 
+  const { avg_stats, advanced_stats } = playerStats;
+
   return (
     <div className="flex flex-col h-full p-3 gap-4 overflow-y-auto">
-      {/* Shooting Efficiency */}
+      {/* Shooting Efficiency - computed from windowed game logs */}
       <div>
         <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
           Shooting Efficiency
@@ -145,40 +101,40 @@ export function AdvancedStatsPanel() {
         <div className="space-y-3">
           <StatBar
             label="True Shooting %"
-            value={derivedStats.ts_pct}
+            value={avg_stats.avg_ts_pct}
             maxValue={80}
             suffix="%"
             colorClass="bg-green-500"
           />
           <StatBar
             label="Effective FG%"
-            value={derivedStats.efg_pct}
+            value={avg_stats.avg_efg_pct}
             maxValue={70}
             suffix="%"
             colorClass="bg-green-500"
           />
           <StatBar
             label="FG%"
-            value={derivedStats.fg_pct}
+            value={avg_stats.avg_fg_pct}
             maxValue={60}
             suffix="%"
           />
           <StatBar
             label="3P%"
-            value={derivedStats.fg3_pct}
+            value={avg_stats.avg_fg3_pct}
             maxValue={50}
             suffix="%"
           />
           <StatBar
             label="FT%"
-            value={derivedStats.ft_pct}
+            value={avg_stats.avg_ft_pct}
             maxValue={100}
             suffix="%"
           />
         </div>
       </div>
 
-      {/* Shot Profile */}
+      {/* Shot Profile - computed from windowed game logs */}
       <div>
         <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
           Shot Profile
@@ -186,14 +142,14 @@ export function AdvancedStatsPanel() {
         <div className="space-y-3">
           <StatBar
             label="3-Point Rate"
-            value={derivedStats.three_rate}
+            value={avg_stats.avg_three_rate}
             maxValue={60}
             suffix="%"
             colorClass="bg-blue-500"
           />
           <StatBar
             label="Free Throw Rate"
-            value={derivedStats.ft_rate}
+            value={avg_stats.avg_ft_rate}
             maxValue={50}
             suffix="%"
             colorClass="bg-amber-500"
@@ -201,18 +157,83 @@ export function AdvancedStatsPanel() {
         </div>
       </div>
 
-      {/* Advanced Stats (Locked - needs backend) */}
+      {/* Advanced Stats - always season-level from pipeline */}
       <div>
         <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2 flex items-center gap-1">
           Advanced
-          <span className="text-[8px] bg-muted px-1 py-0.5 rounded">Soon</span>
+          {isWindowed && (
+            <span className="text-[8px] bg-muted px-1 py-0.5 rounded">Season</span>
+          )}
         </h4>
         <div className="space-y-3">
-          <LockedStat label="Usage Rate" />
-          <LockedStat label="Net Rating" />
-          <LockedStat label="PIE" />
-          <LockedStat label="Assist %" />
-          <LockedStat label="Rebound %" />
+          {advanced_stats ? (
+            <>
+              {advanced_stats.usg_pct != null ? (
+                <StatBar
+                  label="Usage Rate"
+                  value={advanced_stats.usg_pct}
+                  maxValue={40}
+                  suffix="%"
+                  colorClass="bg-violet-500"
+                />
+              ) : (
+                <EmptyStat label="Usage Rate" />
+              )}
+              {advanced_stats.net_rating != null ? (
+                <StatBar
+                  label="Net Rating"
+                  value={advanced_stats.net_rating}
+                  maxValue={20}
+                  precision={1}
+                  colorClass={advanced_stats.net_rating >= 0 ? "bg-green-500" : "bg-red-500"}
+                />
+              ) : (
+                <EmptyStat label="Net Rating" />
+              )}
+              {advanced_stats.pie != null ? (
+                <StatBar
+                  label="PIE"
+                  value={advanced_stats.pie}
+                  maxValue={25}
+                  suffix="%"
+                  precision={1}
+                  colorClass="bg-orange-500"
+                />
+              ) : (
+                <EmptyStat label="PIE" />
+              )}
+              {advanced_stats.ast_pct != null ? (
+                <StatBar
+                  label="Assist %"
+                  value={advanced_stats.ast_pct}
+                  maxValue={50}
+                  suffix="%"
+                  colorClass="bg-cyan-500"
+                />
+              ) : (
+                <EmptyStat label="Assist %" />
+              )}
+              {advanced_stats.reb_pct != null ? (
+                <StatBar
+                  label="Rebound %"
+                  value={advanced_stats.reb_pct}
+                  maxValue={25}
+                  suffix="%"
+                  colorClass="bg-teal-500"
+                />
+              ) : (
+                <EmptyStat label="Rebound %" />
+              )}
+            </>
+          ) : (
+            <>
+              <EmptyStat label="Usage Rate" />
+              <EmptyStat label="Net Rating" />
+              <EmptyStat label="PIE" />
+              <EmptyStat label="Assist %" />
+              <EmptyStat label="Rebound %" />
+            </>
+          )}
         </div>
       </div>
     </div>

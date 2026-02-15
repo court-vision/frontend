@@ -42,7 +42,8 @@ export function PerformanceChartPanel() {
   const { focusedPlayerId, statWindow } = useTerminalStore();
   const { data: playerStats, isLoading, error } = usePlayerStatsQuery(
     focusedPlayerId,
-    "nba"
+    "nba",
+    statWindow
   );
 
   const [showMovingAvg, setShowMovingAvg] = useState(true);
@@ -74,7 +75,7 @@ export function PerformanceChartPanel() {
     }));
   }, [playerStats?.game_logs, statWindow, showMovingAvg, movingAvgWindow]);
 
-  const seasonAvg = playerStats?.avg_stats?.avg_fpts ?? 0;
+  const windowedAvg = playerStats?.avg_stats?.avg_fpts ?? 0;
 
   if (!focusedPlayerId) {
     return (
@@ -187,7 +188,7 @@ export function PerformanceChartPanel() {
             {/* Season average reference line */}
             {showSeasonAvg && (
               <ReferenceLine
-                y={seasonAvg}
+                y={windowedAvg}
                 stroke="hsl(var(--muted-foreground))"
                 strokeDasharray="4 4"
                 strokeOpacity={0.7}
@@ -236,7 +237,7 @@ export function PerformanceChartPanel() {
         {showSeasonAvg && (
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-px bg-muted-foreground" style={{ borderTop: "1px dashed" }} />
-            <span>Avg: {seasonAvg.toFixed(1)}</span>
+            <span>Avg: {windowedAvg.toFixed(1)}</span>
           </div>
         )}
       </div>
