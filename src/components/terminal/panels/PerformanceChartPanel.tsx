@@ -63,6 +63,13 @@ export function PerformanceChartPanel() {
       logs = logs.slice(-10);
     } else if (statWindow === "l20") {
       logs = logs.slice(-20);
+    } else {
+      try {
+        const n = Number(statWindow.slice(1)); // "l15" -> 15
+        logs = logs.slice(-n);
+      } catch (error) {
+        logs = logs;
+      }
     }
 
     if (showMovingAvg) {
