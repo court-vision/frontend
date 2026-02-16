@@ -3,8 +3,8 @@
 import { useEffect, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useUIStore } from "@/stores/useUIStore";
-import { useTeamsQuery, useTeamRosterQuery } from "@/hooks/useTeams";
-import { RosterDisplay } from "@/components/teams-components/RosterDisplay";
+import { useTeamsQuery, useTeamInsightsQuery } from "@/hooks/useTeams";
+import { TeamDashboard } from "@/components/teams-components/TeamDashboard";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,8 @@ export default function Teams() {
   const { isSignedIn, isLoaded } = useUser();
   const { selectedTeam, setSelectedTeam } = useUIStore();
   const { data: teams, isLoading: isTeamsLoading } = useTeamsQuery();
-  const { data: roster, isLoading: isRosterLoading } =
-    useTeamRosterQuery(selectedTeam);
+  const { data: insights, isLoading: isInsightsLoading } =
+    useTeamInsightsQuery(selectedTeam);
 
   // Find the selected team's provider
   const provider = useMemo<FantasyProvider>(() => {
@@ -58,12 +58,17 @@ export default function Teams() {
     </section>
   );
 
-  if (!isLoaded || isTeamsLoading || (selectedTeam && isRosterLoading)) {
+  if (!isLoaded || isTeamsLoading || (selectedTeam && isInsightsLoading)) {
     return (
       <div className="space-y-4 animate-slide-up-fade">
         {pageHeader}
         <div className="space-y-3">
-          <Skeleton className="h-8 w-full rounded-md" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-md" />
+            ))}
+          </div>
+          <Skeleton className="h-20 w-full rounded-md" />
           <Skeleton className="h-[400px] w-full rounded-md" />
         </div>
       </div>
@@ -130,12 +135,12 @@ export default function Teams() {
           {leagueName && <span> &middot; {leagueName}</span>}
         </span>
         <span className="ml-auto">
-          {roster ? `${roster.length} players` : ""}
+          {insights ? `${insights.roster.length} players` : ""}
         </span>
       </div>
 
-      {roster && roster.length > 0 ? (
-        <RosterDisplay roster={roster} provider={provider} />
+      {insights ? (
+        <TeamDashboard insights={insights} provider={provider} />
       ) : (
         <Card variant="panel" className="p-8">
           <p className="text-sm text-muted-foreground text-center">

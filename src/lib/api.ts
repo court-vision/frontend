@@ -57,6 +57,10 @@ import type {
   OwnershipTrendingResponse,
   OwnershipTrendingParams,
 } from "@/types/ownership";
+import type {
+  TeamInsightsData,
+  TeamInsightsResponse,
+} from "@/types/team-insights";
 
 class ApiClient {
   private baseUrl: string;
@@ -152,6 +156,20 @@ class ApiClient {
       return response.data;
     }
     throw new Error(response.message || "Failed to fetch team roster");
+  }
+
+  async getTeamInsights(
+    getToken: GetTokenFn,
+    teamId: number
+  ): Promise<TeamInsightsData> {
+    const response = await this.authenticatedRequest<TeamInsightsResponse>(
+      `${TEAMS_API}/${teamId}/insights`,
+      getToken
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to fetch team insights");
   }
 
   // Lineups API - calls backend directly

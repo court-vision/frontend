@@ -8,6 +8,8 @@ import type {
   TeamResponseData,
 } from "@/types/team";
 
+import type { TeamInsightsData } from "@/types/team-insights";
+
 // Query keys
 export const teamsKeys = {
   all: ["teams"] as const,
@@ -18,6 +20,7 @@ export const teamsKeys = {
   detail: (id: number) => [...teamsKeys.details(), id] as const,
   rosters: () => [...teamsKeys.all, "roster"] as const,
   roster: (teamId: number) => [...teamsKeys.rosters(), teamId] as const,
+  insights: (teamId: number) => [...teamsKeys.all, "insights", teamId] as const,
 };
 
 // Hooks
@@ -51,6 +54,17 @@ export function useTeamRosterQuery(teamId: number | null) {
     queryFn: () => apiClient.getTeamRoster(getToken, teamId!),
     enabled: !!teamId && isSignedIn === true,
     staleTime: 1000 * 60 * 2, // 2 minutes for roster data
+  });
+}
+
+export function useTeamInsightsQuery(teamId: number | null) {
+  const { getToken, isSignedIn } = useAuth();
+
+  return useQuery<TeamInsightsData>({
+    queryKey: teamsKeys.insights(teamId!),
+    queryFn: () => apiClient.getTeamInsights(getToken, teamId!),
+    enabled: !!teamId && isSignedIn === true,
+    staleTime: 1000 * 60 * 3, // 3 minutes
   });
 }
 
