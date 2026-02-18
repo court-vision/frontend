@@ -81,7 +81,7 @@ export function TrendingPanel() {
   // min_ownership=3 filters out deep roster noise
   // limit=5 for compact display
   const { data, isLoading, error } = useOwnershipTrendingQuery({
-    days: 7,
+    days: 2,
     min_change: 3.0,
     min_ownership: 3.0,
     sort_by: "velocity",
