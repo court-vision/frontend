@@ -30,7 +30,8 @@ import {
   CommandShortcut,
   CommandSeparator,
 } from "@/components/ui/command";
-import { Command as CommandIcon } from "lucide-react";
+import { DialogClose } from "@/components/ui/dialog";
+import { Command as CommandIcon, X } from "lucide-react";
 import { useTeams } from "@/app/context/TeamsContext";
 
 // =============================================================================
@@ -390,7 +391,13 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
             <CommandIcon className="h-3.5 w-3.5 text-primary" />
             <span className="font-display text-xs font-semibold text-foreground/80 tracking-wide">Commands</span>
           </div>
-          <span className="text-[9px] font-mono text-muted-foreground/40">Esc to close</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-mono text-muted-foreground/40">Esc to close</span>
+            <DialogClose className="rounded-sm opacity-50 hover:opacity-100 transition-opacity">
+              <X className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="sr-only">Close</span>
+            </DialogClose>
+          </div>
         </div>
 
         <div className="relative">
