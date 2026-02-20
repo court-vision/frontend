@@ -15,6 +15,7 @@ import {
   Search,
   User,
   Menu,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCommandPalette } from "@/providers/CommandPaletteProvider";
@@ -46,6 +47,7 @@ const mobileNavItems = [
   { href: "/rankings", label: "Rankings", icon: Trophy, shortcut: "⌥6" },
   { href: "/terminal", label: "Terminal", icon: Terminal, shortcut: "⌥7" },
   { href: "/query-builder", label: "Query Builder", icon: Database, shortcut: "⌥8" },
+  { href: "/settings", label: "Settings", icon: Settings, shortcut: "" },
   { href: "/account", label: "Account", icon: User, shortcut: "" },
 ];
 
@@ -167,8 +169,18 @@ export function CommandStrip() {
         <span className="text-[9px] font-mono text-muted-foreground/50">Live</span>
       </div>
 
-      {/* User */}
-      <div className="ml-2">
+      {/* Settings + User */}
+      <div className="ml-2 flex items-center gap-1.5">
+        {isLoaded && isSignedIn && (
+          <Link href="/settings">
+            <div className={cn(
+              "h-7 w-7 rounded-md flex items-center justify-center transition-all cursor-pointer",
+              "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}>
+              <Settings className="h-3.5 w-3.5" />
+            </div>
+          </Link>
+        )}
         {isLoaded && !isSignedIn && (
           <Link href="/account">
             <Button variant="outline" size="sm" className="h-7 text-[11px]">

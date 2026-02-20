@@ -11,6 +11,7 @@ import {
   GAMES_API,
   OWNERSHIP_API,
   SCHEDULE_API,
+  NOTIFICATIONS_API,
 } from "@/endpoints";
 import type {
   Team,
@@ -57,6 +58,14 @@ import type {
   OwnershipTrendingResponse,
   OwnershipTrendingParams,
 } from "@/types/ownership";
+import type {
+  NotificationPreference,
+  NotificationPreferenceResponse,
+  NotificationTeamPreference,
+  NotificationTeamPreferenceRequest,
+  NotificationTeamPreferenceListResponse,
+  NotificationTeamPreferenceSingleResponse,
+} from "@/types/notifications";
 import type {
   TeamInsightsData,
   TeamInsightsResponse,
@@ -323,6 +332,85 @@ class ApiClient {
       return response.teams;
     }
     return [];
+  }
+
+  // Notifications API
+  async getNotificationPreferences(
+    getToken: GetTokenFn
+  ): Promise<NotificationPreference> {
+    const response =
+      await this.authenticatedRequest<NotificationPreferenceResponse>(
+        `${NOTIFICATIONS_API}/preferences`,
+        getToken
+      );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to fetch notification preferences");
+  }
+
+  async updateNotificationPreferences(
+    getToken: GetTokenFn,
+    data: NotificationPreference
+  ): Promise<NotificationPreference> {
+    const response =
+      await this.authenticatedRequest<NotificationPreferenceResponse>(
+        `${NOTIFICATIONS_API}/preferences`,
+        getToken,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to update notification preferences");
+  }
+
+  async getTeamNotificationPreferences(
+    getToken: GetTokenFn
+  ): Promise<NotificationTeamPreference[]> {
+    const response = await this.authenticatedRequest<NotificationTeamPreferenceListResponse>(
+      `${NOTIFICATIONS_API}/team-preferences`,
+      getToken
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    return [];
+  }
+
+  async upsertTeamNotificationPreference(
+    getToken: GetTokenFn,
+    teamId: number,
+    data: NotificationTeamPreferenceRequest
+  ): Promise<NotificationTeamPreference> {
+    const response = await this.authenticatedRequest<NotificationTeamPreferenceSingleResponse>(
+      `${NOTIFICATIONS_API}/team-preferences/${teamId}`,
+      getToken,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to update team notification preferences");
+  }
+
+  async deleteTeamNotificationPreference(
+    getToken: GetTokenFn,
+    teamId: number
+  ): Promise<void> {
+    await this.authenticatedRequest<{ status: string }>(
+      `${NOTIFICATIONS_API}/team-preferences/${teamId}`,
+      getToken,
+      { method: "DELETE" }
+    );
   }
 
   // Rankings API (public - no auth required)
