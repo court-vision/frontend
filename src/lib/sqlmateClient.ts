@@ -11,7 +11,7 @@ import type {
 } from "@/types/sqlmate";
 
 const SQLMATE_ORIGIN =
-  process.env.NEXT_PUBLIC_SQLMATE_ORIGIN || "https://sqlmate.courtvision.dev";
+  process.env.NEXT_PUBLIC_SQLMATE_ORIGIN || "https://sqlmate-backend.courtvision.dev";
 
 type RequestOptions = {
   method?: "GET" | "POST";

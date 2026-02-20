@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertCircle, SaveIcon } from "lucide-react";
+import { AlertCircle, ChevronRightIcon, SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,8 @@ interface ConsolePanelProps {
   consoleOutput: Table | null;
   queryOutput: string | null;
   onTableSaved?: () => void;
+  onCollapse?: () => void;
+  canCollapse?: boolean;
 }
 
 export function ConsolePanel({
@@ -36,6 +38,8 @@ export function ConsolePanel({
   consoleOutput,
   queryOutput,
   onTableSaved,
+  onCollapse,
+  canCollapse = false,
 }: ConsolePanelProps) {
   const [activeTab, setActiveTab] = useState<"results" | "query">("results");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -89,6 +93,17 @@ export function ConsolePanel({
     <div className="h-full flex flex-col border-t border-border">
       <div className="flex items-center justify-between px-4 h-10 flex-shrink-0">
         <div className="flex items-center space-x-4">
+          {canCollapse && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+              onClick={onCollapse}
+              title="Collapse results panel"
+            >
+              <ChevronRightIcon size={14} />
+            </Button>
+          )}
           <Button
             variant="secondary"
             size="sm"

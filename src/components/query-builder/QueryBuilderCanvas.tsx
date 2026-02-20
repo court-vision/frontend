@@ -5,9 +5,12 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
+  pointerWithin,
   useDroppable,
 } from "@dnd-kit/core";
-import { ArrowDownIcon, ArrowUpIcon } from "lucide-react";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
+import { ArrowDownIcon, ArrowUpIcon, ChevronLeftIcon } from "lucide-react";
+import { usePanelRef } from "react-resizable-panels";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,6 +38,10 @@ interface QueryBuilderCanvasProps {
   token: string;
   schema: SchemaTable[];
 }
+
+const CONSOLE_PANEL_DEFAULT_SIZE = "35%";
+const CONSOLE_PANEL_MIN_SIZE = "320px";
+const CONSOLE_PANEL_MIN_SIZE_PX = 320;
 
 function serializeTablesForQuery(
   droppedTables: TableItem[],
@@ -417,6 +424,17 @@ export function QueryBuilderCanvas({ token, schema }: QueryBuilderCanvasProps) {
   const [droppedTables, setDroppedTables] = useState<TableItem[]>([]);
   const [activeTable, setActiveTable] = useState<TableItem | null>(null);
   const [allTables, setAllTables] = useState<TableItem[]>([]);
+  const [isConsolePanelCollapsed, setIsConsolePanelCollapsed] = useState(false);
+  const [isConsolePanelAtMinSize, setIsConsolePanelAtMinSize] = useState(false);
+  const consolePanelRef = usePanelRef();
+
+  const collapseConsolePanel = useCallback(() => {
+    consolePanelRef.current?.collapse();
+  }, [consolePanelRef]);
+
+  const expandConsolePanel = useCallback(() => {
+    consolePanelRef.current?.expand();
+  }, [consolePanelRef]);
 
   const schemaTables = useMemo(() => schema, [schema]);
 
@@ -447,12 +465,16 @@ export function QueryBuilderCanvas({ token, schema }: QueryBuilderCanvasProps) {
   }, []);
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext
+      collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="flex h-full w-full relative overflow-hidden">
         <TablePanel schema={schemaTables} onTablesLoaded={handleTablesLoaded} />
 
         <ResizablePanelGroup direction="horizontal" className="flex-1">
-          <ResizablePanel>
+          <ResizablePanel className="relative">
             <BuilderArea
               droppedTables={droppedTables}
               setDroppedTables={setDroppedTables}
@@ -461,19 +483,43 @@ export function QueryBuilderCanvas({ token, schema }: QueryBuilderCanvasProps) {
               token={token}
               allTables={allTables}
             />
+            {isConsolePanelCollapsed && (
+              <button
+                onClick={expandConsolePanel}
+                className="absolute right-2 top-4 z-50 flex items-center gap-1 bg-card border border-border rounded px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shadow-sm"
+                title="Show results panel"
+              >
+                Results
+                <ChevronLeftIcon size={12} />
+              </button>
+            )}
           </ResizablePanel>
           <ResizableHandle withHandle className="bg-border" />
-          <ResizablePanel defaultSize={30} minSize={10}>
+          <ResizablePanel
+            panelRef={consolePanelRef}
+            defaultSize={CONSOLE_PANEL_DEFAULT_SIZE}
+            minSize={CONSOLE_PANEL_MIN_SIZE}
+            collapsible
+            collapsedSize={0}
+            onResize={(size) => {
+              setIsConsolePanelCollapsed(size.asPercentage === 0);
+              setIsConsolePanelAtMinSize(
+                size.asPercentage > 0 && size.inPixels <= CONSOLE_PANEL_MIN_SIZE_PX + 2
+              );
+            }}
+          >
             <ConsolePanel
               token={token}
               consoleOutput={consoleOutput}
               queryOutput={queryOutput}
+              onCollapse={collapseConsolePanel}
+              canCollapse={isConsolePanelAtMinSize}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
 
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay modifiers={[snapCenterToCursor]} dropAnimation={null}>
         {activeTable ? <DragPreview table={activeTable} /> : null}
       </DragOverlay>
     </DndContext>

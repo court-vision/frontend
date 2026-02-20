@@ -179,6 +179,7 @@ export default function StreamerDisplay() {
   }
 
   const totalDays = data.game_span;
+  const pickupDay = data.target_day ?? data.current_day_index;
 
   return (
     <div className="flex flex-col w-full gap-3">
@@ -343,8 +344,14 @@ export default function StreamerDisplay() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredStreamers.map(
-                  (player: StreamerPlayer, index: number) => (
+                filteredStreamers.map((player: StreamerPlayer, index: number) => {
+                  const hasDailyPickupB2b =
+                    player.game_days.includes(pickupDay) &&
+                    player.game_days.includes(pickupDay + 1);
+                  const showB2bBadge =
+                    mode === "daily" ? hasDailyPickupB2b : player.has_b2b;
+
+                  return (
                     <TableRow
                       key={player.player_id}
                       className="cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary"
@@ -360,7 +367,7 @@ export default function StreamerDisplay() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-sm">{player.name}</span>
-                          {player.has_b2b && (
+                          {showB2bBadge && (
                             <Badge
                               variant="secondary"
                               className="text-[10px]"
@@ -409,8 +416,8 @@ export default function StreamerDisplay() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  )
-                )
+                  );
+                })
               )}
             </TableBody>
           </Table>

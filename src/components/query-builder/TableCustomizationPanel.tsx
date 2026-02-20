@@ -53,6 +53,8 @@ export function TableCustomizationPanel({
   isAggregationEnabled = false,
 }: TableCustomizationPanelProps) {
   const isInitialRender = React.useRef(true);
+  const onGroupByChangeRef = React.useRef(onGroupByChange);
+  const onColumnsChangeRef = React.useRef(onColumnsChange);
 
   const [columns, setColumns] = useState<Column[]>(() => {
     if (initialCustomColumns && initialCustomColumns.length > 0) {
@@ -85,8 +87,16 @@ export function TableCustomizationPanel({
   }, [allTableColumns, columns]);
 
   useEffect(() => {
-    onGroupByChange(columns.some((col) => col.groupBy));
-  }, [columns, onGroupByChange]);
+    onGroupByChangeRef.current = onGroupByChange;
+  }, [onGroupByChange]);
+
+  useEffect(() => {
+    onColumnsChangeRef.current = onColumnsChange;
+  }, [onColumnsChange]);
+
+  useEffect(() => {
+    onGroupByChangeRef.current(columns.some((col) => col.groupBy));
+  }, [columns]);
 
   useEffect(() => {
     if (isInitialRender.current) {
@@ -94,8 +104,8 @@ export function TableCustomizationPanel({
       return;
     }
 
-    onColumnsChange(columns);
-  }, [columns, onColumnsChange]);
+    onColumnsChangeRef.current(columns);
+  }, [columns]);
 
   const handleAliasChange = (id: string, alias: string) => {
     const isValid = alias === "" || VALID_ALIAS_PATTERN.test(alias);

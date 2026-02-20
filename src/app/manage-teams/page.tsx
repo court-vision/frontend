@@ -2,7 +2,11 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+
 import { ManageTeamsTable } from "@/components/teams-components/ManageTeamsTable";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { YahooOAuthState } from "@/types/yahoo";
 
@@ -47,13 +51,21 @@ function ManageTeamsContent() {
 
   return (
     <div className="space-y-4 animate-slide-up-fade">
-      <section>
-        <h1 className="font-display text-xl font-bold tracking-tight">
-          Manage Teams
-        </h1>
-        <p className="text-muted-foreground text-xs mt-0.5">
-          Add, remove, or configure your fantasy teams.
-        </p>
+      <section className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-xl font-bold tracking-tight">
+            Manage Teams
+          </h1>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Add, remove, or configure your fantasy teams.
+          </p>
+        </div>
+        <Link href="/your-teams">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back
+          </Button>
+        </Link>
       </section>
       <ManageTeamsTable yahooOAuthState={yahooOAuthState} />
     </div>

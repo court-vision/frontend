@@ -2,8 +2,9 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { FolderOpen } from "lucide-react";
 
-import { MyTablesPanel } from "@/components/query-builder/MyTablesPanel";
 import { QueryBuilderCanvas } from "@/components/query-builder/QueryBuilderCanvas";
 import { Button } from "@/components/ui/button";
 import { getSchema } from "@/lib/sqlmateClient";
@@ -14,7 +15,6 @@ const TOKEN_REFRESH_INTERVAL = 30_000;
 export default function QueryBuilderPage() {
   const { getToken } = useAuth();
   const [token, setToken] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"builder" | "my-tables">("builder");
   const [schema, setSchema] = useState<SchemaTable[] | null>(null);
   const [schemaError, setSchemaError] = useState<string | null>(null);
 
@@ -77,21 +77,21 @@ export default function QueryBuilderPage() {
 
   return (
     <div className="flex flex-col h-[calc(94vh-60px)]">
-      <div className="flex border-b border-border px-4 pt-2 gap-2">
-        <Button
-          variant={activeTab === "builder" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setActiveTab("builder")}
-        >
-          Query Builder
-        </Button>
-        <Button
-          variant={activeTab === "my-tables" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setActiveTab("my-tables")}
-        >
-          My Tables
-        </Button>
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <div>
+          <h1 className="font-display text-xl font-bold tracking-tight">
+            Query Builder
+          </h1>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Build and run SQL queries against real NBA data.
+          </p>
+        </div>
+        <Link href="/query-builder/manage-tables">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+            <FolderOpen className="h-3.5 w-3.5" />
+            Manage Tables
+          </Button>
+        </Link>
       </div>
 
       {!token && (
@@ -102,12 +102,8 @@ export default function QueryBuilderPage() {
         <div className="p-4 text-sm text-red-500">{schemaError}</div>
       )}
 
-      <div className={activeTab === "builder" ? "flex-1 flex overflow-hidden" : "hidden"}>
+      <div className="flex-1 flex overflow-hidden">
         {token && schema && <QueryBuilderCanvas token={token} schema={schema} />}
-      </div>
-
-      <div className={activeTab === "my-tables" ? "flex-1 overflow-auto" : "hidden"}>
-        {token && <MyTablesPanel token={token} />}
       </div>
     </div>
   );
