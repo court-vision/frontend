@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useMemo } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useClerk } from "@clerk/nextjs";
 import {
@@ -86,6 +86,16 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   const { signOut } = useClerk();
   const [isOpen, setIsOpen] = useState(false);
   const [dynamicCommands, setDynamicCommands] = useState<Command[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const frame = requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [isOpen]);
   const { teams, selectedTeam, setSelectedTeam } = useTeams();
 
   // ---------------------------------------------------------------------------
@@ -402,7 +412,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
 
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-mono text-sm select-none pl-8">{">"}</span>
-          <CommandInput placeholder="Type a command or search..." className="border-0 pl-5" />
+          <CommandInput ref={inputRef} placeholder="Type a command or search..." className="border-0 pl-5" />
         </div>
 
         <CommandList className="max-h-[400px]">
