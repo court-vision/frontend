@@ -14,6 +14,7 @@ import {
   Target,
   Command,
   Github,
+  Bell,
 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 
@@ -173,21 +174,49 @@ function DashboardView() {
   );
 }
 
+type FeatureItem = {
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  tag: string;
+  size: "large" | "small";
+  isNew?: boolean;
+};
+
 function WelcomeView() {
-  const features = [
+  const features: FeatureItem[] = [
     {
       title: "Lineup Optimization",
       description:
         "Algorithmically optimize your streaming moves for the week. Our engine evaluates schedules, matchups, and projections to find the best adds and drops.",
       icon: Zap,
       tag: "⌘G",
+      size: "large",
     },
     {
-      title: "Live Matchup Tracking",
+      title: "Smart Notifications",
       description:
-        "Real-time scoring, projected winners, and head-to-head breakdowns. Watch your matchup unfold with live stat updates.",
+        "Get email alerts when a player is out or you're leaving points on the bench. Set your reminder window, and we'll handle the rest — more notification types coming soon.",
+      icon: Bell,
+      tag: "⌘,",
+      size: "small",
+      isNew: true,
+    },
+    {
+      title: "Matchup Tracking",
+      description:
+        "Daily score updates, projected winners, and head-to-head breakdowns. Stay on top of your matchup throughout the week.",
       icon: Swords,
       tag: "⌘M",
+      size: "small",
+    },
+    {
+      title: "Player Rankings",
+      description:
+        "Comprehensive fantasy rankings updated daily with per-game and total fantasy point value, optimized for H2H points leagues.",
+      icon: Trophy,
+      tag: "⌘R",
+      size: "small",
     },
     {
       title: "Streamer Finder",
@@ -195,13 +224,7 @@ function WelcomeView() {
         "Surface the best free agents based on upcoming schedule, category needs, and matchup difficulty. Never miss a streaming opportunity.",
       icon: UserPlus,
       tag: "⌘S",
-    },
-    {
-      title: "Player Rankings",
-      description:
-        "Comprehensive fantasy rankings updated daily with per-game and total value across all nine categories.",
-      icon: Trophy,
-      tag: "⌘R",
+      size: "small",
     },
     {
       title: "Analytics Terminal",
@@ -209,6 +232,7 @@ function WelcomeView() {
         "A power-user terminal for deep player analysis. Search players, compare stats, view game logs and performance charts side by side.",
       icon: Activity,
       tag: "⌥7",
+      size: "large",
     },
     {
       title: "Team Management",
@@ -216,14 +240,15 @@ function WelcomeView() {
         "Connect multiple ESPN and Yahoo leagues. Get a unified view across all your teams with roster snapshots and category breakdowns.",
       icon: Users,
       tag: "⌘T",
+      size: "small",
     },
   ];
 
   const stats = [
-    { value: "9-Cat", label: "Category Analysis" },
+    { value: "H2H", label: "Points League Focus" },
     { value: "500+", label: "Players Tracked" },
-    { value: "Daily", label: "Rankings Updates" },
-    { value: "Real-time", label: "Score Tracking" },
+    { value: "Daily", label: "Rankings & Scores" },
+    { value: "Smart", label: "Lineup Alerts" },
   ];
 
   const steps = [
@@ -516,31 +541,84 @@ function WelcomeView() {
             </p>
           </div>
 
-          {/* Feature cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Feature cards — bento grid */}
+          <div className="grid grid-cols-3 gap-4">
             {features.map((feature) => {
               const Icon = feature.icon;
+              const isLarge = feature.size === "large";
               return (
-                <Card
+                <div
                   key={feature.title}
-                  variant="panel"
-                  className="p-5 group"
+                  className={`transition-transform duration-150 hover:scale-[1.01] ${isLarge ? "col-span-3 md:col-span-2" : "col-span-3 md:col-span-1"}`}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/10">
-                      <Icon className="h-4 w-4 text-primary" />
+                  <Card variant="panel" className="h-full overflow-hidden group">
+                    {/* Large card: dot-matrix header */}
+                    {isLarge && (
+                      <div className="relative h-28 overflow-hidden border-b border-border/50">
+                        <div className="absolute inset-0 grid grid-cols-[repeat(16,1fr)] grid-rows-[repeat(4,1fr)] gap-1 p-2 opacity-60">
+                          {Array.from({ length: 64 }).map((_, i) => (
+                            <div key={i} className="rounded-[2px] bg-primary/[0.06] border border-border/30" />
+                          ))}
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-card/90" />
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-20 bg-primary/[0.04] rounded-full blur-2xl pointer-events-none" />
+                      </div>
+                    )}
+                    {/* Smart Notifications: mock toast header */}
+                    {feature.isNew && (
+                      <div className="relative h-28 overflow-hidden border-b border-border/50 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent" />
+                        {/* Ghost toast behind */}
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[72%] rounded-md border border-border/50 bg-muted/30 p-1.5 scale-95 origin-bottom opacity-50">
+                          <div className="h-1.5 w-16 bg-muted-foreground/20 rounded-full" />
+                        </div>
+                        {/* Main mock toast */}
+                        <div className="relative z-10 w-[80%] rounded-md border border-border bg-muted/60 p-2.5 shadow-sm">
+                          <div className="flex items-start gap-2">
+                            <div className="mt-0.5 p-1 rounded bg-primary/10 border border-primary/20">
+                              <Bell className="h-2.5 w-2.5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] font-semibold text-foreground/90 leading-none mb-0.5">
+                                Player Alert
+                              </p>
+                              <p className="text-[9px] text-muted-foreground truncate leading-snug">
+                                Ja Morant is OUT tonight — check your lineup
+                              </p>
+                            </div>
+                            <div className="text-[8px] text-muted-foreground/40 font-mono shrink-0">
+                              90m
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {/* Card body */}
+                    <div className="p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 rounded-lg bg-primary/10 border border-primary/10">
+                            <Icon className="h-4 w-4 text-primary" />
+                          </div>
+                          {feature.isNew && (
+                            <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                              New
+                            </span>
+                          )}
+                        </div>
+                        <kbd className="font-mono text-[10px] text-muted-foreground/40 px-1.5 py-0.5 rounded border border-border bg-muted/30">
+                          {feature.tag}
+                        </kbd>
+                      </div>
+                      <h3 className="font-semibold text-sm mb-1.5">
+                        {feature.title}
+                      </h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {feature.description}
+                      </p>
                     </div>
-                    <kbd className="font-mono text-[10px] text-muted-foreground/40 px-1.5 py-0.5 rounded border border-border bg-muted/30">
-                      {feature.tag}
-                    </kbd>
-                  </div>
-                  <h3 className="font-semibold text-sm mb-1.5">
-                    {feature.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {feature.description}
-                  </p>
-                </Card>
+                  </Card>
+                </div>
               );
             })}
           </div>
