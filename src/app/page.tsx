@@ -552,16 +552,109 @@ function WelcomeView() {
                   className={`transition-transform duration-150 hover:scale-[1.01] ${isLarge ? "col-span-3 md:col-span-2" : "col-span-3 md:col-span-1"}`}
                 >
                   <Card variant="panel" className="h-full overflow-hidden group">
-                    {/* Large card: dot-matrix header */}
-                    {isLarge && (
-                      <div className="relative h-28 overflow-hidden border-b border-border/50">
-                        <div className="absolute inset-0 grid grid-cols-[repeat(16,1fr)] grid-rows-[repeat(4,1fr)] gap-1 p-2 opacity-60">
-                          {Array.from({ length: 64 }).map((_, i) => (
-                            <div key={i} className="rounded-[2px] bg-primary/[0.06] border border-border/30" />
-                          ))}
+                    {/* Lineup Optimization: mini UI preview */}
+                    {feature.title === "Lineup Optimization" && (
+                      <div className="relative h-28 overflow-hidden border-b border-border/50 bg-card select-none pointer-events-none">
+                        <div className="absolute inset-0 flex gap-2 p-2">
+                          {/* Left: config form */}
+                          <div className="w-[72px] flex-none flex flex-col gap-1">
+                            <div className="text-[7px] text-muted-foreground/50 uppercase tracking-wider font-mono">Config</div>
+                            <div className="rounded border border-border/60 bg-muted/30 px-1.5 py-1">
+                              <div className="text-[6px] text-muted-foreground/50">Streaming Slots</div>
+                              <div className="text-[9px] font-mono text-foreground/70">3</div>
+                            </div>
+                            <div className="rounded border border-border/60 bg-muted/30 px-1.5 py-1">
+                              <div className="text-[6px] text-muted-foreground/50">Week</div>
+                              <div className="text-[9px] font-mono text-foreground/70">18</div>
+                            </div>
+                            <div className="mt-auto rounded bg-primary/90 px-1.5 py-0.5 text-[7px] font-semibold text-primary-foreground text-center">
+                              Generate
+                            </div>
+                          </div>
+                          {/* Right: lineup output */}
+                          <div className="flex-1 flex flex-col gap-0.5 overflow-hidden">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="text-[8px] font-mono font-bold text-[hsl(152_72%_46%)]">+45 pts</span>
+                              <span className="text-[6px] text-muted-foreground/40 font-mono">Week 18, Day 1</span>
+                            </div>
+                            {[
+                              { pos: "PG", name: "T. Haliburton", avg: "44.2", isNew: true },
+                              { pos: "SG", name: "D. Mitchell",   avg: "38.7", isNew: false },
+                              { pos: "SF", name: "L. James",      avg: "51.3", isNew: false },
+                              { pos: "PF", name: "E. Mobley",     avg: "32.1", isNew: true },
+                              { pos: "C",  name: "A. Davis",      avg: "48.2", isNew: false },
+                            ].map((p) => (
+                              <div key={p.name} className={`flex items-center gap-1 rounded px-1 py-[2px] ${p.isNew ? "bg-[hsl(152_72%_46%)]/[0.07]" : ""}`}>
+                                <span className="text-[7px] text-muted-foreground/40 w-4 font-mono flex-none">{p.pos}</span>
+                                <span className="text-[8px] text-foreground/75 flex-1 truncate">{p.name}</span>
+                                <span className="text-[7px] font-mono tabular-nums text-foreground/60">{p.avg}</span>
+                                {p.isNew && <span className="text-[7px] text-[hsl(152_72%_46%)] font-bold ml-0.5 flex-none">+</span>}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-card/90" />
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-20 bg-primary/[0.04] rounded-full blur-2xl pointer-events-none" />
+                        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent" />
+                      </div>
+                    )}
+                    {/* Analytics Terminal: mini UI preview */}
+                    {feature.title === "Analytics Terminal" && (
+                      <div className="relative h-28 overflow-hidden border-b border-border/50 bg-card select-none pointer-events-none">
+                        {/* Command bar */}
+                        <div className="h-7 border-b border-border/50 bg-muted/20 flex items-center gap-1.5 px-2">
+                          <div className="p-0.5 rounded bg-primary/10">
+                            <span className="text-[8px] text-primary font-mono leading-none">▸</span>
+                          </div>
+                          <div className="flex-1 h-[18px] rounded border border-border/50 bg-background/50 flex items-center px-1.5">
+                            <span className="text-[7px] text-muted-foreground/40 font-mono">anthony davis</span>
+                            <span className="ml-0.5 inline-block w-[1px] h-2.5 bg-primary/70 animate-caret-blink" />
+                          </div>
+                          <span className="text-[7px] font-mono text-muted-foreground/25 border border-border/40 rounded px-0.5">/</span>
+                        </div>
+                        {/* Three-column body */}
+                        <div className="flex h-[calc(100%-28px)]">
+                          {/* Left: player focus */}
+                          <div className="w-[88px] flex-none border-r border-border/40 bg-card/80 p-1.5 flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                              <div className="h-5 w-5 rounded-full bg-muted/60 border border-border/50 flex items-center justify-center flex-none">
+                                <span className="text-[6px] text-muted-foreground/60 font-mono">AD</span>
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-[8px] font-semibold text-foreground/80 truncate">A. Davis</div>
+                                <div className="text-[6px] font-mono text-muted-foreground/50">LAL · GP 42</div>
+                              </div>
+                            </div>
+                            <div className="rounded bg-primary/5 border border-primary/20 px-1 py-0.5">
+                              <div className="text-[6px] text-muted-foreground/50 uppercase tracking-wider">FP/G</div>
+                              <span className="text-[13px] font-mono font-bold text-primary leading-none">48.2</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-0.5">
+                              {[["PTS","27.4"],["REB","12.8"],["AST","3.5"]].map(([l,v]) => (
+                                <div key={l} className="bg-muted/30 rounded px-0.5 py-0.5 text-center">
+                                  <div className="text-[5px] text-muted-foreground/50 uppercase">{l}</div>
+                                  <div className="text-[7px] font-mono font-bold">{v}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          {/* Center: chart hint */}
+                          <div className="flex-1 border-r border-border/40 bg-card/60 p-1.5">
+                            <div className="text-[6px] text-muted-foreground/40 font-mono uppercase mb-1">Performance · L10</div>
+                            <div className="flex items-end gap-[2px] h-9">
+                              {[55,70,48,82,65,88,60,75,80,92].map((h, i) => (
+                                <div key={i} className="flex-1 rounded-t-[1px]" style={{ height: `${h}%`, backgroundColor: `hsl(28 92% 52% / ${0.15 + (i / 10) * 0.35})` }} />
+                              ))}
+                            </div>
+                          </div>
+                          {/* Right: watchlist */}
+                          <div className="w-[52px] flex-none bg-card/80 p-1">
+                            <div className="text-[6px] text-muted-foreground/40 uppercase tracking-wider font-mono mb-1">Watch</div>
+                            {["L. James","N. Jokić","S. Curry","K. Durant"].map(name => (
+                              <div key={name} className="text-[6px] text-muted-foreground/60 truncate py-[2px] border-b border-border/30 font-mono">{name}</div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-card to-transparent" />
+                        <div className="absolute top-0 right-0 bottom-0 w-5 bg-gradient-to-l from-card/60 to-transparent" />
                       </div>
                     )}
                     {/* Smart Notifications: mock toast header */}
