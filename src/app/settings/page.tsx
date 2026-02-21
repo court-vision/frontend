@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 
@@ -19,7 +19,7 @@ const settingsTabs = [
 type TabId = (typeof settingsTabs)[number]["id"];
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<TabId>("notifications");
+  const [activeTab, setActiveTab] = useState<TabId | null>("notifications");
 
   const ActiveComponent = settingsTabs.find((t) => t.id === activeTab)?.component;
 
@@ -33,7 +33,64 @@ export default function Settings() {
         </p>
       </section>
 
-      <div className="flex gap-5 items-start">
+      {/* Mobile: accordion */}
+      <div className="md:hidden space-y-1.5">
+        {settingsTabs.map((tab) => {
+          const Icon = tab.icon;
+          const isOpen = activeTab === tab.id;
+          const TabComponent = tab.component;
+          return (
+            <div
+              key={tab.id}
+              className={cn(
+                "rounded-md border transition-colors duration-150",
+                isOpen ? "border-primary/20 bg-card/80" : "border-border bg-card/50"
+              )}
+            >
+              <button
+                onClick={() => setActiveTab(isOpen ? null : tab.id)}
+                className="w-full flex items-center justify-between gap-2.5 px-3 py-2.5 text-left"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={cn(
+                      "h-7 w-7 rounded-md flex items-center justify-center shrink-0 transition-colors duration-150",
+                      isOpen ? "bg-primary/15 border border-primary/20" : "bg-muted border border-transparent"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-3.5 w-3.5 transition-colors duration-150",
+                        isOpen ? "text-primary" : "text-muted-foreground"
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <p className={cn("text-xs font-medium leading-none", isOpen ? "text-primary" : "text-foreground")}>
+                      {tab.label}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">{tab.description}</p>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+                    isOpen && "rotate-180"
+                  )}
+                />
+              </button>
+              {isOpen && (
+                <div className="px-3 pb-3">
+                  <TabComponent />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop: sidebar + panel */}
+      <div className="hidden md:flex gap-5 items-start">
         {/* Sidebar */}
         <nav className="shrink-0 w-40 space-y-0.5">
           {settingsTabs.map((tab) => {

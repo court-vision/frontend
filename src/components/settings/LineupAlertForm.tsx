@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import type { NotificationPreference } from "@/types/notifications";
 
@@ -211,24 +212,38 @@ export function LineupAlertForm({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            min={15}
-            max={180}
-            value={displayPrefs.alert_minutes_before}
-            onChange={(e) => {
-              const v = Math.min(180, Math.max(15, parseInt(e.target.value) || 90));
-              update("alert_minutes_before", v);
-            }}
-            className="w-20 h-8 text-sm font-mono text-center"
-            disabled={subDisabled || showDisabledOverlay}
-          />
-          <span className="text-sm text-muted-foreground">
-            minutes before first tip-off
+        <div className="flex items-center gap-3">
+          <div className="flex-1 flex flex-col gap-1">
+            <div className="relative">
+              <Slider
+                min={0}
+                max={150}
+                step={15}
+                value={[Math.min(150, Math.max(15, displayPrefs.alert_minutes_before))]}
+                onValueChange={([v]) => update("alert_minutes_before", Math.max(15, v))}
+                disabled={subDisabled || showDisabledOverlay}
+              />
+              {/* Gray out the 0–15 dead zone (first 10% of the 0–150 range) */}
+              <div className="absolute top-0 left-0 bottom-0 flex items-center pointer-events-none" style={{ width: "10%" }}>
+                <div className="h-1.5 w-full rounded-l-full bg-muted" />
+              </div>
+            </div>
+            <div className="flex justify-between text-[9px] font-mono pl-2">
+              <span className="text-muted-foreground/25">0</span>
+              <span className="text-muted-foreground/40">30</span>
+              <span className="text-muted-foreground/40">60</span>
+              <span className="text-muted-foreground/40">90</span>
+              <span className="text-muted-foreground/40">120</span>
+              <span className="text-muted-foreground/40">150</span>
+            </div>
+          </div>
+          <span className="text-sm font-mono font-medium w-16 text-right tabular-nums">
+            {Math.min(150, Math.max(15, displayPrefs.alert_minutes_before))} min
           </span>
         </div>
-        <p className="text-[10px] text-muted-foreground/50 mt-2">Between 15 and 180 minutes</p>
+        <p className="text-[10px] text-muted-foreground/50 mt-1">
+          minutes before first tip-off · 15 min intervals
+        </p>
       </div>
 
       {/* Email card */}
