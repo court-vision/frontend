@@ -34,6 +34,25 @@ const columns: ColumnDef[] = [
   { key: "fg3a", label: "3PA" },
 ];
 
+function parseGameDateParts(dateStr: string): { year: number; month: number; day: number } | null {
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  return { year, month, day };
+}
+
+function getDateSortValue(dateStr: string): number {
+  const parsed = parseGameDateParts(dateStr);
+  if (parsed) return Date.UTC(parsed.year, parsed.month - 1, parsed.day);
+
+  const timestamp = new Date(dateStr).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
 export function GameLogPanel() {
   const { focusedPlayerId, statWindow } = useTerminalStore();
   const { data: playerStats, isLoading, error } = usePlayerStatsQuery(
@@ -66,8 +85,8 @@ export function GameLogPanel() {
       const bVal = b[sortKey];
 
       if (sortKey === "date") {
-        const aDate = new Date(aVal as string).getTime();
-        const bDate = new Date(bVal as string).getTime();
+        const aDate = getDateSortValue(aVal as string);
+        const bDate = getDateSortValue(bVal as string);
         return sortDirection === "asc" ? aDate - bDate : bDate - aDate;
       }
 
@@ -198,7 +217,13 @@ function SortIcon({
 }
 
 function formatDate(dateStr: string): string {
+  const parsed = parseGameDateParts(dateStr);
+  if (parsed) {
+    return `${parsed.month}/${parsed.day}`;
+  }
+
   const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return dateStr;
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
