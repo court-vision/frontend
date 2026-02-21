@@ -93,6 +93,14 @@ class ApiClient {
       },
     });
 
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(
+        errorData?.message ||
+          `Request failed: ${response.status} ${response.statusText}`
+      );
+    }
+
     const data = await response.json();
     return data;
   }

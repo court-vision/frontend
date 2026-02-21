@@ -26,7 +26,9 @@ function ManageTeamsContent() {
     const tokenExpiry = searchParams.get("yahoo_token_expiry");
 
     if (yahooError) {
-      toast.error(`Yahoo connection failed: ${yahooError}`);
+      // Truncate to prevent message injection from crafted URLs
+      const safeError = yahooError.slice(0, 100);
+      toast.error(`Yahoo connection failed: ${safeError}`);
       // Clean URL
       router.replace("/manage-teams");
       return;
