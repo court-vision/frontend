@@ -44,6 +44,8 @@ import type {
   AvgWindow,
   MatchupScoreHistory,
   MatchupScoreHistoryResponse,
+  LiveMatchupData,
+  LiveMatchupResponse,
 } from "@/types/matchup";
 import type { StreamerRequest, StreamerResponse } from "@/types/streamer";
 import type {
@@ -282,6 +284,20 @@ class ApiClient {
       return response.data;
     }
     return null;
+  }
+
+  async getLiveMatchup(
+    getToken: GetTokenFn,
+    teamId: number
+  ): Promise<LiveMatchupData> {
+    const response = await this.authenticatedRequest<LiveMatchupResponse>(
+      `${MATCHUPS_API}/live/${teamId}`,
+      getToken
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to fetch live matchup data");
   }
 
   // Streamers API

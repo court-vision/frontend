@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { MatchupDisplay } from "@/components/matchup-components/MatchupDisplay";
-import { useMatchupQuery } from "@/hooks/useMatchup";
+import { useMatchupQuery, useLiveMatchupQuery } from "@/hooks/useMatchup";
 import { useTeams } from "@/app/context/TeamsContext";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
@@ -12,6 +12,7 @@ import type { FantasyProvider } from "@/types/team";
 export default function Matchup() {
   const { selectedTeam, teams } = useTeams();
   const { data: matchup, isLoading, error } = useMatchupQuery(selectedTeam);
+  const { data: liveMatchup } = useLiveMatchupQuery(selectedTeam);
 
   const hasTeams = teams && teams.length > 0;
 
@@ -53,6 +54,7 @@ export default function Matchup() {
       ) : (
         <MatchupDisplay
           matchup={matchup}
+          liveMatchup={liveMatchup}
           isLoading={isLoading}
           error={error}
           teamId={selectedTeam}

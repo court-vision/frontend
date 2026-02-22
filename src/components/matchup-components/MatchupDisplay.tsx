@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -25,7 +26,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreChart";
 import Link from "next/link";
-import type { MatchupData, MatchupTeam, MatchupPlayer } from "@/types/matchup";
+import type {
+  MatchupData,
+  MatchupTeam,
+  MatchupPlayer,
+  LiveMatchupData,
+  LiveMatchupTeam,
+  LiveMatchupPlayer,
+} from "@/types/matchup";
 import type { FantasyProvider } from "@/types/team";
 
 interface SelectedPlayer {
@@ -49,7 +57,7 @@ const LINEUP_SLOT_ORDER: Record<string, number> = {
   IR: 10,
 };
 
-function sortByLineupSlot(roster: MatchupPlayer[]): MatchupPlayer[] {
+function sortByLineupSlot<T extends MatchupPlayer>(roster: T[]): T[] {
   return [...roster].sort((a, b) => {
     const orderA = LINEUP_SLOT_ORDER[a.lineup_slot] ?? 99;
     const orderB = LINEUP_SLOT_ORDER[b.lineup_slot] ?? 99;
@@ -58,15 +66,12 @@ function sortByLineupSlot(roster: MatchupPlayer[]): MatchupPlayer[] {
 }
 
 function formatDate(dateString: string): string {
-  // Parse date string as local date to avoid timezone conversion issues
-  // Date strings like "2025-11-15" are parsed as UTC, which can cause day shifts
   const [year, month, day] = dateString.split("-").map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
+
+// ── Simple roster table (used when live data is not yet available) ──────────
 
 interface TeamRosterTableProps {
   team: MatchupTeam;
@@ -132,6 +137,146 @@ function TeamRosterTable({ team, onPlayerClick }: TeamRosterTableProps) {
   );
 }
 
+// ── Live stat grid (used when live matchup data is available) ────────────────
+
+function StatCell({ value, hasStats }: { value: number; hasStats: boolean }) {
+  if (!hasStats) {
+    return <span className="text-muted-foreground/30">—</span>;
+  }
+  return <>{value}</>;
+}
+
+interface LiveTeamRosterTableProps {
+  team: LiveMatchupTeam;
+  onPlayerClick: (player: LiveMatchupPlayer) => void;
+}
+
+function LiveTeamRosterTable({ team, onPlayerClick }: LiveTeamRosterTableProps) {
+  const sorted = sortByLineupSlot(team.roster);
+  const activePlayers = sorted.filter(
+    (p) => p.lineup_slot !== "BE" && p.lineup_slot !== "IR"
+  );
+  const totalFpts = activePlayers.reduce(
+    (sum, p) => sum + (p.live && p.live.game_status >= 2 ? p.live.live_fpts : 0),
+    0
+  );
+  const hasAnyLive = sorted.some((p) => p.live && p.live.game_status >= 2);
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[50px] pl-3">Slot</TableHead>
+            <TableHead>Player</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">MIN</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">PTS</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">REB</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">AST</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">STL</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">BLK</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">TOV</TableHead>
+            <TableHead className="w-[46px] text-right pr-3 font-mono text-[10px] uppercase tracking-wider">FP</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.map((player) => {
+            const live = player.live;
+            const hasStats = live !== null && live.game_status >= 2;
+            const isBench = player.lineup_slot === "BE" || player.lineup_slot === "IR";
+            const isLive = live !== null && live.game_status === 2;
+
+            return (
+              <TableRow
+                key={player.player_id}
+                className={cn(
+                  "cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary",
+                  isBench && "opacity-50"
+                )}
+                onClick={() => onPlayerClick(player)}
+              >
+                <TableCell className="pl-3">
+                  <Badge
+                    variant={
+                      player.lineup_slot === "IR"
+                        ? "outline"
+                        : player.lineup_slot === "BE"
+                          ? "secondary"
+                          : "default"
+                    }
+                    className={player.lineup_slot === "IR" ? "text-muted-foreground" : ""}
+                  >
+                    {player.lineup_slot}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className={cn(
+                      "text-sm truncate",
+                      player.injured && "text-muted-foreground"
+                    )}>
+                      {player.name}
+                    </span>
+                    {player.injured && player.injury_status && (
+                      <Badge variant="destructive" className="text-[10px] shrink-0">
+                        {player.injury_status}
+                      </Badge>
+                    )}
+                    {isLive && live.period && (
+                      <span className="text-[9px] text-muted-foreground font-mono shrink-0">
+                        Q{live.period}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs tabular-nums">
+                  <StatCell value={live?.live_min ?? 0} hasStats={hasStats} />
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs tabular-nums">
+                  <StatCell value={live?.live_pts ?? 0} hasStats={hasStats} />
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs tabular-nums">
+                  <StatCell value={live?.live_reb ?? 0} hasStats={hasStats} />
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs tabular-nums">
+                  <StatCell value={live?.live_ast ?? 0} hasStats={hasStats} />
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs tabular-nums">
+                  <StatCell value={live?.live_stl ?? 0} hasStats={hasStats} />
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs tabular-nums">
+                  <StatCell value={live?.live_blk ?? 0} hasStats={hasStats} />
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs tabular-nums">
+                  <StatCell value={live?.live_tov ?? 0} hasStats={hasStats} />
+                </TableCell>
+                <TableCell className={cn(
+                  "text-right font-mono text-sm tabular-nums pr-3 font-semibold",
+                  hasStats && !isBench && "text-foreground"
+                )}>
+                  <StatCell value={live?.live_fpts ?? 0} hasStats={hasStats} />
+                </TableCell>
+              </TableRow>
+            );
+          })}
+
+          {/* Summary row — active players only */}
+          <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
+            <TableCell colSpan={9} className="pl-3 py-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+              Active total {!hasAnyLive && <span className="normal-case">(no games yet)</span>}
+            </TableCell>
+            <TableCell className="text-right font-mono text-sm font-bold pr-3 py-2 tabular-nums">
+              {hasAnyLive ? totalFpts : <span className="text-muted-foreground/30">—</span>}
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+// ── Team card shells ─────────────────────────────────────────────────────────
+
 interface TeamCardProps {
   team: MatchupTeam;
   isYourTeam: boolean;
@@ -152,17 +297,13 @@ function TeamCard({ team, isYourTeam, onPlayerClick }: TeamCardProps) {
         </div>
         <div className="flex gap-6 mt-2">
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              Current
-            </p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Current</p>
             <p className="font-mono text-xl font-bold tabular-nums">
               {Math.round(team.current_score)}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              Projected
-            </p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Projected</p>
             <p className="font-mono text-lg text-muted-foreground tabular-nums">
               {team.projected_score.toFixed(1)}
             </p>
@@ -175,6 +316,48 @@ function TeamCard({ team, isYourTeam, onPlayerClick }: TeamCardProps) {
     </Card>
   );
 }
+
+interface LiveTeamCardProps {
+  team: LiveMatchupTeam;
+  isYourTeam: boolean;
+  onPlayerClick: (player: LiveMatchupPlayer) => void;
+}
+
+function LiveTeamCard({ team, isYourTeam, onPlayerClick }: LiveTeamCardProps) {
+  return (
+    <Card variant="panel" className="flex-1 overflow-hidden">
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          {isYourTeam && (
+            <Badge variant="default" className="text-[10px]">You</Badge>
+          )}
+          <CardTitle className="text-sm font-semibold truncate">
+            {team.team_name}
+          </CardTitle>
+        </div>
+        <div className="flex gap-6 mt-2">
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Current</p>
+            <p className="font-mono text-xl font-bold tabular-nums">
+              {Math.round(team.current_score)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Projected</p>
+            <p className="font-mono text-lg text-muted-foreground tabular-nums">
+              {team.projected_score.toFixed(1)}
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <LiveTeamRosterTable team={team} onPlayerClick={onPlayerClick} />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Skeleton ─────────────────────────────────────────────────────────────────
 
 function MatchupSkeleton() {
   return (
@@ -219,8 +402,11 @@ function MatchupSkeleton() {
   );
 }
 
+// ── Main component ───────────────────────────────────────────────────────────
+
 interface MatchupDisplayProps {
   matchup: MatchupData | undefined;
+  liveMatchup: LiveMatchupData | undefined;
   isLoading: boolean;
   error: Error | null;
   teamId: number | null;
@@ -229,14 +415,13 @@ interface MatchupDisplayProps {
 
 export function MatchupDisplay({
   matchup,
+  liveMatchup,
   isLoading,
   error,
   teamId,
   provider = "espn",
 }: MatchupDisplayProps) {
-  const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(
-    null
-  );
+  const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
 
   if (isLoading) {
     return <MatchupSkeleton />;
@@ -268,7 +453,10 @@ export function MatchupDisplay({
     );
   }
 
-  if (!matchup) {
+  // Use liveMatchup for scores when available; fall back to matchup
+  const display = liveMatchup ?? matchup;
+
+  if (!display) {
     return (
       <Card variant="panel" className="p-8">
         <p className="text-sm text-muted-foreground text-center">
@@ -278,7 +466,7 @@ export function MatchupDisplay({
     );
   }
 
-  const handlePlayerClick = (player: MatchupPlayer) => {
+  const handlePlayerClick = (player: MatchupPlayer | LiveMatchupPlayer) => {
     setSelectedPlayer({
       playerId: player.player_id,
       playerName: player.name,
@@ -286,10 +474,16 @@ export function MatchupDisplay({
     });
   };
 
-  const yourTeamWinning = matchup.your_team.current_score > matchup.opponent_team.current_score;
-  const scoreDiff = Math.abs(
-    matchup.your_team.current_score - matchup.opponent_team.current_score
-  ).toFixed(1);
+  const yourScore = display.your_team.current_score;
+  const oppScore = display.opponent_team.current_score;
+  const yourTeamWinning = yourScore > oppScore;
+  const scoreDiff = Math.abs(yourScore - oppScore).toFixed(1);
+
+  // Projected fields always come from the regular matchup (more stable)
+  const projectedWinner = matchup?.projected_winner ?? display.projected_winner;
+  const projectedMargin = matchup?.projected_margin ?? display.projected_margin;
+  const yourProjected = matchup?.your_team.projected_score ?? display.your_team.projected_score;
+  const oppProjected = matchup?.opponent_team.projected_score ?? display.opponent_team.projected_score;
 
   return (
     <>
@@ -299,15 +493,13 @@ export function MatchupDisplay({
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground">
-                Week {matchup.matchup_period}
+                Week {display.matchup_period}
               </span>
               <span className="text-[10px] text-muted-foreground/50">
-                {formatDate(matchup.matchup_period_start)} – {formatDate(matchup.matchup_period_end)}
+                {formatDate(display.matchup_period_start)} – {formatDate(display.matchup_period_end)}
               </span>
             </div>
-            <Badge
-              variant={yourTeamWinning ? "win" : "loss"}
-            >
+            <Badge variant={yourTeamWinning ? "win" : "loss"}>
               {yourTeamWinning ? "Winning" : "Losing"} by {scoreDiff}
             </Badge>
           </div>
@@ -316,10 +508,10 @@ export function MatchupDisplay({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground truncate max-w-[160px]">
-                {matchup.your_team.team_name}
+                {display.your_team.team_name}
               </p>
               <p className="font-mono text-3xl font-bold tabular-nums mt-0.5">
-                {Math.round(matchup.your_team.current_score)}
+                {Math.round(yourScore)}
               </p>
             </div>
             <div className="text-center px-4">
@@ -327,10 +519,10 @@ export function MatchupDisplay({
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground truncate max-w-[160px] ml-auto">
-                {matchup.opponent_team.team_name}
+                {display.opponent_team.team_name}
               </p>
               <p className="font-mono text-3xl font-bold tabular-nums text-muted-foreground mt-0.5">
-                {Math.round(matchup.opponent_team.current_score)}
+                {Math.round(oppScore)}
               </p>
             </div>
           </div>
@@ -342,22 +534,20 @@ export function MatchupDisplay({
                 className="bg-primary rounded-full transition-all duration-500"
                 style={{
                   width: `${
-                    matchup.your_team.current_score + matchup.opponent_team.current_score > 0
-                      ? (matchup.your_team.current_score /
-                          (matchup.your_team.current_score + matchup.opponent_team.current_score)) *
-                        100
+                    yourScore + oppScore > 0
+                      ? (yourScore / (yourScore + oppScore)) * 100
                       : 50
                   }%`,
                 }}
               />
             </div>
             <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
-              <span>Proj: {matchup.your_team.projected_score.toFixed(1)}</span>
+              <span>Proj: {yourProjected.toFixed(1)}</span>
               <span className="text-center">
-                Winner: <span className="text-foreground font-medium">{matchup.projected_winner}</span>
-                {" "}(+{matchup.projected_margin.toFixed(1)})
+                Winner: <span className="text-foreground font-medium">{projectedWinner}</span>
+                {" "}(+{projectedMargin.toFixed(1)})
               </span>
-              <span>Proj: {matchup.opponent_team.projected_score.toFixed(1)}</span>
+              <span>Proj: {oppProjected.toFixed(1)}</span>
             </div>
           </div>
         </Card>
@@ -365,29 +555,43 @@ export function MatchupDisplay({
         {/* Score progression chart */}
         <MatchupScoreChart
           teamId={teamId}
-          matchupPeriod={matchup.matchup_period}
+          matchupPeriod={display.matchup_period}
         />
 
         {/* Side-by-side team cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <TeamCard
-            team={matchup.your_team}
-            isYourTeam={true}
-            onPlayerClick={handlePlayerClick}
-          />
-          <TeamCard
-            team={matchup.opponent_team}
-            isYourTeam={false}
-            onPlayerClick={handlePlayerClick}
-          />
+          {liveMatchup ? (
+            <>
+              <LiveTeamCard
+                team={liveMatchup.your_team}
+                isYourTeam={true}
+                onPlayerClick={handlePlayerClick}
+              />
+              <LiveTeamCard
+                team={liveMatchup.opponent_team}
+                isYourTeam={false}
+                onPlayerClick={handlePlayerClick}
+              />
+            </>
+          ) : matchup ? (
+            <>
+              <TeamCard
+                team={matchup.your_team}
+                isYourTeam={true}
+                onPlayerClick={handlePlayerClick}
+              />
+              <TeamCard
+                team={matchup.opponent_team}
+                isYourTeam={false}
+                onPlayerClick={handlePlayerClick}
+              />
+            </>
+          ) : null}
         </div>
       </div>
 
       {/* Player Stats Dialog */}
-      <Dialog
-        open={!!selectedPlayer}
-        onOpenChange={() => setSelectedPlayer(null)}
-      >
+      <Dialog open={!!selectedPlayer} onOpenChange={() => setSelectedPlayer(null)}>
         <DialogContent className="max-w-[900px]">
           <DialogHeader>
             <DialogTitle>Player Details</DialogTitle>

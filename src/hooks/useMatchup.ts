@@ -12,6 +12,7 @@ export const matchupKeys = {
   history: () => [...matchupKeys.all, "history"] as const,
   historyDetail: (teamId: number, matchupPeriod?: number) =>
     [...matchupKeys.history(), teamId, matchupPeriod] as const,
+  live: (teamId: number) => [...matchupKeys.all, "live", teamId] as const,
 };
 
 // Hooks
@@ -27,6 +28,19 @@ export function useMatchupQuery(
     enabled: !!teamId && isSignedIn === true,
     staleTime: 1000 * 60 * 2, // 2 minutes - matchup data changes during games
     refetchOnWindowFocus: true, // Refetch when user returns to tab
+  });
+}
+
+export function useLiveMatchupQuery(teamId: number | null) {
+  const { getToken, isSignedIn } = useAuth();
+
+  return useQuery({
+    queryKey: matchupKeys.live(teamId!),
+    queryFn: () => apiClient.getLiveMatchup(getToken, teamId!),
+    enabled: !!teamId && isSignedIn === true,
+    staleTime: 0,
+    refetchInterval: 60 * 1000, // Poll every 60s in sync with the live pipeline
+    refetchOnWindowFocus: true,
   });
 }
 

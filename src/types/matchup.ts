@@ -59,3 +59,46 @@ export interface MatchupScoreHistory {
 
 // API Response type for score history
 export type MatchupScoreHistoryResponse = BaseApiResponse<MatchupScoreHistory>;
+
+// ---- Live matchup types ----
+
+export interface PlayerLiveStats {
+  nba_player_id: number;
+  live_fpts: number;
+  live_pts: number;
+  live_reb: number;
+  live_ast: number;
+  live_stl: number;
+  live_blk: number;
+  live_tov: number;
+  live_min: number;
+  game_status: number; // 1=scheduled, 2=in_progress, 3=final
+  period: number | null;
+  game_clock: string | null;
+  last_updated: string | null;
+}
+
+export interface LiveMatchupPlayer extends MatchupPlayer {
+  live: PlayerLiveStats | null;
+}
+
+export interface LiveMatchupTeam {
+  team_name: string;
+  team_id: number;
+  current_score: number;
+  projected_score: number;
+  roster: LiveMatchupPlayer[];
+}
+
+export interface LiveMatchupData {
+  matchup_period: number;
+  matchup_period_start: string;
+  matchup_period_end: string;
+  your_team: LiveMatchupTeam;
+  opponent_team: LiveMatchupTeam;
+  projected_winner: string;
+  projected_margin: number;
+  game_date: string;
+}
+
+export type LiveMatchupResponse = BaseApiResponse<LiveMatchupData>;
