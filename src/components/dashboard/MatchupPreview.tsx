@@ -2,13 +2,14 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMatchupQuery } from "@/hooks/useMatchup";
+import { useMatchupQuery, useLiveMatchupQuery } from "@/hooks/useMatchup";
 import { useUIStore } from "@/stores/useUIStore";
 import type { MatchupData } from "@/types/matchup";
 
 export function MatchupPreview() {
   const { selectedTeam } = useUIStore();
   const { data: matchup, isLoading, error } = useMatchupQuery(selectedTeam);
+  const { data: liveMatchup } = useLiveMatchupQuery(selectedTeam);
 
   if (isLoading) {
     return <MatchupPreviewSkeleton />;
@@ -22,12 +23,13 @@ export function MatchupPreview() {
     );
   }
 
-  return <MatchupPreviewContent matchup={matchup} />;
+  const yourScore = liveMatchup?.your_team.current_score ?? matchup.your_team.current_score;
+  const opponentScore = liveMatchup?.opponent_team.current_score ?? matchup.opponent_team.current_score;
+
+  return <MatchupPreviewContent matchup={matchup} yourScore={yourScore} opponentScore={opponentScore} />;
 }
 
-function MatchupPreviewContent({ matchup }: { matchup: MatchupData }) {
-  const yourScore = matchup.your_team.current_score;
-  const opponentScore = matchup.opponent_team.current_score;
+function MatchupPreviewContent({ matchup, yourScore, opponentScore }: { matchup: MatchupData; yourScore: number; opponentScore: number }) {
   const scoreDiff = yourScore - opponentScore;
   const isWinning = scoreDiff > 0;
   const isTied = scoreDiff === 0;

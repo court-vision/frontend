@@ -26,7 +26,7 @@ import {
   QuickActionButton,
   StreamerPreviewList,
 } from "@/components/dashboard";
-import { useMatchupQuery } from "@/hooks/useMatchup";
+import { useMatchupQuery, useLiveMatchupQuery } from "@/hooks/useMatchup";
 import { useTeams } from "@/app/context/TeamsContext";
 
 export default function Home() {
@@ -42,9 +42,10 @@ export default function Home() {
 function DashboardView() {
   const { selectedTeam, teams } = useTeams();
   const { data: matchup } = useMatchupQuery(selectedTeam);
+  const { data: liveMatchup } = useLiveMatchupQuery(selectedTeam);
 
-  const yourScore = matchup?.your_team.current_score ?? 0;
-  const opponentScore = matchup?.opponent_team.current_score ?? 0;
+  const yourScore = liveMatchup?.your_team.current_score ?? matchup?.your_team.current_score ?? 0;
+  const opponentScore = liveMatchup?.opponent_team.current_score ?? matchup?.opponent_team.current_score ?? 0;
   const yourProjected = matchup?.your_team.projected_score ?? 0;
   const scoreDiff = yourScore - opponentScore;
 
