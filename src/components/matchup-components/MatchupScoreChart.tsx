@@ -18,6 +18,7 @@ import type { MatchupScoreHistory } from "@/types/matchup";
 interface MatchupScoreChartProps {
   teamId: number | null;
   matchupPeriod?: number;
+  liveScore?: { your_score: number; opponent_score: number };
 }
 
 function ChartSkeleton() {
@@ -33,7 +34,7 @@ function ChartSkeleton() {
   );
 }
 
-function ChartContent({ data }: { data: MatchupScoreHistory }) {
+function ChartContent({ data, liveScore }: { data: MatchupScoreHistory; liveScore?: { your_score: number; opponent_score: number } }) {
   const chartConfig = useMemo(
     () =>
       ({
@@ -49,16 +50,33 @@ function ChartContent({ data }: { data: MatchupScoreHistory }) {
     [data.team_name, data.opponent_team_name]
   );
 
-  const chartData = useMemo(
-    () =>
-      data.history.map((point) => ({
-        date: point.date,
-        day: `Day ${point.day_of_matchup + 1}`,
-        your_score: point.your_score,
-        opponent_score: point.opponent_score,
-      })),
-    [data.history]
-  );
+  const chartData = useMemo(() => {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    const points = data.history.map((point) => ({
+      date: point.date,
+      day: `Day ${point.day_of_matchup + 1}`,
+      your_score: point.your_score,
+      opponent_score: point.opponent_score,
+    }));
+
+    if (!liveScore) return points;
+
+    const todayIdx = points.findIndex((p) => p.date === todayStr);
+    const lastPoint = data.history[data.history.length - 1];
+    const livePoint = {
+      date: todayStr,
+      day: todayIdx >= 0 ? points[todayIdx].day : `Day ${(lastPoint?.day_of_matchup ?? -1) + 2}`,
+      your_score: liveScore.your_score,
+      opponent_score: liveScore.opponent_score,
+    };
+
+    if (todayIdx >= 0) {
+      return points.map((p, i) => (i === todayIdx ? livePoint : p));
+    }
+    return [...points, livePoint];
+  }, [data.history, liveScore]);
 
   const latestYourScore = chartData[chartData.length - 1]?.your_score ?? 0;
   const latestOpponentScore =
@@ -209,6 +227,7 @@ function ChartContent({ data }: { data: MatchupScoreHistory }) {
 export function MatchupScoreChart({
   teamId,
   matchupPeriod,
+  liveScore,
 }: MatchupScoreChartProps) {
   const { data, isLoading, error } = useMatchupScoreHistoryQuery(
     teamId,
@@ -223,5 +242,5 @@ export function MatchupScoreChart({
     return null;
   }
 
-  return <ChartContent data={data} />;
+  return <ChartContent data={data} liveScore={liveScore} />;
 }

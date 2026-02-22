@@ -556,6 +556,10 @@ export function MatchupDisplay({
         <MatchupScoreChart
           teamId={teamId}
           matchupPeriod={display.matchup_period}
+          liveScore={{
+            your_score: display.your_team.current_score,
+            opponent_score: display.opponent_team.current_score,
+          }}
         />
 
         {/* Side-by-side team cards */}
