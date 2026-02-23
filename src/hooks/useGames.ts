@@ -9,10 +9,13 @@ export const gamesKeys = {
 
 // Hooks
 export function useGamesOnDateQuery(date: string) {
+  const isToday = date === getTodayDate();
+
   return useQuery({
     queryKey: gamesKeys.onDate(date),
     queryFn: () => apiClient.getGamesOnDate(date),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: isToday ? 0 : 1000 * 60 * 5,
+    refetchInterval: isToday ? 60 * 1000 : false, // Poll every 60s for today
     enabled: !!date,
   });
 }

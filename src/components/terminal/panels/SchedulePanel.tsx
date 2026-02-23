@@ -50,10 +50,22 @@ interface GameCardProps {
   game: GameInfo;
 }
 
+function formatGameClock(clock: string | null): string {
+  if (!clock) return "";
+  const match = clock.match(/PT(\d+)M([\d.]+)S/);
+  if (match) {
+    const mins = parseInt(match[1]);
+    const secs = Math.floor(parseFloat(match[2]));
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  }
+  return "";
+}
+
 function GameCard({ game }: GameCardProps) {
   const isLive = game.status === "in_progress";
   const isFinal = game.status === "final";
   const isScheduled = game.status === "scheduled";
+  const clockStr = formatGameClock(game.game_clock);
 
   return (
     <div
@@ -74,7 +86,13 @@ function GameCard({ game }: GameCardProps) {
             isScheduled && "bg-blue-500/20 text-blue-400"
           )}
         >
-          {isLive && "LIVE"}
+          {isLive && (
+            <span className="flex items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-green-500 animate-pulse inline-block" />
+              {game.period ? `Q${game.period}` : "LIVE"}
+              {clockStr && <span className="text-green-500/70">{clockStr}</span>}
+            </span>
+          )}
           {isFinal && "FINAL"}
           {isScheduled && "UPCOMING"}
         </div>
