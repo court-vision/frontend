@@ -20,7 +20,9 @@ export function useGamesOnDateQuery(date: string) {
   });
 }
 
-// Helper to get today's date in YYYY-MM-DD format
+// Helper to get today's date in YYYY-MM-DD format, using ET to match the
+// backend's NBA game date convention (avoids rolling to the next day at
+// midnight UTC while games are still in progress on the East Coast).
 export function getTodayDate(): string {
-  return new Date().toISOString().split("T")[0];
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
 }
