@@ -14,6 +14,10 @@ interface UIStore {
   selectedRankingModel: string;
   setSelectedRankingModel: (model: string) => void;
 
+  // Lineup generation form
+  selectedLineupWeek: string | null;
+  setSelectedLineupWeek: (week: string | null) => void;
+
   // Modal states
   isManageTeamsModalOpen: boolean;
   setManageTeamsModalOpen: (open: boolean) => void;
@@ -44,6 +48,10 @@ export const useUIStore = create<UIStore>()(
       selectedRankingModel: "Handpicked",
       setSelectedRankingModel: (model) => set({ selectedRankingModel: model }),
 
+      // Lineup generation form
+      selectedLineupWeek: null,
+      setSelectedLineupWeek: (week) => set({ selectedLineupWeek: week }),
+
       // Modal states
       isManageTeamsModalOpen: false,
       setManageTeamsModalOpen: (open) => set({ isManageTeamsModalOpen: open }),
@@ -60,11 +68,12 @@ export const useUIStore = create<UIStore>()(
     }),
     {
       name: "ui-store",
-      // Only persist team selection, provider, and ranking model
+      // Only persist team selection, provider, ranking model, and lineup week
       partialize: (state) => ({
         selectedTeam: state.selectedTeam,
         selectedProvider: state.selectedProvider,
         selectedRankingModel: state.selectedRankingModel,
+        selectedLineupWeek: state.selectedLineupWeek,
       }),
     }
   )

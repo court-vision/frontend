@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,7 +48,7 @@ const stopzInput = z.object({
 });
 
 export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
-  const { selectedTeam, selectedProvider } = useUIStore();
+  const { selectedTeam, selectedProvider, selectedLineupWeek, setSelectedLineupWeek } = useUIStore();
   const { data: scheduleData } = useScheduleWeeksQuery();
   const { data: matchupData } = useMatchupQuery(selectedTeam);
 
@@ -56,15 +56,21 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
     resolver: zodResolver(stopzInput),
     defaultValues: {
       streaming_slots: "",
-      week: "",
+      // Restore persisted week immediately on mount
+      week: selectedLineupWeek ?? "",
     },
   });
 
   const reset = form.reset;
 
-  // Auto-fill the week when data is available
+  // Track whether the initial value was restored from the store so we don't
+  // overwrite it with the auto-fill effect below.
+  const restoredFromStore = useRef(!!selectedLineupWeek);
+
+  // Auto-fill the week when data is available (skipped if we restored from store)
   useEffect(() => {
-    // Don't override if user already selected a week
+    if (restoredFromStore.current) return;
+    // Don't override if week is already set
     if (form.getValues("week")) return;
 
     let currentWeek: number | null = null;
@@ -81,6 +87,14 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
       form.setValue("week", currentWeek.toString());
     }
   }, [scheduleData, matchupData, selectedProvider, form]);
+
+  // Persist week selection to the store whenever it changes
+  const weekValue = form.watch("week");
+  useEffect(() => {
+    if (weekValue) {
+      setSelectedLineupWeek(weekValue);
+    }
+  }, [weekValue, setSelectedLineupWeek]);
 
   const handleClearClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
