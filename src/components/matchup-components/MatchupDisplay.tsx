@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreChart";
 import Link from "next/link";
+import { useGamesOnDateQuery } from "@/hooks/useGames";
 import type {
   MatchupData,
   MatchupTeam,
@@ -34,6 +35,7 @@ import type {
   LiveMatchupTeam,
   LiveMatchupPlayer,
 } from "@/types/matchup";
+import type { GameInfo } from "@/types/games";
 import type { FantasyProvider } from "@/types/team";
 
 interface SelectedPlayer {
@@ -69,6 +71,85 @@ function formatDate(dateString: string): string {
   const [year, month, day] = dateString.split("-").map(Number);
   const date = new Date(year, month - 1, day);
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function getPlayerGame(playerTeam: string, games: GameInfo[]): GameInfo | null {
+  return games.find((g) => g.home_team === playerTeam || g.away_team === playerTeam) ?? null;
+}
+
+// Parse ISO 8601 duration "PT05M23.00S" → "5:23" (mirrors SchedulePanel)
+function formatGameClock(clock: string | null): string {
+  if (!clock) return "";
+  const match = clock.match(/PT(\d+)M([\d.]+)S/);
+  if (match) {
+    const mins = parseInt(match[1]);
+    const secs = Math.floor(parseFloat(match[2]));
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  }
+  return "";
+}
+
+// Format "19:30" → "7:30P" (compact ET tip-off display)
+function formatTipoff(time: string | null | undefined): string {
+  if (!time) return "";
+  const [h, m] = time.split(":").map(Number);
+  const suffix = h >= 12 ? "P" : "A";
+  const hour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+  return `${hour}:${String(m).padStart(2, "0")}${suffix}`;
+}
+
+interface GameStatusCellProps {
+  player: LiveMatchupPlayer;
+  game: GameInfo | null;
+}
+
+function GameStatusCell({ player, game }: GameStatusCellProps) {
+  const live = player.live;
+
+  if (!live || !game) {
+    return <span className="text-muted-foreground/30">—</span>;
+  }
+
+  const isHome = game.home_team === player.team;
+  const myScore = isHome ? game.home_score : game.away_score;
+  const oppScore = isHome ? game.away_score : game.home_score;
+  const opponent = isHome ? game.away_team : game.home_team;
+  const scoreStr =
+    myScore !== null && oppScore !== null ? `${myScore}-${oppScore}` : null;
+
+  if (live.game_status === 1) {
+    const timeStr = formatTipoff(game.start_time_et);
+    return (
+      <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap">
+        vs {opponent}{timeStr ? ` · ${timeStr}` : ""}
+      </span>
+    );
+  }
+
+  if (live.game_status === 2) {
+    const clockStr = formatGameClock(game.game_clock);
+    return (
+      <span className="flex items-center gap-1 whitespace-nowrap">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+        <span className="text-[11px] font-mono text-emerald-400">
+          {scoreStr ?? "—"} Q{live.period}
+          {clockStr && (
+            <span className="text-emerald-400/70"> {clockStr}</span>
+          )}
+        </span>
+      </span>
+    );
+  }
+
+  if (live.game_status === 3) {
+    return (
+      <span className="text-[11px] font-mono text-muted-foreground/60 whitespace-nowrap">
+        F · {scoreStr ?? "—"}
+      </span>
+    );
+  }
+
+  return <span className="text-muted-foreground/30">—</span>;
 }
 
 // ── Simple roster table (used when live data is not yet available) ──────────
@@ -148,10 +229,11 @@ function StatCell({ value, hasStats }: { value: number; hasStats: boolean }) {
 
 interface LiveTeamRosterTableProps {
   team: LiveMatchupTeam;
+  games: GameInfo[];
   onPlayerClick: (player: LiveMatchupPlayer) => void;
 }
 
-function LiveTeamRosterTable({ team, onPlayerClick }: LiveTeamRosterTableProps) {
+function LiveTeamRosterTable({ team, games, onPlayerClick }: LiveTeamRosterTableProps) {
   const sorted = sortByLineupSlot(team.roster);
   const activePlayers = sorted.filter(
     (p) => p.lineup_slot !== "BE" && p.lineup_slot !== "IR"
@@ -169,6 +251,7 @@ function LiveTeamRosterTable({ team, onPlayerClick }: LiveTeamRosterTableProps) 
           <TableRow>
             <TableHead className="w-[50px] pl-3">Slot</TableHead>
             <TableHead>Player</TableHead>
+            <TableHead className="w-[110px] font-mono text-[10px] uppercase tracking-wider">Game</TableHead>
             <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">MIN</TableHead>
             <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">PTS</TableHead>
             <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">REB</TableHead>
@@ -184,7 +267,6 @@ function LiveTeamRosterTable({ team, onPlayerClick }: LiveTeamRosterTableProps) 
             const live = player.live;
             const hasStats = live !== null && live.game_status >= 2;
             const isBench = player.lineup_slot === "BE" || player.lineup_slot === "IR";
-            const isLive = live !== null && live.game_status === 2;
 
             return (
               <TableRow
@@ -222,12 +304,10 @@ function LiveTeamRosterTable({ team, onPlayerClick }: LiveTeamRosterTableProps) 
                         {player.injury_status}
                       </Badge>
                     )}
-                    {isLive && live.period && (
-                      <span className="text-[9px] text-muted-foreground font-mono shrink-0">
-                        Q{live.period}
-                      </span>
-                    )}
                   </div>
+                </TableCell>
+                <TableCell>
+                  <GameStatusCell player={player} game={getPlayerGame(player.team, games)} />
                 </TableCell>
                 <TableCell className="text-right font-mono text-xs tabular-nums">
                   <StatCell value={live?.live_min ?? 0} hasStats={hasStats} />
@@ -262,7 +342,7 @@ function LiveTeamRosterTable({ team, onPlayerClick }: LiveTeamRosterTableProps) 
 
           {/* Summary row — active players only */}
           <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
-            <TableCell colSpan={9} className="pl-3 py-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+            <TableCell colSpan={10} className="pl-3 py-2 text-[10px] text-muted-foreground uppercase tracking-wider">
               Active total {!hasAnyLive && <span className="normal-case">(no games yet)</span>}
             </TableCell>
             <TableCell className="text-right font-mono text-sm font-bold pr-3 py-2 tabular-nums">
@@ -320,10 +400,11 @@ function TeamCard({ team, isYourTeam, onPlayerClick }: TeamCardProps) {
 interface LiveTeamCardProps {
   team: LiveMatchupTeam;
   isYourTeam: boolean;
+  games: GameInfo[];
   onPlayerClick: (player: LiveMatchupPlayer) => void;
 }
 
-function LiveTeamCard({ team, isYourTeam, onPlayerClick }: LiveTeamCardProps) {
+function LiveTeamCard({ team, isYourTeam, games, onPlayerClick }: LiveTeamCardProps) {
   return (
     <Card variant="panel" className="flex-1 overflow-hidden">
       <CardHeader className="pb-2">
@@ -351,7 +432,7 @@ function LiveTeamCard({ team, isYourTeam, onPlayerClick }: LiveTeamCardProps) {
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <LiveTeamRosterTable team={team} onPlayerClick={onPlayerClick} />
+        <LiveTeamRosterTable team={team} games={games} onPlayerClick={onPlayerClick} />
       </CardContent>
     </Card>
   );
@@ -422,6 +503,7 @@ export function MatchupDisplay({
   provider = "espn",
 }: MatchupDisplayProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
+  const { data: gamesData } = useGamesOnDateQuery(liveMatchup?.game_date ?? "");
 
   if (isLoading) {
     return <MatchupSkeleton />;
@@ -569,11 +651,13 @@ export function MatchupDisplay({
               <LiveTeamCard
                 team={liveMatchup.your_team}
                 isYourTeam={true}
+                games={gamesData?.games ?? []}
                 onPlayerClick={handlePlayerClick}
               />
               <LiveTeamCard
                 team={liveMatchup.opponent_team}
                 isYourTeam={false}
+                games={gamesData?.games ?? []}
                 onPlayerClick={handlePlayerClick}
               />
             </>

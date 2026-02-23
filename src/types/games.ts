@@ -9,6 +9,7 @@ export interface GameInfo {
   arena: string | null;
   period: number | null;
   game_clock: string | null; // ISO 8601 duration e.g. "PT05M23.00S", null if not live
+  start_time_et?: string | null; // Scheduled tip-off time in ET (HH:MM format)
 }
 
 export interface GamesOnDateData {
