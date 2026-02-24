@@ -25,6 +25,7 @@ import {
   MatchupPreview,
   QuickActionButton,
   StreamerPreviewList,
+  GameScoreTicker,
 } from "@/components/dashboard";
 import { useMatchupQuery, useLiveMatchupQuery } from "@/hooks/useMatchup";
 import { useTeams } from "@/app/context/TeamsContext";
@@ -51,25 +52,30 @@ function DashboardView() {
 
   return (
     <div className="space-y-4 animate-slide-up-fade">
-      {/* Header */}
-      <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight">
-            Dashboard
-          </h1>
-          <p className="text-muted-foreground text-xs mt-0.5">
-            {selectedTeam
-              ? "Your fantasy overview at a glance."
-              : "Select a team to get started."}
-          </p>
-        </div>
-        <Link href="/lineup-generation">
-          <Button variant="default" size="sm">
-            <Zap className="h-3.5 w-3.5 mr-1.5" />
-            Generate Lineup
-          </Button>
-        </Link>
-      </section>
+      <div className="-mt-1 space-y-2.5">
+        {/* Game score ticker */}
+        <GameScoreTicker />
+
+        {/* Header */}
+        <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="font-display text-xl font-bold tracking-tight">
+              Dashboard
+            </h1>
+            <p className="text-muted-foreground text-xs mt-0.5">
+              {selectedTeam
+                ? "Your fantasy overview at a glance."
+                : "Select a team to get started."}
+            </p>
+          </div>
+          <Link href="/lineup-generation">
+            <Button variant="default" size="sm">
+              <Zap className="h-3.5 w-3.5 mr-1.5" />
+              Generate Lineup
+            </Button>
+          </Link>
+        </section>
+      </div>
 
       {/* Stats Row */}
       {selectedTeam && (
