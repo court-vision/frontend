@@ -106,14 +106,29 @@ interface GameStatusCellProps {
 function GameStatusCell({ player, game }: GameStatusCellProps) {
   const live = player.live;
 
-  if (!live || !game) {
+  if (!game) {
     return <span className="text-muted-foreground/30">—</span>;
   }
 
   const isHome = game.home_team === player.team;
+  const opponent = isHome ? game.away_team : game.home_team;
+
+  // No live record yet (pre-game: pipeline only fires once games start)
+  // Fall back to game schedule data to show upcoming tip-off.
+  if (!live) {
+    if (game.status === "scheduled") {
+      const timeStr = formatTipoff(game.start_time_et);
+      return (
+        <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap">
+          vs {opponent}{timeStr ? ` · ${timeStr}` : ""}
+        </span>
+      );
+    }
+    return <span className="text-muted-foreground/30">—</span>;
+  }
+
   const myScore = isHome ? game.home_score : game.away_score;
   const oppScore = isHome ? game.away_score : game.home_score;
-  const opponent = isHome ? game.away_team : game.home_team;
   const scoreStr =
     myScore !== null && oppScore !== null ? `${myScore}-${oppScore}` : null;
 
