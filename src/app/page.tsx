@@ -25,7 +25,6 @@ import {
   MatchupPreview,
   QuickActionButton,
   StreamerPreviewList,
-  GameScoreTicker,
 } from "@/components/dashboard";
 import { useMatchupQuery, useLiveMatchupQuery } from "@/hooks/useMatchup";
 import { useTeams } from "@/app/context/TeamsContext";
@@ -52,12 +51,8 @@ function DashboardView() {
 
   return (
     <div className="space-y-4 animate-slide-up-fade">
-      <div className="-mt-1 space-y-2.5">
-        {/* Game score ticker */}
-        <GameScoreTicker />
-
-        {/* Header */}
-        <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* Header */}
+      <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="font-display text-xl font-bold tracking-tight">
               Dashboard
@@ -75,7 +70,6 @@ function DashboardView() {
             </Button>
           </Link>
         </section>
-      </div>
 
       {/* Stats Row */}
       {selectedTeam && (

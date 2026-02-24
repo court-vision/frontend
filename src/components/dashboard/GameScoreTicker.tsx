@@ -195,7 +195,7 @@ function TickerSkeleton() {
 
 // ── GameScoreTicker ───────────────────────────────────────────────────────────
 
-export function GameScoreTicker() {
+export function GameScoreTicker({ className }: { className?: string } = {}) {
   const { data, isLoading, error } = useGamesOnDateQuery(getTodayDate());
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const measureRef = React.useRef<HTMLDivElement | null>(null);
@@ -253,7 +253,7 @@ export function GameScoreTicker() {
       role="marquee"
       aria-label="Today's NBA game scores"
       ref={containerRef}
-      className="relative h-9 flex items-center overflow-hidden bg-card/40 border-y border-border/40 group"
+      className={cn("relative h-9 flex items-center overflow-hidden bg-card/40 border-y border-border/40 group", className)}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >

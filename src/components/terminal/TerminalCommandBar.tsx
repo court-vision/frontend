@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useRankingsQuery } from "@/hooks/useRankings";
+import { GameScoreTicker } from "@/components/dashboard/GameScoreTicker";
 import type { LayoutPreset } from "@/types/terminal";
 
 interface CommandBarProps {
@@ -240,10 +241,13 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 h-10 px-2 border-b border-border/50 bg-muted/20",
+        "flex flex-col border-b border-border/50 bg-muted/20",
         className
       )}
     >
+      {/* Main command row */}
+      <div className="flex items-center gap-2 h-10 px-2">
+
       {/* Search/Command Input */}
       <div className="relative flex-1 max-w-md">
         <div className="relative">
@@ -337,8 +341,13 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
         </div>
       )}
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* Ticker — inline on md+, hidden here on small screens */}
+      <div className="hidden md:block flex-1 min-w-0 mx-1">
+        <GameScoreTicker className="border-0 bg-transparent h-7" />
+      </div>
+
+      {/* Spacer — only on small screens where ticker is in its own row */}
+      <div className="flex-1 md:hidden" />
 
       {/* Action Buttons */}
       <Button
@@ -355,6 +364,13 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
       <Button variant="ghost" size="icon" className="h-7 w-7">
         <Settings className="h-3.5 w-3.5" />
       </Button>
+
+      </div>{/* end main command row */}
+
+      {/* Ticker — own row on small screens */}
+      <div className="md:hidden">
+        <GameScoreTicker className="border-t-0 border-x-0" />
+      </div>
     </div>
   );
 }
