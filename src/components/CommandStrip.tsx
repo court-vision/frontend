@@ -110,7 +110,13 @@ export function CommandStrip() {
         <div className="h-6 w-6 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center group-hover:bg-primary/25 group-hover:shadow-[0_0_8px_hsl(var(--primary)/0.3)] transition-all duration-200">
           <span className="font-display text-[12px] font-bold text-primary leading-none">CV</span>
         </div>
-        <span className="ml-1 font-display text-[15px] font-extrabold tracking-tight hidden lg:block brand-text">Court Vision</span>
+        <span
+          className={cn(
+            "font-display font-black tracking-tighter text-foreground drop-shadow-sm leading-none pt-0.5 hidden lg:block"
+          )}
+        >
+          COURT<span className="text-primary">VISION</span>
+        </span>
       </Link>
 
       {/* Separator */}
