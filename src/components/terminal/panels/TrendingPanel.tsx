@@ -82,7 +82,7 @@ export function TrendingPanel() {
   // limit=5 for compact display
   const { data, isLoading, error } = useOwnershipTrendingQuery({
     days: 2,
-    min_change: 3.0,
+    min_change: 1.0,
     min_ownership: 3.0,
     sort_by: "velocity",
     limit: 5,
