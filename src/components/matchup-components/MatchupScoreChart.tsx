@@ -59,23 +59,32 @@ function ChartContent({ data, liveScore }: { data: MatchupScoreHistory; liveScor
       day: `Day ${point.day_of_matchup + 1}`,
       your_score: point.your_score,
       opponent_score: point.opponent_score,
+      isLive: false,
     }));
 
     if (!liveScore) return points;
 
-    const todayIdx = points.findIndex((p) => p.date === todayStr);
-    const lastPoint = data.history[data.history.length - 1];
-    const livePoint = {
-      date: todayStr,
-      day: todayIdx >= 0 ? points[todayIdx].day : `Day ${(lastPoint?.day_of_matchup ?? -1) + 2}`,
-      your_score: liveScore.your_score,
-      opponent_score: liveScore.opponent_score,
-    };
+    // Only append a live point when the score has moved beyond the last pipeline
+    // snapshot. The pipeline runs at 10am before games start, so a same-day
+    // snapshot exists but reflects pre-game score (e.g. 0). We never replace that
+    // settled point — we append a separate "Live" marker so history stays fixed.
+    const lastPoint = points[points.length - 1];
+    const liveScoreChanged =
+      Math.abs(liveScore.your_score - (lastPoint?.your_score ?? 0)) > 0.05 ||
+      Math.abs(liveScore.opponent_score - (lastPoint?.opponent_score ?? 0)) > 0.05;
 
-    if (todayIdx >= 0) {
-      return points.map((p, i) => (i === todayIdx ? livePoint : p));
-    }
-    return [...points, livePoint];
+    if (!liveScoreChanged) return points;
+
+    return [
+      ...points,
+      {
+        date: todayStr,
+        day: "Live",
+        your_score: liveScore.your_score,
+        opponent_score: liveScore.opponent_score,
+        isLive: true,
+      },
+    ];
   }, [data.history, liveScore]);
 
   const latestYourScore = chartData[chartData.length - 1]?.your_score ?? 0;
@@ -189,10 +198,12 @@ function ChartContent({ data, liveScore }: { data: MatchupScoreHistory; liveScor
               stroke="hsl(var(--chart-1))"
               strokeWidth={2.5}
               fill="url(#yourScoreGradient)"
-              dot={{
-                fill: "hsl(var(--chart-1))",
-                strokeWidth: 0,
-                r: 3,
+              dot={(props) => {
+                const { cx, cy, payload } = props;
+                if (payload?.isLive) {
+                  return <circle key={`live-your-${cx}`} cx={cx} cy={cy} r={5} fill="hsl(var(--chart-1))" stroke="hsl(var(--background))" strokeWidth={2} />;
+                }
+                return <circle key={`dot-your-${cx}`} cx={cx} cy={cy} r={3} fill="hsl(var(--chart-1))" strokeWidth={0} />;
               }}
               activeDot={{
                 r: 5,
@@ -206,10 +217,12 @@ function ChartContent({ data, liveScore }: { data: MatchupScoreHistory; liveScor
               stroke="hsl(var(--chart-4))"
               strokeWidth={2.5}
               fill="url(#opponentScoreGradient)"
-              dot={{
-                fill: "hsl(var(--chart-4))",
-                strokeWidth: 0,
-                r: 3,
+              dot={(props) => {
+                const { cx, cy, payload } = props;
+                if (payload?.isLive) {
+                  return <circle key={`live-opp-${cx}`} cx={cx} cy={cy} r={5} fill="hsl(var(--chart-4))" stroke="hsl(var(--background))" strokeWidth={2} />;
+                }
+                return <circle key={`dot-opp-${cx}`} cx={cx} cy={cy} r={3} fill="hsl(var(--chart-4))" strokeWidth={0} />;
               }}
               activeDot={{
                 r: 5,
