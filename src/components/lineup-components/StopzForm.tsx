@@ -46,7 +46,7 @@ const stopzInput = z.object({
     .regex(/^\d+$/, "Must be a whole number")
     .refine((v) => parseInt(v) >= 1 && parseInt(v) <= 10, "Must be between 1 and 10"),
   week: z.string().min(1, "Required"),
-  avg_mode: z.enum(["season", "recent"]).default("season"),
+  avg_mode: z.enum(["season", "recent"]),
 });
 
 export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
