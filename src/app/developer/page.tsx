@@ -1,68 +1,48 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, ChevronDown, Code2 } from "lucide-react";
-import Link from "next/link";
+import { Key, BookOpen, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NotificationSettings } from "@/components/settings/NotificationSettings";
+import { ApiKeyManager } from "@/components/developer/ApiKeyManager";
+import { ApiDocs } from "@/components/developer/ApiDocs";
 
-function DeveloperSettings() {
-  return (
-    <div className="space-y-3">
-      <div>
-        <h3 className="text-sm font-semibold">Developer</h3>
-        <p className="text-muted-foreground text-xs mt-0.5">
-          Manage API keys and access developer documentation.
-        </p>
-      </div>
-      <Link
-        href="/developer"
-        className="inline-flex items-center gap-2 rounded-md border border-border bg-card/80 px-3 py-2 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
-      >
-        <Code2 className="h-3.5 w-3.5" />
-        Open Developer Portal
-      </Link>
-    </div>
-  );
-}
-
-const settingsTabs = [
+const developerTabs = [
   {
-    id: "notifications",
-    label: "Notifications",
-    icon: Bell,
-    description: "Alerts & email",
-    component: NotificationSettings,
+    id: "api-keys",
+    label: "API Keys",
+    icon: Key,
+    description: "Manage keys",
+    component: ApiKeyManager,
   },
   {
-    id: "developer",
-    label: "Developer",
-    icon: Code2,
-    description: "API keys & docs",
-    component: DeveloperSettings,
+    id: "documentation",
+    label: "Documentation",
+    icon: BookOpen,
+    description: "API reference",
+    component: ApiDocs,
   },
 ] as const;
 
-type TabId = (typeof settingsTabs)[number]["id"];
+type TabId = (typeof developerTabs)[number]["id"];
 
-export default function Settings() {
-  const [activeTab, setActiveTab] = useState<TabId | null>("notifications");
+export default function Developer() {
+  const [activeTab, setActiveTab] = useState<TabId>("api-keys");
 
-  const ActiveComponent = settingsTabs.find((t) => t.id === activeTab)?.component;
+  const ActiveComponent = developerTabs.find((t) => t.id === activeTab)?.component;
 
   return (
     <div className="space-y-4 animate-slide-up-fade">
       {/* Page header */}
       <section>
-        <h1 className="font-display text-xl font-bold tracking-tight">Settings</h1>
+        <h1 className="font-display text-xl font-bold tracking-tight">Developer</h1>
         <p className="text-muted-foreground text-xs mt-0.5">
-          Manage your preferences and notification settings.
+          Manage API keys and explore the Court Vision API.
         </p>
       </section>
 
       {/* Mobile: accordion */}
       <div className="md:hidden space-y-1.5">
-        {settingsTabs.map((tab) => {
+        {developerTabs.map((tab) => {
           const Icon = tab.icon;
           const isOpen = activeTab === tab.id;
           const TabComponent = tab.component;
@@ -75,7 +55,7 @@ export default function Settings() {
               )}
             >
               <button
-                onClick={() => setActiveTab(isOpen ? null : tab.id)}
+                onClick={() => setActiveTab(tab.id)}
                 className="w-full flex items-center justify-between gap-2.5 px-3 py-2.5 text-left"
               >
                 <div className="flex items-center gap-2.5">
@@ -119,8 +99,8 @@ export default function Settings() {
       {/* Desktop: sidebar + panel */}
       <div className="hidden md:flex gap-5 items-start">
         {/* Sidebar */}
-        <nav className="shrink-0 w-40 space-y-0.5">
-          {settingsTabs.map((tab) => {
+        <nav className="shrink-0 w-44 space-y-0.5 sticky top-4 self-start">
+          {developerTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
@@ -148,7 +128,10 @@ export default function Settings() {
         </nav>
 
         {/* Content */}
-        <div className="flex-1 min-w-0 max-w-xl">
+        <div className={cn(
+          "flex-1 min-w-0",
+          activeTab === "api-keys" && "max-w-3xl",
+        )}>
           {ActiveComponent && <ActiveComponent />}
         </div>
       </div>

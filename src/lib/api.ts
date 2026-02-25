@@ -12,6 +12,7 @@ import {
   OWNERSHIP_API,
   SCHEDULE_API,
   NOTIFICATIONS_API,
+  API_KEYS_API,
 } from "@/endpoints";
 import type {
   Team,
@@ -60,6 +61,12 @@ import type {
   OwnershipTrendingResponse,
   OwnershipTrendingParams,
 } from "@/types/ownership";
+import type {
+  ApiKeyListItem,
+  ApiKeyListResponse,
+  CreateApiKeyRequest,
+  CreateApiKeyResponse,
+} from "@/types/api-keys";
 import type {
   NotificationPreference,
   NotificationPreferenceResponse,
@@ -569,6 +576,47 @@ class ApiClient {
       return data.data;
     }
     return null;
+  }
+
+  // API Keys API
+  async listApiKeys(getToken: GetTokenFn): Promise<ApiKeyListItem[]> {
+    const response = await this.authenticatedRequest<ApiKeyListResponse>(
+      `${API_KEYS_API}/`,
+      getToken
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    return [];
+  }
+
+  async createApiKey(
+    getToken: GetTokenFn,
+    body: CreateApiKeyRequest
+  ): Promise<CreateApiKeyResponse> {
+    const response = await this.authenticatedRequest<CreateApiKeyResponse>(
+      `${API_KEYS_API}/`,
+      getToken,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      }
+    );
+    return response;
+  }
+
+  async revokeApiKey(
+    getToken: GetTokenFn,
+    keyId: string
+  ): Promise<BaseApiResponse> {
+    const response = await this.authenticatedRequest<BaseApiResponse>(
+      `${API_KEYS_API}/${keyId}`,
+      getToken,
+      {
+        method: "DELETE",
+      }
+    );
+    return response;
   }
 }
 
