@@ -49,22 +49,20 @@ const categories: EndpointCategory[] = [
         path: "/players/",
         description: "List all players in the database with optional filtering.",
         params: [
-          { name: "page", type: "integer", required: false, description: "Page number (default: 1)" },
-          { name: "per_page", type: "integer", required: false, description: "Results per page (default: 50, max: 200)" },
           { name: "name", type: "string", required: false, description: "Filter by player name (partial match)" },
           { name: "team", type: "string", required: false, description: "Filter by team abbreviation (e.g. LAL)" },
         ],
         code: {
           curl: `curl -H "X-API-Key: cv_your_key" \\
-  "${API_BASE}/players/?team=LAL&per_page=10"`,
+  "${API_BASE}/players/?team=LAL"`,
           python: `import requests
 
 headers = {"X-API-Key": "cv_your_key"}
 r = requests.get("${API_BASE}/players/",
-                 params={"team": "LAL", "per_page": 10},
+                 params={"team": "LAL"},
                  headers=headers)
 data = r.json()`,
-          typescript: `const res = await fetch('${API_BASE}/players/?team=LAL&per_page=10', {
+          typescript: `const res = await fetch('${API_BASE}/players/?team=LAL', {
   headers: { 'X-API-Key': 'cv_your_key' }
 })
 const data = await res.json()`,
