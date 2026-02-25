@@ -1,6 +1,7 @@
 import { buildAuthHeaders, type GetTokenFn } from "./auth";
 import {
   API_BASE,
+  LIVE_API,
   TEAMS_API,
   LINEUPS_API,
   RANKINGS_API,
@@ -67,6 +68,7 @@ import type {
   CreateApiKeyRequest,
   CreateApiKeyResponse,
 } from "@/types/api-keys";
+import type { LivePlayersData, LivePlayersResponse } from "@/types/live";
 import type {
   NotificationPreference,
   NotificationPreferenceResponse,
@@ -442,6 +444,19 @@ class ApiClient {
       getToken,
       { method: "DELETE" }
     );
+  }
+
+  // Live API (public - no auth required)
+  async getLivePlayersToday(): Promise<LivePlayersData> {
+    const response = await fetch(`${LIVE_API}/players/today`);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: LivePlayersResponse = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    throw new Error(data.message || "Failed to fetch live players");
   }
 
   // Rankings API (public - no auth required)

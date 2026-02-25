@@ -27,6 +27,7 @@ import {
   CardHeader,
 } from "../ui/card";
 import { Button } from "../ui/button";
+import { Switch } from "../ui/switch";
 import { useUIStore } from "@/stores/useUIStore";
 import { toast } from "sonner";
 import type { UseMutationResult } from "@tanstack/react-query";
@@ -45,6 +46,7 @@ const stopzInput = z.object({
     .regex(/^\d+$/, "Must be a whole number")
     .refine((v) => parseInt(v) >= 1 && parseInt(v) <= 10, "Must be between 1 and 10"),
   week: z.string().min(1, "Required"),
+  avg_mode: z.enum(["season", "recent"]).default("season"),
 });
 
 export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
@@ -58,6 +60,7 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
       streaming_slots: "",
       // Restore persisted week immediately on mount
       week: selectedLineupWeek ?? "",
+      avg_mode: "season" as const,
     },
   });
 
@@ -112,6 +115,7 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
         team_id: selectedTeam,
         streaming_slots: parseInt(data.streaming_slots),
         week: parseInt(data.week),
+        avg_mode: data.avg_mode,
       },
       {
         onSuccess: (response) => {
@@ -203,6 +207,24 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
                     </SelectContent>
                   </Select>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="avg_mode"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between">
+                  <FormLabel className="text-xs">Recent avg (last 14 days)</FormLabel>
+                  <FormControl>
+                    <Switch
+                      checked={field.value === "recent"}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked ? "recent" : "season")
+                      }
+                    />
+                  </FormControl>
                 </FormItem>
               )}
             />

@@ -5,8 +5,10 @@ import { Table, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { usePlayerStatsQuery } from "@/hooks/usePlayer";
+import { useLivePlayerToday } from "@/hooks/useLiveStats";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { GameLog } from "@/types/player";
+import type { LivePlayerData } from "@/types/live";
 
 type SortKey = keyof GameLog;
 type SortDirection = "asc" | "desc";
@@ -53,6 +55,25 @@ function getDateSortValue(dateStr: string): number {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
+function parseClock(gameClock: string | null): string {
+  if (!gameClock) return "";
+  const match = gameClock.match(/PT(\d+)M([\d.]+)S/);
+  if (!match) return "";
+  const secs = Math.floor(parseFloat(match[2])).toString().padStart(2, "0");
+  return `${match[1]}:${secs}`;
+}
+
+function formatPeriod(period: number | null): string {
+  if (!period) return "";
+  if (period <= 4) return `Q${period}`;
+  return period === 5 ? "OT" : `OT${period - 4}`;
+}
+
+function projectFpts(livePlayer: LivePlayerData, avgMinutes: number | undefined): number | null {
+  if (!avgMinutes || !livePlayer.min || livePlayer.min <= 0) return null;
+  return Math.round((livePlayer.fpts / livePlayer.min) * avgMinutes * 10) / 10;
+}
+
 export function GameLogPanel() {
   const { focusedPlayerId, statWindow } = useTerminalStore();
   const { data: playerStats, isLoading, error } = usePlayerStatsQuery(
@@ -60,6 +81,7 @@ export function GameLogPanel() {
     "nba",
     statWindow
   );
+  const { data: livePlayer } = useLivePlayerToday(focusedPlayerId);
 
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -150,6 +172,42 @@ export function GameLogPanel() {
           </button>
         ))}
       </div>
+
+      {/* Live Row — only rendered when the player is actively mid-game */}
+      {livePlayer && (() => {
+        const projFpts = projectFpts(livePlayer, playerStats?.avg_stats?.avg_minutes);
+        return (
+          <div className="flex items-center text-xs font-mono tabular-nums border-b border-amber-500/30 bg-amber-500/5 border-l-2 border-l-amber-500 shrink-0">
+            {/* Date cell: LIVE badge + period/clock */}
+            <div className="w-20 flex flex-col items-center justify-center py-1.5 px-1 gap-0.5">
+              <span className="flex items-center gap-1 text-amber-500 font-semibold text-[10px]">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                LIVE
+              </span>
+              <span className="text-[9px] text-muted-foreground leading-none">
+                {formatPeriod(livePlayer.period)} {parseClock(livePlayer.game_clock)}
+              </span>
+            </div>
+
+            {/* FPTS cell: current + projected */}
+            <div className="flex-1 flex flex-col items-center justify-center py-1.5 px-1">
+              <span>{livePlayer.fpts.toFixed(1)}</span>
+              {projFpts != null && (
+                <span className="text-[9px] text-muted-foreground italic leading-none">
+                  ~{projFpts.toFixed(1)}
+                </span>
+              )}
+            </div>
+
+            {/* Remaining stat cells in column order */}
+            {(["pts", "reb", "ast", "stl", "blk", "tov", "min", "fgm", "fga", "fg3m", "fg3a"] as const).map((key) => (
+              <div key={key} className="flex-1 py-1.5 px-1 text-center">
+                {livePlayer[key]}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Table Body */}
       <div className="flex-1 overflow-y-auto">

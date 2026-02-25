@@ -19,6 +19,7 @@ export const NOTIFICATIONS_API = `${API_BASE}/v1/internal/notifications`;
 export const API_KEYS_API = `${API_BASE}/v1/internal/api-keys`;
 
 // API v1 Public endpoints
+export const LIVE_API = `${API_BASE}/v1/live`;
 export const RANKINGS_API = `${API_BASE}/v1/rankings`;
 export const PLAYERS_API = `${API_BASE}/v1/players`;
 export const GAMES_API = `${API_BASE}/v1/games`;

@@ -26,6 +26,7 @@ export interface LineupGenerationRequest {
   team_id: number;
   streaming_slots: number;
   week: number;
+  avg_mode?: "season" | "recent";
 }
 
 export interface ScheduleWeek {
