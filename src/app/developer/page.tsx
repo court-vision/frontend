@@ -30,6 +30,14 @@ export default function Developer() {
 
   const ActiveComponent = developerTabs.find((t) => t.id === activeTab)?.component;
 
+  const handleTabChange = (tabId: TabId) => {
+    if (typeof window !== "undefined" && window.location.hash.startsWith("#section-")) {
+      const nextUrl = `${window.location.pathname}${window.location.search}`;
+      window.history.replaceState(null, "", nextUrl);
+    }
+    setActiveTab(tabId);
+  };
+
   return (
     <div className="space-y-4 animate-slide-up-fade">
       {/* Page header */}
@@ -55,7 +63,7 @@ export default function Developer() {
               )}
             >
               <button
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className="w-full flex items-center justify-between gap-2.5 px-3 py-2.5 text-left"
               >
                 <div className="flex items-center gap-2.5">
@@ -106,7 +114,7 @@ export default function Developer() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={cn(
                   "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left transition-all duration-150",
                   "text-xs font-medium",
