@@ -19,6 +19,7 @@ import {
   UserPlus,
   Terminal,
   Database,
+  Code,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -201,6 +202,24 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       group: "Navigation",
       keywords: ["lineups", "manage", "schedule"],
       action: () => router.push("/manage-lineups"),
+    },
+    {
+      id: "nav-settings",
+      label: "Go to Settings",
+      description: "Configure your settings",
+      icon: <Settings className="h-4 w-4" />,
+      group: "Navigation",
+      keywords: ["settings", "configure", "preferences"],
+      action: () => router.push("/settings"),
+    },
+    {
+      id: "nav-developer-portal",
+      label: "Go to Developer Portal",
+      description: "Access the developer documentation and API keys",
+      icon: <Code className="h-4 w-4" />,
+      group: "Navigation",
+      keywords: ["developer", "portal", "documentation", "api"],
+      action: () => router.push("/developer"),
     },
   ];
 
