@@ -173,20 +173,34 @@ export function GameLogPanel() {
         ))}
       </div>
 
-      {/* Live Row — only rendered when the player is actively mid-game */}
+      {/* Live Row — rendered when the player has a game today (in-progress or final) */}
       {livePlayer && (() => {
+        const isFinal = livePlayer.game_status === 3;
         const projFpts = projectFpts(livePlayer, playerStats?.avg_stats?.avg_minutes);
         return (
-          <div className="flex items-center text-xs font-mono tabular-nums border-b border-amber-500/30 bg-amber-500/5 border-l-2 border-l-amber-500 shrink-0">
-            {/* Date cell: LIVE badge + period/clock */}
+          <div className={cn(
+            "flex items-center text-xs font-mono tabular-nums border-b border-l-2 shrink-0",
+            isFinal
+              ? "border-border/50 bg-muted/10 border-l-muted-foreground/30"
+              : "border-amber-500/30 bg-amber-500/5 border-l-amber-500"
+          )}>
+            {/* Date cell: LIVE badge (in-progress) or FINAL label */}
             <div className="w-20 flex flex-col items-center justify-center py-1.5 px-1 gap-0.5">
-              <span className="flex items-center gap-1 text-amber-500 font-semibold text-[10px]">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                LIVE
-              </span>
-              <span className="text-[9px] text-muted-foreground leading-none">
-                {formatPeriod(livePlayer.period)} {parseClock(livePlayer.game_clock)}
-              </span>
+              {isFinal ? (
+                <span className="text-[10px] font-semibold text-muted-foreground/60">
+                  FINAL
+                </span>
+              ) : (
+                <>
+                  <span className="flex items-center gap-1 text-amber-500 font-semibold text-[10px]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    LIVE
+                  </span>
+                  <span className="text-[9px] text-muted-foreground leading-none">
+                    {formatPeriod(livePlayer.period)} {parseClock(livePlayer.game_clock)}
+                  </span>
+                </>
+              )}
             </div>
 
             {/* FPTS cell: current + projected */}
