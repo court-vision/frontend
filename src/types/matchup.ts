@@ -102,3 +102,61 @@ export interface LiveMatchupData {
 }
 
 export type LiveMatchupResponse = BaseApiResponse<LiveMatchupData>;
+
+// ---- Daily matchup types (day-by-day navigation) ----
+
+export interface DailyMatchupPlayerStats {
+  player_id: number;
+  name: string;
+  team: string;
+  position: string;
+  nba_player_id: number | null;
+  had_game: boolean;
+  fpts: number | null;
+  pts: number | null;
+  reb: number | null;
+  ast: number | null;
+  stl: number | null;
+  blk: number | null;
+  tov: number | null;
+  min: number | null;
+  fgm: number | null;
+  fga: number | null;
+  fg3m: number | null;
+  fg3a: number | null;
+  ftm: number | null;
+  fta: number | null;
+}
+
+export interface DailyMatchupFuturePlayer {
+  player_id: number;
+  name: string;
+  team: string;
+  position: string;
+  has_game: boolean;
+  opponent: string | null;
+  game_time_et: string | null;
+  injured: boolean;
+  injury_status: string | null;
+}
+
+export interface DailyMatchupTeam {
+  team_name: string;
+  team_id: number;
+  total_fpts: number | null;
+  roster: DailyMatchupPlayerStats[] | DailyMatchupFuturePlayer[];
+}
+
+export interface DailyMatchupData {
+  date: string;
+  day_type: "past" | "today" | "future";
+  day_of_week: string;
+  day_index: number;
+  matchup_period: number;
+  matchup_period_start: string;
+  matchup_period_end: string;
+  your_team: DailyMatchupTeam;
+  opponent_team: DailyMatchupTeam;
+}
+
+export type DailyMatchupResponse = BaseApiResponse<DailyMatchupData>;

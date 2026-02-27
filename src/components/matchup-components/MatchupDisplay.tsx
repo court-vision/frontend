@@ -25,8 +25,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreChart";
+import { DayNavigationBar } from "@/components/matchup-components/DayNavigationBar";
+import { DailyMatchupView } from "@/components/matchup-components/DailyMatchupView";
 import Link from "next/link";
 import { useGamesOnDateQuery } from "@/hooks/useGames";
+import { useDailyMatchupQuery } from "@/hooks/useMatchup";
 import type {
   MatchupData,
   MatchupTeam,
@@ -509,6 +512,32 @@ interface MatchupDisplayProps {
   provider?: FantasyProvider;
 }
 
+function getTodayET(): string {
+  const now = new Date();
+  // Get current date and hour in US/Eastern using the browser's Intl API (handles DST)
+  const etParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "numeric",
+    hour12: false,
+  }).formatToParts(now);
+
+  const year = etParts.find((p) => p.type === "year")!.value;
+  const month = etParts.find((p) => p.type === "month")!.value;
+  const day = etParts.find((p) => p.type === "day")!.value;
+  const hour = parseInt(etParts.find((p) => p.type === "hour")!.value);
+
+  // Before 6am ET = use yesterday's NBA game date
+  if (hour < 6) {
+    const yesterday = new Date(parseInt(year), parseInt(month) - 1, parseInt(day) - 1);
+    return `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+  }
+
+  return `${year}-${month}-${day}`;
+}
+
 export function MatchupDisplay({
   matchup,
   liveMatchup,
@@ -518,7 +547,13 @@ export function MatchupDisplay({
   provider = "espn",
 }: MatchupDisplayProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const { data: gamesData } = useGamesOnDateQuery(liveMatchup?.game_date ?? "");
+  const { data: dailyMatchup, isLoading: dailyLoading } = useDailyMatchupQuery(
+    teamId,
+    selectedDate
+  );
+  const todayDate = getTodayET();
 
   if (isLoading) {
     return <MatchupSkeleton />;
@@ -649,48 +684,67 @@ export function MatchupDisplay({
           </div>
         </Card>
 
-        {/* Score progression chart */}
-        <MatchupScoreChart
-          teamId={teamId}
-          matchupPeriod={display.matchup_period}
-          liveScore={{
-            your_score: display.your_team.current_score,
-            opponent_score: display.opponent_team.current_score,
-          }}
+        {/* Day navigation bar */}
+        <DayNavigationBar
+          matchupPeriodStart={display.matchup_period_start}
+          matchupPeriodEnd={display.matchup_period_end}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          todayDate={todayDate}
         />
 
-        {/* Side-by-side team cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {liveMatchup ? (
-            <>
-              <LiveTeamCard
-                team={liveMatchup.your_team}
-                isYourTeam={true}
-                games={gamesData?.games ?? []}
-                onPlayerClick={handlePlayerClick}
-              />
-              <LiveTeamCard
-                team={liveMatchup.opponent_team}
-                isYourTeam={false}
-                games={gamesData?.games ?? []}
-                onPlayerClick={handlePlayerClick}
-              />
-            </>
-          ) : matchup ? (
-            <>
-              <TeamCard
-                team={matchup.your_team}
-                isYourTeam={true}
-                onPlayerClick={handlePlayerClick}
-              />
-              <TeamCard
-                team={matchup.opponent_team}
-                isYourTeam={false}
-                onPlayerClick={handlePlayerClick}
-              />
-            </>
-          ) : null}
-        </div>
+        {/* Conditional: daily view or week overview */}
+        {selectedDate && selectedDate !== todayDate ? (
+          <DailyMatchupView
+            dailyData={dailyMatchup}
+            isLoading={dailyLoading}
+          />
+        ) : (
+          <>
+            {/* Score progression chart */}
+            <MatchupScoreChart
+              teamId={teamId}
+              matchupPeriod={display.matchup_period}
+              liveScore={{
+                your_score: display.your_team.current_score,
+                opponent_score: display.opponent_team.current_score,
+              }}
+            />
+
+            {/* Side-by-side team cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {liveMatchup ? (
+                <>
+                  <LiveTeamCard
+                    team={liveMatchup.your_team}
+                    isYourTeam={true}
+                    games={gamesData?.games ?? []}
+                    onPlayerClick={handlePlayerClick}
+                  />
+                  <LiveTeamCard
+                    team={liveMatchup.opponent_team}
+                    isYourTeam={false}
+                    games={gamesData?.games ?? []}
+                    onPlayerClick={handlePlayerClick}
+                  />
+                </>
+              ) : matchup ? (
+                <>
+                  <TeamCard
+                    team={matchup.your_team}
+                    isYourTeam={true}
+                    onPlayerClick={handlePlayerClick}
+                  />
+                  <TeamCard
+                    team={matchup.opponent_team}
+                    isYourTeam={false}
+                    onPlayerClick={handlePlayerClick}
+                  />
+                </>
+              ) : null}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Player Stats Dialog */}

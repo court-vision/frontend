@@ -13,6 +13,8 @@ export const matchupKeys = {
   historyDetail: (teamId: number, matchupPeriod?: number) =>
     [...matchupKeys.history(), teamId, matchupPeriod] as const,
   live: (teamId: number) => [...matchupKeys.all, "live", teamId] as const,
+  daily: (teamId: number, date: string) =>
+    [...matchupKeys.all, "daily", teamId, date] as const,
 };
 
 // Hooks
@@ -41,6 +43,20 @@ export function useLiveMatchupQuery(teamId: number | null) {
     staleTime: 0,
     refetchInterval: 60 * 1000, // Poll every 60s in sync with the live pipeline
     refetchOnWindowFocus: true,
+  });
+}
+
+export function useDailyMatchupQuery(
+  teamId: number | null,
+  date: string | null
+) {
+  const { getToken, isSignedIn } = useAuth();
+
+  return useQuery({
+    queryKey: matchupKeys.daily(teamId!, date!),
+    queryFn: () => apiClient.getDailyMatchup(getToken, teamId!, date!),
+    enabled: !!teamId && !!date && isSignedIn === true,
+    staleTime: 1000 * 60 * 10, // 10 minutes - historical data is stable
   });
 }
 

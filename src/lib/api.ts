@@ -48,6 +48,8 @@ import type {
   MatchupScoreHistoryResponse,
   LiveMatchupData,
   LiveMatchupResponse,
+  DailyMatchupData,
+  DailyMatchupResponse,
 } from "@/types/matchup";
 import type { StreamerRequest, StreamerResponse } from "@/types/streamer";
 import type {
@@ -307,6 +309,21 @@ class ApiClient {
       return response.data;
     }
     throw new Error(response.message || "Failed to fetch live matchup data");
+  }
+
+  async getDailyMatchup(
+    getToken: GetTokenFn,
+    teamId: number,
+    date: string
+  ): Promise<DailyMatchupData> {
+    const response = await this.authenticatedRequest<DailyMatchupResponse>(
+      `${MATCHUPS_API}/daily/${teamId}?date=${date}`,
+      getToken
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to fetch daily matchup data");
   }
 
   // Streamers API
