@@ -14,7 +14,7 @@ export function useLivePlayerToday(playerId: number | null) {
     },
     enabled: !!playerId,
     staleTime: 0,
-    refetchInterval: 60 * 1000, // poll in sync with the live pipeline cadence
+    refetchInterval: 30 * 1000, // poll in sync with the live pipeline cadence
     refetchOnWindowFocus: true,
   });
 }
