@@ -693,6 +693,22 @@ export function MatchupDisplay({
           todayDate={todayDate}
         />
 
+        {/* Score progression chart — always visible, mode driven by selectedDate */}
+        <MatchupScoreChart
+          teamId={teamId}
+          matchupPeriod={display.matchup_period}
+          liveScore={
+            !selectedDate
+              ? { your_score: display.your_team.current_score, opponent_score: display.opponent_team.current_score }
+              : undefined
+          }
+          selectedDate={selectedDate}
+          todayDate={todayDate}
+          matchupPeriodEnd={display.matchup_period_end}
+          yourProjectedScore={yourProjected}
+          oppProjectedScore={oppProjected}
+        />
+
         {/* Conditional: daily view or week overview */}
         {selectedDate && selectedDate !== todayDate ? (
           <DailyMatchupView
@@ -701,16 +717,6 @@ export function MatchupDisplay({
           />
         ) : (
           <>
-            {/* Score progression chart */}
-            <MatchupScoreChart
-              teamId={teamId}
-              matchupPeriod={display.matchup_period}
-              liveScore={{
-                your_score: display.your_team.current_score,
-                opponent_score: display.opponent_team.current_score,
-              }}
-            />
-
             {/* Side-by-side team cards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {liveMatchup ? (
