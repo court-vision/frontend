@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { Search } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,14 +31,23 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
 
 import { WeekSchedule, WeekScheduleHeader } from "./WeekSchedule";
+import { BreakoutContextSection } from "./BreakoutContextSection";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { useTeams } from "@/app/context/TeamsContext";
 import { useStreamersQuery } from "@/hooks/useStreamers";
+import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import type { StreamerPlayer, StreamerMode } from "@/types/streamer";
+import type { BreakoutCandidateResp } from "@/types/breakout";
 import type { FantasyProvider } from "@/types/team";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C", "G", "F"] as const;
@@ -54,6 +63,7 @@ interface SelectedPlayer {
   playerId: number;
   playerName: string;
   playerTeam: string;
+  breakoutContext?: BreakoutCandidateResp;
 }
 
 export default function StreamerDisplay() {
@@ -74,6 +84,7 @@ export default function StreamerDisplay() {
   );
   const [mode, setMode] = useState<StreamerMode>("daily");
   const [b2bOnly, setB2bOnly] = useState(false);
+  const [breakoutOnly, setBreakoutOnly] = useState(false);
   const [targetDay, setTargetDay] = useState<number | null>(null);
   const [avgDays, setAvgDays] = useState(7);
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
@@ -92,26 +103,66 @@ export default function StreamerDisplay() {
     }
   );
 
-  // Filter streamers based on search and position filters
+  // Fetch breakout candidates (public endpoint, no auth)
+  const { data: breakoutData } = useBreakoutStreamersQuery();
+
+  // Build a lookup map keyed by player_id for O(1) merge
+  const breakoutMap = useMemo(() => {
+    if (!breakoutData?.candidates) return new Map<number, BreakoutCandidateResp>();
+    return new Map(
+      breakoutData.candidates.map((c) => [c.beneficiary.player_id, c])
+    );
+  }, [breakoutData?.candidates]);
+
+  // Filter and sort streamers, merging in breakout context where applicable
   const filteredStreamers = useMemo(() => {
     if (!data?.streamers) return [];
 
-    return data.streamers.filter((player) => {
-      // Search filter
+    const pickupDay = data.target_day ?? data.current_day_index;
+
+    const enriched = data.streamers.map((player) => ({
+      ...player,
+      breakout_context: breakoutMap.get(player.player_id),
+    }));
+
+    const filtered = enriched.filter((player) => {
       const matchesSearch = player.name
         .toLowerCase()
         .includes(searchQuery.toLowerCase());
 
-      // Position filter (if any positions selected)
       const matchesPosition =
         selectedPositions.size === 0 ||
         player.valid_positions.some((pos) =>
           selectedPositions.has(pos as Position)
         );
 
-      return matchesSearch && matchesPosition;
+      const hasDailyPickupB2b =
+        player.game_days.includes(pickupDay) &&
+        player.game_days.includes(pickupDay + 1);
+      const hasB2b = mode === "daily" ? hasDailyPickupB2b : player.has_b2b;
+      const matchesB2b = !b2bOnly || hasB2b;
+
+      const matchesBreakout = !breakoutOnly || !!player.breakout_context;
+
+      return matchesSearch && matchesPosition && matchesB2b && matchesBreakout;
     });
-  }, [data?.streamers, searchQuery, selectedPositions]);
+
+    // Breakout candidates pin to top (sorted by breakout_score),
+    // then regular streamers follow (sorted by streamer_score)
+    return filtered.sort((a, b) => {
+      const aHas = !!a.breakout_context;
+      const bHas = !!b.breakout_context;
+      if (aHas && !bHas) return -1;
+      if (!aHas && bHas) return 1;
+      if (aHas && bHas) {
+        return (
+          b.breakout_context!.signals.breakout_score -
+          a.breakout_context!.signals.breakout_score
+        );
+      }
+      return b.streamer_score - a.streamer_score;
+    });
+  }, [data?.streamers, data?.target_day, data?.current_day_index, breakoutMap, searchQuery, selectedPositions, b2bOnly, breakoutOnly, mode]);
 
   const togglePosition = (pos: Position) => {
     setSelectedPositions((prev) => {
@@ -249,6 +300,17 @@ export default function StreamerDisplay() {
             B2B Only
           </Button>
 
+          {/* Breakout Only Toggle */}
+          <Button
+            variant={breakoutOnly ? "default" : "outline"}
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => setBreakoutOnly(!breakoutOnly)}
+            disabled={breakoutMap.size === 0}
+          >
+            Breakout Only
+          </Button>
+
           {/* Avg Days Selector */}
           <Select
             value={avgDays.toString()}
@@ -301,6 +363,7 @@ export default function StreamerDisplay() {
           {mode === "daily"
             ? `Day ${(data.target_day ?? data.current_day_index) + 1} Pickup`
             : `Day ${data.current_day_index + 1} of ${data.game_span}`}
+          {breakoutOnly && " · Breakout view"}
         </span>
         {mode === "week" && data.teams_with_b2b.length > 0 && (
           <span className="hidden sm:inline">B2B: {data.teams_with_b2b.join(", ")}</span>
@@ -313,114 +376,152 @@ export default function StreamerDisplay() {
       {/* Streamers Table */}
       <Card variant="panel" className="overflow-hidden">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px] text-center pl-3">#</TableHead>
-                <TableHead className="min-w-[200px]">Player</TableHead>
-                <TableHead className="w-[50px] text-center">Team</TableHead>
-                <TableHead className="w-[120px]">Pos</TableHead>
-                <TableHead className="w-[70px] text-right">{avgDays}D Avg</TableHead>
-                <TableHead className="w-[50px] text-center">GP</TableHead>
-                <TableHead className="text-center">
-                  <div className="flex flex-col items-center gap-1">
-                    <span>Schedule</span>
-                    <WeekScheduleHeader
-                      totalDays={totalDays}
-                      currentDay={data.current_day_index}
-                    />
-                  </div>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredStreamers.length === 0 ? (
+          <TooltipProvider>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="text-center text-sm text-muted-foreground py-8"
-                  >
-                    No streamers found matching your filters.
-                  </TableCell>
+                  <TableHead className="w-[50px] text-center pl-3">#</TableHead>
+                  <TableHead className="min-w-[200px]">Player</TableHead>
+                  <TableHead className="w-[50px] text-center">Team</TableHead>
+                  <TableHead className="w-[120px]">Pos</TableHead>
+                  <TableHead className="w-[70px] text-right">{avgDays}D Avg</TableHead>
+                  <TableHead className="w-[50px] text-center">GP</TableHead>
+                  <TableHead className="text-center">
+                    <div className="flex flex-col items-center gap-1">
+                      <span>Schedule</span>
+                      <WeekScheduleHeader
+                        totalDays={totalDays}
+                        currentDay={data.current_day_index}
+                      />
+                    </div>
+                  </TableHead>
                 </TableRow>
-              ) : (
-                filteredStreamers.map((player: StreamerPlayer, index: number) => {
-                  const hasDailyPickupB2b =
-                    player.game_days.includes(pickupDay) &&
-                    player.game_days.includes(pickupDay + 1);
-                  const showB2bBadge =
-                    mode === "daily" ? hasDailyPickupB2b : player.has_b2b;
-
-                  return (
-                    <TableRow
-                      key={player.player_id}
-                      className="cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary"
-                      onClick={() => setSelectedPlayer({
-                        playerId: player.player_id,
-                        playerName: player.name,
-                        playerTeam: player.team,
-                      })}
+              </TableHeader>
+              <TableBody>
+                {filteredStreamers.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="text-center text-sm text-muted-foreground py-8"
                     >
-                      <TableCell className="text-center pl-3 font-mono text-xs text-muted-foreground tabular-nums">
-                        {index + 1}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{player.name}</span>
-                          {showB2bBadge && (
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px]"
-                            >
-                              B2B
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center text-xs text-muted-foreground">
-                        {player.team}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {player.valid_positions
-                            .filter((pos) =>
-                              ["PG", "SG", "SF", "PF", "C", "G", "F"].includes(pos)
-                            )
-                            .slice(0, 4)
-                            .map((pos) => (
-                              <Badge
-                                key={pos}
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0"
-                              >
-                                {pos}
-                              </Badge>
-                            ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">
-                        {player.avg_points_last_n !== null
-                          ? player.avg_points_last_n.toFixed(1)
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="text-center font-mono text-sm tabular-nums">
-                        {player.games_remaining}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-center">
-                          <WeekSchedule
-                            gameDays={player.game_days}
-                            totalDays={totalDays}
-                            currentDay={data.current_day_index}
-                          />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                      No streamers found matching your filters.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredStreamers.map((player: StreamerPlayer, index: number) => {
+                    const hasDailyPickupB2b =
+                      player.game_days.includes(pickupDay) &&
+                      player.game_days.includes(pickupDay + 1);
+                    const showB2bBadge =
+                      mode === "daily" ? hasDailyPickupB2b : player.has_b2b;
+
+                    // Show a visual divider between the breakout group and regular streamers
+                    const prevHasBreakout =
+                      index > 0 && !!filteredStreamers[index - 1].breakout_context;
+                    const showDivider = prevHasBreakout && !player.breakout_context;
+
+                    return (
+                      <Fragment key={player.player_id}>
+                        {showDivider && (
+                          <TableRow className="h-px pointer-events-none">
+                            <TableCell colSpan={7} className="p-0 bg-border" />
+                          </TableRow>
+                        )}
+                        <TableRow
+                          className="cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary"
+                          onClick={() => setSelectedPlayer({
+                            playerId: player.player_id,
+                            playerName: player.name,
+                            playerTeam: player.team,
+                            breakoutContext: player.breakout_context,
+                          })}
+                        >
+                          <TableCell className="text-center pl-3 font-mono text-xs text-muted-foreground tabular-nums">
+                            {index + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{player.name}</span>
+                              {showB2bBadge && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px]"
+                                >
+                                  B2B
+                                </Badge>
+                              )}
+                              {player.breakout_context && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge
+                                      variant="breakout"
+                                      className="text-[10px] cursor-help"
+                                    >
+                                      OPP
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-[240px] space-y-1">
+                                    <p className="font-semibold text-xs">
+                                      {player.breakout_context.injured_player.name} is{" "}
+                                      {player.breakout_context.injured_player.status.toLowerCase()}
+                                    </p>
+                                    <p className="text-xs text-primary-foreground/70">
+                                      +{player.breakout_context.signals.projected_min_boost.toFixed(1)} min projected boost
+                                      {player.breakout_context.signals.opp_fpts_avg !== null
+                                        ? ` · ${player.breakout_context.signals.opp_fpts_avg.toFixed(1)} fpts in ${player.breakout_context.signals.opp_game_count} opp games`
+                                        : ""}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center text-xs text-muted-foreground">
+                            {player.team}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {player.valid_positions
+                                .filter((pos) =>
+                                  ["PG", "SG", "SF", "PF", "C", "G", "F"].includes(pos)
+                                )
+                                .slice(0, 4)
+                                .map((pos) => (
+                                  <Badge
+                                    key={pos}
+                                    variant="outline"
+                                    className="text-[10px] px-1.5 py-0"
+                                  >
+                                    {pos}
+                                  </Badge>
+                                ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm tabular-nums">
+                            {player.avg_points_last_n !== null
+                              ? player.avg_points_last_n.toFixed(1)
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="text-center font-mono text-sm tabular-nums">
+                            {player.games_remaining}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-center">
+                              <WeekSchedule
+                                gameDays={player.game_days}
+                                totalDays={totalDays}
+                                currentDay={data.current_day_index}
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </Fragment>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </TooltipProvider>
         </CardContent>
       </Card>
 
@@ -437,12 +538,17 @@ export default function StreamerDisplay() {
             </DialogDescription>
           </DialogHeader>
           {selectedPlayer && (
-            <PlayerStatDisplay
-              playerId={selectedPlayer.playerId}
-              playerName={selectedPlayer.playerName}
-              playerTeam={selectedPlayer.playerTeam}
-              provider={provider}
-            />
+            <div className="flex flex-col gap-4">
+              {selectedPlayer.breakoutContext && (
+                <BreakoutContextSection context={selectedPlayer.breakoutContext} />
+              )}
+              <PlayerStatDisplay
+                playerId={selectedPlayer.playerId}
+                playerName={selectedPlayer.playerName}
+                playerTeam={selectedPlayer.playerTeam}
+                provider={provider}
+              />
+            </div>
           )}
           <DialogFooter>
             <DialogClose asChild>

@@ -1,5 +1,6 @@
 import type { BaseApiResponse } from "./auth";
 import type { LeagueInfo } from "./team";
+import type { BreakoutCandidateResp } from "./breakout";
 
 export type StreamerMode = "week" | "daily";
 
@@ -18,6 +19,8 @@ export interface StreamerPlayer {
   streamer_score: number;
   injured: boolean;
   injury_status: string | null;
+  // Attached client-side when player matches a breakout candidate
+  breakout_context?: BreakoutCandidateResp;
 }
 
 // Streamer data from backend response

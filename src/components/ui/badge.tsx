@@ -23,6 +23,7 @@ const badgeVariants = cva(
         live: "bg-status-win/15 text-status-win border border-status-win/30 animate-beacon",
         hot: "bg-signal-hot/15 text-signal-hot border border-signal-hot/30",
         cold: "bg-signal-cold/15 text-signal-cold border border-signal-cold/30",
+        breakout: "bg-status-projected/15 text-status-projected border border-status-projected/30",
       },
     },
     defaultVariants: {
