@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Area, ComposedChart, CartesianGrid, Line, XAxis, YAxis } from "recharts";
+import { Area, ComposedChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartConfig,
@@ -73,8 +73,6 @@ interface ChartPoint {
   day: string;
   your_score: number | null;
   opponent_score: number | null;
-  your_score_proj: number | null;
-  opp_score_proj: number | null;
   isLive: boolean;
   isProjected: boolean;
 }
@@ -109,10 +107,6 @@ function ChartContent({
           label: data.opponent_team_name,
           color: "hsl(var(--chart-4))",
         },
-        // Projection series share same color; legendType="none" on their Area components
-        // keeps them out of the legend
-        your_score_proj: { label: data.team_name, color: "hsl(var(--chart-1))" },
-        opp_score_proj: { label: data.opponent_team_name, color: "hsl(var(--chart-4))" },
       }) satisfies ChartConfig,
     [data.team_name, data.opponent_team_name]
   );
@@ -124,8 +118,6 @@ function ChartContent({
       day: `Day ${point.day_of_matchup + 1}`,
       your_score: point.your_score,
       opponent_score: point.opponent_score,
-      your_score_proj: null,
-      opp_score_proj: null,
       isLive: false,
       isProjected: false,
     }));
@@ -154,8 +146,6 @@ function ChartContent({
             day: "Live",
             your_score: liveScore.your_score,
             opponent_score: liveScore.opponent_score,
-            your_score_proj: null,
-            opp_score_proj: null,
             isLive: true,
             isProjected: false,
           },
@@ -170,7 +160,7 @@ function ChartContent({
       return { chartData: filtered.length > 0 ? filtered : basePoints, mode: "past" as const };
     }
 
-    // ── FUTURE DAY: solid lines for history + dashed projection to selectedDate ──
+    // ── FUTURE DAY: historical points + projected points in same series ──────
     const lastActual = basePoints[basePoints.length - 1];
     if (!lastActual || !matchupPeriodEnd) {
       return { chartData: basePoints, mode: "future" as const };
@@ -182,20 +172,8 @@ function ChartContent({
     const yourProjectionTarget = asFiniteNumber(yourProjectedScore) ?? lastActualYour;
     const oppProjectionTarget = asFiniteNumber(oppProjectedScore) ?? lastActualOpp;
 
-    // Fill historical points with actual score values for the projection series.
-    // This ensures the Line component always has a continuous non-null series to
-    // render — recharts does not reliably draw a Line with only 2 trailing non-null
-    // values after many leading nulls. The solid Area is rendered *after* the Line
-    // in JSX, so the Area's stroke visually covers the dashed overlap for historical
-    // days; only the projected extension beyond the last actual point stays visible.
-    const fullBase: ChartPoint[] = basePoints.map((p) => ({
-      ...p,
-      your_score_proj: p.your_score,
-      opp_score_proj: p.opponent_score,
-    }));
-
     if (projectionEnd <= lastActual.date) {
-      return { chartData: fullBase, mode: "future" as const };
+      return { chartData: basePoints, mode: "future" as const };
     }
 
     const lastActualDay = data.history[data.history.length - 1]?.day_of_matchup ?? (data.history.length - 1);
@@ -206,8 +184,11 @@ function ChartContent({
     const projectionDays = getDaysBetween(lastActual.date, projectionEnd);
     const totalRemaining = remainingDays.length - 1; // exclude the start day
 
+    // Projected points use the same your_score / opponent_score keys so the
+    // Area renders them as a continuous line. The `isProjected` flag lets the
+    // dot renderer distinguish them visually (hollow rings vs solid dots).
     const projectedPoints: ChartPoint[] = projectionDays
-      .slice(1) // skip the join date (already in fullBase as the last actual point)
+      .slice(1) // skip the join date (already in basePoints as the last actual point)
       .map((date, i) => {
         const dayOffset = i + 1;
         const fraction = totalRemaining > 0 ? Math.min(1, dayOffset / totalRemaining) : 1;
@@ -217,36 +198,24 @@ function ChartContent({
         return {
           date,
           day: dayLabel,
-          your_score: null,
-          opponent_score: null,
-          your_score_proj: Math.round(yourProj * 10) / 10,
-          opp_score_proj: Math.round(oppProj * 10) / 10,
+          your_score: Math.round(yourProj * 10) / 10,
+          opponent_score: Math.round(oppProj * 10) / 10,
           isLive: false,
           isProjected: true,
         };
       });
 
     return {
-      chartData: [...fullBase, ...projectedPoints],
+      chartData: [...basePoints, ...projectedPoints],
       mode: "future" as const,
     };
   }, [data.history, liveScore, selectedDate, todayDate, matchupPeriodEnd, yourProjectedScore, oppProjectedScore]);
 
   const lastPoint = chartData[chartData.length - 1];
-  const latestYourScore = lastPoint?.your_score ?? lastPoint?.your_score_proj ?? 0;
-  const latestOppScore = lastPoint?.opponent_score ?? lastPoint?.opp_score_proj ?? 0;
+  const latestYourScore = lastPoint?.your_score ?? 0;
+  const latestOppScore = lastPoint?.opponent_score ?? 0;
   const isWinning = latestYourScore > latestOppScore;
   const scoreDiff = Math.abs(latestYourScore - latestOppScore).toFixed(1);
-
-  // Explicit Y-axis max so projected Line values are never clipped.
-  // ComposedChart auto-domain can miss sparse series with mostly-null data.
-  const yDomainMax = useMemo(() => {
-    const vals = chartData
-      .flatMap((p) => [p.your_score, p.opponent_score, p.your_score_proj, p.opp_score_proj])
-      .filter((v): v is number => v !== null);
-    if (!vals.length) return undefined;
-    return Math.ceil(Math.max(...vals) * 1.1);
-  }, [chartData]);
 
   return (
     <Card className="overflow-hidden">
@@ -315,31 +284,22 @@ function ChartContent({
               tickCount={4}
               tick={{ fontSize: 11 }}
               tickFormatter={(value) => Math.round(value).toString()}
-              domain={yDomainMax !== undefined ? [0, yDomainMax] : undefined}
             />
             <ChartTooltip
               cursor={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
               content={(props) => {
                 const { active, payload } = props ?? {};
                 if (!active || !payload?.length) return null;
-                const isProj = (payload[0]?.payload as ChartPoint | undefined)?.isProjected ?? false;
-                // In future mode, historical points carry both actual and proj values.
-                // Only show the relevant series for the hovered point type.
-                const filtered = payload.filter((p) => {
-                  const key = p.dataKey as string;
-                  return isProj
-                    ? key === "your_score_proj" || key === "opp_score_proj"
-                    : key === "your_score" || key === "opponent_score";
-                });
+                const point = payload[0]?.payload as ChartPoint | undefined;
                 return (
                   <ChartTooltipContent
                     {...props}
-                    payload={filtered}
                     labelFormatter={(_, pl) => {
                       const date = (pl?.[0]?.payload as ChartPoint | undefined)?.date;
+                      const prefix = point?.isProjected ? "(Projected) " : "";
                       if (date) {
                         const [y, m, d] = date.split("-").map(Number);
-                        return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+                        return prefix + new Date(y, m - 1, d).toLocaleDateString("en-US", {
                           weekday: "short",
                           month: "short",
                           day: "numeric",
@@ -353,45 +313,12 @@ function ChartContent({
             />
             <ChartLegend content={<ChartLegendContent />} />
 
-            {/* ── Dashed projection lines — rendered FIRST (behind solid areas).
-                 In future mode, your_score_proj is populated for ALL data points
-                 (actual values for history, interpolated for future days), ensuring
-                 recharts always has a continuous series to draw. The solid Areas
-                 below are rendered AFTER, so they visually cover the dashed overlap
-                 on historical days; only the projected extension stays visible. ── */}
-            {mode === "future" && (
-              <>
-                <Line
-                  dataKey="your_score_proj"
-                  type="linear"
-                  stroke="hsl(var(--chart-1))"
-                  strokeWidth={2.5}
-                  strokeDasharray="6 3"
-                  dot={false}
-                  legendType="none"
-                  activeDot={{ r: 4, strokeWidth: 2, stroke: "hsl(var(--background))" }}
-                />
-                <Line
-                  dataKey="opp_score_proj"
-                  type="linear"
-                  stroke="hsl(var(--chart-4))"
-                  strokeWidth={2.5}
-                  strokeDasharray="6 3"
-                  dot={false}
-                  legendType="none"
-                  activeDot={{ r: 4, strokeWidth: 2, stroke: "hsl(var(--background))" }}
-                />
-              </>
-            )}
-
-            {/* ── Solid historical areas — rendered AFTER lines (on top) ─────── */}
             <Area
               dataKey="your_score"
               type="monotone"
               stroke="hsl(var(--chart-1))"
               strokeWidth={2.5}
               fill="url(#yourScoreGradient)"
-              connectNulls={false}
               dot={(props) => {
                 const { cx, cy, payload } = props;
                 if (payload?.isLive) {
@@ -404,6 +331,20 @@ function ChartContent({
                       fill="hsl(var(--chart-1))"
                       stroke="hsl(var(--background))"
                       strokeWidth={2}
+                    />
+                  );
+                }
+                if (payload?.isProjected) {
+                  return (
+                    <circle
+                      key={`proj-your-${cx}`}
+                      cx={cx}
+                      cy={cy}
+                      r={4}
+                      fill="hsl(var(--background))"
+                      stroke="hsl(var(--chart-1))"
+                      strokeWidth={2}
+                      strokeDasharray="3 2"
                     />
                   );
                 }
@@ -426,7 +367,6 @@ function ChartContent({
               stroke="hsl(var(--chart-4))"
               strokeWidth={2.5}
               fill="url(#opponentScoreGradient)"
-              connectNulls={false}
               dot={(props) => {
                 const { cx, cy, payload } = props;
                 if (payload?.isLive) {
@@ -439,6 +379,20 @@ function ChartContent({
                       fill="hsl(var(--chart-4))"
                       stroke="hsl(var(--background))"
                       strokeWidth={2}
+                    />
+                  );
+                }
+                if (payload?.isProjected) {
+                  return (
+                    <circle
+                      key={`proj-opp-${cx}`}
+                      cx={cx}
+                      cy={cy}
+                      r={4}
+                      fill="hsl(var(--background))"
+                      stroke="hsl(var(--chart-4))"
+                      strokeWidth={2}
+                      strokeDasharray="3 2"
                     />
                   );
                 }
