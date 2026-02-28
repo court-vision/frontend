@@ -25,7 +25,7 @@ export const PLAYERS_API = `${API_BASE}/v1/players`;
 export const GAMES_API = `${API_BASE}/v1/games`;
 export const OWNERSHIP_API = `${API_BASE}/v1/ownership`;
 export const SCHEDULE_API = `${API_BASE}/v1/schedule`;
-export const BREAKOUT_API = `${API_BASE}/v1/public/breakout-streamers`;
+export const BREAKOUT_API = `${API_BASE}/v1/breakout-streamers`;
 
 // Maintenance mode endpoints - return "/api/maintenance" to be caught by middleware
 // export const PROD_BACKEND_ENDPOINT = "/api/maintenance";
