@@ -77,7 +77,8 @@ export function ApiKeyManager() {
   // Create form state
   const [keyName, setKeyName] = useState("");
   const [scopeRead, setScopeRead] = useState(true);
-  const [scopeOptimize, setScopeOptimize] = useState(false);
+  const [scopeAnalytics, setScopeAnalytics] = useState(false);
+  const [scopeLive, setScopeLive] = useState(false);
   const [expiresIn, setExpiresIn] = useState("never");
 
   // Secret key after creation
@@ -87,13 +88,15 @@ export function ApiKeyManager() {
   function resetCreateForm() {
     setKeyName("");
     setScopeRead(true);
-    setScopeOptimize(false);
+    setScopeAnalytics(false);
+    setScopeLive(false);
     setExpiresIn("never");
   }
 
   function handleCreate() {
     const scopes: string[] = ["read"];
-    if (scopeOptimize) scopes.push("optimize");
+    if (scopeAnalytics) scopes.push("analytics");
+    if (scopeLive) scopes.push("live");
 
     let expires_days: number | null = null;
     if (expiresIn === "30") expires_days = 30;
@@ -186,13 +189,26 @@ export function ApiKeyManager() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
-                      id="scope-optimize"
-                      checked={scopeOptimize}
-                      onCheckedChange={(checked) => setScopeOptimize(checked === true)}
+                      id="scope-analytics"
+                      checked={scopeAnalytics}
+                      onCheckedChange={(checked) => setScopeAnalytics(checked === true)}
                     />
-                    <label htmlFor="scope-optimize" className="text-xs">
-                      <span className="font-medium">optimize</span>
-                      <span className="text-muted-foreground ml-1.5">-- Use lineup optimization endpoint</span>
+                    <label htmlFor="scope-analytics" className="text-xs">
+                      <span className="font-medium">analytics</span>
+                      <span className="text-muted-foreground ml-1.5">-- Access analytics features (lineup generation, breakout streamers)</span>
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2 opacity-50">
+                    <Checkbox
+                      id="scope-live"
+                      checked={scopeLive}
+                      onCheckedChange={(checked) => setScopeLive(checked === true)}
+                      disabled
+                    />
+                    <label htmlFor="scope-live" className="text-xs">
+                      <span className="font-medium">live</span>
+                      <span className="text-muted-foreground ml-1.5">-- Access live game data and real-time statistics</span>
+                      <span className="text-muted-foreground/60 ml-1.5 italic">Coming soon</span>
                     </label>
                   </div>
                 </div>
@@ -277,7 +293,7 @@ export function ApiKeyManager() {
                       {key.scopes.map((scope) => (
                         <Badge
                           key={scope}
-                          variant={scope === "optimize" ? "default" : "neutral"}
+                          variant={scope === "analytics" || scope === "live" ? "default" : "neutral"}
                           className="text-[9px] px-1 py-0"
                         >
                           {scope}

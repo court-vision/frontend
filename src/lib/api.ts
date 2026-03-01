@@ -70,6 +70,7 @@ import type {
   CreateApiKeyRequest,
   CreateApiKeyResponse,
 } from "@/types/api-keys";
+import type { BreakoutData, BreakoutResponse } from "@/types/breakout";
 import type { LivePlayersData, LivePlayersResponse } from "@/types/live";
 import type {
   NotificationPreference,
@@ -324,6 +325,24 @@ class ApiClient {
       return response.data;
     }
     throw new Error(response.message || "Failed to fetch daily matchup data");
+  }
+
+  // Breakout Streamers API (internal, Clerk auth)
+  async getBreakoutStreamers(
+    getToken: GetTokenFn,
+    limit: number = 30,
+    team?: string
+  ): Promise<BreakoutData | null> {
+    const params = new URLSearchParams({ limit: limit.toString() });
+    if (team) params.set("team", team);
+    const response = await this.authenticatedRequest<BreakoutResponse>(
+      `${STREAMERS_API}/breakout?${params}`,
+      getToken
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    return null;
   }
 
   // Streamers API

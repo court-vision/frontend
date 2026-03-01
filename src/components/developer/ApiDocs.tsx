@@ -537,7 +537,7 @@ const data = await res.json()`,
       {
         method: "GET",
         path: "/live/players/today",
-        description: "Get live player stats for all games in progress today. Updated every ~60 seconds during game time.",
+        description: "Get live player stats for all games in progress today. Updated every ~60 seconds during game time. Note: will require 'live' scope in a future update.",
         params: [],
         code: {
           curl: `curl "${API_BASE}/live/players/today"`,
@@ -586,7 +586,7 @@ const data = await res.json()`,
       {
         method: "GET",
         path: "/live/scoreboard",
-        description: "Get the current NBA scoreboard with live game statuses. Reflects near-real-time state from NBA's live CDN. Does not include team names or scores — use GET /games/{date} for full game details.",
+        description: "Get the current NBA scoreboard with live game statuses. Reflects near-real-time state from NBA's live CDN. Does not include team names or scores — use GET /games/{date} for full game details. Note: will require 'live' scope in a future update.",
         params: [],
         code: {
           curl: `curl "${API_BASE}/live/scoreboard"`,
@@ -630,7 +630,7 @@ const data = await res.json()`,
       {
         method: "POST",
         path: "/analytics/generate-lineup",
-        description: "Auto-fetch your roster and free agents from your connected ESPN or Yahoo team and generate an optimized lineup. No manual player data needed — just your team ID. Requires an API key with 'optimize' scope and a team added via the manage-teams page.",
+        description: "Auto-fetch your roster and free agents from your connected ESPN or Yahoo team and generate an optimized lineup. No manual player data needed — just your team ID. Requires an API key with 'analytics' scope and a team added via the manage-teams page.",
         params: [
           { name: "team_id", type: "integer", required: true, description: "Your team ID (visible on the manage-teams page)" },
           { name: "week", type: "integer", required: true, description: "Target fantasy week to optimize for (1–26)" },
@@ -698,28 +698,27 @@ r = requests.post("${API_BASE}/analytics/generate-lineup",
   }
 }`,
       },
-    ],
-  },
-  {
-    id: "streamers",
-    label: "Streamers",
-    endpoints: [
       {
         method: "GET",
-        path: "/breakout-streamers/",
-        description: "Get breakout streamer candidates — players likely to see increased minutes due to a prominent teammate being injured or suspended. Updated daily.",
+        path: "/analytics/breakout-streamers",
+        description: "Get breakout streamer candidates — players likely to see increased minutes due to a prominent teammate being injured or suspended. Updated daily. Requires an API key with 'analytics' scope.",
         params: [
           { name: "limit", type: "integer", required: false, description: "Maximum candidates to return (1–50, default 20)" },
           { name: "team", type: "string", required: false, description: "Filter by team abbreviation (e.g. LAL, BOS)" },
         ],
         code: {
-          curl: `curl "${API_BASE}/breakout-streamers/?limit=10"`,
+          curl: `curl -H "X-API-Key: cv_your_key" \\
+  "${API_BASE}/analytics/breakout-streamers?limit=10"`,
           python: `import requests
 
-r = requests.get("${API_BASE}/breakout-streamers/",
-                 params={"limit": 10})
+headers = {"X-API-Key": "cv_your_key"}
+r = requests.get("${API_BASE}/analytics/breakout-streamers",
+                 params={"limit": 10},
+                 headers=headers)
 data = r.json()`,
-          typescript: `const res = await fetch('${API_BASE}/breakout-streamers/?limit=10')
+          typescript: `const res = await fetch('${API_BASE}/analytics/breakout-streamers?limit=10', {
+  headers: { 'X-API-Key': 'cv_your_key' }
+})
 const data = await res.json()`,
         },
         response: `{
