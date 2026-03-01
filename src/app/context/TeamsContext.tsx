@@ -19,6 +19,7 @@ interface TeamsContextType {
   selectedTeam: number | null;
   setSelectedTeam: (team_id: number) => void;
   teams: any[]; // using any[] for now since we are moving away from this
+  isTeamsLoading: boolean;
   setTeams: Dispatch<SetStateAction<any[]>>;
   rosterInfo: RosterPlayer[];
   handleManageTeamsClick: () => void;
@@ -48,6 +49,7 @@ const TeamsContext = createContext<TeamsContextType>({
   selectedTeam: 0,
   setSelectedTeam: () => {},
   teams: [],
+  isTeamsLoading: true,
   setTeams: () => {},
   rosterInfo: [],
   handleManageTeamsClick: () => {},
@@ -62,7 +64,7 @@ export const TeamsProvider = ({ children }: { children: React.ReactNode }) => {
   const { selectedTeam, setSelectedTeam } = useUIStore();
 
   // React Query Hooks - now use Clerk auth internally
-  const { data: teams = [], refetch: refetchTeams } = useTeamsQuery();
+  const { data: teams = [], isLoading: isTeamsLoading, refetch: refetchTeams } = useTeamsQuery();
   const { data: rosterInfo = [], refetch: refetchRoster } =
     useTeamRosterQuery(selectedTeam);
 
@@ -140,6 +142,7 @@ export const TeamsProvider = ({ children }: { children: React.ReactNode }) => {
         selectedTeam,
         setSelectedTeam,
         teams,
+        isTeamsLoading,
         setTeams: () => {}, // No-op since we use RQ
         rosterInfo,
         handleManageTeamsClick,

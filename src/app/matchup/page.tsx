@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import type { FantasyProvider } from "@/types/team";
 
 export default function Matchup() {
-  const { selectedTeam, teams } = useTeams();
+  const { selectedTeam, teams, isTeamsLoading } = useTeams();
   const { data: matchup, isLoading, error } = useMatchupQuery(selectedTeam);
   const { data: liveMatchup } = useLiveMatchupQuery(selectedTeam);
 
@@ -34,7 +34,16 @@ export default function Matchup() {
         </p>
       </section>
 
-      {!hasTeams ? (
+      {isTeamsLoading ? (
+        <MatchupDisplay
+          matchup={undefined}
+          liveMatchup={undefined}
+          isLoading={true}
+          error={null}
+          teamId={0}
+          provider={provider}
+        />
+      ) : !hasTeams ? (
         <Card variant="panel" className="p-8">
           <div className="text-center space-y-3">
             <p className="text-sm text-muted-foreground">
