@@ -629,19 +629,19 @@ const data = await res.json()`,
     endpoints: [
       {
         method: "POST",
-        path: "/analytics/optimize",
-        description: "Generate an optimized lineup for a fantasy week. Suggests add/drop/stream moves to maximize weekly fantasy points. Requires an API key with 'optimize' scope.",
+        path: "/analytics/generate-lineup",
+        description: "Auto-fetch your roster and free agents from your connected ESPN or Yahoo team and generate an optimized lineup. No manual player data needed — just your team ID. Requires an API key with 'optimize' scope and a team added via the manage-teams page.",
         params: [
-          { name: "roster", type: "object[]", required: true, description: "Current roster players ({ id, name, team, position, avg_fpts, injury_status? })" },
-          { name: "free_agents", type: "object[]", required: false, description: "Available free agents to consider (same shape as roster)" },
-          { name: "week", type: "integer", required: true, description: "Target fantasy week number (1–26)" },
-          { name: "threshold", type: "number", required: false, description: "Minimum fpts threshold for streaming candidates (default 30.0)" },
+          { name: "team_id", type: "integer", required: true, description: "Your team ID (visible on the manage-teams page)" },
+          { name: "week", type: "integer", required: true, description: "Target fantasy week to optimize for (1–26)" },
+          { name: "streaming_slots", type: "integer", required: false, description: "Number of streaming add/drop moves to consider (default 2, max 10)" },
+          { name: "use_recent_stats", type: "boolean", required: false, description: "Weight recent performance over season averages (default false)" },
         ],
         code: {
           curl: `curl -X POST -H "X-API-Key: cv_your_key" \\
   -H "Content-Type: application/json" \\
-  -d '{"roster": [...], "free_agents": [...], "week": 18}' \\
-  "${API_BASE}/analytics/optimize"`,
+  -d '{"team_id": 42, "week": 18, "streaming_slots": 2}' \\
+  "${API_BASE}/analytics/generate-lineup"`,
           python: `import requests
 
 headers = {
@@ -649,24 +649,24 @@ headers = {
     "Content-Type": "application/json"
 }
 payload = {
-    "roster": [...],
-    "free_agents": [...],
+    "team_id": 42,
     "week": 18,
-    "threshold": 30.0
+    "streaming_slots": 2,
+    "use_recent_stats": False
 }
-r = requests.post("${API_BASE}/analytics/optimize",
+r = requests.post("${API_BASE}/analytics/generate-lineup",
                   json=payload, headers=headers)`,
-          typescript: `const res = await fetch('${API_BASE}/analytics/optimize', {
+          typescript: `const res = await fetch('${API_BASE}/analytics/generate-lineup', {
   method: 'POST',
   headers: {
     'X-API-Key': 'cv_your_key',
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    roster: [...],
-    free_agents: [...],
+    team_id: 42,
     week: 18,
-    threshold: 30.0
+    streaming_slots: 2,
+    use_recent_stats: false
   })
 })`,
         },
@@ -674,26 +674,26 @@ r = requests.post("${API_BASE}/analytics/optimize",
   "status": "success",
   "data": {
     "week": 18,
-    "projected_total_fpts": 412.5,
+    "projected_total_fpts": 24.0,
     "daily_lineups": [
       {
-        "date": "2026-02-23",
+        "date": "Week 18, Day 1",
         "active_players": ["Nikola Jokic", "LeBron James", "Shai Gilgeous-Alexander"],
-        "bench_players": ["Trae Young"],
-        "projected_fpts": 58.4
+        "bench_players": [],
+        "projected_fpts": 128.4
       }
     ],
     "recommended_moves": [
       {
-        "action": "add",
-        "player_add": { "id": 4066261, "name": "Jalen Williams", "team": "OKC", "position": "SG", "avg_fpts": 42.1 },
-        "player_drop": { "id": 3064514, "name": "Malik Monk", "team": "SAC", "position": "SG", "avg_fpts": 24.3 },
-        "reason": "3 more games this week, 18 projected fpts gain",
-        "projected_gain": 18.0
+        "action": "stream",
+        "player_add": { "id": 0, "name": "Cason Wallace", "team": "OKC", "position": "", "avg_fpts": 18.6 },
+        "player_drop": { "id": 0, "name": "Malik Monk", "team": "SAC", "position": "", "avg_fpts": 14.2 },
+        "reason": "Day 1 streaming move",
+        "projected_gain": 12.0
       }
     ],
     "optimization_notes": [
-      "Week 18 has 4 back-to-backs — manage minutes carefully"
+      "Week 18: +24 projected fpts from 2 streaming slot(s)"
     ]
   }
 }`,
