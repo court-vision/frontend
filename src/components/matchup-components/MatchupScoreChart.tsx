@@ -288,13 +288,15 @@ function ChartContent({
             <ChartTooltip
               cursor={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
               content={(props) => {
-                const { active, payload } = props ?? {};
+                const { active, payload, content: _, ...rest } = props ?? {};
                 if (!active || !payload?.length) return null;
                 const point = payload[0]?.payload as ChartPoint | undefined;
                 return (
                   <ChartTooltipContent
-                    {...props}
-                    labelFormatter={(_, pl) => {
+                    {...rest}
+                    active={active}
+                    payload={payload}
+                    labelFormatter={(__, pl) => {
                       const date = (pl?.[0]?.payload as ChartPoint | undefined)?.date;
                       const prefix = point?.isProjected ? "(Projected) " : "";
                       if (date) {
