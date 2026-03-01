@@ -47,10 +47,14 @@ const categories: EndpointCategory[] = [
       {
         method: "GET",
         path: "/players/",
-        description: "List all players in the database with optional filtering.",
+        description: "List NBA players with optional filters for name, team, position, and games played.",
         params: [
-          { name: "name", type: "string", required: false, description: "Filter by player name (partial match)" },
+          { name: "name", type: "string", required: false, description: "Search by player name (partial match)" },
           { name: "team", type: "string", required: false, description: "Filter by team abbreviation (e.g. LAL)" },
+          { name: "position", type: "string", required: false, description: "Filter by position (G, F, C)" },
+          { name: "min_games", type: "integer", required: false, description: "Minimum games played" },
+          { name: "limit", type: "integer", required: false, description: "Results per page (1–100, default 50)" },
+          { name: "offset", type: "integer", required: false, description: "Pagination offset (default 0)" },
         ],
         code: {
           curl: `curl -H "X-API-Key: cv_your_key" \\
@@ -70,23 +74,35 @@ const data = await res.json()`,
         response: `{
   "status": "success",
   "message": "Players retrieved",
-  "data": [
-    {
-      "id": 2544,
-      "name": "LeBron James",
-      "team": "LAL",
-      "position": "SF"
-    }
-  ]
+  "data": {
+    "players": [
+      {
+        "id": 2544,
+        "espn_id": 1966,
+        "name": "LeBron James",
+        "team": "LAL",
+        "position": "SF",
+        "games_played": 52,
+        "avg_fpts": 48.2,
+        "rank": 4
+      }
+    ],
+    "total": 312,
+    "limit": 50,
+    "offset": 0
+  }
 }`,
       },
       {
         method: "GET",
         path: "/players/stats",
-        description: "Get detailed statistics for a player by name.",
+        description: "Get detailed statistics for a player. Use espn_id or player_id for reliable lookups, or name + team for public queries. Use window to get averages over a specific game window.",
         params: [
-          { name: "name", type: "string", required: true, description: "Player name (exact or partial match)" },
-          { name: "season", type: "string", required: false, description: 'NBA season (default: current, e.g. "2025-26")' },
+          { name: "espn_id", type: "integer", required: false, description: "ESPN player ID (preferred for internal lookups)" },
+          { name: "player_id", type: "integer", required: false, description: "Player ID (alias for espn_id)" },
+          { name: "name", type: "string", required: false, description: "Player name (used with team for public queries)" },
+          { name: "team", type: "string", required: false, description: "Team abbreviation (used with name)" },
+          { name: "window", type: "string", required: false, description: "Stat window: 'season' (default) or 'lN' for last N games (e.g. l5, l10)" },
         ],
         code: {
           curl: `curl -H "X-API-Key: cv_your_key" \\
@@ -106,102 +122,180 @@ const data = await res.json()`,
         response: `{
   "status": "success",
   "data": {
-    "player": "LeBron James",
+    "id": 2544,
+    "name": "LeBron James",
     "team": "LAL",
     "games_played": 52,
-    "ppg": 23.8,
-    "rpg": 7.6,
-    "apg": 8.9,
-    "fpts_avg": 48.2
+    "window": "season",
+    "window_games": 52,
+    "avg_stats": {
+      "avg_fpts": 48.2,
+      "avg_points": 23.8,
+      "avg_rebounds": 7.6,
+      "avg_assists": 8.9,
+      "avg_steals": 1.2,
+      "avg_blocks": 0.6,
+      "avg_turnovers": 3.4,
+      "avg_minutes": 35.1,
+      "avg_fg_pct": 0.521,
+      "avg_fg3_pct": 0.408,
+      "avg_ft_pct": 0.752
+    },
+    "advanced_stats": {
+      "off_rating": 118.4,
+      "def_rating": 112.1,
+      "net_rating": 6.3,
+      "usg_pct": 0.298,
+      "ast_pct": 0.412,
+      "pie": 0.182
+    },
+    "game_logs": [
+      {
+        "date": "2026-02-28",
+        "fpts": 54,
+        "pts": 28,
+        "reb": 9,
+        "ast": 11,
+        "stl": 2,
+        "blk": 1,
+        "tov": 3,
+        "min": 36,
+        "fgm": 11,
+        "fga": 19,
+        "fg3m": 2,
+        "fg3a": 5,
+        "ftm": 4,
+        "fta": 5
+      }
+    ]
   }
 }`,
       },
       {
         method: "GET",
         path: "/players/{id}/games",
-        description: "Get game-by-game log for a specific player.",
+        description: "Get game-by-game log for a player showing full box scores.",
         params: [
           { name: "id", type: "integer", required: true, description: "Player ID (path parameter)" },
-          { name: "last_n", type: "integer", required: false, description: "Return only last N games" },
+          { name: "limit", type: "integer", required: false, description: "Number of games to return (1–50, default 10)" },
         ],
         code: {
           curl: `curl -H "X-API-Key: cv_your_key" \\
-  "${API_BASE}/players/2544/games?last_n=5"`,
+  "${API_BASE}/players/2544/games?limit=10"`,
           python: `import requests
 
 headers = {"X-API-Key": "cv_your_key"}
 r = requests.get("${API_BASE}/players/2544/games",
-                 params={"last_n": 5},
+                 params={"limit": 10},
                  headers=headers)`,
-          typescript: `const res = await fetch('${API_BASE}/players/2544/games?last_n=5', {
-  headers: { 'X-API-Key': 'cv_your_key' }
-})`,
-        },
-        response: `{
-  "status": "success",
-  "data": [
-    {
-      "date": "2026-02-23",
-      "opponent": "BOS",
-      "pts": 28, "reb": 9, "ast": 11,
-      "fpts": 54.3
-    }
-  ]
-}`,
-      },
-      {
-        method: "GET",
-        path: "/players/{id}/trends",
-        description: "Get rolling average trends for a player over configurable windows.",
-        params: [
-          { name: "id", type: "integer", required: true, description: "Player ID (path parameter)" },
-          { name: "windows", type: "string", required: false, description: 'Comma-separated windows (default: "5,10,20")' },
-        ],
-        code: {
-          curl: `curl -H "X-API-Key: cv_your_key" \\
-  "${API_BASE}/players/2544/trends?windows=5,10"`,
-          python: `import requests
-
-headers = {"X-API-Key": "cv_your_key"}
-r = requests.get("${API_BASE}/players/2544/trends",
-                 params={"windows": "5,10"},
-                 headers=headers)`,
-          typescript: `const res = await fetch('${API_BASE}/players/2544/trends?windows=5,10', {
+          typescript: `const res = await fetch('${API_BASE}/players/2544/games?limit=10', {
   headers: { 'X-API-Key': 'cv_your_key' }
 })`,
         },
         response: `{
   "status": "success",
   "data": {
-    "l5": { "ppg": 25.2, "rpg": 8.0, "apg": 9.4, "fpts": 51.0 },
-    "l10": { "ppg": 24.1, "rpg": 7.8, "apg": 8.7, "fpts": 49.3 }
+    "player_id": 2544,
+    "player_name": "LeBron James",
+    "team": "LAL",
+    "games": [
+      {
+        "date": "2026-02-28",
+        "opponent": "BOS",
+        "home": true,
+        "fpts": 54,
+        "pts": 28,
+        "reb": 9,
+        "ast": 11,
+        "stl": 2,
+        "blk": 1,
+        "tov": 3,
+        "min": 36,
+        "fgm": 11,
+        "fga": 19,
+        "fg3m": 2,
+        "fg3a": 5,
+        "ftm": 4,
+        "fta": 5
+      }
+    ],
+    "total_games": 1
+  }
+}`,
+      },
+      {
+        method: "GET",
+        path: "/players/{id}/trends",
+        description: "Get rolling average trends for a player over fixed periods (last 7, 14, and 30 days) and ownership changes.",
+        params: [
+          { name: "id", type: "integer", required: true, description: "Player ID (path parameter)" },
+        ],
+        code: {
+          curl: `curl -H "X-API-Key: cv_your_key" \\
+  "${API_BASE}/players/2544/trends"`,
+          python: `import requests
+
+headers = {"X-API-Key": "cv_your_key"}
+r = requests.get("${API_BASE}/players/2544/trends",
+                 headers=headers)`,
+          typescript: `const res = await fetch('${API_BASE}/players/2544/trends', {
+  headers: { 'X-API-Key': 'cv_your_key' }
+})`,
+        },
+        response: `{
+  "status": "success",
+  "data": {
+    "player_id": 2544,
+    "player_name": "LeBron James",
+    "team": "LAL",
+    "current_rank": 4,
+    "trends": {
+      "last_7_days": { "avg_fpts": 51.0, "games": 4 },
+      "last_14_days": { "avg_fpts": 49.3, "games": 7 },
+      "last_30_days": { "avg_fpts": 47.8, "games": 14 }
+    },
+    "ownership": {
+      "current": 99.1,
+      "change_7d": 0.2
+    }
   }
 }`,
       },
       {
         method: "GET",
         path: "/players/{id}/percentiles",
-        description: "Get a player's statistical percentile rankings among all players.",
+        description: "Get a player's statistical percentile ranks compared to all qualifying players. All values are integers 0–100.",
         params: [
           { name: "id", type: "integer", required: true, description: "Player ID (path parameter)" },
+          { name: "min_games", type: "integer", required: false, description: "Minimum games played to qualify (default 20)" },
         ],
         code: {
           curl: `curl -H "X-API-Key: cv_your_key" \\
-  "${API_BASE}/players/2544/percentiles"`,
+  "${API_BASE}/players/2544/percentiles?min_games=20"`,
           python: `import requests
 
 headers = {"X-API-Key": "cv_your_key"}
 r = requests.get("${API_BASE}/players/2544/percentiles",
+                 params={"min_games": 20},
                  headers=headers)`,
-          typescript: `const res = await fetch('${API_BASE}/players/2544/percentiles', {
+          typescript: `const res = await fetch('${API_BASE}/players/2544/percentiles?min_games=20', {
   headers: { 'X-API-Key': 'cv_your_key' }
 })`,
         },
         response: `{
   "status": "success",
   "data": {
-    "ppg": 94, "rpg": 82, "apg": 97,
-    "fpts": 96, "stocks": 55, "efficiency": 91
+    "avg_fpts": 96,
+    "avg_points": 94,
+    "avg_rebounds": 82,
+    "avg_assists": 97,
+    "avg_steals": 55,
+    "avg_blocks": 44,
+    "avg_turnovers": 18,
+    "avg_minutes": 91,
+    "avg_fg_pct": 78,
+    "avg_fg3_pct": 63,
+    "avg_ft_pct": 52
   }
 }`,
       },
@@ -214,31 +308,40 @@ r = requests.get("${API_BASE}/players/2544/percentiles",
       {
         method: "GET",
         path: "/rankings/",
-        description: "Get fantasy basketball player rankings with scoring and category data.",
+        description: "Get fantasy basketball player rankings. Use window for rolling averages over the last 7, 14, or 30 days. Omit for full-season rankings.",
         params: [
-          { name: "page", type: "integer", required: false, description: "Page number (default: 1)" },
-          { name: "per_page", type: "integer", required: false, description: "Results per page (default: 100, max: 300)" },
-          { name: "sort_by", type: "string", required: false, description: 'Sort field (default: "fpts_avg")' },
+          { name: "window", type: "integer", required: false, description: "Rolling day window: 7, 14, or 30. Omit for full-season rankings." },
         ],
         code: {
-          curl: `curl "${API_BASE}/rankings/?per_page=20&sort_by=fpts_avg"`,
+          curl: `curl "${API_BASE}/rankings/?window=14"`,
           python: `import requests
 
 r = requests.get("${API_BASE}/rankings/",
-                 params={"per_page": 20, "sort_by": "fpts_avg"})
+                 params={"window": 14})
 data = r.json()`,
-          typescript: `const res = await fetch('${API_BASE}/rankings/?per_page=20&sort_by=fpts_avg')
+          typescript: `const res = await fetch('${API_BASE}/rankings/?window=14')
 const data = await res.json()`,
         },
         response: `{
   "status": "success",
   "data": [
     {
+      "id": 203999,
       "rank": 1,
-      "name": "Nikola Jokic",
+      "player_name": "Nikola Jokic",
       "team": "DEN",
-      "fpts_avg": 62.4,
-      "ppg": 26.1, "rpg": 12.3, "apg": 9.8
+      "total_fpts": 3244.8,
+      "avg_fpts": 62.4,
+      "rank_change": 0
+    },
+    {
+      "id": 1629029,
+      "rank": 2,
+      "player_name": "Shai Gilgeous-Alexander",
+      "team": "OKC",
+      "total_fpts": 2987.1,
+      "avg_fpts": 58.6,
+      "rank_change": 1
     }
   ]
 }`,
@@ -254,28 +357,38 @@ const data = await res.json()`,
         path: "/games/{date}",
         description: "Get all NBA games for a specific date. Returns live scores and status for today's games.",
         params: [
-          { name: "date", type: "string", required: true, description: 'Date in YYYY-MM-DD format (path parameter). Use "today" for current date.' },
+          { name: "date", type: "string", required: true, description: "Date in YYYY-MM-DD format (path parameter). Must be a specific date — 'today' is not supported." },
         ],
         code: {
-          curl: `curl "${API_BASE}/games/2026-02-25"`,
+          curl: `curl "${API_BASE}/games/2026-02-28"`,
           python: `import requests
 
-r = requests.get("${API_BASE}/games/2026-02-25")
+r = requests.get("${API_BASE}/games/2026-02-28")
 data = r.json()`,
-          typescript: `const res = await fetch('${API_BASE}/games/2026-02-25')
+          typescript: `const res = await fetch('${API_BASE}/games/2026-02-28')
 const data = await res.json()`,
         },
         response: `{
   "status": "success",
-  "data": [
-    {
-      "game_id": "0022500789",
-      "home_team": "LAL", "away_team": "BOS",
-      "home_score": 104, "away_score": 98,
-      "status": "In Progress",
-      "period": 3, "clock": "4:32"
-    }
-  ]
+  "data": {
+    "date": "2026-02-28",
+    "games": [
+      {
+        "game_id": "0022500789",
+        "game_date": "2026-02-28",
+        "home_team": "LAL",
+        "away_team": "BOS",
+        "home_score": 104,
+        "away_score": 98,
+        "status": "in_progress",
+        "arena": "Crypto.com Arena",
+        "period": 3,
+        "game_clock": "PT04M32.00S",
+        "start_time_et": "20:00"
+      }
+    ],
+    "count": 1
+  }
 }`,
       },
     ],
@@ -287,7 +400,7 @@ const data = await res.json()`,
       {
         method: "GET",
         path: "/schedule/weeks",
-        description: "Get the NBA fantasy week schedule including start/end dates and game counts.",
+        description: "Get all NBA fantasy week dates and the current week number.",
         params: [],
         code: {
           curl: `curl "${API_BASE}/schedule/weeks"`,
@@ -300,11 +413,13 @@ const data = await res.json()`,
         },
         response: `{
   "status": "success",
+  "message": "Schedule weeks retrieved successfully",
   "data": {
-    "current_week": 18,
     "weeks": [
-      { "week": 18, "start": "2026-02-23", "end": "2026-03-01", "games": 42 }
-    ]
+      { "week": 17, "start_date": "2026-02-16", "end_date": "2026-02-22" },
+      { "week": 18, "start_date": "2026-02-23", "end_date": "2026-03-01" }
+    ],
+    "current_week": 18
   }
 }`,
       },
@@ -317,29 +432,41 @@ const data = await res.json()`,
       {
         method: "GET",
         path: "/teams/{abbrev}/schedule",
-        description: "Get the remaining schedule for an NBA team including opponents and home/away.",
+        description: "Get the schedule for an NBA team including upcoming and past games.",
         params: [
-          { name: "abbrev", type: "string", required: true, description: "Team abbreviation (e.g. LAL, BOS, GSW)" },
+          { name: "abbrev", type: "string", required: true, description: "Team abbreviation (path parameter, e.g. LAL, BOS, GSW)" },
+          { name: "upcoming", type: "boolean", required: false, description: "Only return future games (default false)" },
+          { name: "limit", type: "integer", required: false, description: "Maximum games to return (1–100, default 20)" },
         ],
         code: {
-          curl: `curl "${API_BASE}/teams/LAL/schedule"`,
+          curl: `curl "${API_BASE}/teams/LAL/schedule?upcoming=true"`,
           python: `import requests
 
-r = requests.get("${API_BASE}/teams/LAL/schedule")
+r = requests.get("${API_BASE}/teams/LAL/schedule",
+                 params={"upcoming": True})
 data = r.json()`,
-          typescript: `const res = await fetch('${API_BASE}/teams/LAL/schedule')
+          typescript: `const res = await fetch('${API_BASE}/teams/LAL/schedule?upcoming=true')
 const data = await res.json()`,
         },
         response: `{
   "status": "success",
-  "data": [
-    {
-      "date": "2026-02-26",
-      "opponent": "GSW",
-      "home": true,
-      "time": "10:00 PM ET"
-    }
-  ]
+  "data": {
+    "team": "LAL",
+    "team_name": "Los Angeles Lakers",
+    "schedule": [
+      {
+        "date": "2026-02-28",
+        "opponent": "BOS",
+        "home": false,
+        "back_to_back": false,
+        "status": "scheduled",
+        "team_score": null,
+        "opponent_score": null
+      }
+    ],
+    "remaining_games": 24,
+    "total_games": 1
+  }
 }`,
       },
     ],
@@ -351,31 +478,54 @@ const data = await res.json()`,
       {
         method: "GET",
         path: "/ownership/trending",
-        description: "Get trending player ownership changes in fantasy leagues. Shows adds, drops, and net changes.",
+        description: "Get players with significant ownership changes. Uses velocity-based ranking by default, which surfaces emerging players better than absolute change alone.",
         params: [
-          { name: "limit", type: "integer", required: false, description: "Number of players to return (default: 25)" },
-          { name: "direction", type: "string", required: false, description: '"up" or "down" (default: "up")' },
+          { name: "days", type: "integer", required: false, description: "Lookback period in days (1–30, default 7)" },
+          { name: "min_change", type: "number", required: false, description: "Minimum ownership change in percentage points (default 5.0)" },
+          { name: "min_ownership", type: "number", required: false, description: "Minimum ownership % to filter noise (default 3.0)" },
+          { name: "sort_by", type: "string", required: false, description: "'velocity' (relative change, default) or 'change' (absolute)" },
+          { name: "direction", type: "string", required: false, description: "'up', 'down', or 'both' (default 'both')" },
+          { name: "limit", type: "integer", required: false, description: "Maximum players per direction (1–50, default 20)" },
         ],
         code: {
-          curl: `curl "${API_BASE}/ownership/trending?limit=10&direction=up"`,
+          curl: `curl "${API_BASE}/ownership/trending?days=7&direction=up"`,
           python: `import requests
 
 r = requests.get("${API_BASE}/ownership/trending",
-                 params={"limit": 10, "direction": "up"})
+                 params={"days": 7, "direction": "up"})
 data = r.json()`,
-          typescript: `const res = await fetch('${API_BASE}/ownership/trending?limit=10&direction=up')
+          typescript: `const res = await fetch('${API_BASE}/ownership/trending?days=7&direction=up')
 const data = await res.json()`,
         },
         response: `{
   "status": "success",
-  "data": [
-    {
-      "name": "Jalen Williams",
-      "team": "OKC",
-      "ownership_pct": 89.2,
-      "change_7d": +12.4
-    }
-  ]
+  "data": {
+    "days": 7,
+    "min_ownership": 3.0,
+    "sort_by": "velocity",
+    "trending_up": [
+      {
+        "player_id": 1641705,
+        "player_name": "Jalen Williams",
+        "team": "OKC",
+        "current_ownership": 89.2,
+        "previous_ownership": 76.8,
+        "change": 12.4,
+        "velocity": 16.1
+      }
+    ],
+    "trending_down": [
+      {
+        "player_id": 1629057,
+        "player_name": "Trae Young",
+        "team": "ATL",
+        "current_ownership": 81.3,
+        "previous_ownership": 88.9,
+        "change": -7.6,
+        "velocity": -8.6
+      }
+    ]
+  }
 }`,
       },
     ],
@@ -387,7 +537,7 @@ const data = await res.json()`,
       {
         method: "GET",
         path: "/live/players/today",
-        description: "Get live player stats for all games in progress today. Updates every 60 seconds during game time.",
+        description: "Get live player stats for all games in progress today. Updated every ~60 seconds during game time.",
         params: [],
         code: {
           curl: `curl "${API_BASE}/live/players/today"`,
@@ -400,22 +550,43 @@ const data = await res.json()`,
         },
         response: `{
   "status": "success",
-  "data": [
-    {
-      "player_id": 2544,
-      "name": "LeBron James",
-      "game_id": "0022500789",
-      "pts": 18, "reb": 5, "ast": 7,
-      "fpts": 32.1,
-      "minutes": "PT24M30.00S"
-    }
-  ]
+  "data": {
+    "game_date": "2026-02-28",
+    "player_count": 52,
+    "players": [
+      {
+        "espn_id": 1966,
+        "player_id": 2544,
+        "player_name": "LeBron James",
+        "game_id": "0022500789",
+        "game_date": "2026-02-28",
+        "game_status": 2,
+        "period": 3,
+        "game_clock": "PT04M32.00S",
+        "fpts": 32,
+        "pts": 18,
+        "reb": 5,
+        "ast": 7,
+        "stl": 1,
+        "blk": 0,
+        "tov": 2,
+        "min": 24,
+        "fgm": 7,
+        "fga": 14,
+        "fg3m": 1,
+        "fg3a": 3,
+        "ftm": 3,
+        "fta": 4,
+        "last_updated": "2026-02-28T22:17:04+00:00"
+      }
+    ]
+  }
 }`,
       },
       {
         method: "GET",
         path: "/live/scoreboard",
-        description: "Get the live NBA scoreboard with all current game scores and statuses.",
+        description: "Get the current NBA scoreboard with live game statuses. Reflects near-real-time state from NBA's live CDN. Does not include team names or scores — use GET /games/{date} for full game details.",
         params: [],
         code: {
           curl: `curl "${API_BASE}/live/scoreboard"`,
@@ -429,13 +600,22 @@ const data = await res.json()`,
         response: `{
   "status": "success",
   "data": {
+    "game_date": "2026-02-28",
+    "game_count": 7,
     "games": [
       {
         "game_id": "0022500789",
-        "home_team": "LAL", "away_team": "BOS",
-        "home_score": 104, "away_score": 98,
-        "period": 3, "clock": "4:32",
-        "status": "In Progress"
+        "game_status": 2,
+        "game_status_label": "in_progress",
+        "period": 3,
+        "game_clock": "PT04M32.00S"
+      },
+      {
+        "game_id": "0022500790",
+        "game_status": 1,
+        "game_status_label": "scheduled",
+        "period": null,
+        "game_clock": null
       }
     ]
   }
@@ -450,17 +630,17 @@ const data = await res.json()`,
       {
         method: "POST",
         path: "/analytics/optimize",
-        description: "Run lineup optimization for a fantasy roster. Suggests optimal adds/drops to maximize weekly fantasy points. Requires an API key with 'optimize' scope.",
+        description: "Generate an optimized lineup for a fantasy week. Suggests add/drop/stream moves to maximize weekly fantasy points. Requires an API key with 'optimize' scope.",
         params: [
-          { name: "roster_data", type: "object[]", required: true, description: "Array of current roster player objects" },
-          { name: "free_agent_data", type: "object[]", required: true, description: "Array of available free agent player objects" },
-          { name: "week", type: "integer", required: true, description: "Target fantasy week number" },
-          { name: "threshold", type: "number", required: false, description: "Minimum FPTS improvement threshold (default: 2.0)" },
+          { name: "roster", type: "object[]", required: true, description: "Current roster players ({ id, name, team, position, avg_fpts, injury_status? })" },
+          { name: "free_agents", type: "object[]", required: false, description: "Available free agents to consider (same shape as roster)" },
+          { name: "week", type: "integer", required: true, description: "Target fantasy week number (1–26)" },
+          { name: "threshold", type: "number", required: false, description: "Minimum fpts threshold for streaming candidates (default 30.0)" },
         ],
         code: {
           curl: `curl -X POST -H "X-API-Key: cv_your_key" \\
   -H "Content-Type: application/json" \\
-  -d '{"roster_data": [...], "free_agent_data": [...], "week": 18}' \\
+  -d '{"roster": [...], "free_agents": [...], "week": 18}' \\
   "${API_BASE}/analytics/optimize"`,
           python: `import requests
 
@@ -469,10 +649,10 @@ headers = {
     "Content-Type": "application/json"
 }
 payload = {
-    "roster_data": [...],
-    "free_agent_data": [...],
+    "roster": [...],
+    "free_agents": [...],
     "week": 18,
-    "threshold": 2.0
+    "threshold": 30.0
 }
 r = requests.post("${API_BASE}/analytics/optimize",
                   json=payload, headers=headers)`,
@@ -483,26 +663,99 @@ r = requests.post("${API_BASE}/analytics/optimize",
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    roster_data: [...],
-    free_agent_data: [...],
+    roster: [...],
+    free_agents: [...],
     week: 18,
-    threshold: 2.0
+    threshold: 30.0
   })
 })`,
         },
         response: `{
   "status": "success",
   "data": {
-    "recommendations": [
+    "week": 18,
+    "projected_total_fpts": 412.5,
+    "daily_lineups": [
       {
-        "action": "add",
-        "player": "Jalen Williams",
-        "drop": "Malik Monk",
-        "fpts_gain": 8.4,
-        "reason": "3 more games this week"
+        "date": "2026-02-23",
+        "active_players": ["Nikola Jokic", "LeBron James", "Shai Gilgeous-Alexander"],
+        "bench_players": ["Trae Young"],
+        "projected_fpts": 58.4
       }
     ],
-    "projected_fpts": 412.5
+    "recommended_moves": [
+      {
+        "action": "add",
+        "player_add": { "id": 4066261, "name": "Jalen Williams", "team": "OKC", "position": "SG", "avg_fpts": 42.1 },
+        "player_drop": { "id": 3064514, "name": "Malik Monk", "team": "SAC", "position": "SG", "avg_fpts": 24.3 },
+        "reason": "3 more games this week, 18 projected fpts gain",
+        "projected_gain": 18.0
+      }
+    ],
+    "optimization_notes": [
+      "Week 18 has 4 back-to-backs — manage minutes carefully"
+    ]
+  }
+}`,
+      },
+    ],
+  },
+  {
+    id: "streamers",
+    label: "Streamers",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/breakout-streamers/",
+        description: "Get breakout streamer candidates — players likely to see increased minutes due to a prominent teammate being injured or suspended. Updated daily.",
+        params: [
+          { name: "limit", type: "integer", required: false, description: "Maximum candidates to return (1–50, default 20)" },
+          { name: "team", type: "string", required: false, description: "Filter by team abbreviation (e.g. LAL, BOS)" },
+        ],
+        code: {
+          curl: `curl "${API_BASE}/breakout-streamers/?limit=10"`,
+          python: `import requests
+
+r = requests.get("${API_BASE}/breakout-streamers/",
+                 params={"limit": 10})
+data = r.json()`,
+          typescript: `const res = await fetch('${API_BASE}/breakout-streamers/?limit=10')
+const data = await res.json()`,
+        },
+        response: `{
+  "status": "success",
+  "data": {
+    "as_of_date": "2026-03-01",
+    "candidates": [
+      {
+        "beneficiary": {
+          "player_id": 1641705,
+          "name": "Cason Wallace",
+          "team": "OKC",
+          "position": "G",
+          "depth_rank": 2,
+          "avg_min": 22.4,
+          "avg_fpts": 18.6,
+          "games_remaining": 24,
+          "has_b2b": true
+        },
+        "injured_player": {
+          "player_id": 1629029,
+          "name": "Shai Gilgeous-Alexander",
+          "avg_min": 34.2,
+          "status": "Out",
+          "expected_return": "2026-03-08"
+        },
+        "signals": {
+          "depth_rank": 2,
+          "projected_min_boost": 11.8,
+          "opp_min_avg": 30.1,
+          "opp_fpts_avg": 28.4,
+          "opp_game_count": 5,
+          "breakout_score": 87.3
+        }
+      }
+    ]
   }
 }`,
       },
