@@ -8,10 +8,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Pencil, Trash2, ExternalLink, Copy, Check } from "lucide-react";
 import { useTeamRosterQuery } from "@/hooks/useTeams";
 import { useUIStore } from "@/stores/useUIStore";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { TeamResponseData, FantasyProvider } from "@/types/team";
 
@@ -26,6 +27,13 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
   const isYahoo = league_info.provider === "yahoo";
   const router = useRouter();
   const setSelectedTeam = useUIStore((s) => s.setSelectedTeam);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(String(team.team_id));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   const { data: roster, isLoading: isRosterLoading } = useTeamRosterQuery(
     team.team_id
@@ -69,7 +77,23 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
           )}
         </div>
 
-        <div className="mt-3 flex items-center gap-1.5">
+        <div className="mt-2 flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground font-mono">
+            Team ID: <span className="text-foreground">{team.team_id}</span>
+          </span>
+          <button
+            onClick={handleCopyId}
+            className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded"
+            title="Copy team ID"
+          >
+            {copied
+              ? <Check className="h-2.5 w-2.5 text-green-500" />
+              : <Copy className="h-2.5 w-2.5" />
+            }
+          </button>
+        </div>
+
+        <div className="mt-2 flex items-center gap-1.5">
           <Button
             variant="outline"
             size="sm"
