@@ -101,7 +101,7 @@ export function TodayLeadersPanel() {
       <div className="flex items-center gap-2 px-2 py-1 border-b bg-card/95 backdrop-blur-sm sticky top-0 shrink-0">
         <span className="w-5 shrink-0" />
         <span className="flex-1 text-[9px] uppercase tracking-wider text-muted-foreground">Player</span>
-        <span className="w-10 text-[9px] uppercase tracking-wider text-muted-foreground shrink-0">St</span>
+        <span className="w-10 text-[9px] uppercase tracking-wider text-muted-foreground shrink-0">Status</span>
         <span className="w-10 text-right text-[9px] uppercase tracking-wider text-muted-foreground shrink-0">FPTS</span>
         <span className="w-6 text-right text-[9px] uppercase tracking-wider text-muted-foreground shrink-0">PTS</span>
         <span className="w-6 text-right text-[9px] uppercase tracking-wider text-muted-foreground shrink-0">REB</span>
@@ -114,9 +114,8 @@ export function TodayLeadersPanel() {
             key={`${player.player_id}-${player.game_id}`}
             player={player}
             rank={index + 1}
-            // espn_id may be null for some players; focus falls back to player_id (NBA ID)
-            isActive={(player.espn_id ?? player.player_id) === focusedPlayerId}
-            onFocus={() => setFocusedPlayer(player.espn_id ?? player.player_id)}
+            isActive={player.player_id === focusedPlayerId}
+            onFocus={() => setFocusedPlayer(player.player_id)}
           />
         ))}
       </div>
