@@ -23,6 +23,8 @@ import {
   SchedulePanel,
   TodayLeadersPanel,
   StreamersPanel,
+  TeamSchedulePanel,
+  MatchupContextPanel,
 } from "./panels";
 import type { LayoutPreset } from "@/types/terminal";
 
@@ -296,24 +298,23 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
                   </PanelContainer>
                 </>
               ) : (
-                // Player mode: Watchlist + Schedule + Trending
+                // Player mode: Team Schedule + Matchup Context
                 <>
-                  <WatchlistPanel />
                   <PanelContainer
-                    definitionId="schedule"
+                    definitionId="team-schedule"
                     showClose={false}
                     showMaximize={false}
-                    className="shrink-0 h-[300px]"
+                    className="h-[55%] min-h-0"
                   >
-                    <SchedulePanel />
+                    <TeamSchedulePanel />
                   </PanelContainer>
                   <PanelContainer
-                    definitionId="trending"
+                    definitionId="matchup-context"
                     showClose={false}
                     showMaximize={false}
                     className="flex-1 min-h-0"
                   >
-                    <TrendingPanel />
+                    <MatchupContextPanel />
                   </PanelContainer>
                 </>
               )}

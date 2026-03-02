@@ -37,9 +37,9 @@ import type {
   ScheduleWeeksResponse,
 } from "@/types/lineup";
 import type { RankingsPlayer } from "@/types/rankings";
-import type { PlayerStats, PercentileData } from "@/types/player";
+import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
-import type { GamesOnDateData } from "@/types/games";
+import type { GamesOnDateData, TeamScheduleData } from "@/types/games";
 import type {
   MatchupData,
   MatchupResponse,
@@ -565,6 +565,48 @@ class ApiClient {
       throw new Error(`API request failed: ${response.statusText}`);
     }
     const data: BaseApiResponse<PercentileData> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
+  }
+
+  async getPlayerStatus(playerId: number): Promise<PlayerStatusData | null> {
+    const response = await fetch(`${PLAYERS_API}/${playerId}/status`);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: BaseApiResponse<PlayerStatusData> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
+  }
+
+  async getPlayerOwnership(playerId: number, days: number = 14): Promise<PlayerOwnershipData | null> {
+    const params = days !== 14 ? `?days=${days}` : "";
+    const response = await fetch(`${PLAYERS_API}/${playerId}/ownership${params}`);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: BaseApiResponse<PlayerOwnershipData> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
+  }
+
+  async getTeamSchedule(teamAbbrev: string, upcoming: boolean = false, limit: number = 12): Promise<TeamScheduleData | null> {
+    const params = new URLSearchParams();
+    if (upcoming) params.append("upcoming", "true");
+    if (limit !== 20) params.append("limit", limit.toString());
+    const queryString = params.toString();
+    const url = `${API_BASE}/v1/teams/${teamAbbrev}/schedule${queryString ? `?${queryString}` : ""}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: BaseApiResponse<TeamScheduleData> = await response.json();
     if (data.status === "success" && data.data) {
       return data.data;
     }

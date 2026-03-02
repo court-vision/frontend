@@ -8,3 +8,5 @@ export { ComparisonPanel } from "./ComparisonPanel";
 export { SchedulePanel } from "./SchedulePanel";
 export { TodayLeadersPanel } from "./TodayLeadersPanel";
 export { StreamersPanel } from "./StreamersPanel";
+export { TeamSchedulePanel } from "./TeamSchedulePanel";
+export { MatchupContextPanel } from "./MatchupContextPanel";

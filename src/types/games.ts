@@ -17,3 +17,22 @@ export interface GamesOnDateData {
   games: GameInfo[];
   count: number;
 }
+
+export interface ScheduleGame {
+  date: string;
+  opponent: string;
+  home: boolean;
+  back_to_back: boolean;
+  status: "scheduled" | "in_progress" | "final";
+  team_score: number | null;
+  opponent_score: number | null;
+  opponent_def_rating: number | null;
+}
+
+export interface TeamScheduleData {
+  team: string;
+  team_name: string;
+  schedule: ScheduleGame[];
+  remaining_games: number;
+  total_games: number;
+}

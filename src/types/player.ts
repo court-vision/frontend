@@ -83,3 +83,18 @@ export interface PlayerStats {
   advanced_stats: AdvancedStatsData | null;
   game_logs: GameLog[];
 }
+
+export interface PlayerStatusData {
+  status: string | null;
+  injury_type: string | null;
+  injury_detail: string | null;
+  expected_return: string | null;
+  report_date: string | null;
+}
+
+export interface PlayerOwnershipData {
+  current_ownership: number;
+  prev_ownership: number | null;
+  change: number | null;
+  snapshot_date: string;
+}
