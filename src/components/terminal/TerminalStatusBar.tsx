@@ -54,10 +54,12 @@ export function TerminalStatusBar({ className }: TerminalStatusBarProps) {
 
       {/* Center section - Status indicators */}
       <div className="flex items-center gap-3">
-        {focusedPlayerId && (
+        {focusedPlayerId ? (
           <span className="text-primary">
             Player #{focusedPlayerId}
           </span>
+        ) : (
+          <span className="text-muted-foreground">Overview</span>
         )}
         {comparisonPlayerIds.length > 0 && (
           <span>

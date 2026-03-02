@@ -21,6 +21,8 @@ import {
   TrendingPanel,
   ComparisonPanel,
   SchedulePanel,
+  TodayLeadersPanel,
+  StreamersPanel,
 } from "./panels";
 import type { LayoutPreset } from "@/types/terminal";
 
@@ -41,9 +43,11 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
     addToComparison,
     setLayoutPreset,
     setStatWindow,
+    setFocusedPlayer,
   } = useTerminalStore();
 
   const hasComparison = comparisonPlayerIds.length > 0;
+  const isOverview = focusedPlayerId === null;
 
   const { leftPanelCollapsed, rightPanelCollapsed, preset } = layout;
 
@@ -61,8 +65,13 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         return;
       }
 
+      // Escape: return to overview by clearing focused player
+      if (e.key === "Escape" && focusedPlayerId !== null) {
+        e.preventDefault();
+        setFocusedPlayer(null);
+      }
       // Panel toggle shortcuts
-      if (e.key === "[" && !e.shiftKey) {
+      else if (e.key === "[" && !e.shiftKey) {
         e.preventDefault();
         toggleLeftPanel();
       } else if (e.key === "]" && !e.shiftKey) {
@@ -140,13 +149,16 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         groupRef.current.setLayout(newLayout);
       }
     },
-    [toggleLeftPanel, toggleRightPanel, leftPanelCollapsed, rightPanelCollapsed, focusedPlayerId, addToWatchlist, addToComparison, setLayoutPreset, setStatWindow]
+    [toggleLeftPanel, toggleRightPanel, leftPanelCollapsed, rightPanelCollapsed, focusedPlayerId, addToWatchlist, addToComparison, setLayoutPreset, setStatWindow, setFocusedPlayer]
   );
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  // Suppress unused variable warning for preset
+  void preset;
 
   return (
     <div className={cn("flex flex-col h-[calc(100vh-4.5rem)] overflow-hidden", className)}>
@@ -159,7 +171,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         className="flex-1"
         groupRef={groupRef}
       >
-        {/* Left Panel - Player Focus */}
+        {/* Left Panel */}
         {!leftPanelCollapsed && (
           <>
             <Panel
@@ -169,14 +181,20 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
               maxSize="40%"
               className="flex flex-col gap-2 p-2 overflow-hidden"
             >
-              <PanelContainer
-                definitionId="player-focus"
-                showClose={false}
-                showMaximize={false}
-                className="flex-1"
-              >
-                <PlayerFocusPanel />
-              </PanelContainer>
+              {isOverview ? (
+                // Overview: Watchlist is self-wrapping with its own PanelContainer + dynamic height
+                <WatchlistPanel />
+              ) : (
+                // Player mode: Player Focus card
+                <PanelContainer
+                  definitionId="player-focus"
+                  showClose={false}
+                  showMaximize={false}
+                  className="flex-1"
+                >
+                  <PlayerFocusPanel />
+                </PanelContainer>
+              )}
             </Panel>
             <Separator className="w-3 bg-transparent hover:bg-primary/20 transition-colors cursor-col-resize flex items-center justify-center">
               <div className="w-px h-12 bg-border group-hover:bg-primary transition-colors rounded-full" />
@@ -186,42 +204,65 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
 
         {/* Center Workspace */}
         <Panel id="center-panel" defaultSize="50%" minSize="30%" className="flex flex-col gap-2 p-2 overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 h-[45%] min-h-0">
-            <PanelContainer
-              definitionId="performance-chart"
-              showClose={false}
-              className="h-full"
-            >
-              <PerformanceChartPanel />
-            </PanelContainer>
-            {hasComparison ? (
+          {isOverview ? (
+            // Overview: Today's leaderboard (top) + Streamers (bottom)
+            <>
               <PanelContainer
-                definitionId="comparison"
+                definitionId="today-leaders"
                 showClose={false}
-                className="h-full"
+                className="h-[55%] min-h-0"
               >
-                <ComparisonPanel />
+                <TodayLeadersPanel />
               </PanelContainer>
-            ) : (
               <PanelContainer
-                definitionId="advanced-stats"
+                definitionId="streamers"
                 showClose={false}
-                className="h-full"
+                className="flex-1 min-h-0"
               >
-                <AdvancedStatsPanel />
+                <StreamersPanel />
               </PanelContainer>
-            )}
-          </div>
-          <PanelContainer
-            definitionId="game-log"
-            showClose={false}
-            className="flex-1 min-h-0"
-          >
-            <GameLogPanel />
-          </PanelContainer>
+            </>
+          ) : (
+            // Player mode: Chart + Advanced Stats/Comparison + Game Log
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 h-[45%] min-h-0">
+                <PanelContainer
+                  definitionId="performance-chart"
+                  showClose={false}
+                  className="h-full"
+                >
+                  <PerformanceChartPanel />
+                </PanelContainer>
+                {hasComparison ? (
+                  <PanelContainer
+                    definitionId="comparison"
+                    showClose={false}
+                    className="h-full"
+                  >
+                    <ComparisonPanel />
+                  </PanelContainer>
+                ) : (
+                  <PanelContainer
+                    definitionId="advanced-stats"
+                    showClose={false}
+                    className="h-full"
+                  >
+                    <AdvancedStatsPanel />
+                  </PanelContainer>
+                )}
+              </div>
+              <PanelContainer
+                definitionId="game-log"
+                showClose={false}
+                className="flex-1 min-h-0"
+              >
+                <GameLogPanel />
+              </PanelContainer>
+            </>
+          )}
         </Panel>
 
-        {/* Right Panel - Watchlist & Trending */}
+        {/* Right Panel */}
         {!rightPanelCollapsed && (
           <>
             <Separator className="w-3 bg-transparent hover:bg-primary/20 transition-colors cursor-col-resize flex items-center justify-center">
@@ -234,23 +275,48 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
               maxSize="30%"
               className="flex flex-col gap-2 p-2 overflow-hidden"
             >
-              <WatchlistPanel />
-              <PanelContainer
-                definitionId="schedule"
-                showClose={false}
-                showMaximize={false}
-                className="shrink-0 h-[300px]"
-              >
-                <SchedulePanel />
-              </PanelContainer>
-              <PanelContainer
-                definitionId="trending"
-                showClose={false}
-                showMaximize={false}
-                className="flex-1 min-h-0"
-              >
-                <TrendingPanel />
-              </PanelContainer>
+              {isOverview ? (
+                // Overview: Schedule + Trending (Watchlist is in left column)
+                <>
+                  <PanelContainer
+                    definitionId="schedule"
+                    showClose={false}
+                    showMaximize={false}
+                    className="shrink-0 h-[300px]"
+                  >
+                    <SchedulePanel />
+                  </PanelContainer>
+                  <PanelContainer
+                    definitionId="trending"
+                    showClose={false}
+                    showMaximize={false}
+                    className="flex-1 min-h-0"
+                  >
+                    <TrendingPanel />
+                  </PanelContainer>
+                </>
+              ) : (
+                // Player mode: Watchlist + Schedule + Trending
+                <>
+                  <WatchlistPanel />
+                  <PanelContainer
+                    definitionId="schedule"
+                    showClose={false}
+                    showMaximize={false}
+                    className="shrink-0 h-[300px]"
+                  >
+                    <SchedulePanel />
+                  </PanelContainer>
+                  <PanelContainer
+                    definitionId="trending"
+                    showClose={false}
+                    showMaximize={false}
+                    className="flex-1 min-h-0"
+                  >
+                    <TrendingPanel />
+                  </PanelContainer>
+                </>
+              )}
             </Panel>
           </>
         )}

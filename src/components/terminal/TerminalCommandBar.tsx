@@ -148,6 +148,12 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
           setCommandFeedback("Comparison cleared");
           break;
         }
+        case "": {
+          // Empty ':' returns to overview by clearing the focused player
+          setFocusedPlayer(null);
+          setCommandFeedback("Returned to overview");
+          break;
+        }
         default:
           setCommandFeedback(`Unknown command: ${command}`);
       }

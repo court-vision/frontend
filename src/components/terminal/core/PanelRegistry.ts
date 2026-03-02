@@ -7,6 +7,8 @@ import {
   Star,
   TrendingUp,
   Calendar,
+  Users,
+  Zap,
 } from "lucide-react";
 import type { PanelDefinition } from "@/types/terminal";
 
@@ -74,6 +76,22 @@ export const PANEL_REGISTRY: PanelDefinition[] = [
     icon: Calendar,
     category: "schedule",
     description: "Today's games and upcoming schedule",
+    defaultSize: { width: 100, height: 100 },
+  },
+  {
+    id: "today-leaders",
+    name: "Today's Leaders",
+    icon: Users,
+    category: "market",
+    description: "Live fantasy point leaderboard for today's games",
+    defaultSize: { width: 100, height: 100 },
+  },
+  {
+    id: "streamers",
+    name: "Streamers",
+    icon: Zap,
+    category: "market",
+    description: "Breakout pickup candidates from injury opportunities",
     defaultSize: { width: 100, height: 100 },
   },
 ];
