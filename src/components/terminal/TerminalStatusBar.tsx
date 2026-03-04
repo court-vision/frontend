@@ -1,6 +1,7 @@
 "use client";
 
 import { useTerminalStore } from "@/stores/useTerminalStore";
+import { useTeamsQuery } from "@/hooks/useTeams";
 import { cn } from "@/lib/utils";
 
 interface TerminalStatusBarProps {
@@ -8,8 +9,18 @@ interface TerminalStatusBarProps {
 }
 
 export function TerminalStatusBar({ className }: TerminalStatusBarProps) {
-  const { layout, focusedPlayerId, comparisonPlayerIds, watchlist, statWindow } =
+  const { layout, focusedPlayerId, focusedTeamId, comparisonPlayerIds, watchlist, statWindow } =
     useTerminalStore();
+  const { data: teams } = useTeamsQuery();
+
+  const isTeamMode = focusedTeamId !== null && focusedPlayerId === null;
+  const focusedTeam = isTeamMode ? teams?.find((t) => t.team_id === focusedTeamId) : null;
+  const prevTeam = isTeamMode && teams && teams.length > 1
+    ? teams[(teams.findIndex((t) => t.team_id === focusedTeamId) - 1 + teams.length) % teams.length]
+    : null;
+  const nextTeam = isTeamMode && teams && teams.length > 1
+    ? teams[(teams.findIndex((t) => t.team_id === focusedTeamId) + 1) % teams.length]
+    : null;
 
   return (
     <div
@@ -36,25 +47,53 @@ export function TerminalStatusBar({ className }: TerminalStatusBarProps) {
           <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">&lt;</kbd>
           <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] ml-0.5">&gt;</kbd> resize R
         </span>
-        <span className="hidden 2xl:inline">
-          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">w</kbd> watchlist
-        </span>
-        <span className="hidden 2xl:inline">
-          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">c</kbd> compare
-        </span>
-        <span className="hidden 2xl:inline">
-          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">1</kbd>-
-          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">4</kbd> window
-        </span>
-        <span className="hidden 2xl:inline">
-          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">F1</kbd>-
-          <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">F4</kbd> layouts
-        </span>
+        {isTeamMode && teams && teams.length > 1 ? (
+          <span className="hidden sm:inline">
+            <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">{"{"}</kbd>
+            <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] ml-0.5">{"}"}</kbd> cycle team
+          </span>
+        ) : (
+          <>
+            <span className="hidden 2xl:inline">
+              <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">w</kbd> watchlist
+            </span>
+            <span className="hidden 2xl:inline">
+              <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">c</kbd> compare
+            </span>
+            <span className="hidden 2xl:inline">
+              <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">1</kbd>-
+              <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">4</kbd> window
+            </span>
+            <span className="hidden 2xl:inline">
+              <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">F1</kbd>-
+              <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">F4</kbd> layouts
+            </span>
+          </>
+        )}
       </div>
 
-      {/* Center section - Status indicators */}
-      <div className="flex items-center gap-3">
-        {focusedPlayerId ? (
+      {/* Center section - Status indicators / Team carousel */}
+      <div className="flex items-center gap-2">
+        {isTeamMode && focusedTeam ? (
+          // Team carousel
+          <div className="flex items-center gap-1.5">
+            {prevTeam && (
+              <span className="text-muted-foreground/40 truncate max-w-[80px]">
+                {prevTeam.league_info.team_name}
+              </span>
+            )}
+            {prevTeam && <span className="text-muted-foreground/30">·</span>}
+            <span className="text-primary font-medium">
+              {focusedTeam.league_info.team_name}
+            </span>
+            {nextTeam && <span className="text-muted-foreground/30">·</span>}
+            {nextTeam && (
+              <span className="text-muted-foreground/40 truncate max-w-[80px]">
+                {nextTeam.league_info.team_name}
+              </span>
+            )}
+          </div>
+        ) : focusedPlayerId ? (
           <span className="text-primary">
             Player #{focusedPlayerId}
           </span>

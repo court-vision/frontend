@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 // Panel system types
-export type PanelCategory = "player" | "comparison" | "market" | "schedule";
+export type PanelCategory = "player" | "comparison" | "market" | "schedule" | "team";
 
 export interface PanelDefinition {
   id: string;
@@ -113,9 +113,15 @@ export interface TerminalState {
   focusedPlayerId: number | null;
   comparisonPlayerIds: number[];
 
+  // Team focus
+  focusedTeamId: number | null;
+
   // Watchlist (persisted)
   watchlist: WatchlistPlayer[];
   recentlyViewed: number[];
+
+  // Last focused team (persisted, for session restore)
+  lastFocusedTeamId: number | null;
 
   // Layout state
   layout: LayoutState;
@@ -134,6 +140,8 @@ export interface TerminalState {
   addToWatchlist: (id: number) => void;
   removeFromWatchlist: (id: number) => void;
   addRecentView: (id: number) => void;
+  setFocusedTeam: (id: number | null) => void;
+  cycleTeam: (teamIds: number[], direction: 1 | -1) => void;
   setLayoutPreset: (preset: LayoutPreset) => void;
   toggleLeftPanel: () => void;
   toggleRightPanel: () => void;

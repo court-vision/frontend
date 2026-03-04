@@ -29,9 +29,15 @@ export const useTerminalStore = create<TerminalState>()(
       focusedPlayerId: null,
       comparisonPlayerIds: [],
 
+      // Team focus
+      focusedTeamId: null,
+
       // Watchlist
       watchlist: [],
       recentlyViewed: [],
+
+      // Last focused team (persisted)
+      lastFocusedTeamId: null,
 
       // Layout
       layout: defaultLayout,
@@ -89,6 +95,21 @@ export const useTerminalStore = create<TerminalState>()(
         const filtered = recentlyViewed.filter((pid) => pid !== id);
         const updated = [id, ...filtered].slice(0, MAX_RECENT_VIEWS);
         set({ recentlyViewed: updated });
+      },
+
+      setFocusedTeam: (id) => {
+        set({ focusedTeamId: id, lastFocusedTeamId: id ?? get().lastFocusedTeamId });
+      },
+
+      cycleTeam: (teamIds, direction) => {
+        const { focusedTeamId } = get();
+        if (teamIds.length === 0) return;
+        const currentIdx = focusedTeamId !== null ? teamIds.indexOf(focusedTeamId) : -1;
+        const nextIdx = currentIdx === -1
+          ? 0
+          : (currentIdx + direction + teamIds.length) % teamIds.length;
+        const nextId = teamIds[nextIdx];
+        set({ focusedTeamId: nextId, lastFocusedTeamId: nextId });
       },
 
       setLayoutPreset: (preset) => {
@@ -196,6 +217,7 @@ export const useTerminalStore = create<TerminalState>()(
         recentlyViewed: state.recentlyViewed,
         layout: state.layout,
         statWindow: state.statWindow,
+        lastFocusedTeamId: state.lastFocusedTeamId,
       }),
     }
   )

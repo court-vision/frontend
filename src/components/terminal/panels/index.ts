@@ -10,3 +10,11 @@ export { TodayLeadersPanel } from "./TodayLeadersPanel";
 export { StreamersPanel } from "./StreamersPanel";
 export { TeamSchedulePanel } from "./TeamSchedulePanel";
 export { MatchupContextPanel } from "./MatchupContextPanel";
+// Team mode panels
+export { RosterOverviewPanel } from "./RosterOverviewPanel";
+export { MatchupPanel } from "./MatchupPanel";
+export { CategoryStrengthsPanel } from "./CategoryStrengthsPanel";
+export { ScoreHistoryPanel } from "./ScoreHistoryPanel";
+export { DailyBreakdownPanel } from "./DailyBreakdownPanel";
+export { LineupOptimizerPanel } from "./LineupOptimizerPanel";
+export { TeamStreamersPanel } from "./TeamStreamersPanel";

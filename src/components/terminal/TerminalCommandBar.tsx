@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Search, RefreshCw, Settings, ChevronRight, Terminal } from "lucide-react";
+import { Search, RefreshCw, Settings, ChevronRight, Terminal, Swords } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useRankingsQuery } from "@/hooks/useRankings";
+import { useTeamsQuery } from "@/hooks/useTeams";
 import { GameScoreTicker } from "@/components/dashboard/GameScoreTicker";
 import type { LayoutPreset } from "@/types/terminal";
 
@@ -28,6 +29,22 @@ const COMMANDS: CommandSuggestion[] = [
   { command: ":focus", description: "Focus a player", example: ":focus curry" },
 ];
 
+interface TeamSearchResult {
+  type: "team";
+  id: number;
+  name: string;
+  provider: string;
+}
+
+interface PlayerSearchResult {
+  type: "player";
+  id: number;
+  name: string;
+  team: string;
+}
+
+type SearchResultItem = PlayerSearchResult | TeamSearchResult;
+
 export function TerminalCommandBar({ className }: CommandBarProps) {
   const [inputValue, setInputValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -37,6 +54,7 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
 
   const {
     setFocusedPlayer,
+    setFocusedTeam,
     addToCommandHistory,
     setStatWindow,
     setLayoutPreset,
@@ -44,6 +62,7 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
     clearComparison,
   } = useTerminalStore();
   const { data: rankings, refetch, isFetching } = useRankingsQuery();
+  const { data: teams } = useTeamsQuery();
 
   // Check if input is a command
   const isCommand = inputValue.startsWith(":");
@@ -56,14 +75,36 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
   }, [inputValue, isCommand]);
 
   // Filter players based on search input
-  const searchResults = useMemo(() => {
+  const playerResults = useMemo((): PlayerSearchResult[] => {
     if (isCommand || inputValue.length < 2 || !rankings) return [];
     return rankings
       .filter((player) =>
         player.player_name.toLowerCase().includes(inputValue.toLowerCase())
       )
-      .slice(0, 8);
+      .slice(0, 6)
+      .map((p) => ({ type: "player" as const, id: p.id, name: p.player_name, team: p.team }));
   }, [inputValue, rankings, isCommand]);
+
+  // Filter teams based on search input
+  const teamResults = useMemo((): TeamSearchResult[] => {
+    if (isCommand || inputValue.length < 2 || !teams) return [];
+    return teams
+      .filter((t) =>
+        t.league_info.team_name.toLowerCase().includes(inputValue.toLowerCase())
+      )
+      .slice(0, 2)
+      .map((t) => ({
+        type: "team" as const,
+        id: t.team_id,
+        name: t.league_info.team_name,
+        provider: t.league_info.provider ?? "espn",
+      }));
+  }, [inputValue, teams, isCommand]);
+
+  // Merged search results: teams first (max 2), then players
+  const searchResults = useMemo((): SearchResultItem[] => {
+    return [...teamResults, ...playerResults];
+  }, [teamResults, playerResults]);
 
   // Combined results for display
   const results = isCommand ? commandSuggestions : searchResults;
@@ -128,10 +169,21 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
         }
         case "focus": {
           if (args.length === 0) {
-            setCommandFeedback("Usage: :focus <player name>");
+            setCommandFeedback("Usage: :focus <player or team name>");
             break;
           }
           const searchName = args.join(" ").toLowerCase();
+          // Try team match first
+          const team = teams?.find((t) =>
+            t.league_info.team_name.toLowerCase().includes(searchName)
+          );
+          if (team) {
+            setFocusedTeam(team.team_id);
+            setFocusedPlayer(null);
+            setCommandFeedback(`Focused on ${team.league_info.team_name}`);
+            break;
+          }
+          // Then try player match
           const player = rankings?.find((p) =>
             p.player_name.toLowerCase().includes(searchName)
           );
@@ -139,7 +191,7 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
             setFocusedPlayer(player.id);
             setCommandFeedback(`Focused on ${player.player_name}`);
           } else {
-            setCommandFeedback(`Player not found: ${args.join(" ")}`);
+            setCommandFeedback(`Not found: ${args.join(" ")}`);
           }
           break;
         }
@@ -165,11 +217,13 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
     },
     [
       rankings,
+      teams,
       setStatWindow,
       setLayoutPreset,
       addToComparison,
       clearComparison,
       setFocusedPlayer,
+      setFocusedTeam,
       addToCommandHistory,
     ]
   );
@@ -215,10 +269,14 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
             setInputValue("");
           }
         } else if (searchResults.length > 0) {
-          // Select player
+          // Select player or team
           const selected = searchResults[selectedIndex];
           if (selected) {
-            handleSelectPlayer(selected.id, selected.player_name);
+            if (selected.type === "team") {
+              handleSelectTeam(selected.id, selected.name);
+            } else {
+              handleSelectPlayer(selected.id, selected.name);
+            }
           }
         }
       } else if (e.key === "Escape") {
@@ -235,6 +293,15 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
   const handleSelectPlayer = (playerId: number, playerName: string) => {
     setFocusedPlayer(playerId);
     addToCommandHistory(playerName);
+    setInputValue("");
+    setSelectedIndex(0);
+    inputRef.current?.blur();
+  };
+
+  const handleSelectTeam = (teamId: number, teamName: string) => {
+    setFocusedTeam(teamId);
+    setFocusedPlayer(null);
+    addToCommandHistory(teamName);
     setInputValue("");
     setSelectedIndex(0);
     inputRef.current?.blur();
@@ -319,20 +386,32 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
         {/* Search Results Dropdown */}
         {isFocused && !isCommand && searchResults.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-1 py-1 bg-popover border border-border rounded-md shadow-lg z-50">
-            {searchResults.map((player, index) => (
+            {searchResults.map((result, index) => (
               <button
-                key={player.id}
+                key={`${result.type}-${result.id}`}
                 className={cn(
                   "flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left",
                   "hover:bg-muted transition-colors",
                   index === selectedIndex && "bg-muted"
                 )}
-                onClick={() => handleSelectPlayer(player.id, player.player_name)}
+                onClick={() => {
+                  if (result.type === "team") {
+                    handleSelectTeam(result.id, result.name);
+                  } else {
+                    handleSelectPlayer(result.id, result.name);
+                  }
+                }}
               >
-                <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                <span className="font-medium">{player.player_name}</span>
+                {result.type === "team" ? (
+                  <Swords className="h-3 w-3 text-primary shrink-0" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                )}
+                <span className={cn("font-medium", result.type === "team" && "text-primary")}>
+                  {result.name}
+                </span>
                 <span className="text-xs text-muted-foreground ml-auto">
-                  {player.team}
+                  {result.type === "team" ? result.provider.toUpperCase() : result.team}
                 </span>
               </button>
             ))}

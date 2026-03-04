@@ -9,6 +9,7 @@ import {
 } from "react-resizable-panels";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
+import { useTeamsQuery } from "@/hooks/useTeams";
 import { TerminalCommandBar } from "./TerminalCommandBar";
 import { TerminalStatusBar } from "./TerminalStatusBar";
 import { PanelContainer } from "./core";
@@ -25,6 +26,13 @@ import {
   StreamersPanel,
   TeamSchedulePanel,
   MatchupContextPanel,
+  RosterOverviewPanel,
+  MatchupPanel,
+  CategoryStrengthsPanel,
+  ScoreHistoryPanel,
+  DailyBreakdownPanel,
+  LineupOptimizerPanel,
+  TeamStreamersPanel,
 } from "./panels";
 import type { LayoutPreset } from "@/types/terminal";
 
@@ -38,6 +46,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
   const {
     layout,
     focusedPlayerId,
+    focusedTeamId,
     comparisonPlayerIds,
     toggleLeftPanel,
     toggleRightPanel,
@@ -46,10 +55,16 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
     setLayoutPreset,
     setStatWindow,
     setFocusedPlayer,
+    setFocusedTeam,
+    cycleTeam,
   } = useTerminalStore();
 
+  const { data: teams } = useTeamsQuery();
+  const teamIds = (teams ?? []).map((t) => t.team_id);
+
   const hasComparison = comparisonPlayerIds.length > 0;
-  const isOverview = focusedPlayerId === null;
+  const isTeamMode = focusedTeamId !== null && focusedPlayerId === null;
+  const isOverview = focusedPlayerId === null && focusedTeamId === null;
 
   const { leftPanelCollapsed, rightPanelCollapsed, preset } = layout;
 
@@ -67,10 +82,15 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         return;
       }
 
-      // Escape: return to overview by clearing focused player
-      if (e.key === "Escape" && focusedPlayerId !== null) {
-        e.preventDefault();
-        setFocusedPlayer(null);
+      // Escape: return to overview (or from player mode back to team mode if in team context)
+      if (e.key === "Escape") {
+        if (focusedPlayerId !== null) {
+          e.preventDefault();
+          setFocusedPlayer(null);
+        } else if (focusedTeamId !== null) {
+          e.preventDefault();
+          setFocusedTeam(null);
+        }
       }
       // Panel toggle shortcuts
       else if (e.key === "[" && !e.shiftKey) {
@@ -116,6 +136,14 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         e.preventDefault();
         setStatWindow("l20");
       }
+      // Team carousel cycling
+      else if (e.key === "{" && isTeamMode && teamIds.length > 1) {
+        e.preventDefault();
+        cycleTeam(teamIds, -1);
+      } else if (e.key === "}" && isTeamMode && teamIds.length > 1) {
+        e.preventDefault();
+        cycleTeam(teamIds, 1);
+      }
       // Panel resize via imperative API
       else if ((e.key === "," || e.key === "." || e.key === "<" || e.key === ">") && groupRef.current) {
         e.preventDefault();
@@ -151,7 +179,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         groupRef.current.setLayout(newLayout);
       }
     },
-    [toggleLeftPanel, toggleRightPanel, leftPanelCollapsed, rightPanelCollapsed, focusedPlayerId, addToWatchlist, addToComparison, setLayoutPreset, setStatWindow, setFocusedPlayer]
+    [toggleLeftPanel, toggleRightPanel, leftPanelCollapsed, rightPanelCollapsed, focusedPlayerId, focusedTeamId, isTeamMode, teamIds, addToWatchlist, addToComparison, setLayoutPreset, setStatWindow, setFocusedPlayer, setFocusedTeam, cycleTeam]
   );
 
   useEffect(() => {
@@ -186,6 +214,16 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
               {isOverview ? (
                 // Overview: Watchlist is self-wrapping with its own PanelContainer + dynamic height
                 <WatchlistPanel />
+              ) : isTeamMode ? (
+                // Team mode: Roster overview
+                <PanelContainer
+                  definitionId="roster-overview"
+                  showClose={false}
+                  showMaximize={false}
+                  className="flex-1"
+                >
+                  <RosterOverviewPanel />
+                </PanelContainer>
               ) : (
                 // Player mode: Player Focus card
                 <PanelContainer
@@ -222,6 +260,24 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
                 className="flex-1 min-h-0"
               >
                 <StreamersPanel />
+              </PanelContainer>
+            </>
+          ) : isTeamMode ? (
+            // Team mode: Matchup (top) + Daily Breakdown (bottom)
+            <>
+              <PanelContainer
+                definitionId="matchup"
+                showClose={false}
+                className="h-[55%] min-h-0"
+              >
+                <MatchupPanel />
+              </PanelContainer>
+              <PanelContainer
+                definitionId="daily-breakdown"
+                showClose={false}
+                className="flex-1 min-h-0"
+              >
+                <DailyBreakdownPanel />
               </PanelContainer>
             </>
           ) : (
@@ -295,6 +351,34 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
                     className="flex-1 min-h-0"
                   >
                     <TrendingPanel />
+                  </PanelContainer>
+                </>
+              ) : isTeamMode ? (
+                // Team mode: Lineup Optimizer + Score History + Team Streamers
+                <>
+                  <PanelContainer
+                    definitionId="lineup-optimizer"
+                    showClose={false}
+                    showMaximize={false}
+                    className="h-[45%] min-h-0"
+                  >
+                    <LineupOptimizerPanel />
+                  </PanelContainer>
+                  <PanelContainer
+                    definitionId="score-history"
+                    showClose={false}
+                    showMaximize={false}
+                    className="h-[25%] min-h-0"
+                  >
+                    <ScoreHistoryPanel />
+                  </PanelContainer>
+                  <PanelContainer
+                    definitionId="team-streamers"
+                    showClose={false}
+                    showMaximize={false}
+                    className="flex-1 min-h-0"
+                  >
+                    <TeamStreamersPanel />
                   </PanelContainer>
                 </>
               ) : (
