@@ -29,7 +29,6 @@ import {
   RosterOverviewPanel,
   MatchupPanel,
   CategoryStrengthsPanel,
-  ScoreHistoryPanel,
   DailyBreakdownPanel,
   LineupOptimizerPanel,
   TeamStreamersPanel,
@@ -268,7 +267,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
               <PanelContainer
                 definitionId="matchup"
                 showClose={false}
-                className="h-[55%] min-h-0"
+                className="h-[65%] min-h-0"
               >
                 <MatchupPanel />
               </PanelContainer>
@@ -354,23 +353,15 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
                   </PanelContainer>
                 </>
               ) : isTeamMode ? (
-                // Team mode: Lineup Optimizer + Score History + Team Streamers
+                // Team mode: Lineup Optimizer + Team Streamers
                 <>
                   <PanelContainer
                     definitionId="lineup-optimizer"
                     showClose={false}
                     showMaximize={false}
-                    className="h-[45%] min-h-0"
+                    className="h-[55%] min-h-0"
                   >
                     <LineupOptimizerPanel />
-                  </PanelContainer>
-                  <PanelContainer
-                    definitionId="score-history"
-                    showClose={false}
-                    showMaximize={false}
-                    className="h-[25%] min-h-0"
-                  >
-                    <ScoreHistoryPanel />
                   </PanelContainer>
                   <PanelContainer
                     definitionId="team-streamers"

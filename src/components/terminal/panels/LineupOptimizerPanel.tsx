@@ -113,7 +113,7 @@ const STREAMING_OPTIONS = [0, 1, 2] as const;
 type StreamingSlots = (typeof STREAMING_OPTIONS)[number];
 
 export function LineupOptimizerPanel() {
-  const { focusedTeamId } = useTerminalStore();
+  const { focusedTeamId, setGeneratedLineup } = useTerminalStore();
   const { data: scheduleData, isLoading: scheduleLoading } = useScheduleWeeksQuery();
   const generateMutation = useGenerateLineupMutation();
 
@@ -134,6 +134,11 @@ export function LineupOptimizerPanel() {
   const lineup = generateMutation.data?.data ?? null;
   const isPending = generateMutation.isPending;
   const hasError = generateMutation.isError || generateMutation.data?.status === "error";
+
+  // Sync generated lineup to store for the combined matchup panel
+  useEffect(() => {
+    setGeneratedLineup(lineup);
+  }, [lineup, setGeneratedLineup]);
 
   const handleGenerate = () => {
     if (!focusedTeamId || selectedWeek === null) return;

@@ -39,6 +39,9 @@ export const useTerminalStore = create<TerminalState>()(
       // Last focused team (persisted)
       lastFocusedTeamId: null,
 
+      // Generated lineup (shared between LineupOptimizer and MatchupPanel)
+      generatedLineup: null,
+
       // Layout
       layout: defaultLayout,
 
@@ -188,6 +191,10 @@ export const useTerminalStore = create<TerminalState>()(
           MAX_COMMAND_HISTORY
         );
         set({ commandHistory: updated });
+      },
+
+      setGeneratedLineup: (lineup) => {
+        set({ generatedLineup: lineup });
       },
 
       addCenterPanel: (panel) => {

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import type { Lineup } from "./lineup";
 
 // Panel system types
 export type PanelCategory = "player" | "comparison" | "market" | "schedule" | "team";
@@ -132,6 +133,9 @@ export interface TerminalState {
   // Command history
   commandHistory: string[];
 
+  // Generated lineup (shared between LineupOptimizer and MatchupPanel)
+  generatedLineup: Lineup | null;
+
   // Actions
   setFocusedPlayer: (id: number | null) => void;
   addToComparison: (id: number) => void;
@@ -149,6 +153,7 @@ export interface TerminalState {
   setRightPanelSize: (size: number) => void;
   setStatWindow: (window: StatWindow) => void;
   addToCommandHistory: (command: string) => void;
+  setGeneratedLineup: (lineup: Lineup | null) => void;
   addCenterPanel: (panel: PanelInstance) => void;
   removeCenterPanel: (panelId: string) => void;
 }
