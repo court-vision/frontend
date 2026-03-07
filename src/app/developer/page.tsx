@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Key, BookOpen, ChevronDown } from "lucide-react";
+import { Key, BookOpen, ChevronDown, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ApiKeyManager } from "@/components/developer/ApiKeyManager";
 import { ApiDocs } from "@/components/developer/ApiDocs";
+import { ApiPlayground } from "@/components/developer/ApiPlayground";
+import type { Endpoint } from "@/components/developer/api-data";
 
 const developerTabs = [
   {
@@ -12,14 +14,18 @@ const developerTabs = [
     label: "API Keys",
     icon: Key,
     description: "Manage keys",
-    component: ApiKeyManager,
   },
   {
     id: "documentation",
     label: "Documentation",
     icon: BookOpen,
     description: "API reference",
-    component: ApiDocs,
+  },
+  {
+    id: "playground",
+    label: "Playground",
+    icon: Zap,
+    description: "Try the API",
   },
 ] as const;
 
@@ -27,8 +33,7 @@ type TabId = (typeof developerTabs)[number]["id"];
 
 export default function Developer() {
   const [activeTab, setActiveTab] = useState<TabId>("api-keys");
-
-  const ActiveComponent = developerTabs.find((t) => t.id === activeTab)?.component;
+  const [playgroundEndpoint, setPlaygroundEndpoint] = useState<Endpoint | undefined>(undefined);
 
   const handleTabChange = (tabId: TabId) => {
     if (typeof window !== "undefined" && window.location.hash.startsWith("#section-")) {
@@ -36,6 +41,22 @@ export default function Developer() {
       window.history.replaceState(null, "", nextUrl);
     }
     setActiveTab(tabId);
+  };
+
+  const handleTryInPlayground = (endpoint: Endpoint) => {
+    setPlaygroundEndpoint(endpoint);
+    setActiveTab("playground");
+  };
+
+  const renderTabContent = (tabId: TabId) => {
+    switch (tabId) {
+      case "api-keys":
+        return <ApiKeyManager />;
+      case "documentation":
+        return <ApiDocs onTryInPlayground={handleTryInPlayground} />;
+      case "playground":
+        return <ApiPlayground initialEndpoint={playgroundEndpoint} />;
+    }
   };
 
   return (
@@ -53,7 +74,6 @@ export default function Developer() {
         {developerTabs.map((tab) => {
           const Icon = tab.icon;
           const isOpen = activeTab === tab.id;
-          const TabComponent = tab.component;
           return (
             <div
               key={tab.id}
@@ -96,7 +116,7 @@ export default function Developer() {
               </button>
               {isOpen && (
                 <div className="px-3 pb-3">
-                  <TabComponent />
+                  {renderTabContent(tab.id)}
                 </div>
               )}
             </div>
@@ -140,7 +160,7 @@ export default function Developer() {
           "flex-1 min-w-0",
           activeTab === "api-keys" && "max-w-3xl",
         )}>
-          {ActiveComponent && <ActiveComponent />}
+          {renderTabContent(activeTab)}
         </div>
       </div>
     </div>
