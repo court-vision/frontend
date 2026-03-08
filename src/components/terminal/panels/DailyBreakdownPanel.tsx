@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AlertCircle, Calendar } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getTodayET } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import {
   useMatchupScoreHistoryQuery,
@@ -211,7 +211,7 @@ function DayDetail({ teamId, date }: { teamId: number; date: string }) {
 
 export function DailyBreakdownPanel() {
   const { focusedTeamId } = useTerminalStore();
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodayET();
   const [selectedDate, setSelectedDate] = useState<string>(today);
 
   const { data: historyData, isLoading: historyLoading, error: historyError } =

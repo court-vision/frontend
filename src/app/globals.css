@@ -184,3 +184,25 @@
     z-index: 0;
   }
 }
+
+/* react-grid-layout overrides */
+.react-grid-item.react-grid-placeholder {
+  background: hsl(var(--primary) / 0.1);
+  border: 1px dashed hsl(var(--primary) / 0.4);
+  border-radius: var(--radius);
+  transition-duration: 100ms;
+}
+
+.react-resizable-handle {
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.react-grid-item:hover .react-resizable-handle,
+.react-grid-item.react-grid-item--resizing .react-resizable-handle {
+  opacity: 1;
+}
+
+.react-resizable-handle::after {
+  border-color: hsl(var(--primary) / 0.6) !important;
+}

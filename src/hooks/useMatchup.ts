@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
+import { getTodayET } from "@/lib/utils";
 import type { AvgWindow } from "@/types/matchup";
 
 // Query keys
@@ -52,11 +53,16 @@ export function useDailyMatchupQuery(
 ) {
   const { getToken, isSignedIn } = useAuth();
 
+  // Poll every 60s when viewing today (live data), otherwise static
+  const isToday = date === getTodayET();
+
   return useQuery({
     queryKey: matchupKeys.daily(teamId!, date!),
     queryFn: () => apiClient.getDailyMatchup(getToken, teamId!, date!),
     enabled: !!teamId && !!date && isSignedIn === true,
-    staleTime: 1000 * 60 * 10, // 10 minutes - historical data is stable
+    staleTime: isToday ? 0 : 1000 * 60 * 10,
+    refetchInterval: isToday ? 60 * 1000 : undefined,
+    refetchOnWindowFocus: true,
   });
 }
 

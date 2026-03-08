@@ -147,21 +147,8 @@ export default function StreamerDisplay() {
       return matchesSearch && matchesPosition && matchesB2b && matchesBreakout;
     });
 
-    // Breakout candidates pin to top (sorted by breakout_score),
-    // then regular streamers follow (sorted by streamer_score)
-    return filtered.sort((a, b) => {
-      const aHas = !!a.breakout_context;
-      const bHas = !!b.breakout_context;
-      if (aHas && !bHas) return -1;
-      if (!aHas && bHas) return 1;
-      if (aHas && bHas) {
-        return (
-          b.breakout_context!.signals.breakout_score -
-          a.breakout_context!.signals.breakout_score
-        );
-      }
-      return b.streamer_score - a.streamer_score;
-    });
+    // Sort all streamers by composite streamer_score (OPP, B2B, and regular ranked fairly)
+    return filtered.sort((a, b) => b.streamer_score - a.streamer_score);
   }, [data?.streamers, data?.target_day, data?.current_day_index, breakoutMap, searchQuery, selectedPositions, b2bOnly, breakoutOnly, mode]);
 
   const togglePosition = (pos: Position) => {

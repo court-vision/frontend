@@ -4,3 +4,31 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
+/**
+ * Get today's date in YYYY-MM-DD format using the NBA date convention:
+ * before 6 AM ET counts as yesterday (games that started the previous evening).
+ */
+export function getTodayET(): string {
+  const now = new Date();
+  const etParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "numeric",
+    hour12: false,
+  }).formatToParts(now);
+
+  const year = etParts.find((p) => p.type === "year")!.value;
+  const month = etParts.find((p) => p.type === "month")!.value;
+  const day = etParts.find((p) => p.type === "day")!.value;
+  const hour = parseInt(etParts.find((p) => p.type === "hour")!.value);
+
+  if (hour < 6) {
+    const yesterday = new Date(parseInt(year), parseInt(month) - 1, parseInt(day) - 1);
+    return `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+  }
+
+  return `${year}-${month}-${day}`;
+}

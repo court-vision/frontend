@@ -1,21 +1,35 @@
 "use client";
 
-import { Zap, AlertCircle } from "lucide-react";
+import { useMemo } from "react";
+import { Zap, AlertCircle, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
+import { useStreamersQuery } from "@/hooks/useStreamers";
+import { useTeams } from "@/app/context/TeamsContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BreakoutCandidateResp } from "@/types/breakout";
 
-interface StreamerCardProps {
-  candidate: BreakoutCandidateResp;
-  isActive: boolean;
-  onFocus: () => void;
+/** Unified streamer item for the panel list */
+interface UnifiedStreamer {
+  playerId: number;
+  name: string;
+  team: string;
+  avgFpts: number;
+  score: number;
+  tag: "OPP" | "B2B" | null;
+  breakoutContext?: BreakoutCandidateResp;
 }
 
-function StreamerCard({ candidate, isActive, onFocus }: StreamerCardProps) {
-  const { beneficiary, injured_player, signals } = candidate;
-
+function StreamerCard({
+  streamer,
+  isActive,
+  onFocus,
+}: {
+  streamer: UnifiedStreamer;
+  isActive: boolean;
+  onFocus: () => void;
+}) {
   return (
     <button
       className={cn(
@@ -27,24 +41,41 @@ function StreamerCard({ candidate, isActive, onFocus }: StreamerCardProps) {
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium truncate">{beneficiary.name}</span>
+          <span className="text-xs font-medium truncate">{streamer.name}</span>
           <span className="text-[10px] text-muted-foreground font-mono shrink-0">
-            {beneficiary.team}
+            {streamer.team}
           </span>
+          {streamer.tag && (
+            <span
+              className={cn(
+                "text-[9px] font-mono font-bold px-1 rounded",
+                streamer.tag === "OPP"
+                  ? "bg-amber-500/15 text-amber-500"
+                  : "bg-blue-500/15 text-blue-400"
+              )}
+            >
+              {streamer.tag}
+            </span>
+          )}
         </div>
-        <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-          For:{" "}
-          <span className="text-amber-500">{injured_player.name}</span>
-          {" "}
-          <span className="text-muted-foreground/60">({injured_player.status})</span>
-        </div>
+        {streamer.breakoutContext && (
+          <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+            For:{" "}
+            <span className="text-amber-500">
+              {streamer.breakoutContext.injured_player.name}
+            </span>{" "}
+            <span className="text-muted-foreground/60">
+              ({streamer.breakoutContext.injured_player.status})
+            </span>
+          </div>
+        )}
       </div>
       <div className="text-right shrink-0">
         <div className="font-mono text-xs font-bold text-primary tabular-nums">
-          {beneficiary.avg_fpts.toFixed(1)}
+          {streamer.avgFpts.toFixed(1)}
         </div>
         <div className="text-[10px] text-muted-foreground font-mono">
-          {signals.breakout_score.toFixed(0)} pts
+          {streamer.score.toFixed(0)} pts
         </div>
       </div>
     </button>
@@ -53,7 +84,72 @@ function StreamerCard({ candidate, isActive, onFocus }: StreamerCardProps) {
 
 export function StreamersPanel() {
   const { focusedPlayerId, setFocusedPlayer } = useTerminalStore();
-  const { data, isLoading, error } = useBreakoutStreamersQuery(15);
+  const { selectedTeam, teams } = useTeams();
+
+  const selectedTeamData = useMemo(
+    () => teams.find((t) => t.team_id === selectedTeam),
+    [teams, selectedTeam]
+  );
+  const leagueInfo = selectedTeamData?.league_info || null;
+
+  const { data: breakoutData, isLoading: breakoutLoading, error: breakoutError } =
+    useBreakoutStreamersQuery(30);
+  const { data: streamerData, isLoading: streamerLoading } =
+    useStreamersQuery(leagueInfo, selectedTeam, {
+      faCount: 50,
+      excludeInjured: true,
+      mode: "daily",
+    });
+
+  const isLoading = breakoutLoading || (!!leagueInfo && streamerLoading);
+
+  // Merge breakout candidates and regular streamers into a unified list
+  const unified = useMemo(() => {
+    const seen = new Set<number>();
+    const items: UnifiedStreamer[] = [];
+
+    // Build breakout lookup
+    const breakoutMap = new Map<number, BreakoutCandidateResp>();
+    for (const c of breakoutData?.candidates ?? []) {
+      breakoutMap.set(c.beneficiary.player_id, c);
+    }
+
+    // Add regular streamers (they have the authoritative streamer_score)
+    if (streamerData?.streamers) {
+      for (const s of streamerData.streamers) {
+        seen.add(s.player_id);
+        items.push({
+          playerId: s.player_id,
+          name: s.name,
+          team: s.team,
+          avgFpts: s.avg_points_last_n ?? s.avg_points_season,
+          score: s.streamer_score,
+          tag: breakoutMap.has(s.player_id) ? "OPP" : s.has_b2b ? "B2B" : null,
+          breakoutContext: breakoutMap.get(s.player_id),
+        });
+      }
+    }
+
+    // Add breakout candidates not already in the streamers list
+    // (these are players who may not be free agents but are worth knowing about)
+    for (const c of breakoutData?.candidates ?? []) {
+      if (seen.has(c.beneficiary.player_id)) continue;
+      seen.add(c.beneficiary.player_id);
+      items.push({
+        playerId: c.beneficiary.player_id,
+        name: c.beneficiary.name,
+        team: c.beneficiary.team,
+        avgFpts: c.beneficiary.avg_fpts,
+        score: c.signals.breakout_score,
+        tag: "OPP",
+        breakoutContext: c,
+      });
+    }
+
+    // Sort by score descending
+    items.sort((a, b) => b.score - a.score);
+    return items;
+  }, [breakoutData, streamerData]);
 
   if (isLoading) {
     return (
@@ -65,7 +161,7 @@ export function StreamersPanel() {
     );
   }
 
-  if (error) {
+  if (breakoutError) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
         <AlertCircle className="h-6 w-6 text-destructive/50 mb-2" />
@@ -74,13 +170,11 @@ export function StreamersPanel() {
     );
   }
 
-  const candidates = data?.candidates ?? [];
-
-  if (candidates.length === 0) {
+  if (unified.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
         <Zap className="h-8 w-8 text-muted-foreground/30 mb-2" />
-        <p className="text-xs text-muted-foreground">No breakout candidates</p>
+        <p className="text-xs text-muted-foreground">No streamers available</p>
       </div>
     );
   }
@@ -88,20 +182,15 @@ export function StreamersPanel() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex-1 overflow-y-auto">
-        {candidates.map((candidate) => (
+        {unified.map((streamer) => (
           <StreamerCard
-            key={candidate.beneficiary.player_id}
-            candidate={candidate}
-            isActive={candidate.beneficiary.player_id === focusedPlayerId}
-            onFocus={() => setFocusedPlayer(candidate.beneficiary.player_id)}
+            key={streamer.playerId}
+            streamer={streamer}
+            isActive={streamer.playerId === focusedPlayerId}
+            onFocus={() => setFocusedPlayer(streamer.playerId)}
           />
         ))}
       </div>
-      {data?.as_of_date && (
-        <div className="px-3 py-1 border-t text-[10px] text-muted-foreground font-mono shrink-0">
-          As of {data.as_of_date}
-        </div>
-      )}
     </div>
   );
 }

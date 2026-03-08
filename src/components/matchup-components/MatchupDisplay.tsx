@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, getTodayET } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -512,31 +512,7 @@ interface MatchupDisplayProps {
   provider?: FantasyProvider;
 }
 
-function getTodayET(): string {
-  const now = new Date();
-  // Get current date and hour in US/Eastern using the browser's Intl API (handles DST)
-  const etParts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "numeric",
-    hour12: false,
-  }).formatToParts(now);
-
-  const year = etParts.find((p) => p.type === "year")!.value;
-  const month = etParts.find((p) => p.type === "month")!.value;
-  const day = etParts.find((p) => p.type === "day")!.value;
-  const hour = parseInt(etParts.find((p) => p.type === "hour")!.value);
-
-  // Before 6am ET = use yesterday's NBA game date
-  if (hour < 6) {
-    const yesterday = new Date(parseInt(year), parseInt(month) - 1, parseInt(day) - 1);
-    return `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
-  }
-
-  return `${year}-${month}-${day}`;
-}
+// getTodayET imported from @/lib/utils
 
 export function MatchupDisplay({
   matchup,

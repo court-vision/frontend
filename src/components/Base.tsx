@@ -41,8 +41,8 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
     prevPathRef.current = pathname;
   }, [pathname]);
 
-  // Terminal page manages its own full-height layout
-  const isTerminalPage = pathname === "/terminal";
+  // Terminal and dashboard pages manage their own full-height layout
+  const isFullHeightPage = pathname === "/terminal" || pathname === "/";
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden">
@@ -50,7 +50,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
       <CommandStrip />
 
       {/* Main Content Area */}
-      <main className={`flex-1 overflow-y-auto overflow-x-clip relative ${isTerminalPage ? '' : 'p-4 lg:p-6'}`}>
+      <main className={`flex-1 overflow-y-auto overflow-x-clip relative ${isFullHeightPage ? '' : 'p-4 lg:p-6'}`}>
         <div key={pathname} className={`relative z-10 ${direction}`}>
           {loading && <SkeletonCard />}
           {!loading && children}
