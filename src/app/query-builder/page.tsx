@@ -79,10 +79,10 @@ export default function QueryBuilderPage() {
     <div className="flex flex-col h-[calc(94vh-60px)]">
       <div className="flex items-center justify-between border-b border-border pb-3">
         <div>
-          <h1 className="font-display text-xl font-bold tracking-tight">
+          <h1 className="font-display text-2xl font-bold tracking-tight">
             Query Builder
           </h1>
-          <p className="text-muted-foreground text-xs mt-0.5">
+          <p className="text-muted-foreground text-sm mt-0.5">
             Build and run SQL queries against real NBA data.
           </p>
         </div>

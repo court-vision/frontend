@@ -133,7 +133,7 @@ export function WeekScheduleStrip({
                   >
                     {getDayName(matchup_start, dayIndex)}
                   </span>
-                  <span className="font-mono text-[10px] text-muted-foreground/60">
+                  <span className="font-mono text-[11px] text-muted-foreground/60">
                     {formatDate(matchup_start, dayIndex)}
                   </span>
                 </div>
@@ -175,7 +175,7 @@ export function WeekScheduleStrip({
                       </div>
                     ))
                   ) : (
-                    <span className="py-0.5 font-mono text-[10px] text-muted-foreground/30">—</span>
+                    <span className="py-0.5 font-mono text-[11px] text-muted-foreground/30">—</span>
                   )}
                 </div>
               </div>

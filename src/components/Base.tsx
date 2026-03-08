@@ -50,7 +50,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
       <CommandStrip />
 
       {/* Main Content Area */}
-      <main className={`flex-1 overflow-y-auto overflow-x-clip relative ${isFullHeightPage ? '' : 'p-4 lg:p-6'}`}>
+      <main className={`flex-1 overflow-y-auto overflow-x-clip relative ${isFullHeightPage ? '' : 'p-5 lg:p-8'}`}>
         <div key={pathname} className={`relative z-10 ${direction}`}>
           {loading && <SkeletonCard />}
           {!loading && children}

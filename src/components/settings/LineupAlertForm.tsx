@@ -162,7 +162,7 @@ export function LineupAlertForm({
             subDisabled && "opacity-40 pointer-events-none"
           )}
         >
-          <p className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest pt-3 pb-1">
+          <p className="text-[11px] font-mono text-muted-foreground/60 uppercase tracking-widest pt-3 pb-1">
             Alert Types
           </p>
           <ToggleRow
@@ -241,7 +241,7 @@ export function LineupAlertForm({
             {Math.min(150, Math.max(15, displayPrefs.alert_minutes_before))} min
           </span>
         </div>
-        <p className="text-[10px] text-muted-foreground/50 mt-1">
+        <p className="text-[11px] text-muted-foreground/50 mt-1">
           minutes before first tip-off · 15 min intervals
         </p>
       </div>
@@ -271,7 +271,7 @@ export function LineupAlertForm({
           onChange={(e) => update("email", e.target.value || null)}
           className="h-8 text-sm"
         />
-        <p className="text-[10px] text-muted-foreground/50 mt-2">
+        <p className="text-[11px] text-muted-foreground/50 mt-2">
           Leave blank to use your account email
           {clerkEmail && (
             <span className="font-mono ml-1 text-muted-foreground/40">

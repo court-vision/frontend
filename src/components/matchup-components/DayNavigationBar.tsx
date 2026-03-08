@@ -113,7 +113,7 @@ export function DayNavigationBar({
             selectedDate === null ? "bg-primary" : "bg-transparent"
           )}
         />
-        <span className="text-[8px] font-mono tracking-[0.14em] uppercase leading-none opacity-55">
+        <span className="text-[9px] font-mono tracking-[0.14em] uppercase leading-none opacity-55">
           WK
         </span>
         <span className="text-[11px] font-medium leading-none mt-[3px]">All</span>

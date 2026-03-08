@@ -83,7 +83,7 @@ function StreamerPreviewItem({
       </div>
       <div className="flex items-center gap-2">
         {streamer.has_b2b && (
-          <Badge variant="projected" className="text-[10px] px-1.5">
+          <Badge variant="projected" className="text-[11px] px-1.5">
             B2B
           </Badge>
         )}
@@ -91,7 +91,7 @@ function StreamerPreviewItem({
           <p className="font-mono text-sm font-medium tabular-nums">
             {(streamer.avg_points_last_n ?? streamer.avg_points_season).toFixed(1)}
           </p>
-          <p className="font-mono text-[10px] text-muted-foreground">
+          <p className="font-mono text-[11px] text-muted-foreground">
             {streamer.games_remaining}g left
           </p>
         </div>

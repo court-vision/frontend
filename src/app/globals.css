@@ -3,48 +3,48 @@
 @tailwind utilities;
 
 @layer base {
-  /* Mission Control with warm accent */
+  /* Polished platform dark theme */
   :root {
-    /* Core backgrounds - cool dark with slight warmth */
-    --background: 220 16% 5%;
-    --foreground: 215 20% 90%;
+    /* Core backgrounds - layered depth */
+    --background: 222 16% 7%;
+    --foreground: 215 15% 93%;
 
     /* Surface hierarchy */
-    --card: 220 14% 8%;
-    --card-foreground: 215 20% 90%;
-    --popover: 220 14% 10%;
-    --popover-foreground: 215 20% 90%;
+    --card: 222 14% 11%;
+    --card-foreground: 215 15% 93%;
+    --popover: 222 14% 13%;
+    --popover-foreground: 215 15% 93%;
 
     /* Primary - warm amber-orange (basketball / ESPN energy) */
     --primary: 28 92% 52%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary */
-    --secondary: 220 12% 12%;
-    --secondary-foreground: 215 20% 90%;
+    --secondary: 222 12% 15%;
+    --secondary-foreground: 215 15% 93%;
 
     /* Tertiary - operational green */
     --tertiary: 152 72% 46%;
-    --tertiary-foreground: 220 16% 5%;
+    --tertiary-foreground: 222 16% 7%;
 
     /* Muted */
-    --muted: 220 12% 14%;
-    --muted-foreground: 215 10% 48%;
+    --muted: 222 10% 17%;
+    --muted-foreground: 215 10% 55%;
 
-    /* Accent - same warm orange family */
-    --accent: 220 12% 12%;
-    --accent-foreground: 215 20% 90%;
+    /* Accent */
+    --accent: 222 12% 15%;
+    --accent-foreground: 215 15% 93%;
 
     /* Destructive */
     --destructive: 0 78% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders - subtle cool gray */
-    --border: 215 12% 17%;
-    --input: 215 12% 17%;
+    /* Borders - visible structure */
+    --border: 215 10% 22%;
+    --input: 215 10% 22%;
     --ring: 28 92% 52%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
     /* Chart colors */
     --chart-1: 28 92% 52%;
@@ -66,7 +66,7 @@
     --signal-stale: 215 10% 35%;
 
     /* Grid system */
-    --grid-line: 215 12% 9%;
+    --grid-line: 215 10% 10%;
   }
 
   /* Yahoo provider theme override */
@@ -84,17 +84,12 @@
 
   body {
     @apply bg-background text-foreground;
-    background-image:
-      linear-gradient(hsl(var(--grid-line)) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(var(--grid-line)) 1px, transparent 1px);
-    background-size: 40px 40px;
-    background-position: -1px -1px;
   }
 
   /* Custom scrollbar */
   ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
@@ -102,8 +97,8 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(215 12% 22%);
-    border-radius: 2px;
+    background: hsl(215 10% 28%);
+    border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -178,7 +173,7 @@
     background: radial-gradient(
       ellipse 80% 60% at 50% 40%,
       transparent 0%,
-      hsl(220 16% 3% / 0.5) 100%
+      hsl(220 16% 3% / 0.3) 100%
     );
     pointer-events: none;
     z-index: 0;

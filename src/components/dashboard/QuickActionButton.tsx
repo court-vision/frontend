@@ -34,7 +34,7 @@ export function QuickActionButton({
       <Icon className="h-4 w-4 text-primary shrink-0" />
       <span className="flex-1">{label}</span>
       {shortcut && (
-        <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] text-muted-foreground group-hover:border-primary/50 transition-colors">
+        <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-background px-1.5 font-mono text-[11px] text-muted-foreground group-hover:border-primary/50 transition-colors">
           {shortcut}
         </kbd>
       )}

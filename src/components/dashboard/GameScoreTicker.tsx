@@ -259,10 +259,10 @@ export function GameScoreTicker({ className }: { className?: string } = {}) {
     >
       {/* Fixed "TODAY · nG" label overlaid on the left */}
       <div className="absolute left-0 z-10 flex items-center gap-2 pl-3 h-full pointer-events-none">
-        <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground/85 whitespace-nowrap">
+        <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground/85 whitespace-nowrap">
           Today
         </span>
-        <span className="text-[10px] font-mono text-muted-foreground/85">
+        <span className="text-[11px] font-mono text-muted-foreground/85">
           {sorted.length}G
         </span>
         <div className="w-px h-3 bg-border/50 ml-0.5" />

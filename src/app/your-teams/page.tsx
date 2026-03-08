@@ -42,10 +42,10 @@ export default function Teams() {
   const pageHeader = (
     <section className="flex items-center justify-between">
       <div>
-        <h1 className="font-display text-xl font-bold tracking-tight">
+        <h1 className="font-display text-2xl font-bold tracking-tight">
           Your Teams
         </h1>
-        <p className="text-muted-foreground text-xs mt-0.5">
+        <p className="text-muted-foreground text-sm mt-0.5">
           Roster overview and team analysis.
         </p>
       </div>

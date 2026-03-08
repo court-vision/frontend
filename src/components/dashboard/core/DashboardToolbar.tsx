@@ -28,7 +28,7 @@ export function DashboardToolbar({
         <LayoutGrid className="h-3.5 w-3.5" />
         <span className="font-mono font-medium">Dashboard</span>
         {isEditMode && (
-          <span className="text-[10px] font-mono text-primary animate-pulse">
+          <span className="text-[11px] font-mono text-primary animate-pulse">
             EDIT MODE
           </span>
         )}

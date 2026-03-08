@@ -51,15 +51,15 @@ function PastRosterTable({ roster }: PastRosterTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead className="pl-3">Player</TableHead>
-            <TableHead className="w-[40px] font-mono text-[10px] uppercase tracking-wider">Team</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">MIN</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">PTS</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">REB</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">AST</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">STL</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">BLK</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">TOV</TableHead>
-            <TableHead className="w-[46px] text-right pr-3 font-mono text-[10px] uppercase tracking-wider">FP</TableHead>
+            <TableHead className="w-[40px] font-mono text-[11px] uppercase tracking-wider">Team</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">MIN</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">PTS</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">REB</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">AST</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">STL</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">BLK</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">TOV</TableHead>
+            <TableHead className="w-[46px] text-right pr-3 font-mono text-[11px] uppercase tracking-wider">FP</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -78,7 +78,7 @@ function PastRosterTable({ roster }: PastRosterTableProps) {
                 <TableCell className="pl-3">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="text-sm truncate">{player.name}</span>
-                    <span className="text-[10px] text-muted-foreground">{player.position}</span>
+                    <span className="text-[11px] text-muted-foreground">{player.position}</span>
                   </div>
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">{player.team}</TableCell>
@@ -129,7 +129,7 @@ function PastRosterTable({ roster }: PastRosterTableProps) {
 
           {/* Summary row */}
           <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
-            <TableCell colSpan={9} className="pl-3 py-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+            <TableCell colSpan={9} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
               Day total {!hasAnyStats && <span className="normal-case">(no stats)</span>}
             </TableCell>
             <TableCell className="text-right font-mono text-sm font-bold pr-3 py-2 tabular-nums">
@@ -156,8 +156,8 @@ function FutureRosterTable({ roster }: FutureRosterTableProps) {
       <TableHeader>
         <TableRow>
           <TableHead className="pl-3">Player</TableHead>
-          <TableHead className="w-[40px] font-mono text-[10px] uppercase tracking-wider">Team</TableHead>
-          <TableHead className="pr-3 font-mono text-[10px] uppercase tracking-wider">Game</TableHead>
+          <TableHead className="w-[40px] font-mono text-[11px] uppercase tracking-wider">Team</TableHead>
+          <TableHead className="pr-3 font-mono text-[11px] uppercase tracking-wider">Game</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -174,9 +174,9 @@ function FutureRosterTable({ roster }: FutureRosterTableProps) {
                 <span className={cn("text-sm truncate", player.injured && "text-muted-foreground")}>
                   {player.name}
                 </span>
-                <span className="text-[10px] text-muted-foreground">{player.position}</span>
+                <span className="text-[11px] text-muted-foreground">{player.position}</span>
                 {player.injured && player.injury_status && (
-                  <Badge variant="destructive" className="text-[10px] shrink-0">
+                  <Badge variant="destructive" className="text-[11px] shrink-0">
                     {player.injury_status}
                   </Badge>
                 )}
@@ -198,7 +198,7 @@ function FutureRosterTable({ roster }: FutureRosterTableProps) {
 
         {/* Summary row */}
         <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
-          <TableCell colSpan={3} className="pl-3 py-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+          <TableCell colSpan={3} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
             {playingCount} player{playingCount !== 1 ? "s" : ""} with games
           </TableCell>
         </TableRow>
@@ -223,7 +223,7 @@ function DailyTeamCard({ team, dayType, isYourTeam }: DailyTeamCardProps) {
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           {isYourTeam && (
-            <Badge variant="default" className="text-[10px]">You</Badge>
+            <Badge variant="default" className="text-[11px]">You</Badge>
           )}
           <CardTitle className="text-sm font-semibold truncate">
             {team.team_name}
@@ -231,7 +231,7 @@ function DailyTeamCard({ team, dayType, isYourTeam }: DailyTeamCardProps) {
         </div>
         {isPast && (
           <div className="mt-2">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Day Total</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Day Total</p>
             <p className="font-mono text-xl font-bold tabular-nums">
               {team.total_fpts !== null ? Math.round(team.total_fpts) : "—"}
             </p>
@@ -239,7 +239,7 @@ function DailyTeamCard({ team, dayType, isYourTeam }: DailyTeamCardProps) {
         )}
         {!isPast && (
           <div className="mt-2">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Players w/ Games</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Players w/ Games</p>
             <p className="font-mono text-xl font-bold tabular-nums">
               {(team.roster as DailyMatchupFuturePlayer[]).filter((p) => p.has_game).length}
             </p>

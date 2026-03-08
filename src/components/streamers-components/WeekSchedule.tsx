@@ -31,7 +31,7 @@ function ScheduleRow({
             return (
               <div
                 key={dayIndex}
-                className="w-5 h-4 flex items-center justify-center text-[10px] text-muted-foreground"
+                className="w-5 h-4 flex items-center justify-center text-[11px] text-muted-foreground"
               >
                 {dayIndex === currentDay ? (
                   <ChevronDown className="w-3 h-3 text-primary" />
@@ -53,7 +53,7 @@ function ScheduleRow({
           return (
             <div
               key={dayIndex}
-              className={`w-5 h-5 rounded-sm flex items-center justify-center text-[10px] font-medium transition-colors
+              className={`w-5 h-5 rounded-sm flex items-center justify-center text-[11px] font-medium transition-colors
                 ${
                   hasGame
                     ? isCurrentDay
@@ -153,7 +153,7 @@ function HeaderRow({
               {dayIndex === currentDay ? (
                 <ChevronDown className="w-3 h-3 text-primary" />
               ) : (
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[11px] text-muted-foreground">
                   {dayIndex + 1}
                 </span>
               )}

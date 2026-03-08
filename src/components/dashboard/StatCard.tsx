@@ -27,7 +27,7 @@ export function StatCard({
       variant={href ? "interactive" : "panel"}
       className={cn("p-3.5", className)}
     >
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+      <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
         {label}
       </p>
       <div className="flex items-center gap-2 mt-1">

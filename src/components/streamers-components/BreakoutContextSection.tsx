@@ -7,7 +7,7 @@ export function BreakoutContextSection({ context }: { context: BreakoutCandidate
   return (
     <div className="rounded-md border border-status-projected/30 bg-status-projected/5 p-3 space-y-2">
       <div className="flex items-center gap-2">
-        <Badge variant="breakout" className="text-[10px]">OPP</Badge>
+        <Badge variant="breakout" className="text-[11px]">OPP</Badge>
         <span className="text-xs font-semibold text-status-projected">
           Injury Opportunity
         </span>

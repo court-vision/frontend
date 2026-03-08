@@ -370,7 +370,7 @@ function EspnAddTeamForm() {
             <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
             <Lock className="h-3.5 w-3.5" />
             <span>Private league settings</span>
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 ml-auto font-normal">Optional</Badge>
+            <Badge variant="outline" className="text-[11px] px-1.5 py-0 ml-auto font-normal">Optional</Badge>
           </summary>
 
           <div className="flex flex-col gap-3 pt-3">
@@ -857,7 +857,7 @@ function EditTeamFormContent({
             <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
             <Lock className="h-3.5 w-3.5" />
             <span>Private league settings</span>
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 ml-auto font-normal">Optional</Badge>
+            <Badge variant="outline" className="text-[11px] px-1.5 py-0 ml-auto font-normal">Optional</Badge>
           </summary>
 
           <div className="flex flex-col gap-3 pt-3">

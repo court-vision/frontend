@@ -88,7 +88,7 @@ function CategoryStrengthsCard({
         <div className="grid grid-cols-4 gap-x-3 gap-y-1">
           {CATEGORY_KEYS.map(({ label, key }) => (
             <div key={key} className="flex items-baseline justify-between">
-              <span className="text-[10px] text-muted-foreground">{label}</span>
+              <span className="text-[11px] text-muted-foreground">{label}</span>
               <span className="text-xs font-mono tabular-nums">
                 {strengths[key].toFixed(1)}
               </span>
@@ -154,7 +154,7 @@ function ScheduleOverviewCard({
         ))}
       </div>
       {overview.teams_with_b2b.length > 0 && (
-        <p className="text-[10px] text-muted-foreground mt-1.5">
+        <p className="text-[11px] text-muted-foreground mt-1.5">
           {overview.teams_with_b2b.length} B2B
         </p>
       )}

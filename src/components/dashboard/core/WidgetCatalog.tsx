@@ -53,7 +53,7 @@ export function WidgetCatalog({ open, onClose, teamKey }: WidgetCatalogProps) {
             if (!widgets.length) return null;
             return (
               <div key={cat}>
-                <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">
+                <p className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider mb-2">
                   {CATEGORY_LABELS[cat]}
                 </p>
                 <div className="space-y-1">

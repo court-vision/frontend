@@ -78,7 +78,7 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
         </div>
 
         <div className="mt-2 flex items-center gap-1">
-          <span className="text-[10px] text-muted-foreground font-mono">
+          <span className="text-[11px] text-muted-foreground font-mono">
             Team ID: <span className="text-foreground">{team.team_id}</span>
           </span>
           <button

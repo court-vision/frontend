@@ -217,7 +217,7 @@ function TeamRosterTable({ team, onPlayerClick }: TeamRosterTableProps) {
                   {player.name}
                 </span>
                 {player.injured && player.injury_status && (
-                  <Badge variant="destructive" className="text-[10px]">
+                  <Badge variant="destructive" className="text-[11px]">
                     {player.injury_status}
                   </Badge>
                 )}
@@ -269,15 +269,15 @@ function LiveTeamRosterTable({ team, games, onPlayerClick }: LiveTeamRosterTable
           <TableRow>
             <TableHead className="w-[50px] pl-3">Slot</TableHead>
             <TableHead>Player</TableHead>
-            <TableHead className="w-[110px] font-mono text-[10px] uppercase tracking-wider">Game</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">MIN</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">PTS</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">REB</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">AST</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">STL</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">BLK</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[10px] uppercase tracking-wider">TOV</TableHead>
-            <TableHead className="w-[46px] text-right pr-3 font-mono text-[10px] uppercase tracking-wider">FP</TableHead>
+            <TableHead className="w-[110px] font-mono text-[11px] uppercase tracking-wider">Game</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">MIN</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">PTS</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">REB</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">AST</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">STL</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">BLK</TableHead>
+            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">TOV</TableHead>
+            <TableHead className="w-[46px] text-right pr-3 font-mono text-[11px] uppercase tracking-wider">FP</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -318,7 +318,7 @@ function LiveTeamRosterTable({ team, games, onPlayerClick }: LiveTeamRosterTable
                       {player.name}
                     </span>
                     {player.injured && player.injury_status && (
-                      <Badge variant="destructive" className="text-[10px] shrink-0">
+                      <Badge variant="destructive" className="text-[11px] shrink-0">
                         {player.injury_status}
                       </Badge>
                     )}
@@ -360,7 +360,7 @@ function LiveTeamRosterTable({ team, games, onPlayerClick }: LiveTeamRosterTable
 
           {/* Summary row — active players only */}
           <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
-            <TableCell colSpan={10} className="pl-3 py-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+            <TableCell colSpan={10} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
               Active total {!hasAnyLive && <span className="normal-case">(no games yet)</span>}
             </TableCell>
             <TableCell className="text-right font-mono text-sm font-bold pr-3 py-2 tabular-nums">
@@ -387,7 +387,7 @@ function TeamCard({ team, isYourTeam, onPlayerClick }: TeamCardProps) {
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           {isYourTeam && (
-            <Badge variant="default" className="text-[10px]">You</Badge>
+            <Badge variant="default" className="text-[11px]">You</Badge>
           )}
           <CardTitle className="text-sm font-semibold truncate">
             {team.team_name}
@@ -395,13 +395,13 @@ function TeamCard({ team, isYourTeam, onPlayerClick }: TeamCardProps) {
         </div>
         <div className="flex gap-6 mt-2">
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Current</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Current</p>
             <p className="font-mono text-xl font-bold tabular-nums">
               {Math.round(team.current_score)}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Projected</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Projected</p>
             <p className="font-mono text-lg text-muted-foreground tabular-nums">
               {team.projected_score.toFixed(1)}
             </p>
@@ -428,7 +428,7 @@ function LiveTeamCard({ team, isYourTeam, games, onPlayerClick }: LiveTeamCardPr
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           {isYourTeam && (
-            <Badge variant="default" className="text-[10px]">You</Badge>
+            <Badge variant="default" className="text-[11px]">You</Badge>
           )}
           <CardTitle className="text-sm font-semibold truncate">
             {team.team_name}
@@ -436,13 +436,13 @@ function LiveTeamCard({ team, isYourTeam, games, onPlayerClick }: LiveTeamCardPr
         </div>
         <div className="flex gap-6 mt-2">
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Current</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Current</p>
             <p className="font-mono text-xl font-bold tabular-nums">
               {Math.round(team.current_score)}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Projected</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Projected</p>
             <p className="font-mono text-lg text-muted-foreground tabular-nums">
               {team.projected_score.toFixed(1)}
             </p>
@@ -603,7 +603,7 @@ export function MatchupDisplay({
               <span className="text-xs text-muted-foreground">
                 Week {display.matchup_period}
               </span>
-              <span className="text-[10px] text-muted-foreground/50">
+              <span className="text-[11px] text-muted-foreground/50">
                 {formatDate(display.matchup_period_start)} – {formatDate(display.matchup_period_end)}
               </span>
             </div>
@@ -649,7 +649,7 @@ export function MatchupDisplay({
                 }}
               />
             </div>
-            <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
+            <div className="flex justify-between mt-2 text-[11px] text-muted-foreground">
               <span>Proj: {yourProjected.toFixed(1)}</span>
               <span className="text-center">
                 Winner: <span className="text-foreground font-medium">{projectedWinner}</span>

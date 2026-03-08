@@ -22,7 +22,7 @@ export function QuickActionsWidget() {
           className="flex flex-col items-center gap-1 p-2 rounded-md hover:bg-muted/40 transition-colors text-center"
         >
           <Icon className={cn("h-5 w-5", color)} />
-          <span className="text-[10px] text-muted-foreground">{label}</span>
+          <span className="text-[11px] text-muted-foreground">{label}</span>
         </Link>
       ))}
     </div>

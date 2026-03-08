@@ -11,7 +11,7 @@ function DeveloperSettings() {
     <div className="space-y-3">
       <div>
         <h3 className="text-sm font-semibold">Developer</h3>
-        <p className="text-muted-foreground text-xs mt-0.5">
+        <p className="text-muted-foreground text-sm mt-0.5">
           Manage API keys and access developer documentation.
         </p>
       </div>
@@ -54,8 +54,8 @@ export default function Settings() {
     <div className="space-y-4 animate-slide-up-fade">
       {/* Page header */}
       <section>
-        <h1 className="font-display text-xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground text-xs mt-0.5">
+        <h1 className="font-display text-2xl font-bold tracking-tight">Settings</h1>
+        <p className="text-muted-foreground text-sm mt-0.5">
           Manage your preferences and notification settings.
         </p>
       </section>

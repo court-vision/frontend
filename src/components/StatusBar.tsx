@@ -57,7 +57,7 @@ export function StatusBar() {
   }, []);
 
   return (
-    <div className="h-6 border-t border-border bg-card/40 px-3 flex items-center justify-between text-[10px] font-mono text-muted-foreground shrink-0">
+    <div className="h-7 border-t border-border bg-card/80 px-3 flex items-center justify-between text-[11px] text-muted-foreground shrink-0">
       {/* Left: Tip ticker */}
       <div className="flex items-center gap-2 hidden sm:flex">
         <span className="text-muted-foreground/30">tip</span>
@@ -77,7 +77,7 @@ export function StatusBar() {
         >
           ⌘K
         </button>
-        <span className="text-muted-foreground/25">{clock}</span>
+        <span className="font-mono text-muted-foreground/25">{clock}</span>
       </div>
     </div>
   );

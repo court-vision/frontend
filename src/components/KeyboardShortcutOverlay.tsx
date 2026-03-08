@@ -126,7 +126,7 @@ export function KeyboardShortcutOverlay() {
               key={group.title}
               className="rounded-md border border-border bg-card/80 p-4 shadow-[inset_0_0_0_1px_hsl(215_15%_10%)]"
             >
-              <h3 className="text-[10px] font-semibold tracking-wider text-primary/60 uppercase mb-3">
+              <h3 className="text-[11px] font-semibold tracking-wider text-primary/60 uppercase mb-3">
                 {group.title}
               </h3>
               <div className="space-y-1.5">

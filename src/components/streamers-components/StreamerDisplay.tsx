@@ -322,7 +322,7 @@ export default function StreamerDisplay() {
                 <Badge
                   key={pos}
                   variant={selectedPositions.has(pos) ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-primary/80 text-[10px]"
+                  className="cursor-pointer hover:bg-primary/80 text-[11px]"
                   onClick={() => togglePosition(pos)}
                 >
                   {pos}
@@ -334,7 +334,7 @@ export default function StreamerDisplay() {
                 variant="ghost"
                 size="sm"
                 onClick={clearPositionFilters}
-                className="text-[10px] h-5 px-1.5"
+                className="text-[11px] h-5 px-1.5"
               >
                 Clear
               </Button>
@@ -432,7 +432,7 @@ export default function StreamerDisplay() {
                               {showB2bBadge && (
                                 <Badge
                                   variant="secondary"
-                                  className="text-[10px]"
+                                  className="text-[11px]"
                                 >
                                   B2B
                                 </Badge>
@@ -442,7 +442,7 @@ export default function StreamerDisplay() {
                                   <TooltipTrigger asChild>
                                     <Badge
                                       variant="breakout"
-                                      className="text-[10px] cursor-help"
+                                      className="text-[11px] cursor-help"
                                     >
                                       OPP
                                     </Badge>
@@ -477,7 +477,7 @@ export default function StreamerDisplay() {
                                   <Badge
                                     key={pos}
                                     variant="outline"
-                                    className="text-[10px] px-1.5 py-0"
+                                    className="text-[11px] px-1.5 py-0"
                                   >
                                     {pos}
                                   </Badge>

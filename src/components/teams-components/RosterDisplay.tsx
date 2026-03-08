@@ -61,21 +61,21 @@ function getInjuryBadge(status: string | null) {
 
   if (["OUT", "O", "IL", "IL+"].includes(upper)) {
     return (
-      <Badge className="text-[10px] px-1 py-0 h-4 bg-red-500/15 text-red-500 border-red-500/30">
+      <Badge className="text-[11px] px-1 py-0 h-4 bg-red-500/15 text-red-500 border-red-500/30">
         {upper}
       </Badge>
     );
   }
   if (["DTD", "DAY_TO_DAY"].includes(upper)) {
     return (
-      <Badge className="text-[10px] px-1 py-0 h-4 bg-orange-500/15 text-orange-500 border-orange-500/30">
+      <Badge className="text-[11px] px-1 py-0 h-4 bg-orange-500/15 text-orange-500 border-orange-500/30">
         {upper === "DAY_TO_DAY" ? "DTD" : upper}
       </Badge>
     );
   }
   if (["GTD", "QUESTIONABLE", "DOUBTFUL"].includes(upper)) {
     return (
-      <Badge className="text-[10px] px-1 py-0 h-4 bg-yellow-500/15 text-yellow-500 border-yellow-500/30">
+      <Badge className="text-[11px] px-1 py-0 h-4 bg-yellow-500/15 text-yellow-500 border-yellow-500/30">
         {upper === "QUESTIONABLE" ? "Q" : upper === "DOUBTFUL" ? "DBT" : upper}
       </Badge>
     );
@@ -190,7 +190,7 @@ export function RosterDisplay({ roster, provider = "espn" }: RosterDisplayProps)
                     <span className="flex items-center justify-end gap-1">
                       {player.schedule?.games_remaining ?? "-"}
                       {player.schedule?.has_b2b && (
-                        <Badge className="text-[10px] px-1 py-0 h-4 bg-orange-500/15 text-orange-500 border-orange-500/30">
+                        <Badge className="text-[11px] px-1 py-0 h-4 bg-orange-500/15 text-orange-500 border-orange-500/30">
                           B2B
                         </Badge>
                       )}
@@ -204,7 +204,7 @@ export function RosterDisplay({ roster, provider = "espn" }: RosterDisplayProps)
                           <Badge
                             key={pos}
                             variant="outline"
-                            className="text-[10px] px-1 py-0 h-4"
+                            className="text-[11px] px-1 py-0 h-4"
                           >
                             {pos}
                           </Badge>
