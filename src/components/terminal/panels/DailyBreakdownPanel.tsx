@@ -177,7 +177,7 @@ function DayDetail({ teamId, date }: { teamId: number; date: string }) {
               {day.your_team.team_name}
             </span>
           </div>
-          <div className="overflow-y-auto max-h-40">
+          <div>
             {day.your_team.roster.map((player) =>
               isDailyMatchupFuture(player) ? (
                 <FuturePlayerRow key={player.player_id} player={player} />
@@ -195,7 +195,7 @@ function DayDetail({ teamId, date }: { teamId: number; date: string }) {
               {day.opponent_team.team_name}
             </span>
           </div>
-          <div className="overflow-y-auto max-h-40">
+          <div>
             {day.opponent_team.roster.map((player) =>
               isDailyMatchupFuture(player) ? (
                 <FuturePlayerRow key={player.player_id} player={player} />
