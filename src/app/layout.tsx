@@ -37,7 +37,7 @@ import Layout from "@/components/Base";
 import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://courtvision.dev"),
+  metadataBase: new URL("https://www.courtvision.dev"),
   title: {
     default: "Court Vision",
     template: "%s | Court Vision",
@@ -54,12 +54,12 @@ export const metadata: Metadata = {
     "streaming recommendations",
     "NBA fantasy",
   ],
-  authors: [{ name: "Court Vision", url: "https://courtvision.dev" }],
+  authors: [{ name: "Court Vision", url: "https://www.courtvision.dev" }],
   creator: "Court Vision",
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://courtvision.dev",
+    url: "https://www.courtvision.dev",
     siteName: "Court Vision",
     title: "Court Vision – Fantasy Basketball Analytics",
     description:
@@ -109,7 +109,7 @@ export default function RootLayout({
                 "@context": "https://schema.org",
                 "@type": "WebApplication",
                 name: "Court Vision",
-                url: "https://courtvision.dev",
+                url: "https://www.courtvision.dev",
                 description:
                   "Advanced fantasy basketball analytics platform. Player rankings, lineup optimization, matchup analysis, and streaming recommendations.",
                 applicationCategory: "SportsApplication",
