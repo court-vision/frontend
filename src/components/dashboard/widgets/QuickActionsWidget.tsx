@@ -9,7 +9,7 @@ const ACTIONS = [
   { label: "Rankings", icon: Trophy, href: "/rankings", color: "text-amber-400" },
   { label: "Matchup", icon: Swords, href: "/matchup", color: "text-blue-400" },
   { label: "Streamers", icon: Zap, href: "/streamers", color: "text-green-400" },
-  { label: "Settings", icon: Settings, href: "/your-teams", color: "text-muted-foreground" },
+  { label: "Settings", icon: Settings, href: "/settings", color: "text-muted-foreground" },
 ];
 
 export function QuickActionsWidget() {
