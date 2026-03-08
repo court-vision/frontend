@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Zap, AlertCircle, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
+import { useFocusPlayer } from "@/hooks/useFocusPlayer";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useTeams } from "@/app/context/TeamsContext";
@@ -83,7 +84,8 @@ function StreamerCard({
 }
 
 export function StreamersPanel() {
-  const { focusedPlayerId, setFocusedPlayer } = useTerminalStore();
+  const { focusedPlayerId } = useTerminalStore();
+  const focusPlayer = useFocusPlayer();
   const { selectedTeam, teams } = useTeams();
 
   const selectedTeamData = useMemo(
@@ -187,7 +189,7 @@ export function StreamersPanel() {
             key={streamer.playerId}
             streamer={streamer}
             isActive={streamer.playerId === focusedPlayerId}
-            onFocus={() => setFocusedPlayer(streamer.playerId)}
+            onFocus={() => focusPlayer(streamer.playerId)}
           />
         ))}
       </div>

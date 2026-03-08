@@ -3,6 +3,7 @@
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
+import { useFocusPlayer } from "@/hooks/useFocusPlayer";
 import { useOwnershipTrendingQuery } from "@/hooks/useOwnershipTrending";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { TrendingPlayer } from "@/types/ownership";
@@ -75,7 +76,8 @@ function TrendingItem({ player, type, isActive, onFocus }: TrendingItemProps) {
 }
 
 export function TrendingPanel() {
-  const { focusedPlayerId, setFocusedPlayer } = useTerminalStore();
+  const { focusedPlayerId } = useTerminalStore();
+  const focusPlayer = useFocusPlayer();
 
   // Fetch ownership trending data with velocity-based sorting
   // min_ownership=3 filters out deep roster noise
@@ -144,7 +146,7 @@ export function TrendingPanel() {
                   player={player}
                   type="rising"
                   isActive={player.player_id === focusedPlayerId}
-                  onFocus={() => setFocusedPlayer(player.player_id)}
+                  onFocus={() => focusPlayer(player.player_id)}
                 />
               ))}
             </div>
@@ -176,7 +178,7 @@ export function TrendingPanel() {
                   player={player}
                   type="falling"
                   isActive={player.player_id === focusedPlayerId}
-                  onFocus={() => setFocusedPlayer(player.player_id)}
+                  onFocus={() => focusPlayer(player.player_id)}
                 />
               ))}
             </div>

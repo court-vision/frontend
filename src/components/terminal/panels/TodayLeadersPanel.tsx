@@ -3,6 +3,7 @@
 import { Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
+import { useFocusPlayer } from "@/hooks/useFocusPlayer";
 import { useTodayLeadersQuery } from "@/hooks/useTodayLeadersQuery";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { LivePlayerData } from "@/types/live";
@@ -71,7 +72,8 @@ function LeaderRow({ player, rank, isActive, onFocus }: LeaderRowProps) {
 }
 
 export function TodayLeadersPanel() {
-  const { focusedPlayerId, setFocusedPlayer } = useTerminalStore();
+  const { focusedPlayerId } = useTerminalStore();
+  const focusPlayer = useFocusPlayer();
   const { data: players, isLoading, error } = useTodayLeadersQuery();
 
   if (isLoading) {
@@ -115,7 +117,7 @@ export function TodayLeadersPanel() {
             player={player}
             rank={index + 1}
             isActive={player.player_id === focusedPlayerId}
-            onFocus={() => setFocusedPlayer(player.player_id)}
+            onFocus={() => focusPlayer(player.player_id)}
           />
         ))}
       </div>

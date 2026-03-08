@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Users, TrendingUp, TrendingDown, Minus, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
+import { useFocusPlayer } from "@/hooks/useFocusPlayer";
 import { useTeamInsightsQuery } from "@/hooks/useTeams";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { EnrichedRosterPlayer, CategoryStrengths } from "@/types/team-insights";
@@ -156,7 +157,8 @@ function CategoryAveragesStrip({ strengths }: { strengths: CategoryStrengths }) 
 }
 
 export function RosterOverviewPanel() {
-  const { focusedTeamId, setFocusedPlayer, statWindow } = useTerminalStore();
+  const { focusedTeamId, statWindow } = useTerminalStore();
+  const focusPlayer = useFocusPlayer();
   const { data, isLoading, error } = useTeamInsightsQuery(focusedTeamId);
   const windowLabel = getWindowLabel(statWindow);
 
@@ -256,7 +258,7 @@ export function RosterOverviewPanel() {
               player={player}
               statWindow={statWindow}
               isActive={false}
-              onFocus={() => setFocusedPlayer(player.player_id)}
+              onFocus={() => focusPlayer(player.player_id)}
             />
           ))
         )}

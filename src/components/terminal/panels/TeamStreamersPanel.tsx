@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Zap, AlertCircle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
+import { useFocusPlayer } from "@/hooks/useFocusPlayer";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useTeamInsightsQuery } from "@/hooks/useTeams";
@@ -130,7 +131,8 @@ function WeakCategoryBadge({ label }: { label: string }) {
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 export function TeamStreamersPanel() {
-  const { focusedPlayerId, focusedTeamId, setFocusedPlayer } = useTerminalStore();
+  const { focusedPlayerId, focusedTeamId } = useTerminalStore();
+  const focusPlayer = useFocusPlayer();
   const { selectedTeam, teams } = useTeams();
 
   // Use focusedTeamId (terminal mode) or selectedTeam (dashboard mode)
@@ -265,7 +267,7 @@ export function TeamStreamersPanel() {
             key={streamer.playerId}
             streamer={streamer}
             isActive={streamer.playerId === focusedPlayerId}
-            onFocus={() => setFocusedPlayer(streamer.playerId)}
+            onFocus={() => focusPlayer(streamer.playerId)}
           />
         ))}
       </div>
