@@ -121,7 +121,7 @@ export function StreamersPanel() {
       for (const s of streamerData.streamers) {
         seen.add(s.player_id);
         items.push({
-          playerId: s.player_id,
+          playerId: s.nba_player_id ?? s.player_id,
           name: s.name,
           team: s.team,
           avgFpts: s.avg_points_last_n ?? s.avg_points_season,
@@ -138,7 +138,7 @@ export function StreamersPanel() {
       if (seen.has(c.beneficiary.player_id)) continue;
       seen.add(c.beneficiary.player_id);
       items.push({
-        playerId: c.beneficiary.player_id,
+        playerId: c.beneficiary.nba_player_id ?? c.beneficiary.player_id,
         name: c.beneficiary.name,
         team: c.beneficiary.team,
         avgFpts: c.beneficiary.avg_fpts,

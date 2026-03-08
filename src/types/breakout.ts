@@ -2,6 +2,7 @@
 
 export interface BreakoutBeneficiary {
   player_id: number;
+  nba_player_id?: number;  // NBA (nba_api) player ID for terminal navigation
   name: string;
   team: string;
   position: string;

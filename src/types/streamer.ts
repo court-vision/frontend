@@ -7,6 +7,7 @@ export type StreamerMode = "week" | "daily";
 // Streamer player from backend response
 export interface StreamerPlayer {
   player_id: number;
+  nba_player_id: number | null;  // NBA (nba_api) player ID for terminal navigation
   name: string;
   team: string;
   valid_positions: string[];
