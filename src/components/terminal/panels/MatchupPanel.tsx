@@ -2,8 +2,6 @@
 
 import { useState, useMemo } from "react";
 import { Swords, Zap } from "lucide-react";
-import { useQueries } from "@tanstack/react-query";
-import { useAuth } from "@clerk/nextjs";
 import {
   ComposedChart,
   Bar,
@@ -15,18 +13,18 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { apiClient } from "@/lib/api";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import {
   useLiveMatchupQuery,
   useMatchupQuery,
   useMatchupScoreHistoryQuery,
-  matchupKeys,
+  useWeeklyMatchupQuery,
 } from "@/hooks/useMatchup";
 import { useTeamInsightsQuery } from "@/hooks/useTeams";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
+  DailyMatchupData,
   DailyMatchupFuturePlayer,
   DailyMatchupPlayerStats,
 } from "@/types/matchup";
@@ -105,46 +103,23 @@ function countPlayersWithGames(
 
 export function MatchupPanel() {
   const { focusedTeamId, generatedLineup } = useTerminalStore();
-  const { getToken, isSignedIn } = useAuth();
   const { data: liveData, isLoading: liveLoading, error: liveError } =
     useLiveMatchupQuery(focusedTeamId);
   const { data: matchupData } = useMatchupQuery(focusedTeamId);
   const { data: historyData } = useMatchupScoreHistoryQuery(focusedTeamId);
   const { data: insightsData } = useTeamInsightsQuery(focusedTeamId);
+  // Single bulk request for all days — replaces N parallel getDailyMatchup calls.
+  // Also seeds the per-day cache so DailyBreakdownPanel gets instant hits.
+  const { data: weeklyData } = useWeeklyMatchupQuery(focusedTeamId);
 
   const [simulating, setSimulating] = useState(false);
 
-  // Generate all dates in the matchup period from schedule overview
-  const matchupDates = useMemo(() => {
-    const schedule = insightsData?.schedule_overview;
-    if (!schedule) return [];
-    const start = new Date(schedule.matchup_start + "T00:00:00");
-    const end = new Date(schedule.matchup_end + "T00:00:00");
-    const dates: string[] = [];
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push(d.toISOString().split("T")[0]);
-    }
-    return dates;
-  }, [insightsData]);
-
-  // Fetch daily matchup data for ALL dates to get accurate player counts
-  const dailyQueries = useQueries({
-    queries: matchupDates.map((date) => ({
-      queryKey: matchupKeys.daily(focusedTeamId!, date),
-      queryFn: () => apiClient.getDailyMatchup(getToken, focusedTeamId!, date),
-      enabled: !!focusedTeamId && isSignedIn === true,
-      staleTime: 1000 * 60 * 10,
-    })),
-  });
-
-  // Build a date→dailyResult lookup for chart building
+  // Build a date→DailyMatchupData lookup for chart building
   const dailyByDate = useMemo(() => {
-    const map = new Map<string, (typeof dailyQueries)[number]>();
-    matchupDates.forEach((date, i) => {
-      map.set(date, dailyQueries[i]);
-    });
+    const map = new Map<string, DailyMatchupData>();
+    weeklyData?.days.forEach((day) => map.set(day.date, day));
     return map;
-  }, [matchupDates, dailyQueries]);
+  }, [weeklyData]);
 
   // Build chart data from actual daily matchup responses
   const chartData = useMemo(() => {
@@ -167,17 +142,16 @@ export function MatchupPanel() {
         differential = historyPoint.your_score - historyPoint.opponent_score;
       }
 
-      // Player counts from daily matchup queries (accurate per-day data)
+      // Player counts from weekly bulk query (accurate per-day data)
       let yourPlayers = 0;
       let oppPlayers = 0;
-      const date = matchupDates[i];
-      const dailyResult = date ? dailyByDate.get(date) : undefined;
-      if (dailyResult?.data) {
-        const day = dailyResult.data;
+      const dayDate = weeklyData?.days[i]?.date;
+      const day = dayDate ? dailyByDate.get(dayDate) : undefined;
+      if (day) {
         yourPlayers = countPlayersWithGames(day.your_team.roster);
         oppPlayers = countPlayersWithGames(day.opponent_team.roster);
       } else {
-        // Fallback to schedule overview for your team if daily not loaded yet
+        // Fallback to schedule overview for your team while weekly data loads
         yourPlayers = schedule.day_game_counts[i] ?? 0;
       }
 
@@ -199,7 +173,7 @@ export function MatchupPanel() {
     }
 
     return points;
-  }, [historyData, insightsData, matchupDates, dailyByDate, simulating, generatedLineup]);
+  }, [historyData, insightsData, weeklyData, dailyByDate, simulating, generatedLineup]);
 
   // Compute symmetric domains so both axes share 0 at the same visual position
   const playerAxisDomain = useMemo(() => {

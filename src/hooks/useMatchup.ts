@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
 import { getTodayET } from "@/lib/utils";
@@ -16,6 +17,7 @@ export const matchupKeys = {
   live: (teamId: number) => [...matchupKeys.all, "live", teamId] as const,
   daily: (teamId: number, date: string) =>
     [...matchupKeys.all, "daily", teamId, date] as const,
+  week: (teamId: number) => [...matchupKeys.all, "week", teamId] as const,
 };
 
 // Hooks
@@ -78,4 +80,39 @@ export function useMatchupScoreHistoryQuery(
     enabled: !!teamId && isSignedIn === true,
     staleTime: 1000 * 60 * 5, // 5 minutes - historical data doesn't change often
   });
+}
+
+/**
+ * Fetches all days in the current matchup period in a single request.
+ * Replaces the N-parallel getDailyMatchup batch in MatchupPanel.
+ *
+ * After the data loads, each day is seeded into the individual daily query
+ * cache so DailyBreakdownPanel gets instant cache hits when the user selects
+ * any day.
+ */
+export function useWeeklyMatchupQuery(teamId: number | null) {
+  const { getToken, isSignedIn } = useAuth();
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: matchupKeys.week(teamId!),
+    queryFn: () => apiClient.getWeeklyMatchup(getToken, teamId!),
+    enabled: !!teamId && isSignedIn === true,
+    staleTime: 1000 * 60 * 10, // 10 minutes - same as individual daily queries
+    refetchOnWindowFocus: true,
+  });
+
+  // Seed per-day cache so DailyBreakdownPanel gets instant hits for any date
+  useEffect(() => {
+    if (!query.data || !teamId) return;
+    query.data.days.forEach((day) => {
+      const key = matchupKeys.daily(teamId, day.date);
+      // Only seed if there's no fresher data already cached
+      if (!queryClient.getQueryState(key)?.data) {
+        queryClient.setQueryData(key, day);
+      }
+    });
+  }, [query.data, teamId, queryClient]);
+
+  return query;
 }

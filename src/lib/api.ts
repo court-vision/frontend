@@ -50,6 +50,8 @@ import type {
   LiveMatchupResponse,
   DailyMatchupData,
   DailyMatchupResponse,
+  WeeklyMatchupData,
+  WeeklyMatchupResponse,
 } from "@/types/matchup";
 import type { StreamerRequest, StreamerResponse } from "@/types/streamer";
 import type {
@@ -325,6 +327,20 @@ class ApiClient {
       return response.data;
     }
     throw new Error(response.message || "Failed to fetch daily matchup data");
+  }
+
+  async getWeeklyMatchup(
+    getToken: GetTokenFn,
+    teamId: number
+  ): Promise<WeeklyMatchupData> {
+    const response = await this.authenticatedRequest<WeeklyMatchupResponse>(
+      `${MATCHUPS_API}/week/${teamId}`,
+      getToken
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to fetch weekly matchup data");
   }
 
   // Breakout Streamers API (internal, Clerk auth)

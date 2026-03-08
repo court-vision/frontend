@@ -160,3 +160,12 @@ export interface DailyMatchupData {
 }
 
 export type DailyMatchupResponse = BaseApiResponse<DailyMatchupData>;
+
+// ---- Weekly matchup types (full period in one request) ----
+
+export interface WeeklyMatchupData {
+  matchup_period: number;
+  days: DailyMatchupData[];
+}
+
+export type WeeklyMatchupResponse = BaseApiResponse<WeeklyMatchupData>;
