@@ -5,6 +5,7 @@ import { AlertCircle, Calendar } from "lucide-react";
 import { cn, getTodayET } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import {
+  useLiveMatchupQuery,
   useMatchupScoreHistoryQuery,
   useDailyMatchupQuery,
 } from "@/hooks/useMatchup";
@@ -211,8 +212,20 @@ function DayDetail({ teamId, date }: { teamId: number; date: string }) {
 
 export function DailyBreakdownPanel() {
   const { focusedTeamId } = useTerminalStore();
-  const today = getTodayET();
-  const [selectedDate, setSelectedDate] = useState<string>(today);
+
+  // Use backend's game_date as the authoritative "today" — it's baseline-aware
+  // and won't advance until the pipeline has produced a new baseline.
+  // Falls back to getTodayET() while loading.
+  const { data: liveMatchup } = useLiveMatchupQuery(focusedTeamId);
+  const today = liveMatchup?.game_date ?? getTodayET();
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayET());
+
+  // Sync selectedDate when backend's effective date arrives/changes
+  const [lastSyncedDate, setLastSyncedDate] = useState<string | null>(null);
+  if (liveMatchup?.game_date && liveMatchup.game_date !== lastSyncedDate) {
+    setSelectedDate(liveMatchup.game_date);
+    setLastSyncedDate(liveMatchup.game_date);
+  }
 
   const { data: historyData, isLoading: historyLoading, error: historyError } =
     useMatchupScoreHistoryQuery(focusedTeamId);

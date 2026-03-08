@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Swords, ChevronDown, ChevronUp, Zap } from "lucide-react";
+import { Swords, Zap } from "lucide-react";
 import { useQueries } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
 import {
@@ -19,6 +19,7 @@ import { apiClient } from "@/lib/api";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import {
   useLiveMatchupQuery,
+  useMatchupQuery,
   useMatchupScoreHistoryQuery,
   matchupKeys,
 } from "@/hooks/useMatchup";
@@ -26,116 +27,12 @@ import { useTeamInsightsQuery } from "@/hooks/useTeams";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
-  LiveMatchupPlayer,
-  LiveMatchupTeam,
   DailyMatchupFuturePlayer,
   DailyMatchupPlayerStats,
 } from "@/types/matchup";
 import type { SlimGene } from "@/types/lineup";
 
 const BENCH_SLOTS = new Set(["BE", "IR"]);
-
-// --- Shared sub-components (kept from original) ---
-
-function LiveBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold text-red-500 uppercase leading-none">
-      <span className="relative flex h-1.5 w-1.5">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-      </span>
-      LIVE
-    </span>
-  );
-}
-
-function PlayerRow({ player }: { player: LiveMatchupPlayer }) {
-  const isLive = player.live?.game_status === 2;
-  const isFinal = player.live?.game_status === 3;
-  const liveFpts = player.live?.live_fpts;
-
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/20 hover:bg-muted/30 transition-colors">
-      <span className="shrink-0 w-7 text-[9px] font-mono text-muted-foreground uppercase text-center">
-        {player.lineup_slot}
-      </span>
-      <div className="flex-1 min-w-0">
-        <span className="text-[11px] font-medium truncate block leading-none mb-0.5">
-          {player.name}
-        </span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-mono text-muted-foreground uppercase">
-            {player.team}
-          </span>
-          {isLive && <LiveBadge />}
-          {isFinal && (
-            <span className="text-[9px] font-mono text-muted-foreground/50 uppercase">
-              Final
-            </span>
-          )}
-        </div>
-      </div>
-      <span
-        className={cn(
-          "shrink-0 text-[9px] font-mono tabular-nums px-1 py-0.5 rounded-sm leading-none",
-          player.games_remaining > 0
-            ? "text-blue-400 bg-blue-400/10"
-            : "text-muted-foreground/40 bg-muted/30"
-        )}
-      >
-        {player.games_remaining}G
-      </span>
-      <div className="shrink-0 text-right w-14">
-        {isLive && liveFpts !== undefined && liveFpts !== null ? (
-          <span className="font-mono text-xs font-bold tabular-nums text-amber-400">
-            {liveFpts.toFixed(1)}
-          </span>
-        ) : (
-          <span className="font-mono text-xs tabular-nums text-foreground">
-            {player.avg_points.toFixed(1)}
-          </span>
-        )}
-        <div className="text-[9px] font-mono text-muted-foreground/60 tabular-nums">
-          {player.projected_points.toFixed(1)} proj
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TeamRosterList({ team, showBench }: { team: LiveMatchupTeam; showBench: boolean }) {
-  const starters = team.roster.filter((p) => !BENCH_SLOTS.has(p.lineup_slot));
-  const bench = team.roster.filter((p) => BENCH_SLOTS.has(p.lineup_slot));
-  const displayed = showBench ? team.roster : starters;
-
-  if (displayed.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-6">
-        <p className="text-[10px] text-muted-foreground">No players</p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {(showBench ? starters : displayed).map((p) => (
-        <PlayerRow key={p.player_id} player={p} />
-      ))}
-      {showBench && bench.length > 0 && (
-        <>
-          <div className="px-3 py-0.5 bg-muted/20 border-b border-border/20">
-            <span className="text-[9px] font-mono text-muted-foreground/60 uppercase tracking-wider">
-              Bench
-            </span>
-          </div>
-          {bench.map((p) => (
-            <PlayerRow key={p.player_id} player={p} />
-          ))}
-        </>
-      )}
-    </div>
-  );
-}
 
 // --- Chart data types ---
 
@@ -211,11 +108,10 @@ export function MatchupPanel() {
   const { getToken, isSignedIn } = useAuth();
   const { data: liveData, isLoading: liveLoading, error: liveError } =
     useLiveMatchupQuery(focusedTeamId);
+  const { data: matchupData } = useMatchupQuery(focusedTeamId);
   const { data: historyData } = useMatchupScoreHistoryQuery(focusedTeamId);
   const { data: insightsData } = useTeamInsightsQuery(focusedTeamId);
 
-  const [activeTab, setActiveTab] = useState<"my_team" | "opponent">("my_team");
-  const [showBench, setShowBench] = useState(false);
   const [simulating, setSimulating] = useState(false);
 
   // Generate all dates in the matchup period from schedule overview
@@ -348,9 +244,6 @@ export function MatchupPanel() {
         <Skeleton className="h-14 w-full" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-6 w-full" />
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-8 w-full" />
-        ))}
       </div>
     );
   }
@@ -371,7 +264,6 @@ export function MatchupPanel() {
   const margin = Math.abs(liveData.projected_margin);
   const projWinnerIsYou = liveData.projected_winner === yourTeam.team_name;
   const showProjectedBadge = margin > 5;
-  const activeTeam = activeTab === "my_team" ? yourTeam : opponentTeam;
 
   const canSimulate = generatedLineup !== null;
 
@@ -379,6 +271,13 @@ export function MatchupPanel() {
   const displayedYourProj = simProjectedDelta != null
     ? yourTeam.projected_score + simProjectedDelta
     : yourTeam.projected_score;
+  const displayedOppProj = opponentTeam.projected_score;
+
+  // Win probability (simple projected-score ratio, same as MatchupPreview)
+  const totalProjected = displayedYourProj + displayedOppProj;
+  const winProbability = totalProjected > 0
+    ? Math.round((displayedYourProj / totalProjected) * 100)
+    : 50;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -432,6 +331,23 @@ export function MatchupPanel() {
           Week {liveData.matchup_period} &middot; {liveData.matchup_period_start}{" "}
           &ndash; {liveData.matchup_period_end}
         </div>
+      </div>
+
+      {/* Win probability bar */}
+      <div className="shrink-0 px-3 py-2 border-b border-border/40">
+        <div className="flex justify-between text-[9px] font-mono text-muted-foreground/60 mb-1">
+          <span>Proj: {displayedYourProj.toFixed(1)}</span>
+          <span>Proj: {displayedOppProj.toFixed(1)}</span>
+        </div>
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all duration-500"
+            style={{ width: `${winProbability}%` }}
+          />
+        </div>
+        <p className="text-center text-[9px] font-mono text-muted-foreground/60 mt-1">
+          <span className="font-medium text-foreground/80">{winProbability}%</span> win probability
+        </p>
       </div>
 
       {/* Combined chart */}
@@ -536,73 +452,8 @@ export function MatchupPanel() {
         </div>
       )}
 
-      {/* Tab bar + bench toggle */}
-      <div className="shrink-0 flex items-center border-b border-border/30 bg-muted/5">
-        <button
-          className={cn(
-            "flex-1 py-1 text-[10px] font-mono uppercase tracking-wider transition-colors",
-            activeTab === "my_team"
-              ? "text-primary border-b-2 border-primary bg-primary/5"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-          )}
-          onClick={() => setActiveTab("my_team")}
-        >
-          My Team
-        </button>
-        <button
-          className={cn(
-            "flex-1 py-1 text-[10px] font-mono uppercase tracking-wider transition-colors",
-            activeTab === "opponent"
-              ? "text-primary border-b-2 border-primary bg-primary/5"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-          )}
-          onClick={() => setActiveTab("opponent")}
-        >
-          Opponent
-        </button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-[9px] font-mono text-muted-foreground rounded-none border-l border-border/30"
-          onClick={() => setShowBench((v) => !v)}
-        >
-          {showBench ? (
-            <>
-              <ChevronUp className="h-2.5 w-2.5 mr-1" />
-              Hide Bench
-            </>
-          ) : (
-            <>
-              <ChevronDown className="h-2.5 w-2.5 mr-1" />
-              Bench
-            </>
-          )}
-        </Button>
-      </div>
-
-      {/* Column headers */}
-      <div className="shrink-0 flex items-center gap-2 px-3 py-0.5 border-b border-border/20 bg-muted/10">
-        <span className="w-7 text-[9px] text-muted-foreground uppercase tracking-wider text-center">
-          Slot
-        </span>
-        <span className="flex-1 text-[9px] text-muted-foreground uppercase tracking-wider">
-          Player
-        </span>
-        <span className="w-6 text-[9px] text-muted-foreground uppercase tracking-wider text-center">
-          G
-        </span>
-        <span className="w-14 text-[9px] text-muted-foreground uppercase tracking-wider text-right">
-          FPTS
-        </span>
-      </div>
-
-      {/* Player list */}
-      <div className="flex-1 overflow-y-auto">
-        <TeamRosterList team={activeTeam} showBench={showBench} />
-      </div>
-
       {/* Footer: projected scores */}
-      <div className="shrink-0 border-t border-border/30 px-3 py-1 flex items-center justify-between bg-muted/10">
+      <div className="shrink-0 border-t border-border/30 px-3 py-1 flex items-center justify-between bg-muted/10 mt-auto">
         <span className="text-[9px] font-mono text-muted-foreground/60">
           Projected
           {simulating && (
@@ -612,7 +463,7 @@ export function MatchupPanel() {
         <span className="text-[9px] font-mono tabular-nums text-muted-foreground">
           {displayedYourProj.toFixed(1)}{" "}
           <span className="text-muted-foreground/40">vs</span>{" "}
-          {opponentTeam.projected_score.toFixed(1)}
+          {displayedOppProj.toFixed(1)}
         </span>
       </div>
     </div>
