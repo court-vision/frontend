@@ -11,7 +11,10 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
-import { useMatchupScoreHistoryQuery } from "@/hooks/useMatchup";
+import {
+  useMatchupScoreHistoryQuery,
+  useLiveMatchupQuery,
+} from "@/hooks/useMatchup";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { DailyScorePoint } from "@/types/matchup";
 
@@ -46,6 +49,7 @@ function TerminalTooltip({
 export function ScoreHistoryPanel() {
   const { focusedTeamId } = useTerminalStore();
   const { data, isLoading, error } = useMatchupScoreHistoryQuery(focusedTeamId);
+  const { data: liveData } = useLiveMatchupQuery(focusedTeamId);
 
   if (!focusedTeamId) {
     return (
@@ -79,7 +83,7 @@ export function ScoreHistoryPanel() {
   const { team_name, opponent_team_name, matchup_period } = history;
   const points: DailyScorePoint[] = history.history ?? [];
 
-  const latest = points.length > 0 ? points[points.length - 1] : null;
+  const lastHistoryPoint = points.length > 0 ? points[points.length - 1] : null;
 
   const chartData = points.map((p) => ({
     day: p.day_of_matchup,
@@ -87,10 +91,27 @@ export function ScoreHistoryPanel() {
     opponent_score: p.opponent_score,
   }));
 
-  const yourLead =
-    latest != null
-      ? latest.your_score - latest.opponent_score
-      : null;
+  // Overlay live scores when they differ from the last history snapshot,
+  // matching the pattern used by MatchupScoreChart on the matchup page.
+  const liveYour = liveData?.your_team.current_score;
+  const liveOpp = liveData?.opponent_team.current_score;
+  if (liveYour != null && liveOpp != null && lastHistoryPoint) {
+    const liveChanged =
+      Math.abs(liveYour - lastHistoryPoint.your_score) > 0.05 ||
+      Math.abs(liveOpp - lastHistoryPoint.opponent_score) > 0.05;
+    if (liveChanged) {
+      chartData.push({
+        day: lastHistoryPoint.day_of_matchup + 1,
+        your_score: liveYour,
+        opponent_score: liveOpp,
+      });
+    }
+  }
+
+  // Use live scores for footer when available, otherwise fall back to last history point
+  const displayYour = liveYour ?? lastHistoryPoint?.your_score ?? 0;
+  const displayOpp = liveOpp ?? lastHistoryPoint?.opponent_score ?? 0;
+  const yourLead = displayYour - displayOpp;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -169,7 +190,7 @@ export function ScoreHistoryPanel() {
       </div>
 
       {/* Footer: current totals */}
-      {latest && (
+      {(lastHistoryPoint || liveData) && (
         <div className="px-3 py-1.5 border-t border-border/40 shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
@@ -178,7 +199,7 @@ export function ScoreHistoryPanel() {
                 style={{ backgroundColor: "hsl(var(--primary))" }}
               />
               <span className="font-mono text-[10px] tabular-nums text-primary font-semibold">
-                {latest.your_score.toFixed(1)}
+                {displayYour.toFixed(1)}
               </span>
             </div>
             <div className="flex items-center gap-1">
@@ -187,21 +208,19 @@ export function ScoreHistoryPanel() {
                 style={{ backgroundColor: "hsl(var(--destructive))" }}
               />
               <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-                {latest.opponent_score.toFixed(1)}
+                {displayOpp.toFixed(1)}
               </span>
             </div>
           </div>
-          {yourLead !== null && (
-            <span
-              className={cn(
-                "font-mono text-[10px] tabular-nums font-semibold",
-                yourLead >= 0 ? "text-emerald-500" : "text-destructive"
-              )}
-            >
-              {yourLead >= 0 ? "+" : ""}
-              {yourLead.toFixed(1)}
-            </span>
-          )}
+          <span
+            className={cn(
+              "font-mono text-[10px] tabular-nums font-semibold",
+              yourLead >= 0 ? "text-emerald-500" : "text-destructive"
+            )}
+          >
+            {yourLead >= 0 ? "+" : ""}
+            {yourLead.toFixed(1)}
+          </span>
         </div>
       )}
     </div>

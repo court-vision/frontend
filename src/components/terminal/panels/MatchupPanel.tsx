@@ -136,9 +136,13 @@ export function MatchupPanel() {
       const historyPoint = history.find((h) => h.day_of_matchup === i);
       const isPastOrCurrent = i <= currentDayIndex;
 
-      // Score differential: only for past/current days with data
+      // Score differential: use live scores for current day, history for past
       let differential: number | null = null;
-      if (isPastOrCurrent && historyPoint) {
+      if (i === currentDayIndex && liveData) {
+        // Live scores are always the most up-to-date for the current day
+        differential =
+          liveData.your_team.current_score - liveData.opponent_team.current_score;
+      } else if (isPastOrCurrent && historyPoint) {
         differential = historyPoint.your_score - historyPoint.opponent_score;
       }
 
@@ -173,7 +177,7 @@ export function MatchupPanel() {
     }
 
     return points;
-  }, [historyData, insightsData, weeklyData, dailyByDate, simulating, generatedLineup]);
+  }, [historyData, insightsData, weeklyData, dailyByDate, simulating, generatedLineup, liveData]);
 
   // Compute symmetric domains so both axes share 0 at the same visual position
   const playerAxisDomain = useMemo(() => {
