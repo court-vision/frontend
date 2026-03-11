@@ -279,7 +279,17 @@ export function DailyBreakdownPanel() {
           const abbrev = DAY_ABBREV[dayName] ?? dayName.slice(0, 3).toUpperCase();
           const isToday = point.date === today;
           const isSelected = effectiveSelected === point.date;
-          const lead = point.your_score - point.opponent_score;
+          // day_of_matchup=N stores end-of-day-(N-1) scores (written the next morning),
+          // so the actual end-of-day score for this tab lives in day_of_matchup+1.
+          // Fall back to live score for today's tab, or the current point if no next record.
+          const nextPoint = history.history.find(
+            (p) => p.day_of_matchup === point.day_of_matchup + 1
+          );
+          const lead = isToday && liveMatchup
+            ? liveMatchup.your_team.current_score - liveMatchup.opponent_team.current_score
+            : nextPoint
+              ? nextPoint.your_score - nextPoint.opponent_score
+              : point.your_score - point.opponent_score;
 
           return (
             <button

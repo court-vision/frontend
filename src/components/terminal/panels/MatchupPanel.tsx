@@ -130,10 +130,17 @@ export function MatchupPanel() {
     const currentDayIndex = schedule.current_day_index;
     const totalDays = schedule.day_game_counts.length;
 
-    const points: MatchupChartPoint[] = [];
+    // Prepend a "Start" anchor (0 vs 0) — the day_of_matchup=0 record is always
+    // the week-start snapshot with 0,0 scores because the post-game pipeline runs
+    // the following morning (day_of_matchup=N stores end-of-day-N scores written
+    // on day N+1). D1 correctly maps to day_of_matchup=1, D2 to day_of_matchup=2, etc.
+    const points: MatchupChartPoint[] = [
+      { day: -1, dayLabel: "Start", differential: 0, yourPlayers: 0, oppPlayers: 0 },
+    ];
 
     for (let i = 0; i < totalDays; i++) {
-      const historyPoint = history.find((h) => h.day_of_matchup === i);
+      // Shift by +1: day_of_matchup=1 holds end-of-D1 scores, =2 holds end-of-D2, etc.
+      const historyPoint = history.find((h) => h.day_of_matchup === i + 1);
       const isPastOrCurrent = i <= currentDayIndex;
 
       // Score differential: use live scores for current day, history for past
