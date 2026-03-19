@@ -140,7 +140,15 @@ export function NBATeamLiveGamePanel() {
                   {awayInfo?.name ?? game.away_team} @ {homeInfo?.name ?? game.home_team}
                 </span>
                 <span className="text-[10px] text-primary mt-0.5">
-                  {game.start_time_et ? `${game.start_time_et} ET` : game.game_date}
+                  {game.is_today
+                    ? game.start_time_et
+                      ? `${game.start_time_et} ET`
+                      : game.game_date
+                    : new Date(game.game_date + "T00:00:00").toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      }) + (game.start_time_et ? ` · ${game.start_time_et} ET` : "")}
                 </span>
                 {game.arena && (
                   <span className="text-[9px] text-muted-foreground/50 mt-0.5">{game.arena}</span>
@@ -248,7 +256,11 @@ export function NBATeamLiveGamePanel() {
           </>
         ) : (
           <div className="flex items-center justify-center h-16 text-xs text-muted-foreground/40">
-            {isScheduled ? "No injury report" : "No performer data"}
+            {isScheduled
+              ? "No injury report available"
+              : isFinal && !game.is_today
+              ? "No box score data for past games"
+              : "No performer data"}
           </div>
         )}
       </div>
