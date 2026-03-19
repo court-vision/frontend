@@ -17,6 +17,8 @@ import {
   AreaChart,
   LayoutGrid,
   Sparkles,
+  Activity,
+  Building2,
 } from "lucide-react";
 import type { PanelDefinition } from "@/types/terminal";
 
@@ -173,6 +175,47 @@ export const PANEL_REGISTRY: PanelDefinition[] = [
     icon: Sparkles,
     category: "team",
     description: "Streaming pickups contextualized to team category weaknesses",
+    defaultSize: { width: 100, height: 100 },
+  },
+  // NBA team panels
+  {
+    id: "nba-team-live-game",
+    name: "Live Game",
+    icon: Activity,
+    category: "nba-team",
+    description: "Live score, top performers, and quarter-by-quarter breakdown",
+    defaultSize: { width: 100, height: 100 },
+  },
+  {
+    id: "nba-team-stats",
+    name: "Team Stats",
+    icon: BarChart3,
+    category: "nba-team",
+    description: "Season record and efficiency ratings (OFF/DEF/NET rating, pace, TS%)",
+    defaultSize: { width: 100, height: 100 },
+  },
+  {
+    id: "nba-team-roster",
+    name: "NBA Roster",
+    icon: Users,
+    category: "nba-team",
+    description: "Active roster with per-game stats, clickable to Player Mode",
+    defaultSize: { width: 100, height: 100 },
+  },
+  {
+    id: "nba-team-schedule",
+    name: "NBA Schedule",
+    icon: CalendarDays,
+    category: "nba-team",
+    description: "Full season schedule with results and defensive rating context",
+    defaultSize: { width: 100, height: 100 },
+  },
+  {
+    id: "nba-team-matchup-difficulty",
+    name: "Matchup Difficulty",
+    icon: Shield,
+    category: "nba-team",
+    description: "Upcoming opponent difficulty sorted by defensive rating",
     defaultSize: { width: 100, height: 100 },
   },
 ];

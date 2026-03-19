@@ -29,8 +29,11 @@ export const useTerminalStore = create<TerminalState>()(
       focusedPlayerId: null,
       comparisonPlayerIds: [],
 
-      // Team focus
+      // Fantasy team focus
       focusedTeamId: null,
+
+      // NBA team focus
+      focusedNBATeamId: null,
 
       // Watchlist
       watchlist: [],
@@ -38,6 +41,7 @@ export const useTerminalStore = create<TerminalState>()(
 
       // Last focused team (persisted)
       lastFocusedTeamId: null,
+      lastFocusedNBATeamId: null,
 
       // Generated lineup (shared between LineupOptimizer and MatchupPanel)
       generatedLineup: null,
@@ -102,6 +106,13 @@ export const useTerminalStore = create<TerminalState>()(
 
       setFocusedTeam: (id) => {
         set({ focusedTeamId: id, lastFocusedTeamId: id ?? get().lastFocusedTeamId });
+      },
+
+      setFocusedNBATeam: (abbrev) => {
+        set({
+          focusedNBATeamId: abbrev,
+          lastFocusedNBATeamId: abbrev ?? get().lastFocusedNBATeamId,
+        });
       },
 
       cycleTeam: (teamIds, direction) => {
@@ -225,6 +236,7 @@ export const useTerminalStore = create<TerminalState>()(
         layout: state.layout,
         statWindow: state.statWindow,
         lastFocusedTeamId: state.lastFocusedTeamId,
+        lastFocusedNBATeamId: state.lastFocusedNBATeamId,
       }),
     }
   )

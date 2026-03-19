@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Search, RefreshCw, Settings, ChevronRight, Terminal, Swords } from "lucide-react";
+import { Search, RefreshCw, Settings, ChevronRight, Terminal, Swords, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useRankingsQuery } from "@/hooks/useRankings";
 import { useTeamsQuery } from "@/hooks/useTeams";
 import { GameScoreTicker } from "@/components/dashboard/GameScoreTicker";
+import { NBA_TEAMS, NBA_TEAM_BY_ABBREV } from "@/lib/nbaTeams";
 import type { LayoutPreset } from "@/types/terminal";
 
 interface CommandBarProps {
@@ -36,6 +37,12 @@ interface TeamSearchResult {
   provider: string;
 }
 
+interface NBATeamSearchResult {
+  type: "nba-team";
+  abbrev: string;
+  name: string;
+}
+
 interface PlayerSearchResult {
   type: "player";
   id: number;
@@ -43,7 +50,7 @@ interface PlayerSearchResult {
   team: string;
 }
 
-type SearchResultItem = PlayerSearchResult | TeamSearchResult;
+type SearchResultItem = NBATeamSearchResult | PlayerSearchResult | TeamSearchResult;
 
 export function TerminalCommandBar({ className }: CommandBarProps) {
   const [inputValue, setInputValue] = useState("");
@@ -55,6 +62,7 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
   const {
     setFocusedPlayer,
     setFocusedTeam,
+    setFocusedNBATeam,
     addToCommandHistory,
     setStatWindow,
     setLayoutPreset,
@@ -85,7 +93,7 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
       .map((p) => ({ type: "player" as const, id: p.id, name: p.player_name, team: p.team }));
   }, [inputValue, rankings, isCommand]);
 
-  // Filter teams based on search input
+  // Filter fantasy teams based on search input
   const teamResults = useMemo((): TeamSearchResult[] => {
     if (isCommand || inputValue.length < 2 || !teams) return [];
     return teams
@@ -101,10 +109,23 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
       }));
   }, [inputValue, teams, isCommand]);
 
-  // Merged search results: teams first (max 2), then players
+  // Filter NBA teams based on search input (name or abbreviation)
+  const nbaTeamResults = useMemo((): NBATeamSearchResult[] => {
+    if (isCommand || inputValue.length < 2) return [];
+    const q = inputValue.toLowerCase();
+    return NBA_TEAMS.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.abbrev.toLowerCase().includes(q)
+    )
+      .slice(0, 3)
+      .map((t) => ({ type: "nba-team" as const, abbrev: t.abbrev, name: t.name }));
+  }, [inputValue, isCommand]);
+
+  // Merged search results: NBA teams first, then fantasy teams, then players
   const searchResults = useMemo((): SearchResultItem[] => {
-    return [...teamResults, ...playerResults];
-  }, [teamResults, playerResults]);
+    return [...nbaTeamResults, ...teamResults, ...playerResults];
+  }, [nbaTeamResults, teamResults, playerResults]);
 
   // Combined results for display
   const results = isCommand ? commandSuggestions : searchResults;
@@ -169,16 +190,37 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
         }
         case "focus": {
           if (args.length === 0) {
-            setCommandFeedback("Usage: :focus <player or team name>");
+            setCommandFeedback("Usage: :focus <player, NBA team, or fantasy team name>");
             break;
           }
           const searchName = args.join(" ").toLowerCase();
-          // Try team match first
+          // Try NBA team abbreviation match first (e.g. :focus LAL)
+          const nbaTeamByAbbrev = NBA_TEAM_BY_ABBREV[args.join("").toUpperCase()];
+          if (nbaTeamByAbbrev) {
+            setFocusedNBATeam(nbaTeamByAbbrev.abbrev);
+            setFocusedTeam(null);
+            setFocusedPlayer(null);
+            setCommandFeedback(`Focused on ${nbaTeamByAbbrev.name}`);
+            break;
+          }
+          // Try NBA team name match
+          const nbaTeamByName = NBA_TEAMS.find((t) =>
+            t.name.toLowerCase().includes(searchName)
+          );
+          if (nbaTeamByName) {
+            setFocusedNBATeam(nbaTeamByName.abbrev);
+            setFocusedTeam(null);
+            setFocusedPlayer(null);
+            setCommandFeedback(`Focused on ${nbaTeamByName.name}`);
+            break;
+          }
+          // Try fantasy team match
           const team = teams?.find((t) =>
             t.league_info.team_name.toLowerCase().includes(searchName)
           );
           if (team) {
             setFocusedTeam(team.team_id);
+            setFocusedNBATeam(null);
             setFocusedPlayer(null);
             setCommandFeedback(`Focused on ${team.league_info.team_name}`);
             break;
@@ -224,6 +266,7 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
       clearComparison,
       setFocusedPlayer,
       setFocusedTeam,
+      setFocusedNBATeam,
       addToCommandHistory,
     ]
   );
@@ -269,10 +312,12 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
             setInputValue("");
           }
         } else if (searchResults.length > 0) {
-          // Select player or team
+          // Select player, NBA team, or fantasy team
           const selected = searchResults[selectedIndex];
           if (selected) {
-            if (selected.type === "team") {
+            if (selected.type === "nba-team") {
+              handleSelectNBATeam(selected.abbrev, selected.name);
+            } else if (selected.type === "team") {
               handleSelectTeam(selected.id, selected.name);
             } else {
               handleSelectPlayer(selected.id, selected.name);
@@ -293,6 +338,16 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
   const handleSelectPlayer = (playerId: number, playerName: string) => {
     setFocusedPlayer(playerId);
     addToCommandHistory(playerName);
+    setInputValue("");
+    setSelectedIndex(0);
+    inputRef.current?.blur();
+  };
+
+  const handleSelectNBATeam = (abbrev: string, teamName: string) => {
+    setFocusedNBATeam(abbrev);
+    setFocusedTeam(null);
+    setFocusedPlayer(null);
+    addToCommandHistory(teamName);
     setInputValue("");
     setSelectedIndex(0);
     inputRef.current?.blur();
@@ -386,35 +441,57 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
         {/* Search Results Dropdown */}
         {isFocused && !isCommand && searchResults.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-1 py-1 bg-popover border border-border rounded-md shadow-lg z-50">
-            {searchResults.map((result, index) => (
-              <button
-                key={`${result.type}-${result.id}`}
-                className={cn(
-                  "flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left",
-                  "hover:bg-muted transition-colors",
-                  index === selectedIndex && "bg-muted"
-                )}
-                onClick={() => {
-                  if (result.type === "team") {
-                    handleSelectTeam(result.id, result.name);
-                  } else {
-                    handleSelectPlayer(result.id, result.name);
-                  }
-                }}
-              >
-                {result.type === "team" ? (
+            {searchResults.map((result, index) => {
+              const key =
+                result.type === "nba-team"
+                  ? `nba-team-${result.abbrev}`
+                  : `${result.type}-${result.id}`;
+              const icon =
+                result.type === "nba-team" ? (
+                  <Building2 className="h-3 w-3 text-blue-400 shrink-0" />
+                ) : result.type === "team" ? (
                   <Swords className="h-3 w-3 text-primary shrink-0" />
                 ) : (
                   <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                )}
-                <span className={cn("font-medium", result.type === "team" && "text-primary")}>
-                  {result.name}
-                </span>
-                <span className="text-xs text-muted-foreground ml-auto">
-                  {result.type === "team" ? result.provider.toUpperCase() : result.team}
-                </span>
-              </button>
-            ))}
+                );
+              const subtitle =
+                result.type === "nba-team"
+                  ? result.abbrev
+                  : result.type === "team"
+                  ? result.provider.toUpperCase()
+                  : result.team;
+              return (
+                <button
+                  key={key}
+                  className={cn(
+                    "flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left",
+                    "hover:bg-muted transition-colors",
+                    index === selectedIndex && "bg-muted"
+                  )}
+                  onClick={() => {
+                    if (result.type === "nba-team") {
+                      handleSelectNBATeam(result.abbrev, result.name);
+                    } else if (result.type === "team") {
+                      handleSelectTeam(result.id, result.name);
+                    } else {
+                      handleSelectPlayer(result.id, result.name);
+                    }
+                  }}
+                >
+                  {icon}
+                  <span
+                    className={cn(
+                      "font-medium",
+                      result.type === "nba-team" && "text-blue-400",
+                      result.type === "team" && "text-primary"
+                    )}
+                  >
+                    {result.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-auto">{subtitle}</span>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

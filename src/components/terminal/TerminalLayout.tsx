@@ -32,6 +32,11 @@ import {
   DailyBreakdownPanel,
   LineupOptimizerPanel,
   TeamStreamersPanel,
+  NBATeamLiveGamePanel,
+  NBATeamStatsPanel,
+  NBATeamRosterPanel,
+  NBATeamSchedulePanel,
+  NBATeamMatchupDifficultyPanel,
 } from "./panels";
 import type { LayoutPreset } from "@/types/terminal";
 
@@ -46,6 +51,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
     layout,
     focusedPlayerId,
     focusedTeamId,
+    focusedNBATeamId,
     comparisonPlayerIds,
     toggleLeftPanel,
     toggleRightPanel,
@@ -55,6 +61,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
     setStatWindow,
     setFocusedPlayer,
     setFocusedTeam,
+    setFocusedNBATeam,
     cycleTeam,
   } = useTerminalStore();
 
@@ -62,8 +69,9 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
   const teamIds = (teams ?? []).map((t) => t.team_id);
 
   const hasComparison = comparisonPlayerIds.length > 0;
-  const isTeamMode = focusedTeamId !== null && focusedPlayerId === null;
-  const isOverview = focusedPlayerId === null && focusedTeamId === null;
+  const isNBATeamMode = focusedNBATeamId !== null && focusedPlayerId === null;
+  const isTeamMode = focusedTeamId !== null && focusedNBATeamId === null && focusedPlayerId === null;
+  const isOverview = focusedPlayerId === null && focusedTeamId === null && focusedNBATeamId === null;
 
   const { leftPanelCollapsed, rightPanelCollapsed, preset } = layout;
 
@@ -81,11 +89,14 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         return;
       }
 
-      // Escape: return to overview (or from player mode back to team mode if in team context)
+      // Escape: Player Mode → NBA Team Mode → Fantasy Team Mode → Overview
       if (e.key === "Escape") {
         if (focusedPlayerId !== null) {
           e.preventDefault();
           setFocusedPlayer(null);
+        } else if (focusedNBATeamId !== null) {
+          e.preventDefault();
+          setFocusedNBATeam(null);
         } else if (focusedTeamId !== null) {
           e.preventDefault();
           setFocusedTeam(null);
@@ -178,7 +189,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
         groupRef.current.setLayout(newLayout);
       }
     },
-    [toggleLeftPanel, toggleRightPanel, leftPanelCollapsed, rightPanelCollapsed, focusedPlayerId, focusedTeamId, isTeamMode, teamIds, addToWatchlist, addToComparison, setLayoutPreset, setStatWindow, setFocusedPlayer, setFocusedTeam, cycleTeam]
+    [toggleLeftPanel, toggleRightPanel, leftPanelCollapsed, rightPanelCollapsed, focusedPlayerId, focusedTeamId, focusedNBATeamId, isTeamMode, teamIds, addToWatchlist, addToComparison, setLayoutPreset, setStatWindow, setFocusedPlayer, setFocusedTeam, setFocusedNBATeam, cycleTeam]
   );
 
   useEffect(() => {
@@ -213,8 +224,18 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
               {isOverview ? (
                 // Overview: Watchlist is self-wrapping with its own PanelContainer + dynamic height
                 <WatchlistPanel />
+              ) : isNBATeamMode ? (
+                // NBA Team mode: NBA Roster
+                <PanelContainer
+                  definitionId="nba-team-roster"
+                  showClose={false}
+                  showMaximize={false}
+                  className="flex-1"
+                >
+                  <NBATeamRosterPanel />
+                </PanelContainer>
               ) : isTeamMode ? (
-                // Team mode: Roster overview
+                // Fantasy Team mode: Roster overview
                 <PanelContainer
                   definitionId="roster-overview"
                   showClose={false}
@@ -261,8 +282,26 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
                 <StreamersPanel />
               </PanelContainer>
             </>
+          ) : isNBATeamMode ? (
+            // NBA Team mode: Live Game (top 60%) + Schedule (bottom 40%)
+            <>
+              <PanelContainer
+                definitionId="nba-team-live-game"
+                showClose={false}
+                className="h-[60%] min-h-0"
+              >
+                <NBATeamLiveGamePanel />
+              </PanelContainer>
+              <PanelContainer
+                definitionId="nba-team-schedule"
+                showClose={false}
+                className="flex-1 min-h-0"
+              >
+                <NBATeamSchedulePanel />
+              </PanelContainer>
+            </>
           ) : isTeamMode ? (
-            // Team mode: Matchup (top) + Daily Breakdown (bottom)
+            // Fantasy Team mode: Matchup (top) + Daily Breakdown (bottom)
             <>
               <PanelContainer
                 definitionId="matchup"
@@ -352,8 +391,28 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
                     <TrendingPanel />
                   </PanelContainer>
                 </>
+              ) : isNBATeamMode ? (
+                // NBA Team mode: Team Stats (top 50%) + Matchup Difficulty (bottom 50%)
+                <>
+                  <PanelContainer
+                    definitionId="nba-team-stats"
+                    showClose={false}
+                    showMaximize={false}
+                    className="h-[50%] min-h-0"
+                  >
+                    <NBATeamStatsPanel />
+                  </PanelContainer>
+                  <PanelContainer
+                    definitionId="nba-team-matchup-difficulty"
+                    showClose={false}
+                    showMaximize={false}
+                    className="flex-1 min-h-0"
+                  >
+                    <NBATeamMatchupDifficultyPanel />
+                  </PanelContainer>
+                </>
               ) : isTeamMode ? (
-                // Team mode: Lineup Optimizer + Team Streamers
+                // Fantasy Team mode: Lineup Optimizer + Team Streamers
                 <>
                   <PanelContainer
                     definitionId="lineup-optimizer"

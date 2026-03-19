@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { Lineup } from "./lineup";
 
 // Panel system types
-export type PanelCategory = "player" | "comparison" | "market" | "schedule" | "team";
+export type PanelCategory = "player" | "comparison" | "market" | "schedule" | "team" | "nba-team";
 
 export interface PanelDefinition {
   id: string;
@@ -114,8 +114,11 @@ export interface TerminalState {
   focusedPlayerId: number | null;
   comparisonPlayerIds: number[];
 
-  // Team focus
+  // Fantasy team focus
   focusedTeamId: number | null;
+
+  // NBA team focus (3-letter abbreviation, e.g. "LAL")
+  focusedNBATeamId: string | null;
 
   // Watchlist (persisted)
   watchlist: WatchlistPlayer[];
@@ -123,6 +126,7 @@ export interface TerminalState {
 
   // Last focused team (persisted, for session restore)
   lastFocusedTeamId: number | null;
+  lastFocusedNBATeamId: string | null;
 
   // Layout state
   layout: LayoutState;
@@ -146,6 +150,7 @@ export interface TerminalState {
   addRecentView: (id: number) => void;
   setFocusedTeam: (id: number | null) => void;
   cycleTeam: (teamIds: number[], direction: 1 | -1) => void;
+  setFocusedNBATeam: (abbrev: string | null) => void;
   setLayoutPreset: (preset: LayoutPreset) => void;
   toggleLeftPanel: () => void;
   toggleRightPanel: () => void;

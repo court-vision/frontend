@@ -39,7 +39,8 @@ import type {
 import type { RankingsPlayer } from "@/types/rankings";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
-import type { GamesOnDateData, TeamScheduleData } from "@/types/games";
+import type { GamesOnDateData, TeamScheduleData, NBATeamLiveGameData } from "@/types/games";
+import type { NBATeamStatsData, NBATeamRosterData } from "@/types/nba-team";
 import type {
   MatchupData,
   MatchupResponse,
@@ -623,6 +624,42 @@ class ApiClient {
       throw new Error(`API request failed: ${response.statusText}`);
     }
     const data: BaseApiResponse<TeamScheduleData> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
+  }
+
+  async getNBATeamStats(abbrev: string): Promise<NBATeamStatsData | null> {
+    const response = await fetch(`${API_BASE}/v1/teams/${abbrev}/stats`);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: BaseApiResponse<NBATeamStatsData> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
+  }
+
+  async getNBATeamRoster(abbrev: string): Promise<NBATeamRosterData | null> {
+    const response = await fetch(`${API_BASE}/v1/teams/${abbrev}/roster`);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: BaseApiResponse<NBATeamRosterData> = await response.json();
+    if (data.status === "success" && data.data) {
+      return data.data;
+    }
+    return null;
+  }
+
+  async getNBATeamLiveGame(abbrev: string): Promise<NBATeamLiveGameData | null> {
+    const response = await fetch(`${API_BASE}/v1/teams/${abbrev}/live-game`);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data: BaseApiResponse<NBATeamLiveGameData> = await response.json();
     if (data.status === "success" && data.data) {
       return data.data;
     }

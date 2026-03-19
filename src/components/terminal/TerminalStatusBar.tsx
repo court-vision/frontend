@@ -2,6 +2,7 @@
 
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useTeamsQuery } from "@/hooks/useTeams";
+import { NBA_TEAM_BY_ABBREV } from "@/lib/nbaTeams";
 import { cn } from "@/lib/utils";
 
 interface TerminalStatusBarProps {
@@ -9,11 +10,13 @@ interface TerminalStatusBarProps {
 }
 
 export function TerminalStatusBar({ className }: TerminalStatusBarProps) {
-  const { layout, focusedPlayerId, focusedTeamId, comparisonPlayerIds, watchlist, statWindow } =
+  const { layout, focusedPlayerId, focusedTeamId, focusedNBATeamId, comparisonPlayerIds, watchlist, statWindow } =
     useTerminalStore();
   const { data: teams } = useTeamsQuery();
 
-  const isTeamMode = focusedTeamId !== null && focusedPlayerId === null;
+  const isNBATeamMode = focusedNBATeamId !== null && focusedPlayerId === null;
+  const isTeamMode = focusedTeamId !== null && focusedNBATeamId === null && focusedPlayerId === null;
+  const focusedNBATeam = isNBATeamMode ? NBA_TEAM_BY_ABBREV[focusedNBATeamId!] : null;
   const focusedTeam = isTeamMode ? teams?.find((t) => t.team_id === focusedTeamId) : null;
   const prevTeam = isTeamMode && teams && teams.length > 1
     ? teams[(teams.findIndex((t) => t.team_id === focusedTeamId) - 1 + teams.length) % teams.length]
@@ -74,7 +77,11 @@ export function TerminalStatusBar({ className }: TerminalStatusBarProps) {
 
       {/* Center section - Status indicators / Team carousel */}
       <div className="flex items-center gap-2">
-        {isTeamMode && focusedTeam ? (
+        {isNBATeamMode && focusedNBATeam ? (
+          <span className="text-blue-400 font-medium tracking-wide">
+            {focusedNBATeam.name.toUpperCase()} · {focusedNBATeam.abbrev}
+          </span>
+        ) : isTeamMode && focusedTeam ? (
           // Team carousel
           <div className="flex items-center gap-1.5">
             {prevTeam && (

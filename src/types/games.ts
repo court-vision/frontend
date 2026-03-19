@@ -36,3 +36,46 @@ export interface TeamScheduleData {
   remaining_games: number;
   total_games: number;
 }
+
+export interface TopPerformer {
+  player_id: number;
+  name: string;
+  pts: number;
+  reb: number;
+  ast: number;
+  stl: number;
+  blk: number;
+  min: number;
+  fgm: number;
+  fga: number;
+  fg3m: number;
+}
+
+export interface InjuredPlayer {
+  player_id: number;
+  name: string;
+  status: string;
+  injury_type: string | null;
+  expected_return: string | null;
+}
+
+export interface NBATeamLiveGameData {
+  game_id: string | null;
+  game_date: string;
+  home_team: string;
+  away_team: string;
+  home_score: number | null;
+  away_score: number | null;
+  status: "scheduled" | "in_progress" | "final";
+  period: number | null;
+  game_clock: string | null;
+  start_time_et: string | null;
+  arena: string | null;
+  home_periods: number[];
+  away_periods: number[];
+  home_top_performers: TopPerformer[];
+  away_top_performers: TopPerformer[];
+  injured_players: InjuredPlayer[];
+  is_today: boolean;
+  is_upcoming: boolean;
+}
