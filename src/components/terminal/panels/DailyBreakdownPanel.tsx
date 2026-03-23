@@ -262,7 +262,30 @@ export function DailyBreakdownPanel() {
   }
 
   const history = historyData;
-  const dates = history.history.map((p) => p.date);
+
+  // Prepend a synthetic day-0 point (the matchup start day) if the first
+  // record has day_of_matchup > 0 (i.e. the post-game pipeline hadn't run yet
+  // on the first day, so no DB record exists for it).
+  const historyPoints = (() => {
+    const pts = history.history;
+    if (pts.length > 0 && pts[0].day_of_matchup > 0) {
+      const first = pts[0];
+      const firstDate = new Date(first.date + "T00:00:00");
+      firstDate.setDate(firstDate.getDate() - first.day_of_matchup);
+      return [
+        {
+          date: firstDate.toISOString().split("T")[0],
+          day_of_matchup: 0,
+          your_score: 0,
+          opponent_score: 0,
+        },
+        ...pts,
+      ];
+    }
+    return pts;
+  })();
+
+  const dates = historyPoints.map((p) => p.date);
 
   // Determine which date to show detail for — default to today if in matchup dates, else last date
   const effectiveSelected = dates.includes(selectedDate)
@@ -273,23 +296,25 @@ export function DailyBreakdownPanel() {
     <div className="flex flex-col h-full overflow-hidden">
       {/* Day tabs */}
       <div className="flex items-center gap-px px-2 py-1.5 border-b border-border/40 shrink-0 overflow-x-auto scrollbar-none">
-        {history.history.map((point) => {
+        {historyPoints.map((point) => {
           const dateObj = new Date(point.date + "T00:00:00");
           const dayName = dateObj.toLocaleDateString("en-US", { weekday: "long" });
           const abbrev = DAY_ABBREV[dayName] ?? dayName.slice(0, 3).toUpperCase();
           const isToday = point.date === today;
           const isSelected = effectiveSelected === point.date;
-          // day_of_matchup=N stores end-of-day-(N-1) scores (written the next morning),
-          // so the actual end-of-day score for this tab lives in day_of_matchup+1.
-          // Fall back to live score for today's tab, or the current point if no next record.
-          const nextPoint = history.history.find(
+          // day_of_matchup=N stores end-of-day-(N-1) scores (written the next morning).
+          // For each tab, the daily diff = (nextPoint scores) - (this point's scores).
+          // For today's tab, compare live cumulative against this point's baseline.
+          const nextPoint = historyPoints.find(
             (p) => p.day_of_matchup === point.day_of_matchup + 1
           );
           const lead = isToday && liveMatchup
-            ? liveMatchup.your_team.current_score - liveMatchup.opponent_team.current_score
+            ? (liveMatchup.your_team.current_score - point.your_score)
+              - (liveMatchup.opponent_team.current_score - point.opponent_score)
             : nextPoint
-              ? nextPoint.your_score - nextPoint.opponent_score
-              : point.your_score - point.opponent_score;
+              ? (nextPoint.your_score - point.your_score)
+                - (nextPoint.opponent_score - point.opponent_score)
+              : 0;
 
           return (
             <button
