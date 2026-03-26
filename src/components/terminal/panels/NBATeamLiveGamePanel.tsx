@@ -1,16 +1,26 @@
 "use client";
 
+import { useMemo } from "react";
 import { Activity, AlertCircle } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useNBATeamLiveGameQuery } from "@/hooks/useNBATeam";
 import { NBA_TEAM_BY_ABBREV } from "@/lib/nbaTeams";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { TopPerformer, InjuredPlayer } from "@/types/games";
+import type { TopPerformer, InjuredPlayer, GameScoreSnapshot } from "@/types/games";
+
+// --- Helpers ---
 
 function formatGameClock(clock: string | null): string {
   if (!clock) return "";
-  // ISO 8601: "PT07M23.00S" → "7:23"
   const match = clock.match(/PT(\d+)M([\d.]+)S/);
   if (match) {
     const mins = parseInt(match[1], 10);
@@ -30,6 +40,20 @@ function statusLabel(status: string, period: number | null, gameClock: string | 
   return "SCHEDULED";
 }
 
+/** Convert period + ISO 8601 game clock to elapsed seconds since tip-off. */
+function toElapsed(period: number | null, clock: string | null): number {
+  if (!period || !clock) return 0;
+  const match = clock.match(/PT(\d+)M([\d.]+)S/);
+  if (!match) return 0;
+  const clockSec = parseInt(match[1]) * 60 + Math.floor(parseFloat(match[2]));
+  const periodDuration = period <= 4 ? 720 : 300;
+  const periodOffset =
+    period <= 4 ? (period - 1) * 720 : 4 * 720 + (period - 5) * 300;
+  return periodOffset + (periodDuration - clockSec);
+}
+
+// --- Sub-components ---
+
 function InjuryStatusBadge({ status }: { status: string }) {
   const color =
     status === "Out"
@@ -44,19 +68,118 @@ function InjuryStatusBadge({ status }: { status: string }) {
   );
 }
 
+interface ChartPoint {
+  elapsed: number;
+  home: number;
+  away: number;
+}
+
+const QUARTER_TICKS = [0, 720, 1440, 2160, 2880];
+const QUARTER_LABELS: Record<number, string> = {
+  0: "Q1",
+  720: "Q2",
+  1440: "Q3",
+  2160: "Q4",
+  2880: "",
+};
+
+function ScoreChart({
+  snapshots,
+  homeTeam,
+  awayTeam,
+}: {
+  snapshots: GameScoreSnapshot[];
+  homeTeam: string;
+  awayTeam: string;
+}) {
+  const chartData = useMemo<ChartPoint[]>(() => {
+    return snapshots.map((s) => ({
+      elapsed: toElapsed(s.period, s.game_clock),
+      home: s.home_score,
+      away: s.away_score,
+    }));
+  }, [snapshots]);
+
+  if (chartData.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[110px] text-[10px] text-muted-foreground/40 font-mono uppercase tracking-wider">
+        Waiting for tip-off
+      </div>
+    );
+  }
+
+  const maxElapsed = Math.max(...chartData.map((d) => d.elapsed), 2880);
+  const allTicks = QUARTER_TICKS.filter((t) => t <= maxElapsed + 300);
+
+  return (
+    <ResponsiveContainer width="100%" height={110}>
+      <LineChart data={chartData} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+        {[720, 1440, 2160, 2880].map((t) => (
+          <ReferenceLine
+            key={t}
+            x={t}
+            stroke="hsl(var(--border))"
+            strokeWidth={1}
+            strokeDasharray="2 2"
+          />
+        ))}
+        <XAxis
+          dataKey="elapsed"
+          type="number"
+          domain={[0, maxElapsed]}
+          ticks={allTicks}
+          tickFormatter={(v) => QUARTER_LABELS[v] ?? ""}
+          tick={{ fontSize: 8, fill: "hsl(var(--muted-foreground))", fontFamily: "monospace" }}
+          axisLine={false}
+          tickLine={false}
+          interval={0}
+        />
+        <Tooltip
+          content={({ active, payload }) => {
+            if (!active || !payload?.length) return null;
+            const d = payload[0]?.payload as ChartPoint;
+            return (
+              <div className="bg-background border border-border rounded px-2 py-1 text-[9px] font-mono">
+                <span className="text-foreground">{homeTeam} {d.home}</span>
+                <span className="text-muted-foreground mx-1">·</span>
+                <span className="text-muted-foreground">{awayTeam} {d.away}</span>
+              </div>
+            );
+          }}
+        />
+        <Line
+          dataKey="home"
+          stroke="hsl(var(--primary))"
+          strokeWidth={1.5}
+          dot={false}
+          isAnimationActive={false}
+        />
+        <Line
+          dataKey="away"
+          stroke="hsl(var(--muted-foreground))"
+          strokeWidth={1.5}
+          dot={false}
+          isAnimationActive={false}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
 function PerformerRow({ p }: { p: TopPerformer }) {
   const fgStr = p.fga > 0 ? `${p.fgm}/${p.fga}` : "—";
   return (
-    <div className="flex items-center gap-2 px-2 py-1 border-b border-border/20 text-[10px] font-mono">
+    <div className="flex items-center gap-2 px-2 py-0.5 border-b border-border/20 text-[10px] font-mono">
       <span className="flex-1 min-w-0 truncate text-foreground/80">{p.name}</span>
+      <span className="shrink-0 w-6 text-right text-muted-foreground/50 tabular-nums">{p.min}&apos;</span>
       <span className="shrink-0 tabular-nums">
         <span className="text-foreground">{p.pts}</span>
-        <span className="text-muted-foreground/50">/</span>
+        <span className="text-muted-foreground/40">/</span>
         <span className="text-foreground/70">{p.reb}</span>
-        <span className="text-muted-foreground/50">/</span>
+        <span className="text-muted-foreground/40">/</span>
         <span className="text-foreground/70">{p.ast}</span>
       </span>
-      <span className="shrink-0 text-muted-foreground/50 w-10 text-right">{fgStr}</span>
+      <span className="shrink-0 text-muted-foreground/50 w-9 text-right">{fgStr}</span>
     </div>
   );
 }
@@ -72,6 +195,8 @@ function InjuryRow({ p }: { p: InjuredPlayer }) {
     </div>
   );
 }
+
+// --- Main panel ---
 
 export function NBATeamLiveGamePanel() {
   const { focusedNBATeamId } = useTerminalStore();
@@ -90,6 +215,7 @@ export function NBATeamLiveGamePanel() {
     return (
       <div className="flex flex-col gap-2 p-3">
         <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-[110px] w-full" />
         <Skeleton className="h-8 w-full" />
         <Skeleton className="h-24 w-full" />
       </div>
@@ -110,6 +236,8 @@ export function NBATeamLiveGamePanel() {
   const isLive = game.status === "in_progress";
   const isFinal = game.status === "final";
   const isScheduled = game.status === "scheduled";
+  const hasPerformers = game.home_top_performers.length > 0 || game.away_top_performers.length > 0;
+  const showChart = isLive || isFinal || game.score_history.length > 0;
 
   return (
     <div className="flex flex-col h-full overflow-hidden font-mono">
@@ -187,6 +315,17 @@ export function NBATeamLiveGamePanel() {
         </div>
       </div>
 
+      {/* Score timeline chart */}
+      {showChart && (
+        <div className="border-b border-border/30 shrink-0">
+          <ScoreChart
+            snapshots={game.score_history}
+            homeTeam={homeInfo?.abbrev ?? game.home_team}
+            awayTeam={awayInfo?.abbrev ?? game.away_team}
+          />
+        </div>
+      )}
+
       {/* Quarter breakdown */}
       {(game.home_periods.length > 0 || game.away_periods.length > 0) && (
         <div className="px-3 py-1.5 border-b border-border/30 shrink-0">
@@ -220,15 +359,14 @@ export function NBATeamLiveGamePanel() {
 
       {/* Content: top performers or injury report */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        {(isLive || isFinal) && (game.home_top_performers.length > 0 || game.away_top_performers.length > 0) ? (
+        {(isLive || isFinal) && hasPerformers ? (
           <>
-            {/* Column headers */}
             <div className="flex items-center px-2 py-1 border-b border-border/30 text-[9px] text-muted-foreground/50 uppercase tracking-wider">
               <span className="flex-1">Player</span>
-              <span className="w-16 text-right">P/R/A</span>
-              <span className="w-10 text-right">FG</span>
+              <span className="w-6 text-right">MIN</span>
+              <span className="w-16 text-right mr-1">P/R/A</span>
+              <span className="w-9 text-right">FG</span>
             </div>
-            {/* Away performers */}
             {game.away_top_performers.length > 0 && (
               <>
                 <div className="px-2 py-0.5 text-[9px] text-muted-foreground/50 uppercase tracking-wider bg-muted/10">
@@ -237,7 +375,6 @@ export function NBATeamLiveGamePanel() {
                 {game.away_top_performers.map((p, i) => <PerformerRow key={i} p={p} />)}
               </>
             )}
-            {/* Home performers */}
             {game.home_top_performers.length > 0 && (
               <>
                 <div className="px-2 py-0.5 text-[9px] text-muted-foreground/50 uppercase tracking-wider bg-muted/10">

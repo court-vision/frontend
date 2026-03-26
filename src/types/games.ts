@@ -59,6 +59,15 @@ export interface InjuredPlayer {
   expected_return: string | null;
 }
 
+export interface GameScoreSnapshot {
+  captured_at: string; // ISO 8601 datetime (UTC)
+  period: number | null;
+  game_clock: string | null;
+  home_score: number;
+  away_score: number;
+  game_status: number; // 1=scheduled, 2=in_progress, 3=final
+}
+
 export interface NBATeamLiveGameData {
   game_id: string | null;
   game_date: string;
@@ -78,4 +87,5 @@ export interface NBATeamLiveGameData {
   injured_players: InjuredPlayer[];
   is_today: boolean;
   is_upcoming: boolean;
+  score_history: GameScoreSnapshot[];
 }
