@@ -7,14 +7,40 @@ import { useNBATeamRosterQuery } from "@/hooks/useNBATeam";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { NBATeamRosterPlayer } from "@/types/nba-team";
 
-function InjuryBadge({ status }: { status: string }) {
-  const color =
-    status === "Out" || status === "Doubtful"
-      ? "bg-red-500/20 text-red-400 border-red-500/30"
-      : "bg-amber-500/20 text-amber-400 border-amber-500/30";
+// --- Position badge colors ---
+function positionColor(pos: string | null): string {
+  if (!pos) return "bg-muted/30 text-muted-foreground/50 border-border/30";
+  if (pos.startsWith("G")) return "bg-sky-500/15 text-sky-400 border-sky-500/20";
+  if (pos === "C") return "bg-amber-500/15 text-amber-400 border-amber-500/20";
+  return "bg-emerald-500/15 text-emerald-400 border-emerald-500/20"; // F / F-C / G-F
+}
+
+function PositionBadge({ position }: { position: string | null }) {
   return (
-    <span className={cn("px-1 py-0.5 rounded text-[8px] font-bold border font-mono shrink-0", color)}>
-      {status === "Questionable" ? "Q" : status === "Out" ? "OUT" : status === "Doubtful" ? "D" : status[0]}
+    <span
+      className={cn(
+        "inline-flex items-center justify-center w-7 shrink-0",
+        "text-[8px] font-bold border rounded px-0.5 py-0.5 font-mono",
+        positionColor(position)
+      )}
+    >
+      {position ?? "—"}
+    </span>
+  );
+}
+
+function InjuryBadge({ status }: { status: string }) {
+  const isOut = status === "Out" || status === "Doubtful";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center px-1 py-0.5 rounded text-[8px] font-bold border font-mono shrink-0",
+        isOut
+          ? "bg-red-500/15 text-red-400 border-red-500/25"
+          : "bg-amber-500/15 text-amber-400 border-amber-500/25"
+      )}
+    >
+      {status === "Questionable" ? "GTD" : status === "Out" ? "OUT" : status === "Doubtful" ? "D" : status[0]}
     </span>
   );
 }
@@ -26,35 +52,42 @@ function PlayerRow({
   player: NBATeamRosterPlayer;
   onClick: () => void;
 }) {
-  const fgPct = player.fg_pct !== null ? `${(player.fg_pct * 100).toFixed(1)}%` : "—";
+  const fg = player.fg_pct !== null ? `${(player.fg_pct * 100).toFixed(1)}` : "—";
+  const fpts = player.fpts.toFixed(1);
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 w-full px-3 py-1.5 border-b border-border/20",
+        "flex items-center gap-1.5 w-full px-2 py-1.5 border-b border-border/20",
         "text-[10px] font-mono text-left",
-        "hover:bg-primary/5 transition-colors cursor-pointer"
+        "hover:bg-primary/5 transition-colors cursor-pointer",
+        "group relative"
       )}
     >
-      {/* Position */}
-      <span className="shrink-0 w-5 text-center text-muted-foreground/50 text-[9px]">
-        {player.position ?? "—"}
-      </span>
+      {/* Left accent on hover */}
+      <span className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary scale-y-0 group-hover:scale-y-100 transition-transform origin-center rounded-full" />
+
+      <PositionBadge position={player.position} />
 
       {/* Name + injury */}
-      <div className="flex-1 min-w-0 flex items-center gap-1">
-        <span className="truncate text-foreground/85">{player.name}</span>
+      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+        <span className="truncate text-foreground/80 group-hover:text-foreground transition-colors">
+          {player.name}
+        </span>
         {player.injury_status && <InjuryBadge status={player.injury_status} />}
       </div>
 
+      {/* FPTS — primary color, widest */}
+      <span className="shrink-0 w-9 text-right text-primary font-semibold tabular-nums">
+        {fpts}
+      </span>
+
       {/* Stats */}
-      <div className="shrink-0 flex items-center gap-2 tabular-nums text-muted-foreground/70">
-        <span className="w-7 text-right text-foreground/80">{player.pts.toFixed(1)}</span>
-        <span className="w-7 text-right">{player.reb.toFixed(1)}</span>
-        <span className="w-7 text-right">{player.ast.toFixed(1)}</span>
-        <span className="w-10 text-right">{fgPct}</span>
-      </div>
+      <span className="shrink-0 w-7 text-right text-foreground/80 tabular-nums">{player.pts.toFixed(1)}</span>
+      <span className="shrink-0 w-7 text-right text-sky-400/75 tabular-nums">{player.reb.toFixed(1)}</span>
+      <span className="shrink-0 w-7 text-right text-emerald-400/75 tabular-nums">{player.ast.toFixed(1)}</span>
+      <span className="shrink-0 w-9 text-right text-muted-foreground/45 tabular-nums">{fg}%</span>
     </button>
   );
 }
@@ -75,8 +108,8 @@ export function NBATeamRosterPanel() {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-1 p-2">
-        {[...Array(8)].map((_, i) => (
-          <Skeleton key={i} className="h-7 w-full" />
+        {[...Array(10)].map((_, i) => (
+          <Skeleton key={i} className="h-8 w-full" />
         ))}
       </div>
     );
@@ -92,17 +125,16 @@ export function NBATeamRosterPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden font-mono">
       {/* Column headers */}
-      <div className="flex items-center gap-2 px-3 py-1 border-b border-border/40 text-[9px] uppercase tracking-wider text-muted-foreground/50 font-mono shrink-0">
-        <span className="w-5" />
-        <span className="flex-1">Player</span>
-        <div className="flex items-center gap-2">
-          <span className="w-7 text-right">PTS</span>
-          <span className="w-7 text-right">REB</span>
-          <span className="w-7 text-right">AST</span>
-          <span className="w-10 text-right">FG%</span>
-        </div>
+      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border/40 bg-muted/10 shrink-0">
+        <span className="w-7" />
+        <span className="flex-1 text-[8px] uppercase tracking-wider text-muted-foreground/40">Player</span>
+        <span className="w-9 text-right text-[8px] uppercase tracking-wider text-primary/50">FPTS</span>
+        <span className="w-7 text-right text-[8px] uppercase tracking-wider text-foreground/30">PTS</span>
+        <span className="w-7 text-right text-[8px] uppercase tracking-wider text-sky-400/40">REB</span>
+        <span className="w-7 text-right text-[8px] uppercase tracking-wider text-emerald-400/40">AST</span>
+        <span className="w-9 text-right text-[8px] uppercase tracking-wider text-muted-foreground/30">FG%</span>
       </div>
 
       {/* Player list */}
@@ -121,8 +153,9 @@ export function NBATeamRosterPanel() {
         )}
       </div>
 
-      <div className="px-3 py-1 border-t border-border/30 text-[9px] text-muted-foreground/40 font-mono shrink-0">
-        {roster.players.length} players · sorted by FPTS · click to focus
+      <div className="px-3 py-1 border-t border-border/25 bg-muted/10 text-[8px] text-muted-foreground/35 shrink-0 flex items-center justify-between">
+        <span>{roster.players.length} players</span>
+        <span className="text-muted-foreground/25">click to focus · sorted by fpts</span>
       </div>
     </div>
   );
