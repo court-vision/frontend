@@ -130,6 +130,14 @@ export const PANEL_REGISTRY: PanelDefinition[] = [
     defaultSize: { width: 100, height: 100 },
   },
   {
+    id: "live-roster",
+    name: "Live Roster",
+    icon: Activity,
+    category: "team",
+    description: "Per-player live game state with period, clock, and live FPTS",
+    defaultSize: { width: 100, height: 100 },
+  },
+  {
     id: "matchup",
     name: "Matchup",
     icon: Swords,

@@ -12,6 +12,7 @@ export { TeamSchedulePanel } from "./TeamSchedulePanel";
 export { MatchupContextPanel } from "./MatchupContextPanel";
 // Team mode panels
 export { RosterOverviewPanel } from "./RosterOverviewPanel";
+export { LiveRosterPanel } from "./LiveRosterPanel";
 export { MatchupPanel } from "./MatchupPanel";
 export { CategoryStrengthsPanel } from "./CategoryStrengthsPanel";
 export { ScoreHistoryPanel } from "./ScoreHistoryPanel";

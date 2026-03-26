@@ -27,6 +27,7 @@ import {
   TeamSchedulePanel,
   MatchupContextPanel,
   RosterOverviewPanel,
+  LiveRosterPanel,
   MatchupPanel,
   CategoryStrengthsPanel,
   DailyBreakdownPanel,
@@ -235,14 +236,14 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
                   <NBATeamRosterPanel />
                 </PanelContainer>
               ) : isTeamMode ? (
-                // Fantasy Team mode: Roster overview
+                // Fantasy Team mode: Live roster (period/clock/fpts per player)
                 <PanelContainer
-                  definitionId="roster-overview"
+                  definitionId="live-roster"
                   showClose={false}
                   showMaximize={false}
                   className="flex-1"
                 >
-                  <RosterOverviewPanel />
+                  <LiveRosterPanel />
                 </PanelContainer>
               ) : (
                 // Player mode: Player Focus card
