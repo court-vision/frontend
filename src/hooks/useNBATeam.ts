@@ -34,7 +34,7 @@ export function useNBATeamLiveGameQuery(abbrev: string | null) {
     queryFn: () => apiClient.getNBATeamLiveGame(abbrev!),
     enabled: !!abbrev,
     staleTime: 0,
-    refetchInterval: 1000 * 60, // 60 seconds — matches live pipeline cadence
+    refetchInterval: 30 * 1000, // 30 seconds — matches live pipeline cadence
     refetchOnWindowFocus: true,
   });
 }

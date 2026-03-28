@@ -44,7 +44,7 @@ export function useLiveMatchupQuery(teamId: number | null) {
     queryFn: () => apiClient.getLiveMatchup(getToken, teamId!),
     enabled: !!teamId && isSignedIn === true,
     staleTime: 0,
-    refetchInterval: 60 * 1000, // Poll every 60s in sync with the live pipeline
+    refetchInterval: 30 * 1000, // Poll every 30s in sync with the live pipeline
     refetchOnWindowFocus: true,
   });
 }
