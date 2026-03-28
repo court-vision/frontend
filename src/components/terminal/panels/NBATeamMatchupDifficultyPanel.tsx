@@ -26,7 +26,7 @@ function DifficultyBadge({ rank, total }: { rank: number; total: number }) {
 export function NBATeamMatchupDifficultyPanel() {
   const { focusedNBATeamId } = useTerminalStore();
   // Use same params as NBATeamSchedulePanel so TanStack Query deduplicates the request
-  const { data: scheduleData, isLoading, error } = useTeamScheduleQuery(focusedNBATeamId, false, 82);
+  const { data: scheduleData, isLoading, error } = useTeamScheduleQuery(focusedNBATeamId, false, 100);
 
   const sortedUpcoming = useMemo<Array<ScheduleGame & { diffRank: number }>>(() => {
     if (!scheduleData?.schedule) return [];

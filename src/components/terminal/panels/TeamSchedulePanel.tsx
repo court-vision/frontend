@@ -104,8 +104,8 @@ export function TeamSchedulePanel() {
     return null;
   }, [playerStats, rankings, focusedPlayerId]);
 
-  // Load full season (82 games max)
-  const { data: scheduleData, isLoading, error } = useTeamScheduleQuery(team, false, 82);
+  // Load full season
+  const { data: scheduleData, isLoading, error } = useTeamScheduleQuery(team, false, 100);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const firstUpcomingRef = useRef<HTMLDivElement>(null);

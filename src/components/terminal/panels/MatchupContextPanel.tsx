@@ -40,7 +40,7 @@ export function MatchupContextPanel() {
   }, [playerStats, rankings, focusedPlayerId]);
 
   // Use same params as TeamSchedulePanel so TanStack Query deduplicates the request
-  const { data: scheduleData, isLoading, error } = useTeamScheduleQuery(team, false, 82);
+  const { data: scheduleData, isLoading, error } = useTeamScheduleQuery(team, false, 100);
 
   // Filter to upcoming games only, sort hardest → easiest by def_rating
   const sortedUpcoming = useMemo<Array<ScheduleGame & { diffRank: number }>>(() => {

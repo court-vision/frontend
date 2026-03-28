@@ -86,7 +86,7 @@ function GameRow({
 
 export function NBATeamSchedulePanel() {
   const { focusedNBATeamId } = useTerminalStore();
-  const { data: scheduleData, isLoading, error } = useTeamScheduleQuery(focusedNBATeamId, false, 82);
+  const { data: scheduleData, isLoading, error } = useTeamScheduleQuery(focusedNBATeamId, false, 100);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const firstUpcomingRef = useRef<HTMLDivElement>(null);
