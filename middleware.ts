@@ -9,7 +9,7 @@ const isProtectedRoute = createRouteMatcher([
   "/manage-teams(.*)",
   "/matchup(.*)",
   "/streamers(.*)",
-  "/query-builder(.*)",
+  "/query-builder/manage-tables(.*)",
 ]);
 
 // Public routes that should be crawlable by search engines

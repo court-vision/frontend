@@ -13,7 +13,7 @@ import type { SchemaTable } from "@/types/sqlmate";
 const TOKEN_REFRESH_INTERVAL = 30_000;
 
 export default function QueryBuilderPage() {
-  const { getToken } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
   const [token, setToken] = useState<string | null>(null);
   const [schema, setSchema] = useState<SchemaTable[] | null>(null);
   const [schemaError, setSchemaError] = useState<string | null>(null);
@@ -47,11 +47,6 @@ export default function QueryBuilderPage() {
     let isMounted = true;
 
     const loadSchema = async () => {
-      if (!token) {
-        setSchema(null);
-        return;
-      }
-
       try {
         setSchemaError(null);
         const data = await getSchema(token);
@@ -86,24 +81,22 @@ export default function QueryBuilderPage() {
             Build and run SQL queries against real NBA data.
           </p>
         </div>
-        <Link href="/query-builder/manage-tables">
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-            <FolderOpen className="h-3.5 w-3.5" />
-            Manage Tables
-          </Button>
-        </Link>
+        {isSignedIn && (
+          <Link href="/query-builder/manage-tables">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <FolderOpen className="h-3.5 w-3.5" />
+              Manage Tables
+            </Button>
+          </Link>
+        )}
       </div>
-
-      {!token && (
-        <div className="p-4 text-sm text-muted-foreground">Authenticating...</div>
-      )}
 
       {schemaError && (
         <div className="p-4 text-sm text-red-500">{schemaError}</div>
       )}
 
       <div className="flex-1 flex overflow-hidden">
-        {token && schema && <QueryBuilderCanvas token={token} schema={schema} />}
+        {schema && <QueryBuilderCanvas token={token} schema={schema} />}
       </div>
     </div>
   );

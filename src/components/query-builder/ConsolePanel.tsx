@@ -25,7 +25,7 @@ import type { Table } from "@/types/sqlmate";
 import { QueryResultTable } from "./QueryResultTable";
 
 interface ConsolePanelProps {
-  token: string;
+  token: string | null;
   consoleOutput: Table | null;
   queryOutput: string | null;
   onTableSaved?: () => void;
@@ -130,26 +130,28 @@ export function ConsolePanel({
           </Button>
         </div>
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-sm px-3 py-1 h-auto flex items-center gap-1"
-                onClick={() => setShowSaveDialog(true)}
-                disabled={!consoleOutput || !queryOutput}
-              >
-                <SaveIcon size={14} /> Save Table
-              </Button>
-            </TooltipTrigger>
-            {!queryOutput && (
-              <TooltipContent>
-                <p>Run a query first to save a table</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
+        {token && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-sm px-3 py-1 h-auto flex items-center gap-1"
+                  onClick={() => setShowSaveDialog(true)}
+                  disabled={!consoleOutput || !queryOutput}
+                >
+                  <SaveIcon size={14} /> Save Table
+                </Button>
+              </TooltipTrigger>
+              {!queryOutput && (
+                <TooltipContent>
+                  <p>Run a query first to save a table</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
 
       <div className="flex-1 min-h-0 p-4 overflow-auto">

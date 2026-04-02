@@ -36,13 +36,13 @@ function getErrorMessage(payload: unknown, fallback: string): string {
 }
 
 async function apiFetch<T>(
-  token: string,
+  token: string | null,
   path: string,
   options: RequestOptions = {}
 ): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
   const response = await fetch(`${SQLMATE_ORIGIN}${path}`, {
@@ -61,12 +61,12 @@ async function apiFetch<T>(
   return payload as T;
 }
 
-export async function getSchema(token: string): Promise<SchemaTable[]> {
+export async function getSchema(token: string | null): Promise<SchemaTable[]> {
   return apiFetch<SchemaTable[]>(token, "/schema");
 }
 
 export async function runVisualQuery(
-  token: string,
+  token: string | null,
   params: QueryRequest
 ): Promise<QueryResponse> {
   return apiFetch<QueryResponse>(token, "/query", {

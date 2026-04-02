@@ -35,7 +35,7 @@ interface OrderByItem {
 }
 
 interface QueryBuilderCanvasProps {
-  token: string;
+  token: string | null;
   schema: SchemaTable[];
 }
 
@@ -121,7 +121,7 @@ function BuilderArea({
   setDroppedTables: Dispatch<SetStateAction<TableItem[]>>;
   setConsoleOutput: (output: Table) => void;
   setQueryOutput: (output: string) => void;
-  token: string;
+  token: string | null;
   allTables: TableItem[];
 }) {
   const [groupByStates, setGroupByStates] = useState<Record<string, boolean>>({});
