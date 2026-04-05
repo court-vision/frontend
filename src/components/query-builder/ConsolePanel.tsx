@@ -59,6 +59,11 @@ export function ConsolePanel({
       return;
     }
 
+    if (!token) {
+      setSaveError("Sign in to save tables");
+      return;
+    }
+
     setSaveError(null);
     setSaveSuccess(null);
     setIsSaving(true);
