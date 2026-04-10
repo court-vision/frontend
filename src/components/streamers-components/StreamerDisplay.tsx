@@ -94,7 +94,7 @@ export default function StreamerDisplay() {
     leagueInfo,
     selectedTeam,
     {
-      faCount: 75,
+      faCount: 300,
       excludeInjured: true,
       b2bOnly: b2bOnly,
       avgDays: avgDays,
