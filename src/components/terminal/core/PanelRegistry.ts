@@ -18,7 +18,7 @@ import {
   LayoutGrid,
   Sparkles,
   Activity,
-  Building2,
+  Medal,
 } from "lucide-react";
 import type { PanelDefinition } from "@/types/terminal";
 
@@ -183,6 +183,15 @@ export const PANEL_REGISTRY: PanelDefinition[] = [
     icon: Sparkles,
     category: "team",
     description: "Streaming pickups contextualized to team category weaknesses",
+    defaultSize: { width: 100, height: 100 },
+  },
+  // Playoff bracket
+  {
+    id: "bracket",
+    name: "Playoff Bracket",
+    icon: Medal,
+    category: "nba-team",
+    description: "NBA playoff bracket with live series standings",
     defaultSize: { width: 100, height: 100 },
   },
   // NBA team panels

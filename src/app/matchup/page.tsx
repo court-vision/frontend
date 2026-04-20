@@ -7,12 +7,16 @@ import { useTeams } from "@/app/context/TeamsContext";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { SeasonBanner } from "@/components/SeasonBanner";
+import { SeasonSummaryCard } from "@/components/matchup-components/SeasonSummaryCard";
+import { useSeasonSummaryQuery } from "@/hooks/useMatchup";
 import type { FantasyProvider } from "@/types/team";
 
 export default function Matchup() {
   const { selectedTeam, teams, isTeamsLoading } = useTeams();
   const { data: matchup, isLoading, error } = useMatchupQuery(selectedTeam);
   const { data: liveMatchup } = useLiveMatchupQuery(selectedTeam);
+  const { data: seasonSummary } = useSeasonSummaryQuery(selectedTeam);
 
   const hasTeams = teams && teams.length > 0;
 
@@ -30,9 +34,12 @@ export default function Matchup() {
           Matchup
         </h1>
         <p className="text-muted-foreground text-sm mt-0.5">
-          Head-to-head matchup for the current week.
+          Final matchup results — 2025–26 regular season.
         </p>
       </section>
+      <SeasonBanner />
+
+      {seasonSummary && <SeasonSummaryCard summary={seasonSummary} />}
 
       {isTeamsLoading ? (
         <MatchupDisplay

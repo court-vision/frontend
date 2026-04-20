@@ -1,6 +1,7 @@
 "use client";
 
 import RankingsDisplay from "@/components/rankings-components/RankingsDisplay";
+import { SeasonBanner } from "@/components/SeasonBanner";
 
 export default function Rankings() {
   return (
@@ -10,9 +11,10 @@ export default function Rankings() {
           Rankings
         </h1>
         <p className="text-muted-foreground text-sm mt-0.5">
-          Fantasy player rankings updated daily.
+          2025–26 season leaders — final standings.
         </p>
       </section>
+      <SeasonBanner />
       <RankingsDisplay />
     </div>
   );

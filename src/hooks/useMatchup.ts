@@ -18,6 +18,7 @@ export const matchupKeys = {
   daily: (teamId: number, date: string) =>
     [...matchupKeys.all, "daily", teamId, date] as const,
   week: (teamId: number) => [...matchupKeys.all, "week", teamId] as const,
+  seasonSummary: (teamId: number) => [...matchupKeys.all, "season-summary", teamId] as const,
 };
 
 // Hooks
@@ -115,4 +116,15 @@ export function useWeeklyMatchupQuery(teamId: number | null) {
   }, [query.data, teamId, queryClient]);
 
   return query;
+}
+
+export function useSeasonSummaryQuery(teamId: number | null) {
+  const { getToken, isSignedIn } = useAuth();
+
+  return useQuery({
+    queryKey: matchupKeys.seasonSummary(teamId!),
+    queryFn: () => apiClient.getSeasonSummary(getToken, teamId!),
+    enabled: !!teamId && isSignedIn === true,
+    staleTime: 1000 * 60 * 60, // 1 hour — season is over, data won't change
+  });
 }

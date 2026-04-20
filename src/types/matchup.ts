@@ -169,3 +169,27 @@ export interface WeeklyMatchupData {
 }
 
 export type WeeklyMatchupResponse = BaseApiResponse<WeeklyMatchupData>;
+
+// ---- Season summary types ----
+
+export interface WeekResult {
+  matchup_period: number;
+  opponent_team_name: string;
+  points_for: number;
+  points_against: number;
+  won: boolean;
+}
+
+export interface SeasonSummaryData {
+  team_id: number;
+  team_name: string;
+  wins: number;
+  losses: number;
+  total_points_for: number;
+  total_points_against: number;
+  best_week: WeekResult | null;
+  worst_week: WeekResult | null;
+  weeks: WeekResult[];
+}
+
+export type SeasonSummaryResponse = BaseApiResponse<SeasonSummaryData>;

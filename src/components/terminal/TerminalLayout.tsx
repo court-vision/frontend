@@ -38,6 +38,7 @@ import {
   NBATeamRosterPanel,
   NBATeamSchedulePanel,
   NBATeamMatchupDifficultyPanel,
+  PlayoffBracketPanel,
 } from "./panels";
 import type { LayoutPreset } from "@/types/terminal";
 
@@ -373,7 +374,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
               className="flex flex-col gap-2 p-2 overflow-hidden"
             >
               {isOverview ? (
-                // Overview: Schedule + Trending (Watchlist is in left column)
+                // Overview: Schedule (top) + Playoff Bracket (bottom)
                 <>
                   <PanelContainer
                     definitionId="schedule"
@@ -384,12 +385,12 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
                     <SchedulePanel />
                   </PanelContainer>
                   <PanelContainer
-                    definitionId="trending"
+                    definitionId="bracket"
                     showClose={false}
                     showMaximize={false}
                     className="flex-1 min-h-0"
                   >
-                    <TrendingPanel />
+                    <PlayoffBracketPanel />
                   </PanelContainer>
                 </>
               ) : isNBATeamMode ? (

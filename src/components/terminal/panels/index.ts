@@ -19,6 +19,8 @@ export { ScoreHistoryPanel } from "./ScoreHistoryPanel";
 export { DailyBreakdownPanel } from "./DailyBreakdownPanel";
 export { LineupOptimizerPanel } from "./LineupOptimizerPanel";
 export { TeamStreamersPanel } from "./TeamStreamersPanel";
+// Playoff bracket panel
+export { PlayoffBracketPanel } from "./PlayoffBracketPanel";
 // NBA team mode panels
 export { NBATeamLiveGamePanel } from "./NBATeamLiveGamePanel";
 export { NBATeamStatsPanel } from "./NBATeamStatsPanel";

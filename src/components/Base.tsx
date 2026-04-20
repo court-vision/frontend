@@ -13,10 +13,9 @@ import { FC, useEffect, useRef } from "react";
 const routeOrder = [
   "/",
   "/your-teams",
-  "/lineup-generation",
   "/matchup",
-  "/streamers",
   "/rankings",
+  "/playoffs",
   "/terminal",
   "/query-builder",
 ];

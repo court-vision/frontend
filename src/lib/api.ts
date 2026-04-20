@@ -12,6 +12,7 @@ import {
   GAMES_API,
   OWNERSHIP_API,
   SCHEDULE_API,
+  PLAYOFF_API,
   NOTIFICATIONS_API,
   API_KEYS_API,
 } from "@/endpoints";
@@ -41,6 +42,7 @@ import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData
 import type { BaseApiResponse } from "@/types/auth";
 import type { GamesOnDateData, TeamScheduleData, NBATeamLiveGameData } from "@/types/games";
 import type { NBATeamStatsData, NBATeamRosterData } from "@/types/nba-team";
+import type { PlayoffBracketData, PlayoffBracketResponse } from "@/types/playoff";
 import type {
   MatchupData,
   MatchupResponse,
@@ -53,6 +55,8 @@ import type {
   DailyMatchupResponse,
   WeeklyMatchupData,
   WeeklyMatchupResponse,
+  SeasonSummaryData,
+  SeasonSummaryResponse,
 } from "@/types/matchup";
 import type { StreamerRequest, StreamerResponse } from "@/types/streamer";
 import type {
@@ -342,6 +346,20 @@ class ApiClient {
       return response.data;
     }
     throw new Error(response.message || "Failed to fetch weekly matchup data");
+  }
+
+  async getSeasonSummary(
+    getToken: GetTokenFn,
+    teamId: number
+  ): Promise<SeasonSummaryData | null> {
+    const response = await this.authenticatedRequest<SeasonSummaryResponse>(
+      `${MATCHUPS_API}/season-summary/${teamId}`,
+      getToken
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    return null;
   }
 
   // Breakout Streamers API (internal, Clerk auth)
@@ -763,6 +781,16 @@ class ApiClient {
       }
     );
     return response;
+  }
+
+  async getPlayoffBracket(season?: string): Promise<PlayoffBracketData | null> {
+    const url = season
+      ? `${PLAYOFF_API}/bracket?season=${season}`
+      : `${PLAYOFF_API}/bracket`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data: PlayoffBracketResponse = await response.json();
+    return data.status === "success" ? data.data ?? null : null;
   }
 }
 
