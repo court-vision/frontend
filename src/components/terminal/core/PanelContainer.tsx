@@ -5,6 +5,7 @@ import { RefreshCw, Maximize2, Minimize2, X, Copy } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { PanelToolbar } from "./PanelToolbar";
+import { PanelErrorBoundary } from "./PanelErrorBoundary";
 import { getPanelDefinition } from "./PanelRegistry";
 import type { PanelDefinition } from "@/types/terminal";
 
@@ -126,7 +127,7 @@ export function PanelContainer({
             contentClassName
           )}
         >
-          {children}
+          <PanelErrorBoundary name={definition.name}>{children}</PanelErrorBoundary>
         </div>
       </Card>
 

@@ -1,3 +1,5 @@
+import { API_BASE as BACKEND_API_BASE } from "@/endpoints";
+
 // ─── Shared Types ────────────────────────────────────────
 
 export interface Param {
@@ -30,7 +32,7 @@ export interface EndpointCategory {
 
 // ─── Constants ───────────────────────────────────────────
 
-export const API_BASE = "https://api.courtvision.dev/v1";
+export const API_BASE = `${BACKEND_API_BASE}/v1`;
 
 // ─── Endpoint Data ───────────────────────────────────────
 

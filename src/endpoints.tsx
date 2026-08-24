@@ -1,13 +1,9 @@
-// Original endpoints - commented out during maintenance mode
 export const PROD_BACKEND_ENDPOINT = "https://api.courtvision.dev";
-export const LOCAL_BACKEND_ENDPOINT = "http://127.0.0.1:8000";
+
+// Set NEXT_PUBLIC_API_BASE (e.g. http://127.0.0.1:8000) to target a local backend
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || PROD_BACKEND_ENDPOINT;
 
 // API v1 Internal endpoints
-export const API_BASE =
-  true // switch for local/production backend endpoint
-    ? PROD_BACKEND_ENDPOINT
-    : LOCAL_BACKEND_ENDPOINT;
-
 export const AUTH_API = `${API_BASE}/v1/internal/auth`;
 export const USERS_API = `${API_BASE}/v1/internal/users`;
 export const TEAMS_API = `${API_BASE}/v1/internal/teams`;
@@ -26,10 +22,3 @@ export const GAMES_API = `${API_BASE}/v1/games`;
 export const OWNERSHIP_API = `${API_BASE}/v1/ownership`;
 export const SCHEDULE_API = `${API_BASE}/v1/schedule`;
 export const PLAYOFF_API = `${API_BASE}/v1/playoff`;
-// Maintenance mode endpoints - return "/api/maintenance" to be caught by middleware
-// export const PROD_BACKEND_ENDPOINT = "/api/maintenance";
-// export const DATABSE_API_ENDPOPINT = "/api/maintenance";
-// export const LOCAL_BACKEND_ENDPOINT = "/api/maintenance";
-// export const LINEUP_GENERATION_API_ENDPOINT = "/api/maintenance";
-// export const DATA_API_ENDPOINT = "/api/maintenance";
-// https://cv-backend-su3d2jcjkq-uc.a.run.app
