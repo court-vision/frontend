@@ -14,6 +14,36 @@ export interface MatchupPlayer {
   injury_status: string | null;
 }
 
+// ---- Category scoring (category leagues only; absent for points leagues) ----
+
+export type ScoringFormat = "points" | "categories";
+
+export interface CategoryScoreItem {
+  key: string;
+  label: string;
+  you: number;
+  opp: number;
+  winner: "you" | "opp" | "tie";
+  higher_is_better: boolean;
+  is_rate: boolean;
+}
+
+export interface CategoryComparison {
+  items: CategoryScoreItem[];
+  wins: number;
+  losses: number;
+  ties: number;
+}
+
+export interface CategoryTeamScore {
+  totals: Record<string, number>; // rates are 0-1 fractions
+  raw?: Record<string, number> | null;
+  wins: number;
+  losses: number;
+  ties: number;
+  live_adjusted: boolean;
+}
+
 // Team data within a matchup
 export interface MatchupTeam {
   team_name: string;
@@ -21,6 +51,7 @@ export interface MatchupTeam {
   current_score: number; // Points scored so far this matchup period
   projected_score: number; // Projected final score for matchup period
   roster: MatchupPlayer[];
+  categories?: CategoryTeamScore | null;
 }
 
 // Complete matchup data structure
@@ -31,7 +62,11 @@ export interface MatchupData {
   your_team: MatchupTeam;
   opponent_team: MatchupTeam;
   projected_winner: string; // Team name of projected winner
-  projected_margin: number; // Projected point differential
+  projected_margin: number; // Projected point differential (categories: won - lost)
+  scoring_format?: ScoringFormat;
+  settings_synced?: boolean;
+  category_comparison?: CategoryComparison | null;
+  projected_category_comparison?: CategoryComparison | null;
 }
 
 // API Response type
@@ -72,6 +107,12 @@ export interface PlayerLiveStats {
   live_blk: number;
   live_tov: number;
   live_min: number;
+  live_fgm?: number;
+  live_fga?: number;
+  live_fg3m?: number;
+  live_fg3a?: number;
+  live_ftm?: number;
+  live_fta?: number;
   game_status: number; // 1=scheduled, 2=in_progress, 3=final
   period: number | null;
   game_clock: string | null;
@@ -88,6 +129,7 @@ export interface LiveMatchupTeam {
   current_score: number;
   projected_score: number;
   roster: LiveMatchupPlayer[];
+  categories?: CategoryTeamScore | null;
 }
 
 export interface LiveMatchupData {
@@ -99,6 +141,9 @@ export interface LiveMatchupData {
   projected_winner: string;
   projected_margin: number;
   game_date: string;
+  scoring_format?: ScoringFormat;
+  settings_synced?: boolean;
+  category_comparison?: CategoryComparison | null;
 }
 
 export type LiveMatchupResponse = BaseApiResponse<LiveMatchupData>;
@@ -145,6 +190,7 @@ export interface DailyMatchupTeam {
   team_id: number;
   total_fpts: number | null;
   roster: DailyMatchupPlayerStats[] | DailyMatchupFuturePlayer[];
+  categories?: Record<string, number> | null;
 }
 
 export interface DailyMatchupData {
@@ -157,6 +203,8 @@ export interface DailyMatchupData {
   matchup_period_end: string;
   your_team: DailyMatchupTeam;
   opponent_team: DailyMatchupTeam;
+  scoring_format?: ScoringFormat;
+  category_comparison?: CategoryComparison | null;
 }
 
 export type DailyMatchupResponse = BaseApiResponse<DailyMatchupData>;
@@ -178,6 +226,9 @@ export interface WeekResult {
   points_for: number;
   points_against: number;
   won: boolean;
+  categories_won?: number | null;
+  categories_lost?: number | null;
+  categories_tied?: number | null;
 }
 
 export interface SeasonSummaryData {
@@ -190,6 +241,7 @@ export interface SeasonSummaryData {
   best_week: WeekResult | null;
   worst_week: WeekResult | null;
   weeks: WeekResult[];
+  scoring_format?: ScoringFormat;
 }
 
 export type SeasonSummaryResponse = BaseApiResponse<SeasonSummaryData>;

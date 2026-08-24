@@ -25,10 +25,35 @@ export interface LeagueInfo {
   yahoo_team_key?: string | null;
 }
 
+// Provider-detected league settings (matches backend LeagueSummary)
+export type ScoringType = "points" | "categories" | "roto";
+
+export interface CategoryDef {
+  key: string;
+  label: string;
+  higher_is_better: boolean;
+  is_rate: boolean;
+}
+
+export interface LeagueSummary {
+  id: number;
+  provider: FantasyProvider;
+  provider_league_id: string;
+  season: number;
+  name?: string | null;
+  scoring_type: ScoringType;
+  category_win_mode?: "each_category" | "most_categories" | null;
+  categories: CategoryDef[];
+  point_weights: Record<string, number>;
+  settings_synced: boolean;
+  settings_synced_at?: string | null;
+}
+
 // Team response from backend (matches backend TeamResponse)
 export interface TeamResponseData {
   team_id: number;
   league_info: LeagueInfo;
+  league?: LeagueSummary | null; // null until league settings have been synced
 }
 
 // Legacy interface for backwards compatibility
