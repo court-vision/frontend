@@ -369,7 +369,7 @@ export default function StreamerDisplay() {
                     className="w-[70px] text-right whitespace-nowrap"
                     title={isCatValue ? CAT_VALUE_TITLE : undefined}
                   >
-                    {isCatValue ? "Cat value (L14)" : `${avgDays}D Avg`}
+                    {isCatValue ? `Cat value (L${avgDays})` : `${avgDays}D Avg`}
                   </TableHead>
                   <TableHead className="w-[70px] text-center" title="Games remaining in the matchup">Games left</TableHead>
                   <TableHead className="text-center">
