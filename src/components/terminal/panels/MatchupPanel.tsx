@@ -23,6 +23,9 @@ import {
 import { useTeamInsightsQuery } from "@/hooks/useTeams";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CategoryComparisonGrid } from "@/components/matchup-components/CategoryComparisonGrid";
+import { formatRecord } from "@/lib/category-format";
+import { deriveHeadline, formatScalar, historyToCategoryPoints } from "@/lib/matchup-headline";
 import type {
   DailyMatchupData,
   DailyMatchupFuturePlayer,
@@ -53,10 +56,12 @@ function ChartTooltip({
   active,
   payload,
   label,
+  isCategories,
 }: {
   active?: boolean;
   payload?: ChartTooltipPayload[];
   label?: string;
+  isCategories?: boolean;
 }) {
   if (!active || !payload?.length) return null;
 
@@ -69,7 +74,8 @@ function ChartTooltip({
       <div className="text-muted-foreground mb-0.5">{label}</div>
       {diff?.value != null && (
         <div className={cn(diff.value >= 0 ? "text-emerald-500" : "text-destructive")}>
-          {diff.value >= 0 ? "+" : ""}{diff.value.toFixed(1)} diff
+          {diff.value >= 0 ? "+" : ""}
+          {isCategories ? `${Math.round(diff.value)} net cats` : `${diff.value.toFixed(1)} diff`}
         </div>
       )}
       {yours?.value != null && (
@@ -114,6 +120,22 @@ export function MatchupPanel() {
 
   const [simulating, setSimulating] = useState(false);
 
+  const headline = useMemo(
+    () => (liveData ? deriveHeadline(liveData, matchupData) : null),
+    [liveData, matchupData]
+  );
+  const isCategories = headline?.isCategories ?? false;
+
+  // Category leagues: net categories led per day from history snapshots.
+  const categoryNetByDay = useMemo(() => {
+    if (!isCategories || !historyData || historyData.scoring_format !== "categories") return null;
+    const map = new Map<number, number>();
+    for (const p of historyToCategoryPoints(historyData, headline?.categories ?? [])) {
+      map.set(p.day_of_matchup, p.your_score - p.opponent_score);
+    }
+    return map;
+  }, [isCategories, historyData, headline]);
+
   // Build a date→DailyMatchupData lookup for chart building
   const dailyByDate = useMemo(() => {
     const map = new Map<string, DailyMatchupData>();
@@ -143,14 +165,22 @@ export function MatchupPanel() {
       const historyPoint = history.find((h) => h.day_of_matchup === i + 1);
       const isPastOrCurrent = i <= currentDayIndex;
 
-      // Score differential: use live scores for current day, history for past
+      // Score differential: use live scores for current day, history for past.
+      // Category leagues: net categories led (wins − losses) instead of points.
       let differential: number | null = null;
       if (i === currentDayIndex && liveData) {
         // Live scores are always the most up-to-date for the current day
-        differential =
-          liveData.your_team.current_score - liveData.opponent_team.current_score;
-      } else if (isPastOrCurrent && historyPoint) {
-        differential = historyPoint.your_score - historyPoint.opponent_score;
+        differential = isCategories
+          ? liveData.category_comparison
+            ? liveData.category_comparison.wins - liveData.category_comparison.losses
+            : null
+          : liveData.your_team.current_score - liveData.opponent_team.current_score;
+      } else if (isPastOrCurrent) {
+        if (isCategories) {
+          differential = categoryNetByDay?.get(i + 1) ?? null;
+        } else if (historyPoint) {
+          differential = historyPoint.your_score - historyPoint.opponent_score;
+        }
       }
 
       // Player counts from weekly bulk query (accurate per-day data)
@@ -184,7 +214,7 @@ export function MatchupPanel() {
     }
 
     return points;
-  }, [historyData, insightsData, weeklyData, dailyByDate, simulating, generatedLineup, liveData]);
+  }, [historyData, insightsData, weeklyData, dailyByDate, simulating, generatedLineup, liveData, isCategories, categoryNetByDay]);
 
   // Compute symmetric domains so both axes share 0 at the same visual position
   const playerAxisDomain = useMemo(() => {
@@ -233,7 +263,7 @@ export function MatchupPanel() {
     );
   }
 
-  if (liveError || !liveData) {
+  if (liveError || !liveData || !headline) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center gap-2">
         <p className="text-[10px] text-destructive">Failed to load matchup</p>
@@ -246,9 +276,10 @@ export function MatchupPanel() {
   const yourScore = yourTeam.current_score;
   const oppScore = opponentTeam.current_score;
   const yourLeading = yourScore > oppScore;
-  const margin = Math.abs(liveData.projected_margin);
-  const projWinnerIsYou = liveData.projected_winner === yourTeam.team_name;
-  const showProjectedBadge = margin > 5;
+  const margin = headline.projMargin;
+  const projWinnerIsYou = headline.projWinnerIsYou;
+  const showProjectedBadge = headline.showProjectedBadge;
+  const fmt = (v: number) => formatScalar(v, headline.format);
 
   const canSimulate = generatedLineup !== null;
 
@@ -279,8 +310,13 @@ export function MatchupPanel() {
                 yourLeading ? "text-foreground" : "text-muted-foreground/70"
               )}
             >
-              {yourScore.toFixed(1)}
+              {fmt(yourScore)}
             </span>
+            {isCategories && headline.yourRecord && (
+              <span className="text-[8px] font-mono text-muted-foreground/60">
+                {formatRecord(headline.yourRecord.wins, headline.yourRecord.losses, headline.yourRecord.ties)}
+              </span>
+            )}
           </div>
           <div className="flex flex-col items-center gap-0.5">
             <span className="text-[9px] font-mono text-muted-foreground/50">vs</span>
@@ -294,7 +330,7 @@ export function MatchupPanel() {
                 )}
               >
                 {projWinnerIsYou ? "WIN +" : "LOSS -"}
-                {margin.toFixed(1)}
+                {isCategories ? Math.round(margin) : margin.toFixed(1)}
               </span>
             )}
           </div>
@@ -308,8 +344,13 @@ export function MatchupPanel() {
                 !yourLeading ? "text-foreground" : "text-muted-foreground/70"
               )}
             >
-              {oppScore.toFixed(1)}
+              {fmt(oppScore)}
             </span>
+            {isCategories && headline.oppRecord && (
+              <span className="text-[8px] font-mono text-muted-foreground/60">
+                {formatRecord(headline.oppRecord.wins, headline.oppRecord.losses, headline.oppRecord.ties)}
+              </span>
+            )}
           </div>
         </div>
         <div className="mt-1 text-[9px] font-mono text-muted-foreground/50 text-center">
@@ -321,8 +362,8 @@ export function MatchupPanel() {
       {/* Win probability bar */}
       <div className="shrink-0 px-3 py-2 border-b border-border/40">
         <div className="flex justify-between text-[9px] font-mono text-muted-foreground/60 mb-1">
-          <span>Proj: {displayedYourProj.toFixed(1)}</span>
-          <span>Proj: {displayedOppProj.toFixed(1)}</span>
+          <span>Proj: {fmt(displayedYourProj)}{isCategories && " cats"}</span>
+          <span>Proj: {fmt(displayedOppProj)}{isCategories && " cats"}</span>
         </div>
         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
           <div
@@ -334,6 +375,18 @@ export function MatchupPanel() {
           <span className="font-medium text-foreground/80">{winProbability}%</span> win probability
         </p>
       </div>
+
+      {/* Category breakdown (category leagues) */}
+      {isCategories && headline.comparison && (
+        <div className="shrink-0 border-b border-border/40 px-2 py-2">
+          <CategoryComparisonGrid
+            variant="compact"
+            comparison={headline.comparison}
+            yourName={yourTeam.team_name}
+            oppName={opponentTeam.team_name}
+          />
+        </div>
+      )}
 
       {/* Combined chart */}
       {chartData.length > 0 && (
@@ -379,7 +432,7 @@ export function MatchupPanel() {
                   domain={playerAxisDomain}
                 />
                 <Tooltip
-                  content={<ChartTooltip />}
+                  content={<ChartTooltip isCategories={isCategories} />}
                   cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
                 />
                 <ReferenceLine
@@ -446,9 +499,10 @@ export function MatchupPanel() {
           )}
         </span>
         <span className="text-[9px] font-mono tabular-nums text-muted-foreground">
-          {displayedYourProj.toFixed(1)}{" "}
+          {fmt(displayedYourProj)}{" "}
           <span className="text-muted-foreground/40">vs</span>{" "}
-          {displayedOppProj.toFixed(1)}
+          {fmt(displayedOppProj)}
+          {isCategories && " cats"}
         </span>
       </div>
     </div>

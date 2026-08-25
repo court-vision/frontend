@@ -12,11 +12,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CategoryComparisonGrid } from "@/components/matchup-components/CategoryComparisonGrid";
+import { formatRecord, recordOutcome, winnerBadgeVariant } from "@/lib/category-format";
+import { dayRecord, type TeamRecord } from "@/lib/matchup-headline";
 import type {
   DailyMatchupData,
   DailyMatchupTeam,
   DailyMatchupPlayerStats,
   DailyMatchupFuturePlayer,
+  ScoringFormat,
 } from "@/types/matchup";
 
 // Format "19:30" → "7:30P"
@@ -213,10 +217,14 @@ interface DailyTeamCardProps {
   team: DailyMatchupTeam;
   dayType: "past" | "today" | "future";
   isYourTeam: boolean;
+  format: ScoringFormat;
+  /** Category leagues: this side's record for the day. */
+  record: TeamRecord | null;
 }
 
-function DailyTeamCard({ team, dayType, isYourTeam }: DailyTeamCardProps) {
+function DailyTeamCard({ team, dayType, isYourTeam, format, record }: DailyTeamCardProps) {
   const isPast = dayType === "past" || dayType === "today";
+  const isCategories = format === "categories";
 
   return (
     <Card variant="panel" className="flex-1 overflow-hidden">
@@ -229,7 +237,23 @@ function DailyTeamCard({ team, dayType, isYourTeam }: DailyTeamCardProps) {
             {team.team_name}
           </CardTitle>
         </div>
-        {isPast && (
+        {isPast && isCategories && record && (
+          <div className="mt-2 flex items-end gap-4">
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Cats won today</p>
+              <p className="font-mono text-xl font-bold tabular-nums">
+                {record.wins}
+                <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+                  {formatRecord(record.wins, record.losses, record.ties)}
+                </span>
+              </p>
+            </div>
+            <p className="text-[11px] text-muted-foreground/60 font-mono pb-1">
+              {team.total_fpts !== null ? `${Math.round(team.total_fpts)} FP` : ""}
+            </p>
+          </div>
+        )}
+        {isPast && !(isCategories && record) && (
           <div className="mt-2">
             <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Day Total</p>
             <p className="font-mono text-xl font-bold tabular-nums">
@@ -304,18 +328,55 @@ export function DailyMatchupView({ dailyData, isLoading }: DailyMatchupViewProps
     );
   }
 
+  const format: ScoringFormat = dailyData.scoring_format ?? "points";
+  const comparison = format === "categories" ? dailyData.category_comparison ?? null : null;
+  const yourRecord = dayRecord(dailyData);
+  const oppRecord = yourRecord
+    ? { wins: yourRecord.losses, losses: yourRecord.wins, ties: yourRecord.ties }
+    : null;
+  const showDayResult = comparison && dailyData.day_type !== "future";
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-      <DailyTeamCard
-        team={dailyData.your_team}
-        dayType={dailyData.day_type}
-        isYourTeam={true}
-      />
-      <DailyTeamCard
-        team={dailyData.opponent_team}
-        dayType={dailyData.day_type}
-        isYourTeam={false}
-      />
+    <div className="space-y-3">
+      {showDayResult && (
+        <Card variant="panel" className="p-3 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+              {dailyData.day_type === "today" ? "Today so far" : "Day result"}
+            </span>
+            <Badge variant={winnerBadgeVariant(recordOutcome(comparison.wins, comparison.losses))}>
+              {formatRecord(comparison.wins, comparison.losses, comparison.ties)}
+            </Badge>
+            <span className="text-[11px] text-muted-foreground/60">
+              categories won on {dailyData.day_of_week} — the week is decided on totals
+            </span>
+          </div>
+          <CategoryComparisonGrid
+            variant="compact"
+            comparison={comparison}
+            yourName={dailyData.your_team.team_name}
+            oppName={dailyData.opponent_team.team_name}
+            yourRaw={dailyData.your_team.categories}
+            oppRaw={dailyData.opponent_team.categories}
+          />
+        </Card>
+      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <DailyTeamCard
+          team={dailyData.your_team}
+          dayType={dailyData.day_type}
+          isYourTeam={true}
+          format={format}
+          record={yourRecord}
+        />
+        <DailyTeamCard
+          team={dailyData.opponent_team}
+          dayType={dailyData.day_type}
+          isYourTeam={false}
+          format={format}
+          record={oppRecord}
+        />
+      </div>
     </div>
   );
 }

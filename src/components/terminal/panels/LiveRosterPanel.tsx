@@ -7,6 +7,7 @@ import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useFocusPlayer } from "@/hooks/useFocusPlayer";
 import { useLiveMatchupQuery } from "@/hooks/useMatchup";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatRecord } from "@/lib/category-format";
 import type { LiveMatchupPlayer } from "@/types/matchup";
 
 const POSITION_COLORS: Record<string, string> = {
@@ -45,8 +46,12 @@ function sortRoster(roster: LiveMatchupPlayer[]): LiveMatchupPlayer[] {
   });
 }
 
-function LiveStateChip({ player }: { player: LiveMatchupPlayer }) {
+function LiveStateChip({ player, showShooting }: { player: LiveMatchupPlayer; showShooting: boolean }) {
   const { live } = player;
+  // Category leagues: makes-attempts matter more than fantasy points.
+  const shootingLine = live
+    ? `${live.live_fgm ?? 0}-${live.live_fga ?? 0} FG · ${live.live_ftm ?? 0}-${live.live_fta ?? 0} FT`
+    : "";
 
   if (!live) {
     return (
@@ -87,9 +92,15 @@ function LiveStateChip({ player }: { player: LiveMatchupPlayer }) {
         <span className="text-[9px] font-mono tabular-nums text-muted-foreground/70">
           {live.live_pts}/{live.live_reb}/{live.live_ast}
         </span>
-        <span className="text-[10px] font-mono font-bold tabular-nums text-emerald-400">
-          {live.live_fpts.toFixed(1)}
-        </span>
+        {showShooting ? (
+          <span className="text-[8px] font-mono tabular-nums text-emerald-400/80 whitespace-nowrap">
+            {shootingLine}
+          </span>
+        ) : (
+          <span className="text-[10px] font-mono font-bold tabular-nums text-emerald-400">
+            {live.live_fpts.toFixed(1)}
+          </span>
+        )}
       </div>
     );
   }
@@ -103,9 +114,15 @@ function LiveStateChip({ player }: { player: LiveMatchupPlayer }) {
       <span className="text-[9px] font-mono tabular-nums text-muted-foreground/70">
         {live.live_pts}/{live.live_reb}/{live.live_ast}
       </span>
-      <span className="text-[10px] font-mono font-bold tabular-nums text-foreground">
-        {live.live_fpts.toFixed(1)}
-      </span>
+      {showShooting ? (
+        <span className="text-[8px] font-mono tabular-nums text-muted-foreground/70 whitespace-nowrap">
+          {shootingLine}
+        </span>
+      ) : (
+        <span className="text-[10px] font-mono font-bold tabular-nums text-foreground">
+          {live.live_fpts.toFixed(1)}
+        </span>
+      )}
     </div>
   );
 }
@@ -114,9 +131,10 @@ interface LiveRosterRowProps {
   player: LiveMatchupPlayer;
   isActive: boolean;
   onFocus: () => void;
+  showShooting: boolean;
 }
 
-function LiveRosterRow({ player, isActive, onFocus }: LiveRosterRowProps) {
+function LiveRosterRow({ player, isActive, onFocus, showShooting }: LiveRosterRowProps) {
   const position = player.position ?? "?";
   const posColor = POSITION_COLORS[position] ?? "text-muted-foreground bg-muted";
 
@@ -164,7 +182,7 @@ function LiveRosterRow({ player, isActive, onFocus }: LiveRosterRowProps) {
       )}
 
       {/* Live state */}
-      <LiveStateChip player={player} />
+      <LiveStateChip player={player} showShooting={showShooting} />
     </button>
   );
 }
@@ -185,6 +203,8 @@ export function LiveRosterPanel() {
     const liveTotal = roster.reduce((s, p) => s + (p.live?.live_fpts ?? 0), 0);
     return { anyLive, liveTotal };
   }, [data]);
+  const isCategories = data?.scoring_format === "categories";
+  const comparison = data?.category_comparison ?? null;
 
   if (!focusedTeamId) {
     return (
@@ -226,7 +246,9 @@ export function LiveRosterPanel() {
             </span>
             <span className="text-muted-foreground/30 text-[9px]">·</span>
             <span className="text-[9px] font-mono tabular-nums text-foreground">
-              {liveTotal.toFixed(1)} fpts
+              {isCategories && comparison
+                ? `${formatRecord(comparison.wins, comparison.losses, comparison.ties)} cats`
+                : `${liveTotal.toFixed(1)} fpts`}
             </span>
           </>
         ) : (
@@ -262,6 +284,7 @@ export function LiveRosterPanel() {
               player={player}
               isActive={false}
               onFocus={() => focusPlayer(player.live?.nba_player_id ?? player.player_id)}
+              showShooting={isCategories}
             />
           ))
         )}

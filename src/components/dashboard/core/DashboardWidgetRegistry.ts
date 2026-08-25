@@ -11,6 +11,7 @@ import {
   LayoutGrid,
   Sparkles,
   Navigation,
+  Grid3x3,
 } from "lucide-react";
 import type { DashboardWidgetDefinition } from "@/types/dashboard";
 
@@ -63,6 +64,19 @@ export const DASHBOARD_WIDGET_REGISTRY: DashboardWidgetDefinition[] = [
     minW: 3,
     minH: 3,
     requiresTeam: true,
+  },
+  {
+    id: "category-comparison",
+    name: "Category Breakdown",
+    description: "Per-category you vs opponent for this week's matchup",
+    icon: Grid3x3,
+    category: "team",
+    defaultW: 5,
+    defaultH: 5,
+    minW: 3,
+    minH: 3,
+    requiresTeam: true,
+    scoringTypes: ["categories"],
   },
   {
     id: "category-strengths",

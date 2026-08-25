@@ -13,7 +13,13 @@ import {
 } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMatchupScoreHistoryQuery } from "@/hooks/useMatchup";
-import type { MatchupScoreHistory } from "@/types/matchup";
+import { formatNetCategories } from "@/lib/category-format";
+import { historyToCategoryPoints, weeklyToCategoryPoints } from "@/lib/matchup-headline";
+import type { CategoryDef } from "@/types/scoring";
+import type { DailyMatchupData, MatchupScoreHistory, ScoringFormat } from "@/types/matchup";
+
+/** `cumulative` = categories led week-to-date; `daily` = categories won each day. */
+type CategoryChartMode = "cumulative" | "daily";
 
 interface MatchupScoreChartProps {
   teamId: number | null;
@@ -24,6 +30,10 @@ interface MatchupScoreChartProps {
   matchupPeriodEnd?: string;
   yourProjectedScore?: number;
   oppProjectedScore?: number;
+  format?: ScoringFormat;
+  categories?: CategoryDef[];
+  /** Category leagues: weekly days used when history has no category snapshots. */
+  weeklyDays?: DailyMatchupData[];
 }
 
 function ChartSkeleton() {
@@ -85,6 +95,7 @@ interface ChartContentProps {
   matchupPeriodEnd?: string;
   yourProjectedScore?: number;
   oppProjectedScore?: number;
+  categoryMode?: CategoryChartMode;
 }
 
 function ChartContent({
@@ -95,7 +106,9 @@ function ChartContent({
   matchupPeriodEnd,
   yourProjectedScore,
   oppProjectedScore,
+  categoryMode,
 }: ChartContentProps) {
+  const isCategories = categoryMode !== undefined;
   const chartConfig = useMemo(
     () =>
       ({
@@ -215,14 +228,22 @@ function ChartContent({
   const latestYourScore = lastPoint?.your_score ?? 0;
   const latestOppScore = lastPoint?.opponent_score ?? 0;
   const isWinning = latestYourScore > latestOppScore;
-  const scoreDiff = Math.abs(latestYourScore - latestOppScore).toFixed(1);
+  const isTied = latestYourScore === latestOppScore;
+  const scoreDiff = isCategories
+    ? formatNetCategories(latestYourScore, latestOppScore)
+    : `${isWinning ? "+" : "-"}${Math.abs(latestYourScore - latestOppScore).toFixed(1)}`;
+  const title = isCategories
+    ? categoryMode === "cumulative"
+      ? "Categories Led"
+      : "Daily Category Wins"
+    : "Score Progression";
 
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-medium tracking-tight">
-            Score Progression
+            {title}
           </CardTitle>
           <div className="flex items-center gap-2">
             {mode === "past" && selectedDate && (
@@ -237,12 +258,13 @@ function ChartContent({
             )}
             <span
               className={`text-sm ${
-                isWinning
-                  ? "text-[hsl(var(--status-win))]"
-                  : "text-[hsl(var(--status-loss))]"
+                isTied
+                  ? "text-muted-foreground"
+                  : isWinning
+                    ? "text-[hsl(var(--status-win))]"
+                    : "text-[hsl(var(--status-loss))]"
               }`}
             >
-              {isWinning ? "+" : "-"}
               {scoreDiff}
             </span>
           </div>
@@ -283,6 +305,7 @@ function ChartContent({
               tickMargin={8}
               tickCount={4}
               tick={{ fontSize: 11 }}
+              allowDecimals={!isCategories}
               tickFormatter={(value) => Math.round(value).toString()}
             />
             <ChartTooltip
@@ -427,14 +450,54 @@ export function MatchupScoreChart({
   matchupPeriodEnd,
   yourProjectedScore,
   oppProjectedScore,
+  format = "points",
+  categories = [],
+  weeklyDays,
 }: MatchupScoreChartProps) {
   const { data, isLoading, error } = useMatchupScoreHistoryQuery(
     teamId,
     matchupPeriod
   );
 
+  // Category leagues: chart categories led (from history snapshots that carry
+  // week-to-date totals) or, failing that, categories won per day.
+  const categorySeries = useMemo(() => {
+    if (format !== "categories") return null;
+    const cumulative = data?.scoring_format === "categories" ? historyToCategoryPoints(data, categories) : [];
+    if (cumulative.length > 0) return { mode: "cumulative" as const, points: cumulative };
+    const daily = weeklyToCategoryPoints(weeklyDays);
+    if (daily.length > 0) return { mode: "daily" as const, points: daily };
+    return null;
+  }, [format, data, categories, weeklyDays]);
+
   if (isLoading) {
     return <ChartSkeleton />;
+  }
+
+  if (format === "categories") {
+    if (!categorySeries) return null;
+    const synthetic: MatchupScoreHistory = {
+      team_id: data?.team_id ?? teamId ?? 0,
+      team_name: data?.team_name ?? "You",
+      opponent_team_name: data?.opponent_team_name ?? "Opponent",
+      matchup_period: data?.matchup_period ?? matchupPeriod ?? 0,
+      history: categorySeries.points.map((p) => ({
+        date: p.date,
+        day_of_matchup: p.day_of_matchup,
+        your_score: p.your_score,
+        opponent_score: p.opponent_score,
+      })),
+      scoring_format: "categories",
+    };
+    return (
+      <ChartContent
+        data={synthetic}
+        liveScore={categorySeries.mode === "cumulative" ? liveScore : undefined}
+        selectedDate={selectedDate}
+        todayDate={todayDate}
+        categoryMode={categorySeries.mode}
+      />
+    );
   }
 
   if (error || !data || data.history.length === 0) {

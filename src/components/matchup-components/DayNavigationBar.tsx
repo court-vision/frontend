@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import type { Outcome } from "@/lib/category-format";
 
 interface DayNavigationBarProps {
   matchupPeriodStart: string;
@@ -9,7 +10,15 @@ interface DayNavigationBarProps {
   selectedDate: string | null;
   onSelectDate: (date: string | null) => void;
   todayDate: string;
+  /** Category leagues: per-day win/loss/tie, keyed by ISO date, colors the past-day dots. */
+  dayOutcomes?: Record<string, Outcome>;
 }
+
+const OUTCOME_DOT: Record<Outcome, string> = {
+  win: "bg-status-win",
+  loss: "bg-status-loss",
+  tie: "bg-muted-foreground/50",
+};
 
 function getDaysInRange(
   start: string,
@@ -42,6 +51,7 @@ export function DayNavigationBar({
   selectedDate,
   onSelectDate,
   todayDate,
+  dayOutcomes,
 }: DayNavigationBarProps) {
   const days = getDaysInRange(matchupPeriodStart, matchupPeriodEnd);
   const n = days.length;
@@ -131,10 +141,12 @@ export function DayNavigationBar({
             const isPast = date < todayDate;
             const isFuture = date > todayDate;
             const isSelected = date === selectedDate;
+            const outcome = dayOutcomes?.[date];
 
             return (
               <button
                 key={date}
+                title={outcome ? `${dayAbbr} ${dateNum}: ${outcome === "win" ? "won the day" : outcome === "loss" ? "lost the day" : "split the day"}` : undefined}
                 onClick={() => {
                   if (isToday || isSelected) onSelectDate(null);
                   else onSelectDate(date);
@@ -178,8 +190,13 @@ export function DayNavigationBar({
                   ) : isPast ? (
                     <span
                       className={cn(
-                        "block w-[3px] h-[3px] rounded-full",
-                        isSelected ? "bg-primary/70" : "bg-muted-foreground/25"
+                        "block rounded-full",
+                        outcome ? "w-[5px] h-[5px]" : "w-[3px] h-[3px]",
+                        outcome
+                          ? OUTCOME_DOT[outcome]
+                          : isSelected
+                            ? "bg-primary/70"
+                            : "bg-muted-foreground/25"
                       )}
                     />
                   ) : (

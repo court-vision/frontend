@@ -8,8 +8,11 @@ import {
   useLiveMatchupQuery,
   useMatchupScoreHistoryQuery,
   useDailyMatchupQuery,
+  useWeeklyMatchupQuery,
 } from "@/hooks/useMatchup";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatRecord } from "@/lib/category-format";
+import { dayNetCategories } from "@/lib/matchup-headline";
 import type {
   DailyMatchupPlayerStats,
   DailyMatchupFuturePlayer,
@@ -148,7 +151,14 @@ function DayDetail({ teamId, date }: { teamId: number; date: string }) {
             UPCOMING
           </span>
         )}
-        {(isPast || isLive) && (
+        {(isPast || isLive) && day.scoring_format === "categories" && day.category_comparison ? (
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-[10px] font-mono font-semibold text-primary tabular-nums">
+              {formatRecord(day.category_comparison.wins, day.category_comparison.losses, day.category_comparison.ties)}
+            </span>
+            <span className="text-[9px] text-muted-foreground">cats today</span>
+          </div>
+        ) : (isPast || isLive) && (
           <div className="flex items-center gap-2 flex-1">
             <span className="text-[10px] font-mono font-semibold text-primary tabular-nums">
               {day.your_team.total_fpts != null
@@ -229,6 +239,10 @@ export function DailyBreakdownPanel() {
 
   const { data: historyData, isLoading: historyLoading, error: historyError } =
     useMatchupScoreHistoryQuery(focusedTeamId);
+  const isCategories = liveMatchup?.scoring_format === "categories";
+  // Category leagues: per-day net categories come from the weekly days payload.
+  const { data: weeklyData } = useWeeklyMatchupQuery(isCategories ? focusedTeamId : null);
+  const netByDate = dayNetCategories(weeklyData?.days);
 
   if (!focusedTeamId) {
     return (
@@ -308,13 +322,17 @@ export function DailyBreakdownPanel() {
           const nextPoint = historyPoints.find(
             (p) => p.day_of_matchup === point.day_of_matchup + 1
           );
-          const lead = isToday && liveMatchup
-            ? (liveMatchup.your_team.current_score - point.your_score)
-              - (liveMatchup.opponent_team.current_score - point.opponent_score)
-            : nextPoint
-              ? (nextPoint.your_score - point.your_score)
-                - (nextPoint.opponent_score - point.opponent_score)
-              : 0;
+          const lead = isCategories
+            ? isToday && liveMatchup?.category_comparison
+              ? liveMatchup.category_comparison.wins - liveMatchup.category_comparison.losses
+              : netByDate[point.date] ?? 0
+            : isToday && liveMatchup
+              ? (liveMatchup.your_team.current_score - point.your_score)
+                - (liveMatchup.opponent_team.current_score - point.opponent_score)
+              : nextPoint
+                ? (nextPoint.your_score - point.your_score)
+                  - (nextPoint.opponent_score - point.opponent_score)
+                : 0;
 
           return (
             <button

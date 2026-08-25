@@ -11,6 +11,7 @@ import {
   TrendingPanel,
   WatchlistPanel,
   CategoryStrengthsPanel,
+  CategoryComparisonPanel,
   TeamStreamersPanel,
 } from "@/components/terminal/panels";
 import { QuickActionsWidget } from "../widgets/QuickActionsWidget";
@@ -43,6 +44,8 @@ export function DashboardWidgetRenderer({
       return <WatchlistPanel />;
     case "category-strengths":
       return <CategoryStrengthsPanel />;
+    case "category-comparison":
+      return <CategoryComparisonPanel />;
     case "team-streamers":
       return <TeamStreamersPanel />;
     case "quick-actions":

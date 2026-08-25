@@ -19,6 +19,7 @@ import {
   Sparkles,
   Activity,
   Medal,
+  Grid3x3,
 } from "lucide-react";
 import type { PanelDefinition } from "@/types/terminal";
 
@@ -143,6 +144,14 @@ export const PANEL_REGISTRY: PanelDefinition[] = [
     icon: Swords,
     category: "team",
     description: "Live matchup score vs opponent with per-player projections",
+    defaultSize: { width: 100, height: 100 },
+  },
+  {
+    id: "category-comparison",
+    name: "Category Breakdown",
+    icon: Grid3x3,
+    category: "team",
+    description: "Per-category you vs opponent for this week's matchup (category leagues)",
     defaultSize: { width: 100, height: 100 },
   },
   {

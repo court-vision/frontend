@@ -130,16 +130,16 @@ const TEAM_LAYOUT: DashboardLayout = {
 };
 
 /**
- * Default layout template for a category-league team: the category
- * comparison replaces the points score chart. (`category-comparison` lands
- * with the category matchup work; until then category strengths leads.)
+ * Default layout template for a category-league team: the category breakdown
+ * leads, the points score chart is replaced by category strengths.
  */
 const CATEGORY_LAYOUT: DashboardLayout = {
   cols: 12,
   widgets: [
+    // Top row: Category breakdown + Roster + Team Streamers
     {
-      i: "cat-matchup",
-      definitionId: "matchup-score",
+      i: "cat-comparison",
+      definitionId: "category-comparison",
       x: 0,
       y: 0,
       w: 5,
@@ -167,12 +167,23 @@ const CATEGORY_LAYOUT: DashboardLayout = {
       minW: 2,
       minH: 4,
     },
+    // Second row: Matchup score + Category strengths
     {
-      i: "cat-strengths",
-      definitionId: "category-strengths",
+      i: "cat-matchup",
+      definitionId: "matchup-score",
       x: 0,
       y: 5,
       w: 5,
+      h: 5,
+      minW: 3,
+      minH: 3,
+    },
+    {
+      i: "cat-strengths",
+      definitionId: "category-strengths",
+      x: 9,
+      y: 5,
+      w: 3,
       h: 4,
       minW: 3,
       minH: 3,
@@ -180,11 +191,11 @@ const CATEGORY_LAYOUT: DashboardLayout = {
     {
       i: "cat-daily",
       definitionId: "daily-breakdown",
-      x: 9,
-      y: 5,
-      w: 3,
+      x: 5,
+      y: 7,
+      w: 4,
       h: 4,
-      minW: 2,
+      minW: 3,
       minH: 3,
     },
   ],

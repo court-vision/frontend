@@ -16,6 +16,8 @@ import {
   useLiveMatchupQuery,
 } from "@/hooks/useMatchup";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DEFAULT_9CAT, formatNetCategories } from "@/lib/category-format";
+import { historyToCategoryPoints } from "@/lib/matchup-headline";
 import type { DailyScorePoint } from "@/types/matchup";
 
 interface TooltipPayloadEntry {
@@ -28,10 +30,12 @@ function TerminalTooltip({
   active,
   payload,
   label,
+  isCategories,
 }: {
   active?: boolean;
   payload?: TooltipPayloadEntry[];
   label?: string | number;
+  isCategories?: boolean;
 }) {
   if (!active || !payload?.length) return null;
   return (
@@ -39,7 +43,8 @@ function TerminalTooltip({
       <div className="text-muted-foreground mb-0.5">Day {label}</div>
       {payload.map((entry) => (
         <div key={entry.name} style={{ color: entry.color }}>
-          {entry.name === "your_score" ? "YOU" : "OPP"}: {entry.value.toFixed(1)}
+          {entry.name === "your_score" ? "YOU" : "OPP"}:{" "}
+          {isCategories ? `${Math.round(entry.value)} cats` : entry.value.toFixed(1)}
         </div>
       ))}
     </div>
@@ -81,7 +86,17 @@ export function ScoreHistoryPanel() {
 
   const history = data;
   const { team_name, opponent_team_name, matchup_period } = history;
-  const points: DailyScorePoint[] = history.history ?? [];
+  const isCategories = history.scoring_format === "categories";
+  // Category leagues: categories led per day (from week-to-date snapshots).
+  const points: DailyScorePoint[] = isCategories
+    ? historyToCategoryPoints(history, DEFAULT_9CAT).map((p) => ({
+        date: p.date,
+        day_of_matchup: p.day_of_matchup,
+        your_score: p.your_score,
+        opponent_score: p.opponent_score,
+      }))
+    : history.history ?? [];
+  const fmt = (v: number) => (isCategories ? String(Math.round(v)) : v.toFixed(1));
 
   const lastHistoryPoint = points.length > 0 ? points[points.length - 1] : null;
 
@@ -93,6 +108,7 @@ export function ScoreHistoryPanel() {
 
   // Overlay live scores when they differ from the last history snapshot,
   // matching the pattern used by MatchupScoreChart on the matchup page.
+  // (For category leagues current_score already is categories won/lost.)
   const liveYour = liveData?.your_team.current_score;
   const liveOpp = liveData?.opponent_team.current_score;
   if (liveYour != null && liveOpp != null && lastHistoryPoint) {
@@ -162,7 +178,7 @@ export function ScoreHistoryPanel() {
                 tickFormatter={(v) => v.toFixed(0)}
               />
               <Tooltip
-                content={<TerminalTooltip />}
+                content={<TerminalTooltip isCategories={isCategories} />}
                 cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
               />
               <Line
@@ -199,7 +215,7 @@ export function ScoreHistoryPanel() {
                 style={{ backgroundColor: "hsl(var(--primary))" }}
               />
               <span className="font-mono text-[10px] tabular-nums text-primary font-semibold">
-                {displayYour.toFixed(1)}
+                {fmt(displayYour)}
               </span>
             </div>
             <div className="flex items-center gap-1">
@@ -208,7 +224,7 @@ export function ScoreHistoryPanel() {
                 style={{ backgroundColor: "hsl(var(--destructive))" }}
               />
               <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-                {displayOpp.toFixed(1)}
+                {fmt(displayOpp)}
               </span>
             </div>
           </div>
@@ -218,8 +234,9 @@ export function ScoreHistoryPanel() {
               yourLead >= 0 ? "text-emerald-500" : "text-destructive"
             )}
           >
-            {yourLead >= 0 ? "+" : ""}
-            {yourLead.toFixed(1)}
+            {isCategories
+              ? formatNetCategories(displayYour, displayOpp)
+              : `${yourLead >= 0 ? "+" : ""}${yourLead.toFixed(1)}`}
           </span>
         </div>
       )}

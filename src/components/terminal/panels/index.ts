@@ -15,6 +15,7 @@ export { RosterOverviewPanel } from "./RosterOverviewPanel";
 export { LiveRosterPanel } from "./LiveRosterPanel";
 export { MatchupPanel } from "./MatchupPanel";
 export { CategoryStrengthsPanel } from "./CategoryStrengthsPanel";
+export { CategoryComparisonPanel } from "./CategoryComparisonPanel";
 export { ScoreHistoryPanel } from "./ScoreHistoryPanel";
 export { DailyBreakdownPanel } from "./DailyBreakdownPanel";
 export { LineupOptimizerPanel } from "./LineupOptimizerPanel";

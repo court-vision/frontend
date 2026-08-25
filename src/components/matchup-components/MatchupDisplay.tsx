@@ -27,9 +27,15 @@ import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDispla
 import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreChart";
 import { DayNavigationBar } from "@/components/matchup-components/DayNavigationBar";
 import { DailyMatchupView } from "@/components/matchup-components/DailyMatchupView";
+import { CategoryComparisonGrid } from "@/components/matchup-components/CategoryComparisonGrid";
 import Link from "next/link";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useGamesOnDateQuery } from "@/hooks/useGames";
-import { useDailyMatchupQuery } from "@/hooks/useMatchup";
+import { useDailyMatchupQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
+import { useSelectedTeam } from "@/hooks/useSelectedTeam";
+import { useSyncTeamLeagueMutation } from "@/hooks/useTeams";
+import { formatRecord, winnerBadgeVariant } from "@/lib/category-format";
+import { dayOutcomes, deriveHeadline, formatScalar, type TeamRecord } from "@/lib/matchup-headline";
 import type {
   MatchupData,
   MatchupTeam,
@@ -37,7 +43,10 @@ import type {
   LiveMatchupData,
   LiveMatchupTeam,
   LiveMatchupPlayer,
+  PlayerLiveStats,
+  ScoringFormat,
 } from "@/types/matchup";
+import type { CategoryDef } from "@/types/scoring";
 import type { GameInfo } from "@/types/games";
 import type { FantasyProvider } from "@/types/team";
 
@@ -238,29 +247,119 @@ function TeamRosterTable({ team, onPlayerClick }: TeamRosterTableProps) {
 
 // ── Live stat grid (used when live matchup data is available) ────────────────
 
-function StatCell({ value, hasStats }: { value: number; hasStats: boolean }) {
+function StatCell({ value, hasStats }: { value: number | string; hasStats: boolean }) {
   if (!hasStats) {
     return <span className="text-muted-foreground/30">—</span>;
   }
   return <>{value}</>;
 }
 
+/** A live-table column: how to read one player's live line and total the team. */
+interface LiveColumn {
+  key: string;
+  label: string;
+  widthClass: string;
+  cell: (live: PlayerLiveStats) => number | string;
+  total: (lives: PlayerLiveStats[]) => string;
+}
+
+const LIVE_COUNTING: Record<string, keyof PlayerLiveStats> = {
+  pts: "live_pts",
+  reb: "live_reb",
+  ast: "live_ast",
+  stl: "live_stl",
+  blk: "live_blk",
+  tov: "live_tov",
+  fg3m: "live_fg3m",
+  fg3a: "live_fg3a",
+  fgm: "live_fgm",
+  fga: "live_fga",
+  ftm: "live_ftm",
+  fta: "live_fta",
+};
+
+const LIVE_RATES: Record<string, { makes: keyof PlayerLiveStats; attempts: keyof PlayerLiveStats }> = {
+  fg_pct: { makes: "live_fgm", attempts: "live_fga" },
+  ft_pct: { makes: "live_ftm", attempts: "live_fta" },
+  fg3_pct: { makes: "live_fg3m", attempts: "live_fg3a" },
+};
+
+function liveNum(live: PlayerLiveStats, key: keyof PlayerLiveStats): number {
+  const v = live[key];
+  return typeof v === "number" ? v : 0;
+}
+
+/** The league's categories as live-table columns (makes-attempts for rates). */
+function liveColumns(categories: CategoryDef[]): LiveColumn[] {
+  return categories.flatMap((c): LiveColumn[] => {
+    if (c.is_rate) {
+      const r = LIVE_RATES[c.key];
+      if (!r) return [];
+      return [
+        {
+          key: c.key,
+          label: c.label.replace("%", ""),
+          widthClass: "w-[56px]",
+          cell: (live) => `${liveNum(live, r.makes)}-${liveNum(live, r.attempts)}`,
+          total: (lives) => {
+            const makes = lives.reduce((s, l) => s + liveNum(l, r.makes), 0);
+            const attempts = lives.reduce((s, l) => s + liveNum(l, r.attempts), 0);
+            return attempts > 0 ? `${((makes / attempts) * 100).toFixed(1)}%` : "—";
+          },
+        },
+      ];
+    }
+    const k = LIVE_COUNTING[c.key];
+    if (!k) return [];
+    return [
+      {
+        key: c.key,
+        label: c.label,
+        widthClass: "w-[36px]",
+        cell: (live) => liveNum(live, k),
+        total: (lives) => String(lives.reduce((s, l) => s + liveNum(l, k), 0)),
+      },
+    ];
+  });
+}
+
+const POINTS_LIVE_COLUMNS: LiveColumn[] = (
+  [
+    ["pts", "PTS"],
+    ["reb", "REB"],
+    ["ast", "AST"],
+    ["stl", "STL"],
+    ["blk", "BLK"],
+    ["tov", "TOV"],
+  ] as const
+).map(([key, label]) => ({
+  key,
+  label,
+  widthClass: "w-[36px]",
+  cell: (live: PlayerLiveStats) => liveNum(live, LIVE_COUNTING[key]),
+  total: (lives: PlayerLiveStats[]) => String(lives.reduce((s, l) => s + liveNum(l, LIVE_COUNTING[key]), 0)),
+}));
+
 interface LiveTeamRosterTableProps {
   team: LiveMatchupTeam;
   games: GameInfo[];
   onPlayerClick: (player: LiveMatchupPlayer) => void;
+  format: ScoringFormat;
+  categories: CategoryDef[];
 }
 
-function LiveTeamRosterTable({ team, games, onPlayerClick }: LiveTeamRosterTableProps) {
+function LiveTeamRosterTable({ team, games, onPlayerClick, format, categories }: LiveTeamRosterTableProps) {
   const sorted = sortByLineupSlot(team.roster);
   const activePlayers = sorted.filter(
     (p) => p.lineup_slot !== "BE" && p.lineup_slot !== "IR"
   );
-  const totalFpts = activePlayers.reduce(
-    (sum, p) => sum + (p.live && p.live.game_status >= 2 ? p.live.live_fpts : 0),
-    0
-  );
+  const activeLives = activePlayers
+    .map((p) => p.live)
+    .filter((l): l is PlayerLiveStats => l !== null && l.game_status >= 2);
+  const totalFpts = activeLives.reduce((sum, l) => sum + l.live_fpts, 0);
   const hasAnyLive = sorted.some((p) => p.live && p.live.game_status >= 2);
+  const isCategories = format === "categories";
+  const columns = isCategories ? liveColumns(categories) : POINTS_LIVE_COLUMNS;
 
   return (
     <div className="overflow-x-auto">
@@ -271,13 +370,21 @@ function LiveTeamRosterTable({ team, games, onPlayerClick }: LiveTeamRosterTable
             <TableHead>Player</TableHead>
             <TableHead className="w-[110px] font-mono text-[11px] uppercase tracking-wider">Game</TableHead>
             <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">MIN</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">PTS</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">REB</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">AST</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">STL</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">BLK</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">TOV</TableHead>
-            <TableHead className="w-[46px] text-right pr-3 font-mono text-[11px] uppercase tracking-wider">FP</TableHead>
+            {columns.map((col, i) => (
+              <TableHead
+                key={col.key}
+                className={cn(
+                  "text-right font-mono text-[11px] uppercase tracking-wider",
+                  col.widthClass,
+                  isCategories && i === columns.length - 1 && "pr-3"
+                )}
+              >
+                {col.label}
+              </TableHead>
+            ))}
+            {!isCategories && (
+              <TableHead className="w-[46px] text-right pr-3 font-mono text-[11px] uppercase tracking-wider">FP</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -330,43 +437,57 @@ function LiveTeamRosterTable({ team, games, onPlayerClick }: LiveTeamRosterTable
                 <TableCell className="text-right font-mono text-xs tabular-nums">
                   <StatCell value={live?.live_min ?? 0} hasStats={hasStats} />
                 </TableCell>
-                <TableCell className="text-right font-mono text-xs tabular-nums">
-                  <StatCell value={live?.live_pts ?? 0} hasStats={hasStats} />
-                </TableCell>
-                <TableCell className="text-right font-mono text-xs tabular-nums">
-                  <StatCell value={live?.live_reb ?? 0} hasStats={hasStats} />
-                </TableCell>
-                <TableCell className="text-right font-mono text-xs tabular-nums">
-                  <StatCell value={live?.live_ast ?? 0} hasStats={hasStats} />
-                </TableCell>
-                <TableCell className="text-right font-mono text-xs tabular-nums">
-                  <StatCell value={live?.live_stl ?? 0} hasStats={hasStats} />
-                </TableCell>
-                <TableCell className="text-right font-mono text-xs tabular-nums">
-                  <StatCell value={live?.live_blk ?? 0} hasStats={hasStats} />
-                </TableCell>
-                <TableCell className="text-right font-mono text-xs tabular-nums">
-                  <StatCell value={live?.live_tov ?? 0} hasStats={hasStats} />
-                </TableCell>
-                <TableCell className={cn(
-                  "text-right font-mono text-sm tabular-nums pr-3 font-semibold",
-                  hasStats && !isBench && "text-foreground"
-                )}>
-                  <StatCell value={live?.live_fpts ?? 0} hasStats={hasStats} />
-                </TableCell>
+                {columns.map((col, i) => (
+                  <TableCell
+                    key={col.key}
+                    className={cn(
+                      "text-right font-mono text-xs tabular-nums",
+                      isCategories && i === columns.length - 1 && "pr-3"
+                    )}
+                  >
+                    <StatCell value={live ? col.cell(live) : 0} hasStats={hasStats} />
+                  </TableCell>
+                ))}
+                {!isCategories && (
+                  <TableCell className={cn(
+                    "text-right font-mono text-sm tabular-nums pr-3 font-semibold",
+                    hasStats && !isBench && "text-foreground"
+                  )}>
+                    <StatCell value={live?.live_fpts ?? 0} hasStats={hasStats} />
+                  </TableCell>
+                )}
               </TableRow>
             );
           })}
 
           {/* Summary row — active players only */}
-          <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
-            <TableCell colSpan={10} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
-              Active total {!hasAnyLive && <span className="normal-case">(no games yet)</span>}
-            </TableCell>
-            <TableCell className="text-right font-mono text-sm font-bold pr-3 py-2 tabular-nums">
-              {hasAnyLive ? totalFpts : <span className="text-muted-foreground/30">—</span>}
-            </TableCell>
-          </TableRow>
+          {isCategories ? (
+            <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
+              <TableCell colSpan={4} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
+                Active total {!hasAnyLive && <span className="normal-case">(no games yet)</span>}
+              </TableCell>
+              {columns.map((col, i) => (
+                <TableCell
+                  key={col.key}
+                  className={cn(
+                    "text-right font-mono text-xs font-bold py-2 tabular-nums",
+                    i === columns.length - 1 && "pr-3"
+                  )}
+                >
+                  {hasAnyLive ? col.total(activeLives) : <span className="text-muted-foreground/30">—</span>}
+                </TableCell>
+              ))}
+            </TableRow>
+          ) : (
+            <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
+              <TableCell colSpan={10} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
+                Active total {!hasAnyLive && <span className="normal-case">(no games yet)</span>}
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm font-bold pr-3 py-2 tabular-nums">
+                {hasAnyLive ? totalFpts : <span className="text-muted-foreground/30">—</span>}
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </div>
@@ -375,13 +496,53 @@ function LiveTeamRosterTable({ team, games, onPlayerClick }: LiveTeamRosterTable
 
 // ── Team card shells ─────────────────────────────────────────────────────────
 
+/** "Current / Projected" header block; category leagues show the record instead. */
+function TeamScoreHeader({
+  current,
+  projected,
+  format,
+  record,
+}: {
+  current: number;
+  projected: number;
+  format: ScoringFormat;
+  record: TeamRecord | null;
+}) {
+  const isCategories = format === "categories";
+  return (
+    <div className="flex gap-6 mt-2">
+      <div>
+        <p className="text-[11px] text-muted-foreground uppercase tracking-wider">
+          {isCategories ? "Cats won" : "Current"}
+        </p>
+        <p className="font-mono text-xl font-bold tabular-nums">
+          {formatScalar(current, format, { round: true })}
+        </p>
+        {isCategories && record && (
+          <p className="text-[11px] font-mono text-muted-foreground">
+            {formatRecord(record.wins, record.losses, record.ties)}
+          </p>
+        )}
+      </div>
+      <div>
+        <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Projected</p>
+        <p className="font-mono text-lg text-muted-foreground tabular-nums">
+          {isCategories ? `${Math.round(projected)} cats` : projected.toFixed(1)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 interface TeamCardProps {
   team: MatchupTeam;
   isYourTeam: boolean;
   onPlayerClick: (player: MatchupPlayer) => void;
+  format: ScoringFormat;
+  record: TeamRecord | null;
 }
 
-function TeamCard({ team, isYourTeam, onPlayerClick }: TeamCardProps) {
+function TeamCard({ team, isYourTeam, onPlayerClick, format, record }: TeamCardProps) {
   return (
     <Card variant="panel" className="flex-1 overflow-hidden">
       <CardHeader className="pb-2">
@@ -393,20 +554,12 @@ function TeamCard({ team, isYourTeam, onPlayerClick }: TeamCardProps) {
             {team.team_name}
           </CardTitle>
         </div>
-        <div className="flex gap-6 mt-2">
-          <div>
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Current</p>
-            <p className="font-mono text-xl font-bold tabular-nums">
-              {Math.round(team.current_score)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Projected</p>
-            <p className="font-mono text-lg text-muted-foreground tabular-nums">
-              {team.projected_score.toFixed(1)}
-            </p>
-          </div>
-        </div>
+        <TeamScoreHeader
+          current={team.current_score}
+          projected={team.projected_score}
+          format={format}
+          record={record}
+        />
       </CardHeader>
       <CardContent className="p-0">
         <TeamRosterTable team={team} onPlayerClick={onPlayerClick} />
@@ -420,9 +573,12 @@ interface LiveTeamCardProps {
   isYourTeam: boolean;
   games: GameInfo[];
   onPlayerClick: (player: LiveMatchupPlayer) => void;
+  format: ScoringFormat;
+  categories: CategoryDef[];
+  record: TeamRecord | null;
 }
 
-function LiveTeamCard({ team, isYourTeam, games, onPlayerClick }: LiveTeamCardProps) {
+function LiveTeamCard({ team, isYourTeam, games, onPlayerClick, format, categories, record }: LiveTeamCardProps) {
   return (
     <Card variant="panel" className="flex-1 overflow-hidden">
       <CardHeader className="pb-2">
@@ -434,23 +590,21 @@ function LiveTeamCard({ team, isYourTeam, games, onPlayerClick }: LiveTeamCardPr
             {team.team_name}
           </CardTitle>
         </div>
-        <div className="flex gap-6 mt-2">
-          <div>
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Current</p>
-            <p className="font-mono text-xl font-bold tabular-nums">
-              {Math.round(team.current_score)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Projected</p>
-            <p className="font-mono text-lg text-muted-foreground tabular-nums">
-              {team.projected_score.toFixed(1)}
-            </p>
-          </div>
-        </div>
+        <TeamScoreHeader
+          current={team.current_score}
+          projected={team.projected_score}
+          format={format}
+          record={record}
+        />
       </CardHeader>
       <CardContent className="p-0">
-        <LiveTeamRosterTable team={team} games={games} onPlayerClick={onPlayerClick} />
+        <LiveTeamRosterTable
+          team={team}
+          games={games}
+          onPlayerClick={onPlayerClick}
+          format={format}
+          categories={categories}
+        />
       </CardContent>
     </Card>
   );
@@ -501,6 +655,33 @@ function MatchupSkeleton() {
   );
 }
 
+// ── Scoreboard bars ──────────────────────────────────────────────────────────
+
+/** Points: your share of the combined score. */
+function PointsScoreBar({ you, opp }: { you: number; opp: number }) {
+  return (
+    <div className="h-1.5 bg-muted rounded-full overflow-hidden flex">
+      <div
+        className="bg-primary rounded-full transition-all duration-500"
+        style={{ width: `${you + opp > 0 ? (you / (you + opp)) * 100 : 50}%` }}
+      />
+    </div>
+  );
+}
+
+/** Categories: won / tied / lost segments out of the league's category count. */
+function CategoryRecordBar({ record }: { record: TeamRecord }) {
+  const total = record.wins + record.losses + record.ties;
+  const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
+  return (
+    <div className="h-1.5 bg-muted rounded-full overflow-hidden flex gap-px">
+      <div className="bg-status-win transition-all duration-500" style={{ width: `${pct(record.wins)}%` }} />
+      <div className="bg-muted-foreground/40 transition-all duration-500" style={{ width: `${pct(record.ties)}%` }} />
+      <div className="bg-status-loss transition-all duration-500" style={{ width: `${pct(record.losses)}%` }} />
+    </div>
+  );
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 
 interface MatchupDisplayProps {
@@ -530,6 +711,12 @@ export function MatchupDisplay({
     selectedDate
   );
   const todayDate = getTodayET();
+
+  // Category leagues also need the weekly days (per-day outcomes, chart fallback).
+  const format: ScoringFormat = (liveMatchup ?? matchup)?.scoring_format ?? "points";
+  const { data: weeklyData } = useWeeklyMatchupQuery(format === "categories" ? teamId : null);
+  const { league } = useSelectedTeam(teamId);
+  const syncLeague = useSyncTeamLeagueMutation();
 
   if (isLoading) {
     return <MatchupSkeleton />;
@@ -582,20 +769,33 @@ export function MatchupDisplay({
     });
   };
 
-  const yourScore = display.your_team.current_score;
-  const oppScore = display.opponent_team.current_score;
-  const yourTeamWinning = yourScore > oppScore;
-  const scoreDiff = Math.abs(yourScore - oppScore).toFixed(1);
-
-  // Projected fields always come from the regular matchup (more stable)
-  const projectedWinner = matchup?.projected_winner ?? display.projected_winner;
-  const projectedMargin = matchup?.projected_margin ?? display.projected_margin;
-  const yourProjected = matchup?.your_team.projected_score ?? display.your_team.projected_score;
-  const oppProjected = matchup?.opponent_team.projected_score ?? display.opponent_team.projected_score;
+  const h = deriveHeadline(display, matchup);
+  const outcomes = h.isCategories ? dayOutcomes(weeklyData?.days) : undefined;
+  const showSyncNotice = display.settings_synced === false && teamId !== null && teamId > 0;
 
   return (
     <>
       <div className="space-y-4">
+        {/* League settings could not be synced — everything below is default points scoring */}
+        {showSyncNotice && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-status-projected/30 bg-status-projected/10 px-3 py-2 text-xs">
+            <span className="text-muted-foreground">
+              League settings haven&apos;t synced from {provider === "yahoo" ? "Yahoo" : "ESPN"} — showing the
+              default points view. Category leagues need a sync to show categories.
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[11px] gap-1 ml-auto"
+              onClick={() => syncLeague.mutate(teamId as number)}
+              disabled={syncLeague.isPending}
+            >
+              {syncLeague.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              Sync
+            </Button>
+          </div>
+        )}
+
         {/* Scoreboard Header */}
         <Card variant="panel" className="p-5">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
@@ -606,10 +806,11 @@ export function MatchupDisplay({
               <span className="text-[11px] text-muted-foreground/50">
                 {formatDate(display.matchup_period_start)} – {formatDate(display.matchup_period_end)}
               </span>
+              {h.isCategories && league?.category_win_mode === "most_categories" && (
+                <span className="hidden sm:inline text-[11px] text-muted-foreground/50">· most categories wins</span>
+              )}
             </div>
-            <Badge variant={yourTeamWinning ? "win" : "loss"}>
-              {yourTeamWinning ? "Winning" : "Losing"} by {scoreDiff}
-            </Badge>
+            <Badge variant={winnerBadgeVariant(h.outcome)}>{h.statusLabel}</Badge>
           </div>
 
           {/* Score display */}
@@ -619,46 +820,68 @@ export function MatchupDisplay({
                 {display.your_team.team_name}
               </p>
               <p className="font-mono text-3xl font-bold tabular-nums mt-0.5">
-                {Math.round(yourScore)}
+                {formatScalar(h.you, h.format, { round: true })}
               </p>
+              {h.isCategories && h.yourRecord && (
+                <p className="text-[11px] font-mono text-muted-foreground">
+                  {formatRecord(h.yourRecord.wins, h.yourRecord.losses, h.yourRecord.ties)}
+                </p>
+              )}
             </div>
             <div className="text-center px-4">
               <span className="text-sm font-medium text-muted-foreground/40">VS</span>
+              {h.isCategories && (
+                <p className="text-[10px] font-mono text-muted-foreground/50 mt-1">
+                  {h.categoryCount} cats
+                </p>
+              )}
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground truncate max-w-[160px] ml-auto">
                 {display.opponent_team.team_name}
               </p>
               <p className="font-mono text-3xl font-bold tabular-nums text-muted-foreground mt-0.5">
-                {Math.round(oppScore)}
+                {formatScalar(h.opp, h.format, { round: true })}
               </p>
+              {h.isCategories && h.oppRecord && (
+                <p className="text-[11px] font-mono text-muted-foreground">
+                  {formatRecord(h.oppRecord.wins, h.oppRecord.losses, h.oppRecord.ties)}
+                </p>
+              )}
             </div>
           </div>
 
           {/* Score bar */}
           <div className="mt-4">
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden flex">
-              <div
-                className="bg-primary rounded-full transition-all duration-500"
-                style={{
-                  width: `${
-                    yourScore + oppScore > 0
-                      ? (yourScore / (yourScore + oppScore)) * 100
-                      : 50
-                  }%`,
-                }}
-              />
-            </div>
+            {h.isCategories && h.yourRecord ? (
+              <CategoryRecordBar record={h.yourRecord} />
+            ) : (
+              <PointsScoreBar you={h.you} opp={h.opp} />
+            )}
             <div className="flex justify-between mt-2 text-[11px] text-muted-foreground">
-              <span>Proj: {yourProjected.toFixed(1)}</span>
+              <span>{h.yourProjLabel}</span>
               <span className="text-center">
-                Winner: <span className="text-foreground font-medium">{projectedWinner}</span>
-                {" "}(+{projectedMargin.toFixed(1)})
+                Winner: <span className="text-foreground font-medium">{h.projWinner}</span>
+                {" "}{h.projMarginLabel}
               </span>
-              <span>Proj: {oppProjected.toFixed(1)}</span>
+              <span>{h.oppProjLabel}</span>
             </div>
           </div>
         </Card>
+
+        {/* Category breakdown (category leagues only) */}
+        {h.isCategories && h.comparison && (
+          <CategoryComparisonGrid
+            comparison={h.comparison}
+            projected={h.projectedComparison}
+            yourName={display.your_team.team_name}
+            oppName={display.opponent_team.team_name}
+            yourRaw={display.your_team.categories?.raw}
+            oppRaw={display.opponent_team.categories?.raw}
+            liveAdjusted={h.liveAdjusted}
+            winMode={league?.category_win_mode}
+          />
+        )}
 
         {/* Day navigation bar */}
         <DayNavigationBar
@@ -667,6 +890,7 @@ export function MatchupDisplay({
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
           todayDate={todayDate}
+          dayOutcomes={outcomes}
         />
 
         {/* Score progression chart — always visible, mode driven by selectedDate */}
@@ -681,8 +905,11 @@ export function MatchupDisplay({
           selectedDate={selectedDate}
           todayDate={todayDate}
           matchupPeriodEnd={display.matchup_period_end}
-          yourProjectedScore={yourProjected}
-          oppProjectedScore={oppProjected}
+          yourProjectedScore={h.yourProj}
+          oppProjectedScore={h.oppProj}
+          format={h.format}
+          categories={h.categories}
+          weeklyDays={weeklyData?.days}
         />
 
         {/* Conditional: daily view or week overview */}
@@ -702,12 +929,18 @@ export function MatchupDisplay({
                     isYourTeam={true}
                     games={gamesData?.games ?? []}
                     onPlayerClick={handlePlayerClick}
+                    format={h.format}
+                    categories={h.categories}
+                    record={h.yourRecord}
                   />
                   <LiveTeamCard
                     team={liveMatchup.opponent_team}
                     isYourTeam={false}
                     games={gamesData?.games ?? []}
                     onPlayerClick={handlePlayerClick}
+                    format={h.format}
+                    categories={h.categories}
+                    record={h.oppRecord}
                   />
                 </>
               ) : matchup ? (
@@ -716,11 +949,15 @@ export function MatchupDisplay({
                     team={matchup.your_team}
                     isYourTeam={true}
                     onPlayerClick={handlePlayerClick}
+                    format={h.format}
+                    record={h.yourRecord}
                   />
                   <TeamCard
                     team={matchup.opponent_team}
                     isYourTeam={false}
                     onPlayerClick={handlePlayerClick}
+                    format={h.format}
+                    record={h.oppRecord}
                   />
                 </>
               ) : null}

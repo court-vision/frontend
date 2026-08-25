@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { MatchupDisplay } from "@/components/matchup-components/MatchupDisplay";
 import { useMatchupQuery, useLiveMatchupQuery, useSeasonSummaryQuery } from "@/hooks/useMatchup";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
@@ -8,12 +10,19 @@ import { SeasonBanner } from "@/components/SeasonBanner";
 import { SeasonSummaryCard } from "@/components/matchup-components/SeasonSummaryCard";
 import { ConnectTeamPrompt } from "@/components/teams-components/ConnectTeamPrompt";
 import { seasonHeadline } from "@/lib/season";
+import { MOCK_CATEGORY_LIVE_MATCHUP, MOCK_CATEGORY_MATCHUP } from "@/__fixtures__/categoryMatchup";
 
-export default function Matchup() {
+// Dev-only: `/matchup?mock=cats` renders a fixture 9-cat matchup so the
+// category surfaces can be checked before a category league is connected.
+const MOCKS_ENABLED = process.env.NODE_ENV !== "production";
+
+function MatchupContent() {
+  const searchParams = useSearchParams();
+  const mock = MOCKS_ENABLED && searchParams.get("mock") === "cats";
   const { teamId: selectedTeam, teams, isLoading: isTeamsLoading, provider } = useSelectedTeam();
-  const { data: matchup, isLoading, error } = useMatchupQuery(selectedTeam);
-  const { data: liveMatchup } = useLiveMatchupQuery(selectedTeam);
-  const { data: seasonSummary } = useSeasonSummaryQuery(selectedTeam);
+  const { data: matchup, isLoading, error } = useMatchupQuery(mock ? null : selectedTeam);
+  const { data: liveMatchup } = useLiveMatchupQuery(mock ? null : selectedTeam);
+  const { data: seasonSummary } = useSeasonSummaryQuery(mock ? null : selectedTeam);
 
   const hasTeams = teams.length > 0;
 
@@ -24,14 +33,23 @@ export default function Matchup() {
           Matchup
         </h1>
         <p className="text-muted-foreground text-sm mt-0.5">
-          {seasonHeadline("matchup")}
+          {mock ? "Mock 9-cat matchup (dev only)." : seasonHeadline("matchup")}
         </p>
       </section>
-      <SeasonBanner />
+      {!mock && <SeasonBanner />}
 
       {seasonSummary && <SeasonSummaryCard summary={seasonSummary} />}
 
-      {isTeamsLoading ? (
+      {mock ? (
+        <MatchupDisplay
+          matchup={MOCK_CATEGORY_MATCHUP}
+          liveMatchup={MOCK_CATEGORY_LIVE_MATCHUP}
+          isLoading={false}
+          error={null}
+          teamId={0}
+          provider="espn"
+        />
+      ) : isTeamsLoading ? (
         <MatchupDisplay
           matchup={undefined}
           liveMatchup={undefined}
@@ -59,5 +77,13 @@ export default function Matchup() {
         />
       )}
     </div>
+  );
+}
+
+export default function Matchup() {
+  return (
+    <Suspense fallback={<div className="space-y-4 animate-slide-up-fade" />}>
+      <MatchupContent />
+    </Suspense>
   );
 }

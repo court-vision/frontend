@@ -175,7 +175,7 @@ export const WINNER_CLASSES: Record<
     text: "text-muted-foreground",
     bg: "bg-muted",
     border: "border-border",
-    bar: "bg-status-neutral",
+    bar: "bg-muted-foreground/40",
   },
 };
 
