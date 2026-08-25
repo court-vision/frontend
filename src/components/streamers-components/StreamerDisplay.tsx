@@ -364,7 +364,7 @@ export default function StreamerDisplay() {
                   <TableHead className="w-[50px] text-center">Team</TableHead>
                   <TableHead className="w-[120px]">Pos</TableHead>
                   <TableHead className="w-[70px] text-right">{avgDays}D Avg</TableHead>
-                  <TableHead className="w-[50px] text-center">GP</TableHead>
+                  <TableHead className="w-[70px] text-center" title="Games remaining in the matchup">Games left</TableHead>
                   <TableHead className="text-center">
                     <div className="flex flex-col items-center gap-1">
                       <span>Schedule</span>
