@@ -50,6 +50,8 @@ export interface MatchupData {
   projected_winner: string; // Team name of projected winner
   projected_margin: number; // Projected point differential (categories: won - lost)
   scoring_format?: ScoringFormat;
+  /** Our schedule-calendar week containing the matchup start (Yahoo week numbers need not equal ours). */
+  schedule_week?: number | null;
   settings_synced?: boolean;
   category_comparison?: CategoryComparison | null;
   projected_category_comparison?: CategoryComparison | null;

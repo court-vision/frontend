@@ -405,7 +405,7 @@ const data = await res.json()`,
       {
         method: "GET",
         path: "/schedule/weeks",
-        description: "Get all NBA fantasy week dates and the current week number.",
+        description: "Get all fantasy week dates for the active season, the current week number, and the season calendar (key, dates, phase).",
         params: [],
         code: {
           curl: `curl "${API_BASE}/schedule/weeks"`,
@@ -421,10 +421,22 @@ const data = await res.json()`,
   "message": "Schedule weeks retrieved successfully",
   "data": {
     "weeks": [
-      { "week": 17, "start_date": "2026-02-16", "end_date": "2026-02-22" },
-      { "week": 18, "start_date": "2026-02-23", "end_date": "2026-03-01" }
+      { "week": 1, "start_date": "2026-10-20", "end_date": "2026-10-25", "game_span": 6 },
+      { "week": 2, "start_date": "2026-10-26", "end_date": "2026-11-01", "game_span": 7 },
+      { "week": 24, "start_date": "2027-04-05", "end_date": "2027-04-11", "game_span": 7 }
     ],
-    "current_week": 18
+    "current_week": 2,
+    "season": {
+      "key": "2026-27",
+      "label": "2026–27",
+      "espn_year": 2027,
+      "preseason_start": "2026-10-03",
+      "regular_season_start": "2026-10-20",
+      "regular_season_end": "2027-04-11",
+      "phase": "regular",
+      "season_day": 8,
+      "week_count": 24
+    }
   }
 }`,
       },

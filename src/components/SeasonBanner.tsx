@@ -2,14 +2,16 @@
 
 import { CalendarClock, Medal, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { SEASON, getSeasonPhase } from "@/lib/season";
+import { useSeason } from "@/hooks/useSeason";
+import { formatSeasonDate } from "@/lib/season";
 
 /**
  * Season-phase banner. Renders nothing during the regular season; otherwise
  * points users at what's useful right now (bracket, connect a league, ...).
  */
 export function SeasonBanner() {
-  const phase = getSeasonPhase();
+  const season = useSeason();
+  const { phase } = season;
   if (phase === "regular") return null;
 
   const link = (href: string, text: string) => (
@@ -18,13 +20,15 @@ export function SeasonBanner() {
     </Link>
   );
 
+  const tipoff = formatSeasonDate(season.regularSeasonStart);
+
   let Icon = Medal;
   let body: React.ReactNode;
 
   if (phase === "playoffs") {
     body = (
       <>
-        The {SEASON.label} fantasy regular season is over. NBA Playoffs are live —{" "}
+        The {season.label} fantasy regular season is over. NBA Playoffs are live —{" "}
         {link("/playoffs", "view the bracket")} or {link("/terminal", "follow games in the terminal")}.
       </>
     );
@@ -32,15 +36,27 @@ export function SeasonBanner() {
     Icon = CalendarClock;
     body = (
       <>
-        The {SEASON.nextLabel} season tips off soon. {link("/manage-teams", "Connect your league")} and sync
-        its scoring format so you&apos;re ready for opening night.
+        Preseason is underway. {season.label} tips off {tipoff} —{" "}
+        {link("/manage-teams", "connect your league")} and sync its scoring format to be ready for opening
+        night.
       </>
     );
-  } else {
+  } else if (season.isUpcoming) {
+    // Offseason, calendar already on the upcoming season.
     Icon = Sparkles;
     body = (
       <>
-        The {SEASON.label} season is in the books. {SEASON.nextLabel} tips off in October —{" "}
+        The {season.prevLabel} season is in the books. {season.label} tips off {tipoff} —{" "}
+        {link("/manage-teams", "connect your league now")} so matchups, rankings, and streamers are tuned to
+        your scoring format from day one.
+      </>
+    );
+  } else {
+    // Offseason after the Finals, before the calendar rolls over to next season.
+    Icon = Sparkles;
+    body = (
+      <>
+        The {season.label} season is in the books. {season.nextLabel} tips off in October —{" "}
         {link("/manage-teams", "connect your league now")} so matchups, rankings, and streamers are tuned to
         your scoring format from day one.
       </>

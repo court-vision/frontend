@@ -16,7 +16,11 @@ interface UIStore {
 
   // Lineup generation form
   selectedLineupWeek: string | null;
-  setSelectedLineupWeek: (week: string | null) => void;
+  /** Season key (e.g. "2026-27") the persisted week belongs to; a week saved for another season is ignored. */
+  selectedLineupSeason: string | null;
+  /** Set the week; pass `seasonKey` to record which season it belongs to in the same update. */
+  setSelectedLineupWeek: (week: string | null, seasonKey?: string | null) => void;
+  setSelectedLineupSeason: (seasonKey: string | null) => void;
 
   // Modal states
   isManageTeamsModalOpen: boolean;
@@ -37,6 +41,18 @@ interface UIStore {
   setDismissedConnectPrompt: (dismissed: boolean) => void;
 }
 
+// Only persist team selection, provider, ranking model, lineup week (+ its season), and dismissals
+const partialize = (state: UIStore) => ({
+  selectedTeam: state.selectedTeam,
+  selectedProvider: state.selectedProvider,
+  selectedRankingModel: state.selectedRankingModel,
+  selectedLineupWeek: state.selectedLineupWeek,
+  selectedLineupSeason: state.selectedLineupSeason,
+  dismissedConnectPrompt: state.dismissedConnectPrompt,
+});
+
+type PersistedUIState = ReturnType<typeof partialize>;
+
 export const useUIStore = create<UIStore>()(
   persist(
     (set) => ({
@@ -54,7 +70,14 @@ export const useUIStore = create<UIStore>()(
 
       // Lineup generation form
       selectedLineupWeek: null,
-      setSelectedLineupWeek: (week) => set({ selectedLineupWeek: week }),
+      selectedLineupSeason: null,
+      setSelectedLineupWeek: (week, seasonKey) =>
+        set(
+          seasonKey === undefined
+            ? { selectedLineupWeek: week }
+            : { selectedLineupWeek: week, selectedLineupSeason: seasonKey }
+        ),
+      setSelectedLineupSeason: (seasonKey) => set({ selectedLineupSeason: seasonKey }),
 
       // Modal states
       isManageTeamsModalOpen: false,
@@ -77,14 +100,17 @@ export const useUIStore = create<UIStore>()(
     }),
     {
       name: "ui-store",
-      // Only persist team selection, provider, ranking model, lineup week, and dismissals
-      partialize: (state) => ({
-        selectedTeam: state.selectedTeam,
-        selectedProvider: state.selectedProvider,
-        selectedRankingModel: state.selectedRankingModel,
-        selectedLineupWeek: state.selectedLineupWeek,
-        dismissedConnectPrompt: state.dismissedConnectPrompt,
-      }),
+      // v2: the lineup week is scoped to a season. Anything persisted before
+      // that can't be trusted after rollover, so drop it.
+      version: 2,
+      migrate: (persisted, version): PersistedUIState => {
+        const state = (persisted ?? {}) as PersistedUIState;
+        if (version < 2) {
+          return { ...state, selectedLineupWeek: null, selectedLineupSeason: null };
+        }
+        return state;
+      },
+      partialize,
     }
   )
 );

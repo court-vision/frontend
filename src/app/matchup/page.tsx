@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { SeasonBanner } from "@/components/SeasonBanner";
 import { SeasonSummaryCard } from "@/components/matchup-components/SeasonSummaryCard";
 import { ConnectTeamPrompt } from "@/components/teams-components/ConnectTeamPrompt";
+import { useSeason } from "@/hooks/useSeason";
 import { seasonHeadline } from "@/lib/season";
 import { MOCK_CATEGORY_LIVE_MATCHUP, MOCK_CATEGORY_MATCHUP } from "@/__fixtures__/categoryMatchup";
 
@@ -23,6 +24,7 @@ function MatchupContent() {
   const { data: matchup, isLoading, error } = useMatchupQuery(mock ? null : selectedTeam);
   const { data: liveMatchup } = useLiveMatchupQuery(mock ? null : selectedTeam);
   const { data: seasonSummary } = useSeasonSummaryQuery(mock ? null : selectedTeam);
+  const season = useSeason();
 
   const hasTeams = teams.length > 0;
 
@@ -33,7 +35,7 @@ function MatchupContent() {
           Matchup
         </h1>
         <p className="text-muted-foreground text-sm mt-0.5">
-          {mock ? "Mock 9-cat matchup (dev only)." : seasonHeadline("matchup")}
+          {mock ? "Mock 9-cat matchup (dev only)." : seasonHeadline("matchup", season.phase, season)}
         </p>
       </section>
       {!mock && <SeasonBanner />}

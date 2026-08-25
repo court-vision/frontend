@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AlertCircle, Zap, ChevronDown, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getTodayET } from "@/lib/utils";
+import { defaultLineupWeek } from "@/lib/lineup-week";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useGenerateLineupMutation, useScheduleWeeksQuery } from "@/hooks/useLineups";
 import { Button } from "@/components/ui/button";
@@ -118,7 +119,11 @@ export function LineupOptimizerPanel() {
   const generateMutation = useGenerateLineupMutation();
 
   const weeks = scheduleData?.weeks ?? [];
-  const defaultWeek = scheduleData?.current_week ?? weeks[0]?.week ?? null;
+  const defaultWeek = useMemo(() => {
+    if (!scheduleData) return null;
+    const week = defaultLineupWeek(scheduleData.weeks, scheduleData.current_week, getTodayET());
+    return week === null ? null : Number(week);
+  }, [scheduleData]);
 
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [streamingSlots, setStreamingSlots] = useState<StreamingSlots>(1);

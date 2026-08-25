@@ -3,6 +3,7 @@
 import { TrendingUp, TrendingDown, Trophy } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useSeason } from "@/hooks/useSeason";
 import { seasonHeadline } from "@/lib/season";
 import type { SeasonSummaryData, WeekResult } from "@/types/matchup";
 
@@ -25,6 +26,7 @@ function weekOutcome(w: WeekResult, isCategories: boolean): "W" | "L" | "T" {
 }
 
 export function SeasonSummaryCard({ summary }: Props) {
+  const season = useSeason();
   const { wins, losses, total_points_for, total_points_against, best_week, worst_week, weeks } = summary;
   const isCategories = summary.scoring_format === "categories";
   const winPct = weeks.length > 0 ? ((wins / weeks.length) * 100).toFixed(0) : "0";
@@ -39,7 +41,7 @@ export function SeasonSummaryCard({ summary }: Props) {
     <Card variant="panel" className="p-4 space-y-4">
       <div className="flex items-center gap-2">
         <Trophy className="h-4 w-4 text-primary" />
-        <h2 className="font-display font-bold text-sm tracking-wide">{seasonHeadline("summary")}</h2>
+        <h2 className="font-display font-bold text-sm tracking-wide">{seasonHeadline("summary", season.phase, season)}</h2>
       </div>
 
       {/* W/L + win % */}

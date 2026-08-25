@@ -12,6 +12,7 @@ interface WeekScheduleStripProps {
 }
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS_PER_ROW = 7;
 
 function getInitials(fullName: string): string {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -84,6 +85,101 @@ export function WeekScheduleStrip({
     new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const dateRange = `${formatShort(matchup_start)} – ${formatShort(matchup_end)}`;
 
+  // A 14-day All-Star week would otherwise render as one 14-wide row; chunk
+  // the day cells into rows of at most 7 (same approach as streamers'
+  // WeekSchedule). Day index, labels, and the current-day highlight are
+  // unaffected by which row a cell lands in.
+  const rows: number[][] = [];
+  for (let i = 0; i < game_span; i += DAYS_PER_ROW) {
+    rows.push(Array.from({ length: Math.min(DAYS_PER_ROW, game_span - i) }, (_, k) => i + k));
+  }
+
+  const renderDay = (dayIndex: number) => {
+    const players = dayPlayers.get(dayIndex) ?? [];
+    const isPast = dayIndex < current_day_index;
+    const isCurrent = dayIndex === current_day_index;
+    const isB2B = b2bDays.has(dayIndex);
+    const densityPct = maxPlayers > 0 ? (players.length / maxPlayers) * 100 : 0;
+
+    return (
+      <div
+        key={dayIndex}
+        className={`flex min-w-[72px] flex-1 flex-col gap-2 rounded-lg border px-2 py-2 transition-opacity ${
+          isPast
+            ? "opacity-40"
+            : isCurrent
+              ? "border-primary/50 bg-primary/5"
+              : "border-border"
+        }`}
+      >
+        {/* Density bar */}
+        <div className="h-0.5 w-full overflow-hidden rounded-full bg-muted/40">
+          <div
+            className={`h-full rounded-full transition-all ${
+              isCurrent ? "bg-primary/70" : "bg-muted-foreground/40"
+            }`}
+            style={{ width: `${densityPct}%` }}
+          />
+        </div>
+
+        {/* Day header */}
+        <div className="flex flex-col items-center">
+          <span
+            className={`text-[11px] font-semibold uppercase tracking-wide ${
+              isCurrent ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            {getDayName(matchup_start, dayIndex)}
+          </span>
+          <span className="font-mono text-[11px] text-muted-foreground/60">
+            {formatDate(matchup_start, dayIndex)}
+          </span>
+        </div>
+
+        {/* Count + B2B */}
+        <div className="flex items-center justify-center gap-1">
+          <span
+            className={`font-mono text-sm font-bold tabular-nums ${
+              players.length === 0
+                ? "text-muted-foreground/30"
+                : players.length >= 4
+                  ? isCurrent
+                    ? "text-primary"
+                    : "text-foreground"
+                  : "text-muted-foreground"
+            }`}
+          >
+            {players.length}
+          </span>
+          {isB2B && (
+            <span className="rounded border border-amber-500/20 bg-amber-500/10 px-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-amber-500">
+              B2B
+            </span>
+          )}
+        </div>
+
+        {/* Player initials chips */}
+        <div className="flex flex-wrap justify-center gap-0.5">
+          {players.length > 0 ? (
+            players.map((p) => (
+              <div
+                key={p.player_id}
+                title={p.name}
+                className={`flex h-5 w-[26px] items-center justify-center rounded border font-mono text-[9px] font-bold tracking-wide ${
+                  getChipClass(p.valid_positions, p.injured)
+                }`}
+              >
+                {getInitials(p.name)}
+              </div>
+            ))
+          ) : (
+            <span className="py-0.5 font-mono text-[11px] text-muted-foreground/30">—</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -95,92 +191,17 @@ export function WeekScheduleStrip({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
-          {Array.from({ length: game_span }, (_, dayIndex) => {
-            const players = dayPlayers.get(dayIndex) ?? [];
-            const isPast = dayIndex < current_day_index;
-            const isCurrent = dayIndex === current_day_index;
-            const isB2B = b2bDays.has(dayIndex);
-            const densityPct = maxPlayers > 0 ? (players.length / maxPlayers) * 100 : 0;
-
-            return (
-              <div
-                key={dayIndex}
-                className={`flex min-w-[72px] flex-1 flex-col gap-2 rounded-lg border px-2 py-2 transition-opacity ${
-                  isPast
-                    ? "opacity-40"
-                    : isCurrent
-                      ? "border-primary/50 bg-primary/5"
-                      : "border-border"
-                }`}
-              >
-                {/* Density bar */}
-                <div className="h-0.5 w-full overflow-hidden rounded-full bg-muted/40">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      isCurrent ? "bg-primary/70" : "bg-muted-foreground/40"
-                    }`}
-                    style={{ width: `${densityPct}%` }}
-                  />
-                </div>
-
-                {/* Day header */}
-                <div className="flex flex-col items-center">
-                  <span
-                    className={`text-[11px] font-semibold uppercase tracking-wide ${
-                      isCurrent ? "text-primary" : "text-muted-foreground"
-                    }`}
-                  >
-                    {getDayName(matchup_start, dayIndex)}
-                  </span>
-                  <span className="font-mono text-[11px] text-muted-foreground/60">
-                    {formatDate(matchup_start, dayIndex)}
-                  </span>
-                </div>
-
-                {/* Count + B2B */}
-                <div className="flex items-center justify-center gap-1">
-                  <span
-                    className={`font-mono text-sm font-bold tabular-nums ${
-                      players.length === 0
-                        ? "text-muted-foreground/30"
-                        : players.length >= 4
-                          ? isCurrent
-                            ? "text-primary"
-                            : "text-foreground"
-                          : "text-muted-foreground"
-                    }`}
-                  >
-                    {players.length}
-                  </span>
-                  {isB2B && (
-                    <span className="rounded border border-amber-500/20 bg-amber-500/10 px-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-amber-500">
-                      B2B
-                    </span>
-                  )}
-                </div>
-
-                {/* Player initials chips */}
-                <div className="flex flex-wrap justify-center gap-0.5">
-                  {players.length > 0 ? (
-                    players.map((p) => (
-                      <div
-                        key={p.player_id}
-                        title={p.name}
-                        className={`flex h-5 w-[26px] items-center justify-center rounded border font-mono text-[9px] font-bold tracking-wide ${
-                          getChipClass(p.valid_positions, p.injured)
-                        }`}
-                      >
-                        {getInitials(p.name)}
-                      </div>
-                    ))
-                  ) : (
-                    <span className="py-0.5 font-mono text-[11px] text-muted-foreground/30">—</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex flex-col gap-1.5">
+          {rows.map((row) => (
+            <div key={row[0]} className="flex gap-1.5 overflow-x-auto pb-1">
+              {row.map(renderDay)}
+              {/* Pad a short trailing row so its cells line up with the row above */}
+              {rows.length > 1 && row.length < DAYS_PER_ROW &&
+                Array.from({ length: DAYS_PER_ROW - row.length }, (_, i) => (
+                  <div key={`pad-${i}`} aria-hidden className="min-w-[72px] flex-1" />
+                ))}
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>

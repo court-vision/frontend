@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,6 +34,9 @@ import type { UseMutationResult } from "@tanstack/react-query";
 import type { GenerateLineupResponse, LineupGenerationRequest } from "@/types/lineup";
 import { useScheduleWeeksQuery } from "@/hooks/useLineups";
 import { useMatchupQuery } from "@/hooks/useMatchup";
+import { useSeason } from "@/hooks/useSeason";
+import { defaultLineupWeek } from "@/lib/lineup-week";
+import { getTodayET } from "@/lib/utils";
 
 interface StopzFormProps {
   generateLineupMutation: UseMutationResult<GenerateLineupResponse, Error, LineupGenerationRequest>;
@@ -50,54 +53,65 @@ const stopzInput = z.object({
 });
 
 export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
-  const { selectedTeam, selectedProvider, selectedLineupWeek, setSelectedLineupWeek } = useUIStore();
+  const {
+    selectedTeam,
+    selectedProvider,
+    selectedLineupWeek,
+    selectedLineupSeason,
+    setSelectedLineupWeek,
+  } = useUIStore();
   const { data: scheduleData } = useScheduleWeeksQuery();
   const { data: matchupData } = useMatchupQuery(selectedTeam);
+  const season = useSeason();
 
   const form = useForm<z.infer<typeof stopzInput>>({
     resolver: zodResolver(stopzInput),
     defaultValues: {
       streaming_slots: "",
-      // Restore persisted week immediately on mount
-      week: selectedLineupWeek ?? "",
+      // Restore the persisted week immediately on mount, but only if it was
+      // saved for this season — a week from last season means nothing now.
+      week: selectedLineupSeason === season.key && selectedLineupWeek ? selectedLineupWeek : "",
       avg_mode: "season" as const,
     },
   });
 
   const reset = form.reset;
 
-  // Track whether the initial value was restored from the store so we don't
-  // overwrite it with the auto-fill effect below.
-  const restoredFromStore = useRef(!!selectedLineupWeek);
-
-  // Auto-fill the week when data is available (skipped if we restored from store)
+  // Auto-fill the week once the schedule is known. Re-runs when the season
+  // key changes (e.g. the server reports a different season than the fallback
+  // we mounted with), so a week persisted for another season is replaced.
   useEffect(() => {
-    if (restoredFromStore.current) return;
-    // Don't override if week is already set
-    if (form.getValues("week")) return;
+    if (!scheduleData) return;
+    const staleSeason = selectedLineupSeason !== season.key;
+    // Keep a restored or user-chosen week unless it belongs to another season
+    if (!staleSeason && form.getValues("week")) return;
 
-    let currentWeek: number | null = null;
+    let week: string | null = null;
 
     if (selectedProvider === "yahoo" && matchupData) {
-      // Yahoo: use platform-specific matchup period
-      currentWeek = matchupData.matchup_period;
-    } else if (scheduleData) {
-      // ESPN (or no provider): use date-based current week from schedule
-      currentWeek = scheduleData.current_week;
+      // Yahoo: our calendar week for the current matchup, else Yahoo's own period
+      const matchupWeek = matchupData.schedule_week ?? matchupData.matchup_period;
+      if (matchupWeek) week = String(matchupWeek);
+    }
+    if (week === null) {
+      // ESPN (or no provider): date-based current week, or the next one up
+      week = defaultLineupWeek(scheduleData.weeks, scheduleData.current_week, getTodayET());
     }
 
-    if (currentWeek) {
-      form.setValue("week", currentWeek.toString());
+    if (week) {
+      form.setValue("week", week);
+    } else if (staleSeason) {
+      setSelectedLineupWeek(null, season.key);
     }
-  }, [scheduleData, matchupData, selectedProvider, form]);
+  }, [scheduleData, matchupData, selectedProvider, season.key, selectedLineupSeason, form, setSelectedLineupWeek]);
 
-  // Persist week selection to the store whenever it changes
+  // Persist the week (and the season it belongs to) whenever it changes
   const weekValue = form.watch("week");
   useEffect(() => {
     if (weekValue) {
-      setSelectedLineupWeek(weekValue);
+      setSelectedLineupWeek(weekValue, season.key);
     }
-  }, [weekValue, setSelectedLineupWeek]);
+  }, [weekValue, season.key, setSelectedLineupWeek]);
 
   const handleClearClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
