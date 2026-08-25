@@ -26,14 +26,9 @@ export interface LeagueInfo {
 }
 
 // Provider-detected league settings (matches backend LeagueSummary)
-export type ScoringType = "points" | "categories" | "roto";
+import type { ScoringType, CategoryDef, CategoryWinMode } from "./scoring";
 
-export interface CategoryDef {
-  key: string;
-  label: string;
-  higher_is_better: boolean;
-  is_rate: boolean;
-}
+export type { ScoringType, CategoryDef, CategoryWinMode } from "./scoring";
 
 export interface LeagueSummary {
   id: number;
@@ -42,11 +37,19 @@ export interface LeagueSummary {
   season: number;
   name?: string | null;
   scoring_type: ScoringType;
-  category_win_mode?: "each_category" | "most_categories" | null;
+  category_win_mode?: CategoryWinMode | null;
   categories: CategoryDef[];
   point_weights: Record<string, number>;
   settings_synced: boolean;
   settings_synced_at?: string | null;
+}
+
+// Full league detail (matches backend LeagueDetail, GET /teams/{id}/league)
+export interface LeagueDetail extends LeagueSummary {
+  matchup_periods: Record<string, unknown>;
+  roster_slots: Record<string, number>;
+  unsupported: string[];
+  warnings: string[];
 }
 
 // Team response from backend (matches backend TeamResponse)
@@ -110,3 +113,5 @@ export type TeamAddResponse = BaseApiResponse<TeamResponseData> & {
 export type TeamRemoveResponse = BaseApiResponse<number>;
 export type TeamUpdateResponse = BaseApiResponse<TeamResponseData>;
 export type TeamViewResponse = BaseApiResponse<TeamResponseData>;
+export type LeagueGetResponse = BaseApiResponse<LeagueDetail | null>;
+export type LeagueSyncResponse = BaseApiResponse<LeagueSummary | null>;

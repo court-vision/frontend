@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, ChevronDown, Code2 } from "lucide-react";
+import { Bell, ChevronDown, Code2, Trophy } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
+import { LeagueSettings } from "@/components/settings/LeagueSettings";
 
 function DeveloperSettings() {
   return (
@@ -28,6 +29,13 @@ function DeveloperSettings() {
 
 const settingsTabs = [
   {
+    id: "league",
+    label: "League",
+    icon: Trophy,
+    description: "Scoring format & sync",
+    component: LeagueSettings,
+  },
+  {
     id: "notifications",
     label: "Notifications",
     icon: Bell,
@@ -46,7 +54,7 @@ const settingsTabs = [
 type TabId = (typeof settingsTabs)[number]["id"];
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<TabId | null>("notifications");
+  const [activeTab, setActiveTab] = useState<TabId | null>("league");
 
   const ActiveComponent = settingsTabs.find((t) => t.id === activeTab)?.component;
 
@@ -56,7 +64,7 @@ export default function Settings() {
       <section>
         <h1 className="font-display text-2xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground text-sm mt-0.5">
-          Manage your preferences and notification settings.
+          League format, notifications, and developer access.
         </p>
       </section>
 

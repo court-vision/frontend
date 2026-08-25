@@ -2,6 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { X } from "lucide-react";
+import {
+  ALT_RANGE_LABEL,
+  NAV_ITEMS,
+  altShortcutLabel,
+  cmdShortcutLabel,
+  paletteLabel,
+} from "@/lib/navigation";
 
 interface ShortcutGroup {
   title: string;
@@ -13,14 +20,20 @@ const shortcutGroups: ShortcutGroup[] = [
     title: "GLOBAL",
     shortcuts: [
       { keys: "⌘K", description: "Command palette" },
-      { keys: "⌥1-8", description: "Switch pages" },
+      { keys: ALT_RANGE_LABEL, description: "Switch pages" },
       { keys: "?", description: "This overlay" },
-      { keys: "⌘G", description: "Lineup generation" },
-      { keys: "⌘S", description: "Streamers" },
-      { keys: "⌘R", description: "Rankings" },
-      { keys: "⌘M", description: "Matchup" },
-      { keys: "⌘T", description: "Your teams" },
+      ...NAV_ITEMS.filter((i) => i.cmdKey).map((i) => ({
+        keys: cmdShortcutLabel(i) as string,
+        description: paletteLabel(i),
+      })),
     ],
+  },
+  {
+    title: "PAGES",
+    shortcuts: NAV_ITEMS.filter((i) => i.altDigit !== undefined).map((i) => ({
+      keys: altShortcutLabel(i) as string,
+      description: paletteLabel(i),
+    })),
   },
   {
     title: "TERMINAL",

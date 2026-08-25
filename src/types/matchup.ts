@@ -16,33 +16,19 @@ export interface MatchupPlayer {
 
 // ---- Category scoring (category leagues only; absent for points leagues) ----
 
-export type ScoringFormat = "points" | "categories";
+import type {
+  ScoringFormat,
+  CategoryScoreItem,
+  CategoryComparison,
+  CategoryTeamScore,
+} from "./scoring";
 
-export interface CategoryScoreItem {
-  key: string;
-  label: string;
-  you: number;
-  opp: number;
-  winner: "you" | "opp" | "tie";
-  higher_is_better: boolean;
-  is_rate: boolean;
-}
-
-export interface CategoryComparison {
-  items: CategoryScoreItem[];
-  wins: number;
-  losses: number;
-  ties: number;
-}
-
-export interface CategoryTeamScore {
-  totals: Record<string, number>; // rates are 0-1 fractions
-  raw?: Record<string, number> | null;
-  wins: number;
-  losses: number;
-  ties: number;
-  live_adjusted: boolean;
-}
+export type {
+  ScoringFormat,
+  CategoryScoreItem,
+  CategoryComparison,
+  CategoryTeamScore,
+} from "./scoring";
 
 // Team data within a matchup
 export interface MatchupTeam {
@@ -81,6 +67,8 @@ export interface DailyScorePoint {
   day_of_matchup: number; // 0-indexed day within matchup
   your_score: number;
   opponent_score: number;
+  your_categories?: Record<string, number> | null; // category leagues: per-day totals
+  opponent_categories?: Record<string, number> | null;
 }
 
 // Historical score data for a matchup period
@@ -90,6 +78,7 @@ export interface MatchupScoreHistory {
   opponent_team_name: string;
   matchup_period: number;
   history: DailyScorePoint[];
+  scoring_format?: ScoringFormat;
 }
 
 // API Response type for score history

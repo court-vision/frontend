@@ -1,5 +1,9 @@
 import type { LayoutItem } from "react-grid-layout";
 import type { LucideIcon } from "lucide-react";
+import type { ScoringFormat } from "./scoring";
+
+/** Seed templates: no team selected, a points-league team, a category-league team. */
+export type LayoutTemplate = "default" | "team" | "categories";
 
 /** A single widget slot in the grid — extends RGL LayoutItem with our definition mapping */
 export interface DashboardWidgetItem extends LayoutItem {
@@ -32,6 +36,8 @@ export interface DashboardWidgetDefinition {
   minH?: number;
   maxW?: number;
   requiresTeam: boolean;
+  /** Only offered for these formats (undefined = any). */
+  scoringTypes?: ScoringFormat[];
 }
 
 /** Dashboard Zustand store shape */
@@ -40,7 +46,7 @@ export interface DashboardState {
   isEditMode: boolean;
 
   setLayout: (teamKey: string, layout: DashboardLayout) => void;
-  resetLayout: (teamKey: string) => void;
+  resetLayout: (teamKey: string, template?: LayoutTemplate) => void;
   toggleEditMode: () => void;
   addWidget: (teamKey: string, definitionId: string) => void;
   removeWidget: (teamKey: string, instanceId: string) => void;

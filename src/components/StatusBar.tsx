@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useCommandPalette } from "@/providers/CommandPaletteProvider";
+import { ALT_RANGE_LABEL } from "@/lib/navigation";
 
 const tips = [
   "Press ⌘K to open commands",
   "Press / to search rankings",
   "Press ? for all shortcuts",
-  "Use ⌥1-8 to switch pages",
+  `Use ${ALT_RANGE_LABEL} to switch pages`,
   "Press ⌘G for lineup gen",
 ];
 

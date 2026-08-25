@@ -25,6 +25,9 @@ import type {
   TeamAddResponse,
   TeamRemoveResponse,
   TeamUpdateResponse,
+  LeagueDetail,
+  LeagueGetResponse,
+  LeagueSyncResponse,
 } from "@/types/team";
 import type {
   Lineup,
@@ -208,6 +211,34 @@ class ApiClient {
       return response.data;
     }
     throw new Error(response.message || "Failed to fetch team insights");
+  }
+
+  // League settings (provider-detected scoring format) for an owned team
+  async getTeamLeague(
+    getToken: GetTokenFn,
+    teamId: number
+  ): Promise<LeagueDetail | null> {
+    const response = await this.authenticatedRequest<LeagueGetResponse>(
+      `${TEAMS_API}/${teamId}/league`,
+      getToken
+    );
+    if (response.status === "success") {
+      return response.data ?? null;
+    }
+    throw new Error(response.message || "Failed to fetch league settings");
+  }
+
+  /** Re-fetch league settings from the provider. Returns the raw envelope:
+   *  `status` may be `error` with `data` still populated (provider unreachable → defaults). */
+  async syncTeamLeague(
+    getToken: GetTokenFn,
+    teamId: number
+  ): Promise<LeagueSyncResponse> {
+    return this.authenticatedRequest<LeagueSyncResponse>(
+      `${TEAMS_API}/${teamId}/league/sync`,
+      getToken,
+      { method: "POST" }
+    );
   }
 
   // Lineups API - calls backend directly

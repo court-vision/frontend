@@ -4,14 +4,18 @@ import { LayoutGrid, RotateCcw, Plus, Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDashboardStore } from "@/stores/useDashboardStore";
 import { cn } from "@/lib/utils";
+import type { LayoutTemplate } from "@/types/dashboard";
 
 interface DashboardToolbarProps {
   teamKey: string;
+  /** Template used by Reset; follows the selected team's scoring format. */
+  template: LayoutTemplate;
   onOpenCatalog: () => void;
 }
 
 export function DashboardToolbar({
   teamKey,
+  template,
   onOpenCatalog,
 }: DashboardToolbarProps) {
   const { isEditMode, toggleEditMode, resetLayout } = useDashboardStore();
@@ -49,7 +53,7 @@ export function DashboardToolbar({
               variant="ghost"
               size="sm"
               className="h-6 text-[11px] text-muted-foreground gap-1"
-              onClick={() => resetLayout(teamKey)}
+              onClick={() => resetLayout(teamKey, template)}
             >
               <RotateCcw className="h-3 w-3" />
               Reset

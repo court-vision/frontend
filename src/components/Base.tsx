@@ -7,22 +7,13 @@ import { CommandStrip } from "@/components/CommandStrip";
 import { StatusBar } from "@/components/StatusBar";
 import { KeyboardShortcutOverlay } from "@/components/KeyboardShortcutOverlay";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
+import { ROUTE_ORDER } from "@/lib/navigation";
 
 import { FC, useEffect, useRef } from "react";
 
-const routeOrder = [
-  "/",
-  "/your-teams",
-  "/matchup",
-  "/rankings",
-  "/playoffs",
-  "/terminal",
-  "/query-builder",
-];
-
 function getRouteIndex(path: string): number {
-  const idx = routeOrder.indexOf(path);
-  return idx === -1 ? routeOrder.length : idx;
+  const idx = ROUTE_ORDER.indexOf(path);
+  return idx === -1 ? ROUTE_ORDER.length : idx;
 }
 
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {

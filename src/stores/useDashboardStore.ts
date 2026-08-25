@@ -15,11 +15,9 @@ export const useDashboardStore = create<DashboardState>()(
           layouts: { ...s.layouts, [teamKey]: layout },
         })),
 
-      resetLayout: (teamKey) => {
+      resetLayout: (teamKey, templateKey) => {
         const template =
-          teamKey === "default"
-            ? DEFAULT_LAYOUTS["default"]
-            : DEFAULT_LAYOUTS["team"];
+          DEFAULT_LAYOUTS[templateKey ?? (teamKey === "default" ? "default" : "team")];
         // Deep clone with fresh instance IDs
         const reset = {
           ...template,

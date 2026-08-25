@@ -3,6 +3,7 @@
 import { TrendingUp, TrendingDown, Trophy } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { seasonHeadline } from "@/lib/season";
 import type { SeasonSummaryData } from "@/types/matchup";
 
 interface Props {
@@ -19,7 +20,7 @@ export function SeasonSummaryCard({ summary }: Props) {
     <Card variant="panel" className="p-4 space-y-4">
       <div className="flex items-center gap-2">
         <Trophy className="h-4 w-4 text-primary" />
-        <h2 className="font-display font-bold text-sm tracking-wide">2025–26 Season Record</h2>
+        <h2 className="font-display font-bold text-sm tracking-wide">{seasonHeadline("summary")}</h2>
       </div>
 
       {/* W/L + win % */}

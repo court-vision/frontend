@@ -3,24 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useClerk } from "@clerk/nextjs";
-import {
-  Home,
-  Trophy,
-  Users,
-  Calendar,
-  Settings,
-  Zap,
-  Check,
-  UserCircle,
-  LogIn,
-  LogOut,
-  CalendarCheck,
-  User,
-  UserPlus,
-  Terminal,
-  Database,
-  Code,
-} from "lucide-react";
+import { Check, UserCircle, LogIn, LogOut } from "lucide-react";
 import {
   CommandDialog,
   CommandInput,
@@ -34,6 +17,14 @@ import {
 import { DialogClose } from "@/components/ui/dialog";
 import { Command as CommandIcon, X } from "lucide-react";
 import { useTeams } from "@/app/context/TeamsContext";
+import {
+  ALT_RANGE_LABEL,
+  ALT_SHORTCUTS,
+  CMD_SHORTCUTS,
+  PALETTE_NAV,
+  paletteLabel,
+  shortcutLabel,
+} from "@/lib/navigation";
 
 // =============================================================================
 // Types
@@ -103,125 +94,23 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   // Navigation Commands (built-in)
   // ---------------------------------------------------------------------------
 
-  const navigationCommands: Command[] = [
-    {
-      id: "nav-home",
-      label: "Go to Home",
-      description: "Navigate to the home page",
-      icon: <Home className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["home", "dashboard", "main"],
-      action: () => router.push("/"),
-    },
-    {
-      id: "nav-your-teams",
-      label: "Go to Your Teams",
-      description: "Manage your fantasy teams",
-      icon: <Users className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["teams", "my teams", "roster"],
-      action: () => router.push("/your-teams"),
-    },
-    {
-      id: "nav-lineup-generation",
-      label: "Go to Lineup Generation",
-      description: "Generate optimized lineups",
-      icon: <Zap className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["generate", "lineup", "optimize", "auto"],
-      action: () => router.push("/lineup-generation"),
-    },
-    {
-      id: "nav-matchup",
-      label: "Go to Matchup",
-      description: "View the matchup for the week",
-      icon: <CalendarCheck className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["matchup", "schedule", "week"],
-      action: () => router.push("/matchup"),
-    },
-    {
-      id: "nav-streamers",
-      label: "Go to Streamers",
-      description: "View the streamers for the week",
-      icon: <UserPlus className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["streamers", "stream", "week"],
-      action: () => router.push("/streamers"),
-    },
-    {
-      id: "nav-rankings",
-      label: "Go to Rankings",
-      description: "View player rankings and stats",
-      icon: <Trophy className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["rankings", "leaderboard", "players"],
-      action: () => router.push("/rankings"),
-    },
-    {
-      id: "nav-account",
-      label: "Go to Account",
-      description: "View your account information",
-      icon: <User className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["account", "profile", "settings"],
-      action: () => router.push("/account"),
-    },
-    {
-      id: "nav-terminal",
-      label: "Go to Terminal",
-      description: "Open the terminal",
-      icon: <Terminal className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["terminal", "command bar", "search"],
-      action: () => router.push("/terminal"),
-    },
-    {
-      id: "nav-query-builder",
-      label: "Go to Query Builder",
-      description: "Open the SQL query builder",
-      icon: <Database className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["query", "sql", "database", "builder", "sqlmate"],
-      action: () => router.push("/query-builder"),
-    },
-    {
-      id: "nav-manage-teams",
-      label: "Go to Manage Teams",
-      description: "Add or edit team configurations",
-      icon: <Settings className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["manage", "teams", "settings", "configure"],
-      action: () => router.push("/manage-teams"),
-    },
-    {
-      id: "nav-manage-lineups",
-      label: "Go to Manage Lineups",
-      description: "Configure your lineup settings",
-      icon: <Calendar className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["lineups", "manage", "schedule"],
-      action: () => router.push("/manage-lineups"),
-    },
-    {
-      id: "nav-settings",
-      label: "Go to Settings",
-      description: "Configure your settings",
-      icon: <Settings className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["settings", "configure", "preferences"],
-      action: () => router.push("/settings"),
-    },
-    {
-      id: "nav-developer-portal",
-      label: "Go to Developer Portal",
-      description: "Access the developer documentation and API keys",
-      icon: <Code className="h-4 w-4" />,
-      group: "Navigation",
-      keywords: ["developer", "portal", "documentation", "api"],
-      action: () => router.push("/developer"),
-    },
-  ];
+  const navigationCommands: Command[] = useMemo(
+    () =>
+      PALETTE_NAV.map((item) => {
+        const Icon = item.icon;
+        return {
+          id: `nav-${item.href === "/" ? "home" : item.href.slice(1)}`,
+          label: `Go to ${paletteLabel(item)}`,
+          description: item.description,
+          icon: <Icon className="h-4 w-4" />,
+          shortcut: shortcutLabel(item),
+          group: "Navigation",
+          keywords: item.keywords,
+          action: () => router.push(item.href),
+        };
+      }),
+    [router]
+  );
 
   // ---------------------------------------------------------------------------
   // Team Switching Commands (dynamic based on user's teams)
@@ -323,29 +212,9 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
 
   useEffect(() => {
     // Cmd/Ctrl shortcuts (letters only - avoid numbers due to Safari tab switching)
-    const cmdShortcuts: Record<string, () => void> = {
-      k: () => toggle(),
-      g: () => router.push("/lineup-generation"),
-      s: () => router.push("/streamers"),
-      r: () => router.push("/rankings"),
-      m: () => router.push("/matchup"),
-      t: () => router.push("/your-teams"),
-    };
-
-    // Option/Alt + number shortcuts (safe from browser conflicts)
-    // Use e.code (physical key) instead of e.key because macOS transforms
-    // Option+number into special characters (e.g., Option+1 = ¡)
-    const altShortcuts: Record<string, () => void> = {
-      Digit1: () => router.push("/"),
-      Digit2: () => router.push("/your-teams"),
-      Digit3: () => router.push("/lineup-generation"),
-      Digit4: () => router.push("/matchup"),
-      Digit5: () => router.push("/streamers"),
-      Digit6: () => router.push("/rankings"),
-      Digit7: () => router.push("/terminal"),
-      Digit8: () => router.push("/query-builder"),
-    };
-
+    // and Option/Alt + digit shortcuts both come from src/lib/navigation.ts so
+    // the handlers can never drift from the labels shown in the nav bar.
+    // Alt uses e.code (physical key) because macOS transforms Option+digit in e.key.
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input
       const target = e.target as HTMLElement;
@@ -364,21 +233,27 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
 
       // Handle Cmd/Ctrl shortcuts (letters)
       if (e.metaKey || e.ctrlKey) {
-        const handler = cmdShortcuts[e.key.toLowerCase()];
-        if (handler) {
+        const key = e.key.toLowerCase();
+        if (key === "k") {
+          e.preventDefault();
+          toggle();
+          return;
+        }
+        const href = CMD_SHORTCUTS[key];
+        if (href) {
           e.preventDefault();
           close();
-          handler();
+          router.push(href);
         }
       }
 
-      // Handle Option/Alt shortcuts (numbers)
+      // Handle Option/Alt shortcuts (digits)
       if (e.altKey && !e.metaKey && !e.ctrlKey) {
-        const handler = altShortcuts[e.code];
-        if (handler) {
+        const href = ALT_SHORTCUTS[e.code];
+        if (href) {
           e.preventDefault();
           close();
-          handler();
+          router.push(href);
         }
       }
     };
@@ -474,7 +349,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
             <span><kbd className="px-1 py-0.5 rounded border border-border bg-muted/50">↵</kbd> select</span>
             <span><kbd className="px-1 py-0.5 rounded border border-border bg-muted/50">esc</kbd> close</span>
           </div>
-          <span className="text-muted-foreground/50">⌥1-8 pages | ? shortcuts</span>
+          <span className="text-muted-foreground/50">{ALT_RANGE_LABEL} pages | ? shortcuts</span>
         </div>
       </CommandDialog>
     </CommandPaletteContext.Provider>

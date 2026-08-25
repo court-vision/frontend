@@ -8,13 +8,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Pencil, Trash2, ExternalLink, Copy, Check } from "lucide-react";
-import { useTeamRosterQuery } from "@/hooks/useTeams";
+import { Pencil, Trash2, ExternalLink, Copy, Check, RefreshCw, Loader2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { useSyncTeamLeagueMutation, useTeamRosterQuery } from "@/hooks/useTeams";
 import { useUIStore } from "@/stores/useUIStore";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import type { TeamResponseData, FantasyProvider } from "@/types/team";
+import { scoringLabel } from "@/lib/category-format";
+import type { TeamResponseData, FantasyProvider, LeagueSummary } from "@/types/team";
 
 interface TeamCardProps {
   team: TeamResponseData;
@@ -24,10 +26,16 @@ interface TeamCardProps {
 
 export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
   const { league_info } = team;
+  const league = team.league ?? null;
   const isYahoo = league_info.provider === "yahoo";
   const router = useRouter();
   const setSelectedTeam = useUIStore((s) => s.setSelectedTeam);
   const [copied, setCopied] = useState(false);
+  const { mutate: syncLeague, isPending: isSyncing } = useSyncTeamLeagueMutation();
+
+  const syncedText = league?.settings_synced_at
+    ? `Synced ${formatDistanceToNow(new Date(league.settings_synced_at), { addSuffix: true })} · click to re-sync`
+    : "League settings not synced yet · click to sync";
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(String(team.team_id));
@@ -64,7 +72,10 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
               {league_info.year}
             </p>
           </div>
-          <ProviderBadge provider={league_info.provider} />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ScoringBadge league={league} />
+            <ProviderBadge provider={league_info.provider} />
+          </div>
         </div>
 
         <div className="mt-3">
@@ -143,9 +154,49 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
           >
             <Trash2 className="h-3 w-3" />
           </Button>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 hover:bg-input ml-auto"
+                  onClick={() => syncLeague(team.team_id)}
+                  disabled={isSyncing}
+                  aria-label="Sync league settings"
+                >
+                  {isSyncing ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{syncedText}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ScoringBadge({ league }: { league: LeagueSummary | null }) {
+  const synced = !!league?.settings_synced;
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "text-xs shrink-0 normal-case tracking-normal",
+        synced ? "border-primary/40 text-primary" : "border-border text-muted-foreground/60"
+      )}
+      title={synced ? "Detected from your league settings" : "Sync to detect the league format"}
+    >
+      {scoringLabel(league)}
+    </Badge>
   );
 }
 

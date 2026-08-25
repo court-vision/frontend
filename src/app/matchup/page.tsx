@@ -1,31 +1,21 @@
 "use client";
 
-import { useMemo } from "react";
 import { MatchupDisplay } from "@/components/matchup-components/MatchupDisplay";
-import { useMatchupQuery, useLiveMatchupQuery } from "@/hooks/useMatchup";
-import { useTeams } from "@/app/context/TeamsContext";
+import { useMatchupQuery, useLiveMatchupQuery, useSeasonSummaryQuery } from "@/hooks/useMatchup";
+import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { Card } from "@/components/ui/card";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { SeasonBanner } from "@/components/SeasonBanner";
 import { SeasonSummaryCard } from "@/components/matchup-components/SeasonSummaryCard";
-import { useSeasonSummaryQuery } from "@/hooks/useMatchup";
-import type { FantasyProvider } from "@/types/team";
+import { ConnectTeamPrompt } from "@/components/teams-components/ConnectTeamPrompt";
+import { seasonHeadline } from "@/lib/season";
 
 export default function Matchup() {
-  const { selectedTeam, teams, isTeamsLoading } = useTeams();
+  const { teamId: selectedTeam, teams, isLoading: isTeamsLoading, provider } = useSelectedTeam();
   const { data: matchup, isLoading, error } = useMatchupQuery(selectedTeam);
   const { data: liveMatchup } = useLiveMatchupQuery(selectedTeam);
   const { data: seasonSummary } = useSeasonSummaryQuery(selectedTeam);
 
-  const hasTeams = teams && teams.length > 0;
-
-  // Find the selected team's provider
-  const provider = useMemo<FantasyProvider>(() => {
-    if (!selectedTeam || !teams) return "espn";
-    const team = teams.find((t) => t.team_id === selectedTeam);
-    return team?.league_info?.provider || "espn";
-  }, [selectedTeam, teams]);
+  const hasTeams = teams.length > 0;
 
   return (
     <div className="space-y-4 animate-slide-up-fade">
@@ -34,7 +24,7 @@ export default function Matchup() {
           Matchup
         </h1>
         <p className="text-muted-foreground text-sm mt-0.5">
-          Final matchup results — 2025–26 regular season.
+          {seasonHeadline("matchup")}
         </p>
       </section>
       <SeasonBanner />
@@ -51,16 +41,7 @@ export default function Matchup() {
           provider={provider}
         />
       ) : !hasTeams ? (
-        <Card variant="panel" className="p-8">
-          <div className="text-center space-y-3">
-            <p className="text-sm text-muted-foreground">
-              You need to add a team to view matchup data.
-            </p>
-            <Link href="/manage-teams">
-              <Button size="sm">Add a Team</Button>
-            </Link>
-          </div>
-        </Card>
+        <ConnectTeamPrompt description="Add a team to see your weekly matchup, live scoring, and day-by-day breakdowns." />
       ) : !selectedTeam ? (
         <Card variant="panel" className="p-8">
           <p className="text-sm text-muted-foreground text-center">

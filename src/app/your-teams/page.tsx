@@ -1,40 +1,36 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useUIStore } from "@/stores/useUIStore";
-import { useTeamsQuery, useTeamInsightsQuery } from "@/hooks/useTeams";
+import { useTeamInsightsQuery } from "@/hooks/useTeams";
+import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { TeamDashboard } from "@/components/teams-components/TeamDashboard";
+import { ConnectTeamPrompt } from "@/components/teams-components/ConnectTeamPrompt";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Settings } from "lucide-react";
-import type { FantasyProvider } from "@/types/team";
+import { scoringLabel } from "@/lib/category-format";
 
 export default function Teams() {
   const { isSignedIn, isLoaded } = useUser();
-  const { selectedTeam, setSelectedTeam } = useUIStore();
-  const { data: teams, isLoading: isTeamsLoading } = useTeamsQuery();
+  const setSelectedTeam = useUIStore((s) => s.setSelectedTeam);
+  const {
+    teamId: selectedTeam,
+    team: selectedTeamData,
+    teams,
+    league,
+    provider,
+    isLoading: isTeamsLoading,
+  } = useSelectedTeam();
   const { data: insights, isLoading: isInsightsLoading } =
     useTeamInsightsQuery(selectedTeam);
 
-  // Find the selected team's provider
-  const provider = useMemo<FantasyProvider>(() => {
-    if (!selectedTeam || !teams) return "espn";
-    const team = teams.find((t) => t.team_id === selectedTeam);
-    return team?.league_info?.provider || "espn";
-  }, [selectedTeam, teams]);
-
-  // Get team info for summary strip
-  const selectedTeamData = useMemo(() => {
-    if (!selectedTeam || !teams) return null;
-    return teams.find((t) => t.team_id === selectedTeam);
-  }, [selectedTeam, teams]);
-
   // Auto-select first team if none selected
   useEffect(() => {
-    if (isSignedIn && teams && teams.length > 0 && !selectedTeam) {
+    if (isSignedIn && teams.length > 0 && !selectedTeam) {
       setSelectedTeam(teams[0].team_id);
     }
   }, [isSignedIn, teams, selectedTeam, setSelectedTeam]);
@@ -88,20 +84,11 @@ export default function Teams() {
     );
   }
 
-  if (!teams || teams.length === 0) {
+  if (teams.length === 0) {
     return (
       <div className="space-y-4 animate-slide-up-fade">
         {pageHeader}
-        <Card variant="panel" className="p-8">
-          <div className="text-center space-y-3">
-            <p className="text-sm text-muted-foreground">
-              You don&apos;t have any teams yet.
-            </p>
-            <Link href="/manage-teams">
-              <Button size="sm">Add a Team</Button>
-            </Link>
-          </div>
-        </Card>
+        <ConnectTeamPrompt description="Add a team to see your roster, recent form, category strengths, and streaming targets." />
       </div>
     );
   }
@@ -133,6 +120,11 @@ export default function Teams() {
         <span>
           <span className="text-foreground font-medium">{teamName}</span>
           {leagueName && <span> &middot; {leagueName}</span>}
+          {league?.settings_synced && (
+            <span className="ml-2 font-mono text-[10px] uppercase tracking-wider text-primary/80">
+              {scoringLabel(league)}
+            </span>
+          )}
         </span>
         <span className="ml-auto">
           {insights ? `${insights.roster.length} players` : ""}

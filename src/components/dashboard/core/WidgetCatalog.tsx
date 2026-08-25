@@ -12,6 +12,7 @@ import {
 import { DASHBOARD_WIDGET_REGISTRY } from "./DashboardWidgetRegistry";
 import { useDashboardStore } from "@/stores/useDashboardStore";
 import { useUIStore } from "@/stores/useUIStore";
+import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { cn } from "@/lib/utils";
 
 const CATEGORIES = ["team", "market", "schedule", "utility"] as const;
@@ -31,6 +32,7 @@ interface WidgetCatalogProps {
 export function WidgetCatalog({ open, onClose, teamKey }: WidgetCatalogProps) {
   const { layouts, addWidget } = useDashboardStore();
   const { selectedTeam } = useUIStore();
+  const { format } = useSelectedTeam();
   const currentWidgets = layouts[teamKey]?.widgets ?? [];
   const activeDefinitionIds = new Set(
     currentWidgets.map((w) => w.definitionId)
@@ -59,11 +61,20 @@ export function WidgetCatalog({ open, onClose, teamKey }: WidgetCatalogProps) {
                 <div className="space-y-1">
                   {widgets.map((def) => {
                     const isAdded = activeDefinitionIds.has(def.id);
-                    const isDisabled = def.requiresTeam && !selectedTeam;
+                    const needsTeam = def.requiresTeam && !selectedTeam;
+                    const wrongFormat =
+                      !!def.scoringTypes && !def.scoringTypes.includes(format);
+                    const isDisabled = needsTeam || wrongFormat;
+                    const disabledReason = needsTeam
+                      ? "Select a team first"
+                      : wrongFormat
+                        ? `Only for ${def.scoringTypes?.join("/")} leagues`
+                        : undefined;
                     const Icon = def.icon;
                     return (
                       <div
                         key={def.id}
+                        title={disabledReason}
                         className={cn(
                           "flex items-center gap-3 p-2 rounded-md",
                           isDisabled

@@ -3,20 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import {
-  Home,
-  Users,
-  Swords,
-  Trophy,
-  Medal,
-  Terminal,
-  Database,
-  Search,
-  User,
-  Menu,
-  Settings,
-} from "lucide-react";
+import { Search, User, Menu, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DESKTOP_NAV, MOBILE_NAV, altShortcutLabel } from "@/lib/navigation";
 import { useCommandPalette } from "@/providers/CommandPaletteProvider";
 import { TeamDropdown } from "@/components/teams-components/TeamDropdown";
 import { Button } from "@/components/ui/button";
@@ -25,28 +14,6 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-
-const navItems = [
-  { href: "/", label: "Home", icon: Home, shortcut: "1" },
-  { href: "/your-teams", label: "Teams", icon: Users, shortcut: "2" },
-  { href: "/matchup", label: "Matchup", icon: Swords, shortcut: "3" },
-  { href: "/rankings", label: "Rankings", icon: Trophy, shortcut: "4" },
-  { href: "/playoffs", label: "Playoffs", icon: Medal, shortcut: "5" },
-  { href: "/terminal", label: "Terminal", icon: Terminal, shortcut: "6" },
-  { href: "/query-builder", label: "SQL", icon: Database, shortcut: "7" },
-];
-
-const mobileNavItems = [
-  { href: "/", label: "Home", icon: Home, shortcut: "⌥1" },
-  { href: "/your-teams", label: "Your Teams", icon: Users, shortcut: "⌥2" },
-  { href: "/matchup", label: "Matchup", icon: Swords, shortcut: "⌥3" },
-  { href: "/rankings", label: "Rankings", icon: Trophy, shortcut: "⌥4" },
-  { href: "/playoffs", label: "Playoffs", icon: Medal, shortcut: "⌥5" },
-  { href: "/terminal", label: "Terminal", icon: Terminal, shortcut: "⌥6" },
-  { href: "/query-builder", label: "Query Builder", icon: Database, shortcut: "⌥7" },
-  { href: "/settings", label: "Settings", icon: Settings, shortcut: "" },
-  { href: "/account", label: "Account", icon: User, shortcut: "" },
-];
 
 export function CommandStrip() {
   const pathname = usePathname();
@@ -71,9 +38,10 @@ export function CommandStrip() {
               <span className="font-display text-base font-extrabold tracking-tight brand-text">Court Vision</span>
             </div>
             <nav className="grid grid-cols-2 gap-1 p-3">
-              {mobileNavItems.map((item) => {
+              {MOBILE_NAV.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
+                const shortcut = altShortcutLabel(item);
                 return (
                   <SheetTrigger key={item.href} asChild>
                     <Link href={item.href}>
@@ -83,9 +51,9 @@ export function CommandStrip() {
                         isActive && "bg-primary/10 text-primary border-l-2 border-primary"
                       )}>
                         <Icon className="h-3.5 w-3.5 shrink-0" />
-                        <span className="flex-1">{item.label}</span>
-                        {item.shortcut && (
-                          <span className="text-[9px] font-mono text-muted-foreground/50">{item.shortcut}</span>
+                        <span className="flex-1">{item.mobileLabel ?? item.label}</span>
+                        {shortcut && (
+                          <span className="text-[9px] font-mono text-muted-foreground/50">{shortcut}</span>
                         )}
                       </div>
                     </Link>
@@ -121,7 +89,7 @@ export function CommandStrip() {
 
       {/* Nav tabs - desktop */}
       <nav className="hidden md:flex items-center gap-1">
-        {navItems.map((item) => {
+        {DESKTOP_NAV.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link key={item.href} href={item.href}>
@@ -131,7 +99,7 @@ export function CommandStrip() {
                 isActive && "text-primary"
               )}>
                 <span>{item.label}</span>
-                <sup className="ml-0.5 text-[9px] text-muted-foreground/25 font-mono">{item.shortcut}</sup>
+                <sup className="ml-0.5 text-[9px] text-muted-foreground/25 font-mono">{item.altDigit}</sup>
                 {isActive && (
                   <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-primary rounded-full" />
                 )}

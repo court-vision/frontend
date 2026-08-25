@@ -16,6 +16,7 @@ function ManageTeamsContent() {
   const [yahooOAuthState, setYahooOAuthState] = useState<YahooOAuthState | null>(
     null
   );
+  const autoOpenAdd = searchParams.get("add") === "1";
 
   useEffect(() => {
     // Check for Yahoo OAuth callback params
@@ -69,7 +70,7 @@ function ManageTeamsContent() {
           </Button>
         </Link>
       </section>
-      <ManageTeamsTable yahooOAuthState={yahooOAuthState} />
+      <ManageTeamsTable yahooOAuthState={yahooOAuthState} autoOpenAdd={autoOpenAdd} />
     </div>
   );
 }

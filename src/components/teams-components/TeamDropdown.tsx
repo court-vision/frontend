@@ -20,6 +20,7 @@ import {
 import { useTeamsQuery } from "@/hooks/useTeams";
 import { useUIStore } from "@/stores/useUIStore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { scoringShortLabel } from "@/lib/category-format";
 
 export function TeamDropdown() {
   const { data: teams = [], isLoading } = useTeamsQuery();
@@ -100,9 +101,14 @@ export function TeamDropdown() {
                               : "bg-orange-500"
                           )}
                         />
-                        {team.league_info?.team_name || "Unknown Team"}
+                        <span className="truncate">{team.league_info?.team_name || "Unknown Team"}</span>
+                        {scoringShortLabel(team.league) && (
+                          <span className="ml-auto pl-2 text-[9px] font-mono text-muted-foreground/60">
+                            {scoringShortLabel(team.league)}
+                          </span>
+                        )}
                         {selectedTeam === team.team_id && (
-                          <Check size={20} className="ml-2" />
+                          <Check size={16} className="ml-1.5 shrink-0" />
                         )}
                       </CommandItem>
                     ))}

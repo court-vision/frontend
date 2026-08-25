@@ -31,6 +31,10 @@ interface UIStore {
   // Sidebar states
   isSidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+
+  // First-run "connect a team" banner on the dashboard
+  dismissedConnectPrompt: boolean;
+  setDismissedConnectPrompt: (dismissed: boolean) => void;
 }
 
 export const useUIStore = create<UIStore>()(
@@ -65,15 +69,21 @@ export const useUIStore = create<UIStore>()(
       // Sidebar states
       isSidebarOpen: false,
       setSidebarOpen: (open) => set({ isSidebarOpen: open }),
+
+      // First-run banner
+      dismissedConnectPrompt: false,
+      setDismissedConnectPrompt: (dismissed) =>
+        set({ dismissedConnectPrompt: dismissed }),
     }),
     {
       name: "ui-store",
-      // Only persist team selection, provider, ranking model, and lineup week
+      // Only persist team selection, provider, ranking model, lineup week, and dismissals
       partialize: (state) => ({
         selectedTeam: state.selectedTeam,
         selectedProvider: state.selectedProvider,
         selectedRankingModel: state.selectedRankingModel,
         selectedLineupWeek: state.selectedLineupWeek,
+        dismissedConnectPrompt: state.dismissedConnectPrompt,
       }),
     }
   )

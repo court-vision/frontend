@@ -43,12 +43,11 @@ import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { WeekSchedule, WeekScheduleHeader } from "./WeekSchedule";
 import { BreakoutContextSection } from "./BreakoutContextSection";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
-import { useTeams } from "@/app/context/TeamsContext";
+import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import type { StreamerPlayer, StreamerMode } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
-import type { FantasyProvider } from "@/types/team";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C", "G", "F"] as const;
 type Position = (typeof POSITIONS)[number];
@@ -67,15 +66,8 @@ interface SelectedPlayer {
 }
 
 export default function StreamerDisplay() {
-  const { selectedTeam, teams } = useTeams();
-
-  // Find the selected team's league info
-  const selectedTeamData = useMemo(() => {
-    return teams.find((t) => t.team_id === selectedTeam);
-  }, [teams, selectedTeam]);
-
+  const { teamId: selectedTeam, team: selectedTeamData, provider } = useSelectedTeam();
   const leagueInfo = selectedTeamData?.league_info || null;
-  const provider: FantasyProvider = leagueInfo?.provider || "espn";
 
   // Local state for filters
   const [searchQuery, setSearchQuery] = useState("");

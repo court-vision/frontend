@@ -2,6 +2,7 @@
 
 import RankingsDisplay from "@/components/rankings-components/RankingsDisplay";
 import { SeasonBanner } from "@/components/SeasonBanner";
+import { seasonHeadline } from "@/lib/season";
 
 export default function Rankings() {
   return (
@@ -11,7 +12,7 @@ export default function Rankings() {
           Rankings
         </h1>
         <p className="text-muted-foreground text-sm mt-0.5">
-          2025–26 season leaders — final standings.
+          {seasonHeadline("rankings")}
         </p>
       </section>
       <SeasonBanner />

@@ -51,7 +51,7 @@ export function WelcomeView() {
     {
       title: "Matchup Tracking",
       description:
-        "Daily score updates, projected winners, and head-to-head breakdowns. Stay on top of your matchup throughout the week.",
+        "Daily score updates, projected winners, and category-by-category breakdowns. Stay on top of your matchup throughout the week.",
       icon: Swords,
       tag: "\u2318M",
       size: "small",
@@ -59,7 +59,7 @@ export function WelcomeView() {
     {
       title: "Player Rankings",
       description:
-        "Comprehensive fantasy rankings updated daily with per-game and total fantasy point value, optimized for H2H points leagues.",
+        "Comprehensive fantasy rankings updated daily — per-game and total fantasy points, built for H2H points and category leagues.",
       icon: Trophy,
       tag: "\u2318R",
       size: "small",
@@ -77,7 +77,7 @@ export function WelcomeView() {
       description:
         "A power-user terminal for deep player analysis. Search players, compare stats, view game logs and performance charts side by side.",
       icon: Activity,
-      tag: "\u2325" + "7",
+      tag: "\u2325" + "6",
       size: "large",
     },
     {
@@ -91,7 +91,7 @@ export function WelcomeView() {
   ];
 
   const stats = [
-    { value: "H2H", label: "Points League Focus" },
+    { value: "H2H", label: "Points & Categories" },
     { value: "500+", label: "Players Tracked" },
     { value: "Daily", label: "Rankings & Scores" },
     { value: "Smart", label: "Lineup Alerts" },
@@ -551,7 +551,7 @@ export function WelcomeView() {
               </div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <kbd className="inline-flex items-center rounded border border-border bg-muted/50 px-2 py-1 font-mono text-[10px]">
-                  {"\u2325"}1-8
+                  {"\u2325"}1-9
                 </kbd>
                 <span>Pages</span>
               </div>
@@ -590,7 +590,7 @@ export function WelcomeView() {
                 { label: "Go to Lineup Generation", icon: "\u26A1", shortcut: "\u2318G" },
                 { label: "Go to Matchup", icon: "\u2694\uFE0F", shortcut: "\u2318M" },
                 { label: "Go to Rankings", icon: "\uD83C\uDFC6", shortcut: "\u2318R" },
-                { label: "Go to Terminal", icon: "\u25B8", shortcut: "\u23257" },
+                { label: "Go to Terminal", icon: "\u25B8", shortcut: "\u23256" },
               ].map((item, i) => (
                 <div
                   key={item.label}

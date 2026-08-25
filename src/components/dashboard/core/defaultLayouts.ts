@@ -1,4 +1,5 @@
-import type { DashboardLayout } from "@/types/dashboard";
+import type { DashboardLayout, LayoutTemplate } from "@/types/dashboard";
+import type { ScoringFormat } from "@/types/scoring";
 
 /** Default layout for users without a selected team (or logged-out) */
 const DEFAULT_LAYOUT: DashboardLayout = {
@@ -128,7 +129,78 @@ const TEAM_LAYOUT: DashboardLayout = {
   ],
 };
 
-export const DEFAULT_LAYOUTS: Record<string, DashboardLayout> = {
+/**
+ * Default layout template for a category-league team: the category
+ * comparison replaces the points score chart. (`category-comparison` lands
+ * with the category matchup work; until then category strengths leads.)
+ */
+const CATEGORY_LAYOUT: DashboardLayout = {
+  cols: 12,
+  widgets: [
+    {
+      i: "cat-matchup",
+      definitionId: "matchup-score",
+      x: 0,
+      y: 0,
+      w: 5,
+      h: 5,
+      minW: 3,
+      minH: 3,
+    },
+    {
+      i: "cat-roster",
+      definitionId: "roster-overview",
+      x: 5,
+      y: 0,
+      w: 4,
+      h: 7,
+      minW: 3,
+      minH: 4,
+    },
+    {
+      i: "cat-streamers",
+      definitionId: "team-streamers",
+      x: 9,
+      y: 0,
+      w: 3,
+      h: 5,
+      minW: 2,
+      minH: 4,
+    },
+    {
+      i: "cat-strengths",
+      definitionId: "category-strengths",
+      x: 0,
+      y: 5,
+      w: 5,
+      h: 4,
+      minW: 3,
+      minH: 3,
+    },
+    {
+      i: "cat-daily",
+      definitionId: "daily-breakdown",
+      x: 9,
+      y: 5,
+      w: 3,
+      h: 4,
+      minW: 2,
+      minH: 3,
+    },
+  ],
+};
+
+export const DEFAULT_LAYOUTS: Record<LayoutTemplate, DashboardLayout> = {
   default: DEFAULT_LAYOUT,
   team: TEAM_LAYOUT,
+  categories: CATEGORY_LAYOUT,
 };
+
+/** Which template seeds a dashboard for the given selection + scoring format. */
+export function layoutTemplateFor(
+  selectedTeam: number | null,
+  format: ScoringFormat
+): LayoutTemplate {
+  if (selectedTeam === null) return "default";
+  return format === "categories" ? "categories" : "team";
+}
