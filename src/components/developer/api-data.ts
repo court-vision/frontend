@@ -305,42 +305,50 @@ r = requests.get("${API_BASE}/players/2544/percentiles",
       {
         method: "GET",
         path: "/rankings/",
-        description: "Get fantasy basketball player rankings. Use window for rolling averages over the last 7, 14, or 30 days. Omit for full-season rankings.",
+        description: "Get fantasy basketball player rankings by fantasy points (default) or by summed per-category z-scores for H2H category leagues. Use window for rolling averages over the last 7, 14, or 30 days. Omit for full-season rankings.",
         params: [
-          { name: "window", type: "integer", required: false, description: "Rolling day window: 7, 14, or 30. Omit for full-season rankings." },
+          { name: "window", type: "integer", required: false, description: "Rolling day window: 7, 14, or 30 (anything else is a 422). Omit for full-season rankings." },
+          { name: "format", type: "string", required: false, description: "`points` (default) or `categories` (sum of category z-scores; rates are z-scored on impact = (pct − pool pct) × attempts)." },
+          { name: "categories", type: "string", required: false, description: "Comma-separated category keys for format=categories; defaults to standard 9-cat (fg_pct, ft_pct, fg3m, pts, reb, ast, stl, blk, tov). Allowed: pts, reb, ast, stl, blk, tov, fgm, fga, fg_pct, ftm, fta, ft_pct, fg3m, fg3a, fg3_pct." },
+          { name: "min_games", type: "integer", required: false, description: "Games-played floor for format=categories (1–82). Defaults: season 20, L30 8, L14 4, L7 2." },
         ],
         code: {
-          curl: `curl "${API_BASE}/rankings/?window=14"`,
+          curl: `curl "${API_BASE}/rankings/?window=14&format=categories"`,
           python: `import requests
 
 r = requests.get("${API_BASE}/rankings/",
-                 params={"window": 14})
+                 params={"window": 14, "format": "categories"})
 data = r.json()`,
-          typescript: `const res = await fetch('${API_BASE}/rankings/?window=14')
+          typescript: `const res = await fetch('${API_BASE}/rankings/?window=14&format=categories')
 const data = await res.json()`,
         },
         response: `{
   "status": "success",
   "data": [
     {
-      "id": 203999,
+      "id": 1641705,
       "rank": 1,
-      "player_name": "Nikola Jokic",
-      "team": "DEN",
-      "total_fpts": 3244.8,
-      "avg_fpts": 62.4,
-      "rank_change": 0
-    },
-    {
-      "id": 1629029,
-      "rank": 2,
-      "player_name": "Shai Gilgeous-Alexander",
-      "team": "OKC",
-      "total_fpts": 2987.1,
-      "avg_fpts": 58.6,
-      "rank_change": 1
+      "player_name": "Victor Wembanyama",
+      "team": "SAS",
+      "total_fpts": 345.0,
+      "avg_fpts": 69.0,
+      "rank_change": 0,
+      "gp": 5,
+      "categories": {"fg_pct": 0.5612, "ft_pct": 0.8837, "fg3m": 1.6, "pts": 31.2,
+                     "reb": 14.4, "ast": 4.2, "stl": 0.8, "blk": 3.0, "tov": 1.6},
+      "category_z": {"fg_pct": 1.42, "ft_pct": 0.61, "fg3m": 0.33, "pts": 3.1,
+                     "reb": 3.4, "ast": 0.4, "stl": -0.1, "blk": 5.2, "tov": 0.5},
+      "score": 17.843
     }
-  ]
+  ],
+  "meta": {
+    "format": "categories",
+    "window": 14,
+    "as_of": "2026-04-10",
+    "categories": [{"key": "fg_pct", "label": "FG%", "higher_is_better": true, "is_rate": true}, "..."],
+    "pool_size": 319,
+    "min_games": 4
+  }
 }`,
       },
     ],

@@ -40,7 +40,8 @@ import type {
   ScheduleWeeksData,
   ScheduleWeeksResponse,
 } from "@/types/lineup";
-import type { RankingsPlayer } from "@/types/rankings";
+import type { RankingsMeta, RankingsParams, RankingsPlayer, RankingsResult } from "@/types/rankings";
+import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
 import type { GamesOnDateData, TeamScheduleData, NBATeamLiveGameData } from "@/types/games";
@@ -572,6 +573,30 @@ class ApiClient {
       return data.data;
     }
     return [];
+  }
+
+  /**
+   * Rankings with the response `meta` block, in either format. Points-season
+   * (the default) matches `getRankings()` row for row.
+   */
+  async getRankingsWithMeta(params?: Partial<RankingsParams> | null): Promise<RankingsResult> {
+    const qs = toApiQuery(normalizeParams(params));
+    const response = await fetch(`${RANKINGS_API}/${qs ? `?${qs}` : ""}`);
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const body = await response.json();
+        detail = body?.detail ?? body?.message ?? detail;
+      } catch {
+        // ignore non-JSON error bodies
+      }
+      throw new Error(`Rankings request failed: ${detail}`);
+    }
+    const data: BaseApiResponse<RankingsPlayer[]> & { meta?: RankingsMeta | null } = await response.json();
+    if (data.status === "success" && data.data) {
+      return { players: data.data, meta: data.meta ?? null };
+    }
+    throw new Error(data.message || "Failed to fetch rankings");
   }
 
   // Players API (public - no auth required)

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { rankingsKeys } from "@/hooks/useRankings";
+import { DEFAULT_RANKINGS_PARAMS } from "@/lib/rankings-params";
 
 export const metadata: Metadata = {
   title: "Player Rankings",
@@ -27,9 +28,11 @@ export default async function RankingsLayout({
 }) {
   const queryClient = new QueryClient();
 
+  // Prefetch only the points/season variant: it is what the static HTML
+  // shows (crawlers, first paint); category views load on the client.
   await queryClient.prefetchQuery({
-    queryKey: rankingsKeys.lists(),
-    queryFn: () => apiClient.getRankings(),
+    queryKey: rankingsKeys.list(DEFAULT_RANKINGS_PARAMS),
+    queryFn: () => apiClient.getRankingsWithMeta(DEFAULT_RANKINGS_PARAMS),
     staleTime: 1000 * 60 * 10,
   });
 

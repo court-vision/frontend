@@ -35,24 +35,33 @@ export function calculateMovingAverage(
 }
 
 /**
+ * Hot/cold threshold relative to the player's own level: 7.5% of the season
+ * average (±3 for a 40-fpts player, ±0.9 for a 12-fpts player), floored at 0.5.
+ */
+export function formTrendThreshold(seasonAvg: number): number {
+  return Math.max(0.5, Math.abs(seasonAvg) * 0.075);
+}
+
+/**
  * Calculate the recent form trend by comparing last N games to season average.
  * Returns a value indicating if player is hot (positive), cold (negative), or neutral (near zero).
+ * `accessor` picks the metric (fantasy points by default).
  */
 export function calculateRecentFormTrend(
   gameLogs: GameLog[],
   seasonAvg: number,
-  recentGames: number = 5
+  recentGames: number = 5,
+  accessor: (g: GameLog) => number = (g) => g.fpts
 ): { trend: "hot" | "cold" | "neutral"; diff: number } {
   if (gameLogs.length < recentGames) {
     return { trend: "neutral", diff: 0 };
   }
 
   const recentLogs = gameLogs.slice(-recentGames);
-  const recentAvg = recentLogs.reduce((acc, g) => acc + g.fpts, 0) / recentGames;
+  const recentAvg = recentLogs.reduce((acc, g) => acc + accessor(g), 0) / recentGames;
   const diff = Math.round((recentAvg - seasonAvg) * 10) / 10;
 
-  // Threshold: +/- 3 points difference to be considered hot/cold
-  const threshold = 3;
+  const threshold = formTrendThreshold(seasonAvg);
 
   if (diff >= threshold) {
     return { trend: "hot", diff };

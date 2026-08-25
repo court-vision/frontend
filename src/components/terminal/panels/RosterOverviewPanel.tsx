@@ -126,7 +126,8 @@ const CATEGORY_STATS: { label: string; key: keyof CategoryStrengths; pct?: boole
   { label: "AST", key: "avg_assists" },
   { label: "STL", key: "avg_steals" },
   { label: "BLK", key: "avg_blocks" },
-  { label: "TOV", key: "avg_turnovers" },
+  { label: "TO", key: "avg_turnovers" },
+  { label: "3PM", key: "avg_fg3m" },
   { label: "FG%", key: "avg_fg_pct", pct: true },
   { label: "FT%", key: "avg_ft_pct", pct: true },
 ];
@@ -137,16 +138,16 @@ function CategoryAveragesStrip({ strengths }: { strengths: CategoryStrengths }) 
       <div className="flex items-center gap-1 mb-1">
         <BarChart3 className="h-2.5 w-2.5 text-muted-foreground/50" />
         <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider font-mono">
-          Cat Avgs · L14
+          Team per game · L{strengths.window_days}
         </span>
       </div>
-      <div className="grid grid-cols-4 gap-x-2 gap-y-0.5">
+      <div className="grid grid-cols-3 gap-x-2 gap-y-0.5">
         {CATEGORY_STATS.map(({ label, key, pct }) => (
           <div key={key} className="flex items-baseline justify-between">
             <span className="text-[9px] text-muted-foreground/60 font-mono">{label}</span>
             <span className="text-[9px] font-mono tabular-nums text-foreground">
               {pct
-                ? `${strengths[key].toFixed(1)}%`
+                ? `${(strengths[key] * 100).toFixed(1)}%`
                 : strengths[key].toFixed(1)}
             </span>
           </div>

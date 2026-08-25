@@ -11,38 +11,14 @@ import { useTeamInsightsQuery } from "@/hooks/useTeams";
 import { useTeams } from "@/app/context/TeamsContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BreakoutCandidateResp } from "@/types/breakout";
-import type { CategoryStrengths } from "@/types/team-insights";
+import type { CategoryComparison } from "@/types/scoring";
 
 // ── Weak category detection ──────────────────────────────────────────────────
 
-interface WeakCategory {
-  label: string;
-  key: keyof CategoryStrengths;
-  threshold: number;
-}
-
-const WEAK_CATEGORY_RULES: WeakCategory[] = [
-  { label: "PTS", key: "avg_points",   threshold: 100 },
-  { label: "REB", key: "avg_rebounds", threshold: 40  },
-  { label: "AST", key: "avg_assists",  threshold: 20  },
-  { label: "STL", key: "avg_steals",   threshold: 6.0 },
-  { label: "BLK", key: "avg_blocks",   threshold: 4.0 },
-  { label: "FG%", key: "avg_fg_pct",   threshold: 0.45 },
-  { label: "FT%", key: "avg_ft_pct",   threshold: 0.75 },
-  { label: "TOV", key: "avg_turnovers", threshold: -1  },
-];
-
-function getWeakCategories(cs: CategoryStrengths): string[] {
-  const weak: string[] = [];
-  for (const rule of WEAK_CATEGORY_RULES) {
-    if (rule.label === "TOV") {
-      if (cs.avg_turnovers > 12) weak.push("TOV");
-      continue;
-    }
-    const val = cs[rule.key] as number;
-    if (val < rule.threshold) weak.push(rule.label);
-  }
-  return weak;
+/** Categories you are currently losing to this week's opponent (per-game totals). */
+function losingCategories(cmp: CategoryComparison | null | undefined): string[] {
+  if (!cmp) return [];
+  return cmp.items.filter((i) => i.winner === "opp").map((i) => i.label);
 }
 
 // ── Unified streamer item ────────────────────────────────────────────────────
@@ -240,9 +216,8 @@ export function TeamStreamersPanel() {
     );
   }
 
-  // ── Category weakness context ───────────────────────────────────────────────
-  const categoryStrengths = insightsData?.category_strengths ?? null;
-  const weakCategories = categoryStrengths ? getWeakCategories(categoryStrengths) : [];
+  // ── Category weakness context: what you're losing vs this week's opponent ──
+  const weakCategories = losingCategories(insightsData?.category_comparison);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -251,7 +226,7 @@ export function TeamStreamersPanel() {
         <div className="px-3 py-2 border-b border-border/40 bg-muted/20 shrink-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide shrink-0">
-              Weak:
+              Losing:
             </span>
             {weakCategories.map((cat) => (
               <WeakCategoryBadge key={cat} label={cat} />

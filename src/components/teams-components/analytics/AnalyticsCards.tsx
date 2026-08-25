@@ -7,6 +7,7 @@ import type {
   ScheduleOverview,
 } from "@/types/team-insights";
 import { cn } from "@/lib/utils";
+import { formatCategoryValue } from "@/lib/category-format";
 
 // --- ProjectedPointsCard ---
 
@@ -62,15 +63,16 @@ function RosterHealthCard({ health }: { health: RosterHealthSummary }) {
 
 // --- CategoryStrengthsCard ---
 
-const CATEGORY_KEYS: { label: string; key: keyof CategoryStrengths }[] = [
+const CATEGORY_KEYS: { label: string; key: keyof CategoryStrengths; isRate?: boolean }[] = [
   { label: "PTS", key: "avg_points" },
   { label: "REB", key: "avg_rebounds" },
   { label: "AST", key: "avg_assists" },
   { label: "STL", key: "avg_steals" },
   { label: "BLK", key: "avg_blocks" },
-  { label: "TOV", key: "avg_turnovers" },
-  { label: "FG%", key: "avg_fg_pct" },
-  { label: "FT%", key: "avg_ft_pct" },
+  { label: "TO ↓", key: "avg_turnovers" },
+  { label: "3PM", key: "avg_fg3m" },
+  { label: "FG%", key: "avg_fg_pct", isRate: true },
+  { label: "FT%", key: "avg_ft_pct", isRate: true },
 ];
 
 function CategoryStrengthsCard({
@@ -82,15 +84,17 @@ function CategoryStrengthsCard({
     <Card className="p-3">
       <div className="flex items-center gap-1.5 mb-2">
         <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-xs text-muted-foreground">Category Averages</span>
+        <span className="text-xs text-muted-foreground">
+          Team Per Game{strengths ? ` · L${strengths.window_days}` : ""}
+        </span>
       </div>
       {strengths ? (
-        <div className="grid grid-cols-4 gap-x-3 gap-y-1">
-          {CATEGORY_KEYS.map(({ label, key }) => (
+        <div className="grid grid-cols-3 gap-x-3 gap-y-1">
+          {CATEGORY_KEYS.map(({ label, key, isRate }) => (
             <div key={key} className="flex items-baseline justify-between">
               <span className="text-[11px] text-muted-foreground">{label}</span>
               <span className="text-xs font-mono tabular-nums">
-                {strengths[key].toFixed(1)}
+                {formatCategoryValue(strengths[key], { is_rate: !!isRate })}
               </span>
             </div>
           ))}
