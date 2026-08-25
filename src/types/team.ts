@@ -3,6 +3,9 @@ import type { ApiStatus, BaseApiResponse } from "./auth";
 // Fantasy provider type
 export type FantasyProvider = "espn" | "yahoo";
 
+/** Per-team override of the rendered scoring format (e.g. view a points league as 9-cat). */
+export type ScoringPreview = "points" | "categories";
+
 // League info structure (matches backend LeagueInfo)
 export interface LeagueInfo {
   // Provider field - defaults to "espn" for backward compatibility
@@ -23,6 +26,9 @@ export interface LeagueInfo {
   yahoo_refresh_token?: string | null;
   yahoo_token_expiry?: string | null;
   yahoo_team_key?: string | null;
+
+  // View this team as a different format than its league uses; null = the league's real format
+  scoring_preview?: ScoringPreview | null;
 }
 
 // Provider-detected league settings (matches backend LeagueSummary)
@@ -42,6 +48,8 @@ export interface LeagueSummary {
   point_weights: Record<string, number>;
   settings_synced: boolean;
   settings_synced_at?: string | null;
+  /** Set when the team's scoring_preview overrides the league's real format above. */
+  scoring_preview?: ScoringPreview | null;
 }
 
 // Full league detail (matches backend LeagueDetail, GET /teams/{id}/league)
@@ -102,6 +110,8 @@ export interface LeagueInfoRequest {
   yahoo_refresh_token?: string;
   yahoo_token_expiry?: string;
   yahoo_team_key?: string;
+
+  scoring_preview?: ScoringPreview;
 }
 
 // Backend API Response Types

@@ -121,6 +121,15 @@ export function LeagueFormatCard({ team, league, isLoading, onSync, isSyncing }:
     <Card variant="panel" className="p-4 space-y-4">
       {header}
 
+      {/* Preview override note */}
+      {league.scoring_preview && (
+        <div className="rounded-md border border-status-projected/30 bg-status-projected/10 px-3 py-2 text-xs text-muted-foreground">
+          <span className="font-medium text-status-projected">Preview mode.</span> This team is shown as{" "}
+          {league.scoring_preview === "categories" ? "an H2H category league" : "an H2H points league"} regardless of
+          its real settings. Change it under Manage Teams → Edit → View as.
+        </div>
+      )}
+
       {/* Format */}
       <div className="flex flex-wrap items-center gap-2">
         <Badge

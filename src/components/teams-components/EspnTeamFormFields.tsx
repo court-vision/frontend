@@ -15,7 +15,14 @@ import {
   FormItem,
 } from "@/components/ui/form";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import type { LeagueInfo } from "@/types/team";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { LeagueInfo, ScoringPreview } from "@/types/team";
 
 export const espnTeamFormSchema = z.object({
   leagueID: z
@@ -30,9 +37,22 @@ export const espnTeamFormSchema = z.object({
   leagueName: z.string().optional(),
   s2: z.string().optional(),
   swid: z.string().optional(),
+  /** "default" = the league's real format; otherwise a per-team display override. */
+  scoringPreview: z.enum(["default", "points", "categories"]),
 });
 
 export type EspnTeamFormValues = z.infer<typeof espnTeamFormSchema>;
+
+export const SCORING_PREVIEW_OPTIONS: { value: EspnTeamFormValues["scoringPreview"]; label: string; hint: string }[] = [
+  { value: "default", label: "League default", hint: "Use the scoring format detected from ESPN" },
+  { value: "categories", label: "H2H categories (9-cat)", hint: "Render this team as a standard 9-cat league" },
+  { value: "points", label: "H2H points", hint: "Render this team as a points league" },
+];
+
+/** Form value → API value (undefined clears the override). */
+export function toScoringPreview(value: EspnTeamFormValues["scoringPreview"]): ScoringPreview | undefined {
+  return value === "default" ? undefined : value;
+}
 
 /** Default values for the form — from an existing team when editing. */
 export function espnFormDefaults(info?: Partial<LeagueInfo> | null): EspnTeamFormValues {
@@ -43,6 +63,7 @@ export function espnFormDefaults(info?: Partial<LeagueInfo> | null): EspnTeamFor
     leagueName: info?.league_name ?? "",
     s2: info?.espn_s2 ?? "",
     swid: info?.swid ?? "",
+    scoringPreview: info?.scoring_preview ?? "default",
   };
 }
 
@@ -67,6 +88,8 @@ interface EspnTeamFormFieldsProps {
   form: UseFormReturn<EspnTeamFormValues>;
   /** Show required markers on the mandatory fields (add flow). */
   required?: boolean;
+  /** Show the "View as" scoring-format override (edit flow). */
+  showPreview?: boolean;
 }
 
 function RequiredMark({ show }: { show: boolean }) {
@@ -78,7 +101,7 @@ function RequiredMark({ show }: { show: boolean }) {
  * The ESPN league fields shared by the add and edit dialogs: league id/year/
  * team/league name plus the collapsible private-league cookie section.
  */
-export function EspnTeamFormFields({ form, required = false }: EspnTeamFormFieldsProps) {
+export function EspnTeamFormFields({ form, required = false, showPreview = false }: EspnTeamFormFieldsProps) {
   const [cookieInput, setCookieInput] = useState("");
   const [parseSuccess, setParseSuccess] = useState(false);
 
@@ -148,6 +171,37 @@ export function EspnTeamFormFields({ form, required = false }: EspnTeamFormField
           </FormItem>
         )}
       />
+
+      {showPreview && (
+        <FormField
+          control={form.control}
+          name="scoringPreview"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>View as</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {SCORING_PREVIEW_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {SCORING_PREVIEW_OPTIONS.find((o) => o.value === field.value)?.hint}
+                {field.value !== "default" && " — the league's real settings are untouched."}
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
 
       <details className="group rounded-lg border border-border bg-muted/20 px-3 py-2.5">
         <summary className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground list-none [&::-webkit-details-marker]:hidden">

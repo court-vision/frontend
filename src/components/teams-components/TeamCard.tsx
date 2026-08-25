@@ -186,14 +186,25 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
 
 function ScoringBadge({ league }: { league: LeagueSummary | null }) {
   const synced = !!league?.settings_synced;
+  const preview = !!league?.scoring_preview;
   return (
     <Badge
       variant="outline"
       className={cn(
         "text-xs shrink-0 normal-case tracking-normal",
-        synced ? "border-primary/40 text-primary" : "border-border text-muted-foreground/60"
+        preview
+          ? "border-status-projected/50 text-status-projected"
+          : synced
+            ? "border-primary/40 text-primary"
+            : "border-border text-muted-foreground/60"
       )}
-      title={synced ? "Detected from your league settings" : "Sync to detect the league format"}
+      title={
+        preview
+          ? "Display override set in Edit Team — the league's real settings are unchanged"
+          : synced
+            ? "Detected from your league settings"
+            : "Sync to detect the league format"
+      }
     >
       {scoringLabel(league)}
     </Badge>

@@ -35,6 +35,7 @@ import {
   EspnTeamFormFields,
   espnFormDefaults,
   espnTeamFormSchema,
+  toScoringPreview,
   type EspnTeamFormValues,
 } from "./EspnTeamFormFields";
 import type { YahooOAuthState, YahooLeague, YahooTeam } from "@/types/yahoo";
@@ -527,6 +528,7 @@ function EditTeamFormContent({
           league_name: values.leagueName || undefined,
           espn_s2: values.s2 || undefined,
           swid: values.swid || undefined,
+          scoring_preview: toScoringPreview(values.scoringPreview),
         },
       },
       {
@@ -540,7 +542,7 @@ function EditTeamFormContent({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-3">
-        <EspnTeamFormFields form={form} />
+        <EspnTeamFormFields form={form} showPreview />
 
         <div className="flex justify-between pt-1">
           <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isPending}>

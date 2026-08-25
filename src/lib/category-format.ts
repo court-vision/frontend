@@ -243,19 +243,24 @@ export function normalizeProviderScoringType(
   return table[key] ?? GENERIC_SCORING_TYPES[key] ?? YAHOO_SCORING_TYPES[key] ?? { type: "unknown", label: raw ?? "Unknown format" };
 }
 
+export function isScoringPreview(league: LeagueSummary | null | undefined): boolean {
+  return !!league?.scoring_preview;
+}
+
 /** Human label for a team's detected league format, e.g. `H2H 9-Cat` / `H2H Points`. */
 export function scoringLabel(league: LeagueSummary | null | undefined): string {
   if (!league) return "Not synced";
   if (!league.settings_synced) return "Points (default)";
+  const suffix = league.scoring_preview ? " · preview" : "";
   switch (league.scoring_type) {
     case "categories": {
       const n = league.categories?.length ?? 0;
-      return n > 0 ? `H2H ${n}-Cat` : "H2H Categories";
+      return (n > 0 ? `H2H ${n}-Cat` : "H2H Categories") + suffix;
     }
     case "roto":
-      return "Roto";
+      return "Roto" + suffix;
     default:
-      return "H2H Points";
+      return "H2H Points" + suffix;
   }
 }
 
