@@ -1,6 +1,7 @@
 import type { BaseApiResponse } from "./auth";
 import type { LeagueInfo } from "./team";
 import type { BreakoutCandidateResp } from "./breakout";
+import type { ValueKind, ValueSource } from "./scoring";
 
 export type StreamerMode = "week" | "daily";
 
@@ -20,6 +21,8 @@ export interface StreamerPlayer {
   streamer_score: number;
   injured: boolean;
   injury_status: string | null;
+  /** Where the average came from; "baseline" = last season's per-game line. Absent on older API builds. */
+  avg_source?: ValueSource | null;
   // Attached client-side when player matches a breakout candidate
   breakout_context?: BreakoutCandidateResp;
 }
@@ -34,6 +37,8 @@ export interface StreamerData {
   target_day: number | null;
   teams_with_b2b: string[];
   streamers: StreamerPlayer[];
+  /** What `avg_points_*` mean; "cat_value" for H2H-category leagues. Absent on older API builds → fpts. */
+  value_kind?: ValueKind;
 }
 
 // Request to find streamers

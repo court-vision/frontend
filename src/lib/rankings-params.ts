@@ -15,8 +15,12 @@ export const RANKINGS_WINDOWS: { value: RankingsWindow; label: string; long: str
   { value: 7, label: "L7", long: "Last 7 days" },
 ];
 
-/** Mirrors the backend's games-played floors for category rankings. */
-export const DEFAULT_MIN_GAMES: Record<string, number> = { season: 20, "30": 8, "14": 4, "7": 2 };
+/**
+ * Games-played floor per window. The backend applies no floor by default —
+ * rankings show the new season from day 1 — so `min_games` is an explicit
+ * opt-in filter and every default is 1.
+ */
+export const DEFAULT_MIN_GAMES: Record<string, number> = { season: 1, "30": 1, "14": 1, "7": 1 };
 
 /** Category keys the backend can rank (services/scoring/category_rank.RANKABLE_KEYS). */
 export const RANKABLE_KEYS = [

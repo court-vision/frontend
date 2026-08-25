@@ -10,6 +10,7 @@ import type {
   CategoryDef,
   CategoryWinner,
   ScoringType,
+  ValueKind,
 } from "@/types/scoring";
 import type { FantasyProvider, LeagueSummary } from "@/types/team";
 
@@ -209,6 +210,31 @@ export function categoryDefsFromComparison(
     higher_is_better: item.higher_is_better,
     is_rate: item.is_rate,
   }));
+}
+
+// ---- Player value labels (what `avg_points` means) ----
+
+export const CAT_VALUE_TITLE =
+  "Category value — a 0–100 scalar built from the league's categories (z-scores), not fantasy points";
+
+export const BASELINE_VALUE_TITLE =
+  "No games this season yet — based on last season's per-game line";
+
+/** Column label for an `avg_points` value: `fptsLabel`, or `catLabel` for category values. */
+export function valueLabel(
+  kind: ValueKind | null | undefined,
+  fptsLabel: string,
+  catLabel = "Cat val"
+): string {
+  return kind === "cat_value" ? catLabel : fptsLabel;
+}
+
+/** Explicit `value_kind` wins; otherwise infer it from the rendered scoring format. */
+export function resolveValueKind(
+  kind: ValueKind | null | undefined,
+  isCategories: boolean
+): ValueKind {
+  return kind ?? (isCategories ? "cat_value" : "fpts");
 }
 
 // ---- Provider scoring-type normalization ----

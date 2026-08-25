@@ -11,6 +11,16 @@ export type ScoringType = "points" | "categories" | "roto";
 /** What the UI actually renders. Roto and unsynced leagues fall back to points. */
 export type ScoringFormat = "points" | "categories";
 
+/**
+ * What a player's `avg_points` scalar means: fantasy points, or — for
+ * H2H-category leagues — a "category value" proxy on the fpts scale
+ * (≈25 for a pool-average player, ≈100 for a star). Default "fpts".
+ */
+export type ValueKind = "fpts" | "cat_value";
+
+/** Where `avg_points` came from; "baseline" = last season's per-game line (no games this season yet). */
+export type ValueSource = "rolling" | "recent" | "baseline";
+
 export type CategoryWinMode = "each_category" | "most_categories";
 
 export interface CategoryDef {

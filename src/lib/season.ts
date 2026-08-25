@@ -61,6 +61,11 @@ export function nextSeasonLabel(key: string): string {
   return shiftedSeasonLabel(key, 1);
 }
 
+/** "2026-27" → "2026–27" (en dash). Unparseable keys pass through unchanged. */
+export function seasonLabel(key: string): string {
+  return shiftedSeasonLabel(key, 0);
+}
+
 function shiftedSeasonLabel(key: string, delta: number): string {
   const start = parseInt(key.slice(0, 4), 10);
   if (Number.isNaN(start)) return key;

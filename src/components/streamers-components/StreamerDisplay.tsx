@@ -46,6 +46,7 @@ import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDispla
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
+import { BASELINE_VALUE_TITLE, CAT_VALUE_TITLE } from "@/lib/category-format";
 import type { StreamerPlayer, StreamerMode } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
 
@@ -210,6 +211,7 @@ export default function StreamerDisplay() {
 
   const totalDays = data.game_span;
   const pickupDay = data.target_day ?? data.current_day_index;
+  const isCatValue = data.value_kind === "cat_value";
 
   return (
     <div className="flex flex-col w-full gap-3">
@@ -363,7 +365,12 @@ export default function StreamerDisplay() {
                   <TableHead className="min-w-[200px]">Player</TableHead>
                   <TableHead className="w-[50px] text-center">Team</TableHead>
                   <TableHead className="w-[120px]">Pos</TableHead>
-                  <TableHead className="w-[70px] text-right">{avgDays}D Avg</TableHead>
+                  <TableHead
+                    className="w-[70px] text-right whitespace-nowrap"
+                    title={isCatValue ? CAT_VALUE_TITLE : undefined}
+                  >
+                    {isCatValue ? "Cat value (L14)" : `${avgDays}D Avg`}
+                  </TableHead>
                   <TableHead className="w-[70px] text-center" title="Games remaining in the matchup">Games left</TableHead>
                   <TableHead className="text-center">
                     <div className="flex flex-col items-center gap-1">
@@ -476,10 +483,25 @@ export default function StreamerDisplay() {
                                 ))}
                             </div>
                           </TableCell>
-                          <TableCell className="text-right font-mono text-sm tabular-nums">
+                          <TableCell className="text-right font-mono text-sm tabular-nums whitespace-nowrap">
                             {player.avg_points_last_n !== null
                               ? player.avg_points_last_n.toFixed(1)
                               : "-"}
+                            {player.avg_source === "baseline" && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant="neutral"
+                                    className="ml-1 px-1 py-0 text-[9px] font-medium cursor-help"
+                                  >
+                                    prior season
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[220px]">
+                                  <p className="text-xs">{BASELINE_VALUE_TITLE}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                           </TableCell>
                           <TableCell className="text-center font-mono text-sm tabular-nums">
                             {player.games_remaining}

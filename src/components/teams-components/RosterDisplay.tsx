@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/dialog";
 import type { FantasyProvider } from "@/types/team";
 import type { EnrichedRosterPlayer } from "@/types/team-insights";
+import type { ValueKind } from "@/types/scoring";
+import { CAT_VALUE_TITLE } from "@/lib/category-format";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 
 type StatWindow = "season" | "l7" | "l14" | "l30";
@@ -92,12 +94,16 @@ interface SelectedPlayer {
 interface RosterDisplayProps {
   roster: EnrichedRosterPlayer[];
   provider?: FantasyProvider;
+  /** What `avg_points` means (default fpts). */
+  valueKind?: ValueKind;
 }
 
-export function RosterDisplay({ roster, provider = "espn" }: RosterDisplayProps) {
+export function RosterDisplay({ roster, provider = "espn", valueKind = "fpts" }: RosterDisplayProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
   const [statWindow, setStatWindow] = useState<StatWindow>("season");
   const [search, setSearch] = useState("");
+  // Only the season column is `avg_points`; the L7/L14/L30 columns are always fpts.
+  const isCatValue = valueKind === "cat_value" && statWindow === "season";
 
   const filteredAndSorted = useMemo(() => {
     const filtered = search
@@ -155,8 +161,11 @@ export function RosterDisplay({ roster, provider = "espn" }: RosterDisplayProps)
                 <TableHead className="w-[50px] pl-4">#</TableHead>
                 <TableHead>Player</TableHead>
                 <TableHead className="w-[60px]">Team</TableHead>
-                <TableHead className="w-[100px] text-right">
-                  Avg Pts
+                <TableHead
+                  className="w-[100px] text-right"
+                  title={isCatValue ? CAT_VALUE_TITLE : undefined}
+                >
+                  {isCatValue ? "Cat val" : "Avg Pts"}
                 </TableHead>
                 <TableHead className="w-[70px] text-right">Games</TableHead>
                 <TableHead className="w-[120px] text-right pr-4">

@@ -32,7 +32,7 @@ export interface LeagueInfo {
 }
 
 // Provider-detected league settings (matches backend LeagueSummary)
-import type { ScoringType, CategoryDef, CategoryWinMode } from "./scoring";
+import type { ScoringType, CategoryDef, CategoryWinMode, ValueKind, ValueSource } from "./scoring";
 
 export type { ScoringType, CategoryDef, CategoryWinMode } from "./scoring";
 
@@ -85,10 +85,14 @@ export interface Team {
 export interface RosterPlayer {
   player_id: number;
   name: string;
+  /** Fantasy points per game, or a category value when `value_kind` is "cat_value". */
   avg_points: number;
   team: string;
   valid_positions: string[];
   injured: boolean;
+  /** Absent on older API builds → fpts. */
+  value_kind?: ValueKind;
+  value_source?: ValueSource | null;
 }
 
 export interface LeagueInfoRequest {

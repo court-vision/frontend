@@ -27,7 +27,7 @@ export function TeamDashboard({ insights, provider }: TeamDashboardProps) {
 
       {/* Enriched roster table */}
       {insights.roster.length > 0 && (
-        <RosterDisplay roster={insights.roster} provider={provider} />
+        <RosterDisplay roster={insights.roster} provider={provider} valueKind={insights.value_kind} />
       )}
     </div>
   );

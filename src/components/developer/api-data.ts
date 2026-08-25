@@ -310,7 +310,7 @@ r = requests.get("${API_BASE}/players/2544/percentiles",
           { name: "window", type: "integer", required: false, description: "Rolling day window: 7, 14, or 30 (anything else is a 422). Omit for full-season rankings." },
           { name: "format", type: "string", required: false, description: "`points` (default) or `categories` (sum of category z-scores; rates are z-scored on impact = (pct − pool pct) × attempts)." },
           { name: "categories", type: "string", required: false, description: "Comma-separated category keys for format=categories; defaults to standard 9-cat (fg_pct, ft_pct, fg3m, pts, reb, ast, stl, blk, tov). Allowed: pts, reb, ast, stl, blk, tov, fgm, fga, fg_pct, ftm, fta, ft_pct, fg3m, fg3a, fg3_pct." },
-          { name: "min_games", type: "integer", required: false, description: "Games-played floor for format=categories (1–82). Defaults: season 20, L30 8, L14 4, L7 2." },
+          { name: "min_games", type: "integer", required: false, description: "Optional games-played floor for format=categories (1–82); no floor by default, so the new season ranks from day 1." },
         ],
         code: {
           curl: `curl "${API_BASE}/rankings/?window=14&format=categories"`,
@@ -344,10 +344,13 @@ const data = await res.json()`,
   "meta": {
     "format": "categories",
     "window": 14,
-    "as_of": "2026-04-10",
+    "as_of": "2026-11-03",
+    "season": "2026-27",
+    "season_day": 15,
+    "max_gp": 7,
     "categories": [{"key": "fg_pct", "label": "FG%", "higher_is_better": true, "is_rate": true}, "..."],
     "pool_size": 319,
-    "min_games": 4
+    "min_games": 1
   }
 }`,
       },
@@ -650,7 +653,7 @@ const data = await res.json()`,
         description: "Auto-fetch your roster and free agents from your connected ESPN or Yahoo team and generate an optimized lineup. No manual player data needed — just your team ID. Requires an API key with 'analytics' scope and a team added via the manage-teams page.",
         params: [
           { name: "team_id", type: "integer", required: true, description: "Your team ID (visible on the manage-teams page)" },
-          { name: "week", type: "integer", required: true, description: "Target fantasy week to optimize for (1–26)" },
+          { name: "week", type: "integer", required: true, description: "Matchup week to optimize for (1–24)" },
           { name: "streaming_slots", type: "integer", required: false, description: "Number of streaming add/drop moves to consider (default 2, max 10)" },
           { name: "use_recent_stats", type: "boolean", required: false, description: "Weight recent performance over season averages (default false)" },
         ],

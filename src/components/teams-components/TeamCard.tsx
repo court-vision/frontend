@@ -15,7 +15,7 @@ import { useUIStore } from "@/stores/useUIStore";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { scoringLabel } from "@/lib/category-format";
+import { CAT_VALUE_TITLE, scoringLabel } from "@/lib/category-format";
 import type { TeamResponseData, FantasyProvider, LeagueSummary } from "@/types/team";
 
 interface TeamCardProps {
@@ -53,6 +53,7 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
       ? (roster.reduce((sum, p) => sum + p.avg_points, 0) / roster.length).toFixed(1)
       : "0.0";
   const injuredCount = roster?.filter((p) => p.injured).length ?? 0;
+  const isCatValue = roster?.some((p) => p.value_kind === "cat_value") ?? false;
 
   const handleViewTeam = () => {
     setSelectedTeam(team.team_id);
@@ -83,7 +84,13 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
             <Skeleton className="h-4 w-48" />
           ) : (
             <p className="text-xs text-muted-foreground">
-              {playerCount} players | {avgFpts} avg | {injuredCount} injured
+              {playerCount} players | {avgFpts}{" "}
+              {isCatValue ? (
+                <span title={CAT_VALUE_TITLE} className="cursor-help">avg cat val</span>
+              ) : (
+                "avg"
+              )}{" "}
+              | {injuredCount} injured
             </p>
           )}
         </div>

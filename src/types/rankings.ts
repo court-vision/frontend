@@ -24,7 +24,14 @@ export interface RankingsMeta {
   as_of: string | null;
   categories: CategoryDef[];
   pool_size: number;
+  /** Games-played floor applied; 1 unless the caller set `min_games`. */
   min_games: number | null;
+  /** Season key, e.g. "2026-27". */
+  season: string;
+  /** Day of the regular season the data is as of; null before opening night. */
+  season_day: number | null;
+  /** Most games any player in the pool has played in the window; null before opening night. */
+  max_gp: number | null;
 }
 
 export type RankingsWindow = 7 | 14 | 30 | null;
@@ -35,7 +42,7 @@ export interface RankingsParams {
   window: RankingsWindow;
   /** Category keys for format=categories; null = the backend's standard 9-cat. */
   categories: string[] | null;
-  /** Games-played floor; null = the backend default for the window. */
+  /** Games-played floor; null = no floor (the backend applies none by default). */
   minGames: number | null;
 }
 

@@ -1,5 +1,5 @@
 import type { BaseApiResponse } from "./auth";
-import type { CategoryComparison, ScoringFormat } from "./scoring";
+import type { CategoryComparison, ScoringFormat, ValueKind } from "./scoring";
 
 export interface PlayerScheduleInfo {
   game_days: number[];
@@ -68,6 +68,8 @@ export interface TeamInsightsData {
   /** Your vs opponent per-game totals per category. */
   category_comparison?: CategoryComparison | null;
   scoring_format?: ScoringFormat;
+  /** What roster `avg_points` means; "cat_value" for H2H-category leagues. Absent on older API builds → fpts. */
+  value_kind?: ValueKind;
   schedule_overview: ScheduleOverview | null;
   roster_health: RosterHealthSummary;
   projected_week_fpts: number | null;

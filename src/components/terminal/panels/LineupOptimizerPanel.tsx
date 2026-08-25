@@ -6,6 +6,8 @@ import { cn, getTodayET } from "@/lib/utils";
 import { defaultLineupWeek } from "@/lib/lineup-week";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useGenerateLineupMutation, useScheduleWeeksQuery } from "@/hooks/useLineups";
+import { useSelectedTeam } from "@/hooks/useSelectedTeam";
+import { CAT_VALUE_TITLE, resolveValueKind } from "@/lib/category-format";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SlimGene, SlimPlayer } from "@/types/lineup";
@@ -115,6 +117,7 @@ type StreamingSlots = (typeof STREAMING_OPTIONS)[number];
 
 export function LineupOptimizerPanel() {
   const { focusedTeamId, setGeneratedLineup } = useTerminalStore();
+  const { isCategories } = useSelectedTeam(focusedTeamId);
   const { data: scheduleData, isLoading: scheduleLoading } = useScheduleWeeksQuery();
   const generateMutation = useGenerateLineupMutation();
 
@@ -137,6 +140,7 @@ export function LineupOptimizerPanel() {
   }, [defaultWeek, selectedWeek]);
 
   const lineup = generateMutation.data?.data ?? null;
+  const valueKind = resolveValueKind(lineup?.value_kind, isCategories);
   const isPending = generateMutation.isPending;
   const hasError = generateMutation.isError || generateMutation.data?.status === "error";
 
@@ -295,6 +299,17 @@ export function LineupOptimizerPanel() {
                 <span className="text-[9px] font-mono text-muted-foreground">
                   {lineup.StreamingSlots} streaming slot{lineup.StreamingSlots !== 1 ? "s" : ""}
                 </span>
+                {valueKind === "cat_value" && (
+                  <>
+                    <span className="text-[9px] font-mono text-muted-foreground/40">·</span>
+                    <span
+                      className="text-[9px] font-mono text-muted-foreground cursor-help"
+                      title={CAT_VALUE_TITLE}
+                    >
+                      cat value
+                    </span>
+                  </>
+                )}
               </div>
               {lineup.Improvement > 0 && (
                 <span className="text-[10px] font-mono font-semibold text-emerald-500 tabular-nums">

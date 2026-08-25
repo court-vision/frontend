@@ -53,7 +53,8 @@ import { Input } from "../ui/input";
 import PlayerStatDisplay from "./PlayerStatDisplay";
 import { cn } from "@/lib/utils";
 import { DEFAULT_9CAT, formatCategoryValue, polarityGlyph } from "@/lib/category-format";
-import { RANKINGS_WINDOWS, defaultMinGames, isStandard9Cat } from "@/lib/rankings-params";
+import { RANKINGS_WINDOWS, isStandard9Cat } from "@/lib/rankings-params";
+import { seasonLabel } from "@/lib/season";
 
 const PLAYERS_PER_PAGE = 50;
 
@@ -365,7 +366,14 @@ export default function RankingsDisplay() {
     );
   };
 
-  const minGames = params.minGames ?? meta?.min_games ?? defaultMinGames(params.window);
+  // "Day 12 of 2026–27", or "2026–27 · no games yet" before opening night.
+  const seasonCaption = meta?.season
+    ? typeof meta.season_day === "number"
+      ? `Day ${meta.season_day} of ${seasonLabel(meta.season)}`
+      : `${seasonLabel(meta.season)} · no games yet`
+    : null;
+  // The backend applies no games-played floor unless the user opted in.
+  const minGamesCaption = params.minGames !== null ? ` · min ${params.minGames} GP` : "";
   const categoriesCaption = isCategories
     ? source === "league" && leagueName
       ? `Using ${leagueName}'s categories`
@@ -438,11 +446,16 @@ export default function RankingsDisplay() {
     <p className="text-[11px] text-muted-foreground/70 px-0.5">
       {isCategories ? (
         <>
-          {categoriesCaption} · ranked by summed z-scores · min {minGames} GP
+          {categoriesCaption} · ranked by summed z-scores
+          {seasonCaption ? ` · ${seasonCaption}` : ""}
+          {minGamesCaption}
           {meta ? ` · ${meta.pool_size} players` : ""}
         </>
       ) : (
-        <>Fantasy points{params.window ? ` · last ${params.window} days` : " · full season"}</>
+        <>
+          Fantasy points{params.window ? ` · last ${params.window} days` : " · full season"}
+          {seasonCaption ? ` · ${seasonCaption}` : ""}
+        </>
       )}
       {meta?.as_of ? ` · as of ${meta.as_of}` : ""}
     </p>

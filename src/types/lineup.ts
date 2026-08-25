@@ -1,4 +1,5 @@
 import type { BaseApiResponse } from "./auth";
+import type { ValueKind } from "./scoring";
 
 export interface SlimPlayer {
   Name: string;
@@ -20,6 +21,11 @@ export interface Lineup {
   Timestamp: string;
   Week: number;
   StreamingSlots: number;
+  /**
+   * What `AvgPoints` means (default fpts). The lineup response does not carry
+   * this yet; until it does, the UI falls back to the team's scoring format.
+   */
+  value_kind?: ValueKind;
 }
 
 export interface LineupGenerationRequest {

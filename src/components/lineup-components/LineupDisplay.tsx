@@ -23,10 +23,15 @@ import {
 } from "@/components/ui/tooltip";
 import { Save } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CAT_VALUE_TITLE, resolveValueKind, valueLabel } from "@/lib/category-format";
+import { useSelectedTeam } from "@/hooks/useSelectedTeam";
+import type { ValueKind } from "@/types/scoring";
 
 export default function LineupDisplay({ lineup }: { lineup: Lineup }) {
   const { saveLineup } = useLineup();
+  const { isCategories } = useSelectedTeam();
   const [currentDay, setCurrentDay] = useState(0);
+  const valueKind = resolveValueKind(lineup.value_kind, isCategories);
 
   const handleSaveLineup = () => {
     saveLineup(lineup);
@@ -132,7 +137,7 @@ export default function LineupDisplay({ lineup }: { lineup: Lineup }) {
 
         {/* Roster Table */}
         <CardContent className="p-0">
-          <LineupDayContent gene={lineup.Lineup[currentDay]} />
+          <LineupDayContent gene={lineup.Lineup[currentDay]} valueKind={valueKind} />
         </CardContent>
       </Card>
 
@@ -148,7 +153,13 @@ export default function LineupDisplay({ lineup }: { lineup: Lineup }) {
   );
 }
 
-function LineupDayContent({ gene }: { gene: SlimGene }) {
+function LineupDayContent({
+  gene,
+  valueKind = "fpts",
+}: {
+  gene: SlimGene;
+  valueKind?: ValueKind;
+}) {
   const orderToDisplay = [
     "PG",
     "SG",
@@ -179,7 +190,12 @@ function LineupDayContent({ gene }: { gene: SlimGene }) {
               <TableHead className="w-10 py-2 text-xs">Pos</TableHead>
               <TableHead className="py-2 text-xs">Player</TableHead>
               <TableHead className="w-12 py-2 text-xs">Team</TableHead>
-              <TableHead className="w-12 py-2 text-xs text-right">Avg</TableHead>
+              <TableHead
+                className="w-12 py-2 text-xs text-right"
+                title={valueKind === "cat_value" ? CAT_VALUE_TITLE : undefined}
+              >
+                {valueLabel(valueKind, "Avg")}
+              </TableHead>
               <TableHead className="w-8 py-2"></TableHead>
             </TableRow>
           </TableHeader>
@@ -277,7 +293,9 @@ export function LineupViewer({
   lineup: Lineup;
   className?: string;
 }) {
+  const { isCategories } = useSelectedTeam();
   const [currentDay, setCurrentDay] = useState(0);
+  const valueKind = resolveValueKind(lineup.value_kind, isCategories);
 
   if (lineup.Lineup.length === 0) {
     return (
@@ -343,7 +361,7 @@ export function LineupViewer({
 
         {/* Roster Table */}
         <CardContent className="p-0">
-          <LineupDayContent gene={lineup.Lineup[currentDay]} />
+          <LineupDayContent gene={lineup.Lineup[currentDay]} valueKind={valueKind} />
         </CardContent>
       </Card>
     </div>
