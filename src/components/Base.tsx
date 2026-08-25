@@ -16,10 +16,15 @@ function getRouteIndex(path: string): number {
   return idx === -1 ? ROUTE_ORDER.length : idx;
 }
 
+// Public pages whose content doesn't depend on auth render immediately, so
+// their prerendered HTML carries real content (crawlers, first paint) instead
+// of a skeleton waiting on Clerk.
+const RENDER_BEFORE_AUTH = new Set(["/rankings"]);
+
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isLoaded } = useUser();
-  const loading = !isLoaded;
   const pathname = usePathname();
+  const loading = !isLoaded && !RENDER_BEFORE_AUTH.has(pathname);
   const prevPathRef = useRef(pathname);
 
   // Determine slide direction based on nav order
