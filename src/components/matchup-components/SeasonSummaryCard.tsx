@@ -2,6 +2,7 @@
 
 import { TrendingUp, TrendingDown, Trophy } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { HintPopover } from "@/components/ui/hint";
 import { cn } from "@/lib/utils";
 import { useSeason } from "@/hooks/useSeason";
 import { seasonHeadline } from "@/lib/season";
@@ -44,9 +45,9 @@ export function SeasonSummaryCard({ summary }: Props) {
         <h2 className="font-display font-bold text-sm tracking-wide">{seasonHeadline("summary", season.phase, season)}</h2>
       </div>
 
-      {/* W/L + win % */}
-      <div className="flex items-center gap-6">
-        <div className="text-center">
+      {/* W/L + win % — stacks on phones */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+        <div className="text-left sm:text-center">
           <p className="text-3xl font-display font-black text-foreground">
             {wins}
             <span className="text-muted-foreground/40 mx-1 font-normal">–</span>
@@ -54,7 +55,7 @@ export function SeasonSummaryCard({ summary }: Props) {
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">{winPct}% win rate</p>
         </div>
-        <div className="h-10 w-px bg-border" />
+        <div className="hidden sm:block h-10 w-px bg-border" />
         {isCategories ? (
           <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 text-sm">
             <div>
@@ -129,20 +130,24 @@ export function SeasonSummaryCard({ summary }: Props) {
           {weeks.map((w) => {
             const outcome = weekOutcome(w, isCategories);
             return (
-              <div
+              // Hover tooltip with a mouse, tap-to-open popover on touch (a `title` never shows there)
+              <HintPopover
                 key={w.matchup_period}
-                title={`Wk ${w.matchup_period}: ${weekLabel(w, isCategories)} vs ${w.opponent_team_name} · ${outcome}`}
-                className={cn(
-                  "h-5 w-5 rounded-sm text-[9px] font-bold flex items-center justify-center cursor-default border",
-                  outcome === "W"
-                    ? "bg-status-win/15 text-status-win border-status-win/20"
-                    : outcome === "L"
-                      ? "bg-status-loss/15 text-status-loss border-status-loss/20"
-                      : "bg-muted text-muted-foreground border-border"
-                )}
+                content={`Wk ${w.matchup_period}: ${weekLabel(w, isCategories)} vs ${w.opponent_team_name} · ${outcome}`}
               >
-                {outcome}
-              </div>
+                <div
+                  className={cn(
+                    "h-7 w-7 text-[10px] sm:h-5 sm:w-5 sm:text-[9px] rounded-sm font-bold flex items-center justify-center cursor-default border",
+                    outcome === "W"
+                      ? "bg-status-win/15 text-status-win border-status-win/20"
+                      : outcome === "L"
+                        ? "bg-status-loss/15 text-status-loss border-status-loss/20"
+                        : "bg-muted text-muted-foreground border-border"
+                  )}
+                >
+                  {outcome}
+                </div>
+              </HintPopover>
             );
           })}
         </div>

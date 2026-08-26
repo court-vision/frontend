@@ -12,6 +12,7 @@ import {
   ChartLegendContent,
 } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useIsMobile } from "@/hooks/useBreakpoint";
 import { useMatchupScoreHistoryQuery } from "@/hooks/useMatchup";
 import { formatNetCategories } from "@/lib/category-format";
 import { historyToCategoryPoints, weeklyToCategoryPoints } from "@/lib/matchup-headline";
@@ -43,7 +44,7 @@ function ChartSkeleton() {
         <Skeleton className="h-5 w-48" />
       </CardHeader>
       <CardContent>
-        <Skeleton className="h-[200px] w-full" />
+        <Skeleton className="h-[180px] sm:h-[200px] w-full" />
       </CardContent>
     </Card>
   );
@@ -109,6 +110,13 @@ function ChartContent({
   categoryMode,
 }: ChartContentProps) {
   const isCategories = categoryMode !== undefined;
+  // Recharts props can't be breakpoint-gated in CSS; below `md` thin the ticks
+  // so labels stay legible at ~340 px. Spread rather than pass `undefined`:
+  // recharts merges `{...defaultProps, ...props}`, so an explicit `undefined`
+  // (e.g. YAxis `width`) would override the default and break the layout.
+  const isMobile = useIsMobile();
+  const mobileXAxis = isMobile ? { interval: "preserveStartEnd" as const, minTickGap: 24 } : {};
+  const mobileYAxis = isMobile ? { width: 32 } : {};
   const chartConfig = useMemo(
     () =>
       ({
@@ -271,7 +279,7 @@ function ChartContent({
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <ChartContainer config={chartConfig} className="h-[200px] w-full">
+        <ChartContainer config={chartConfig} className="h-[180px] sm:h-[200px] w-full">
           <ComposedChart
             accessibilityLayer
             data={chartData}
@@ -297,14 +305,16 @@ function ChartContent({
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: isMobile ? 10 : 11 }}
+              {...mobileXAxis}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
               tickMargin={8}
               tickCount={4}
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: isMobile ? 10 : 11 }}
+              {...mobileYAxis}
               allowDecimals={!isCategories}
               tickFormatter={(value) => Math.round(value).toString()}
             />
