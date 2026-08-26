@@ -119,9 +119,9 @@ export function WelcomeView() {
   ];
 
   return (
-    <div className="-m-4 lg:-m-6">
+    <div>
       {/* HERO */}
-      <section className="relative flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-6 overflow-hidden">
+      <section className="relative flex flex-col items-center justify-center min-h-[calc(100vh-var(--chrome-h))] supports-[height:100dvh]:min-h-[calc(100dvh-var(--chrome-h))] px-4 sm:px-6 overflow-hidden">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/[0.04] rounded-full blur-[100px] pointer-events-none" />
 
         <div className="relative z-10 text-center max-w-3xl mx-auto animate-slide-up-fade">
@@ -236,7 +236,7 @@ export function WelcomeView() {
               </div>
             </div>
 
-            <div className="p-4 grid grid-cols-4 gap-3">
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="rounded-md border border-border bg-card p-3">
                 <p className="text-[9px] text-muted-foreground uppercase tracking-wider">
                   Current Score
@@ -280,8 +280,8 @@ export function WelcomeView() {
               </div>
             </div>
 
-            <div className="px-4 pb-4 grid grid-cols-3 gap-3">
-              <div className="col-span-2 rounded-md border border-border bg-card p-4">
+            <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2 rounded-md border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-semibold">
                     This Week&apos;s Matchup

@@ -203,7 +203,7 @@ export function TerminalLayout({ className }: TerminalLayoutProps) {
   void preset;
 
   return (
-    <div className={cn("flex flex-col h-[calc(100vh-4.5rem)] overflow-hidden", className)}>
+    <div className={cn("flex flex-col h-[calc(100vh-var(--chrome-h))] supports-[height:100dvh]:h-[calc(100dvh-var(--chrome-h))] overflow-hidden", className)}>
       {/* Command Bar */}
       <TerminalCommandBar />
 

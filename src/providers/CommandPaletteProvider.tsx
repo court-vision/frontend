@@ -17,6 +17,7 @@ import {
 import { DialogClose } from "@/components/ui/dialog";
 import { Command as CommandIcon, X } from "lucide-react";
 import { useTeams } from "@/app/context/TeamsContext";
+import { useIsBelowLg } from "@/hooks/useBreakpoint";
 import {
   ALT_RANGE_LABEL,
   ALT_SHORTCUTS,
@@ -79,6 +80,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   const [isOpen, setIsOpen] = useState(false);
   const [dynamicCommands, setDynamicCommands] = useState<Command[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const belowLg = useIsBelowLg();
 
   useEffect(() => {
     if (isOpen) {
@@ -94,9 +96,10 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   // Navigation Commands (built-in)
   // ---------------------------------------------------------------------------
 
+  // Desktop-only pages (terminal, SQL) show a notice below `lg`, so don't offer them there.
   const navigationCommands: Command[] = useMemo(
     () =>
-      PALETTE_NAV.map((item) => {
+      PALETTE_NAV.filter((item) => !(belowLg && item.desktopOnly)).map((item) => {
         const Icon = item.icon;
         return {
           id: `nav-${item.href === "/" ? "home" : item.href.slice(1)}`,
@@ -109,7 +112,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
           action: () => router.push(item.href),
         };
       }),
-    [router]
+    [router, belowLg]
   );
 
   // ---------------------------------------------------------------------------
@@ -297,7 +300,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[9px] font-mono text-muted-foreground/40">Esc to close</span>
-            <DialogClose className="rounded-sm opacity-50 hover:opacity-100 transition-opacity">
+            <DialogClose className="flex h-8 w-8 items-center justify-center -my-1.5 -mr-1.5 md:m-0 md:h-auto md:w-auto rounded-sm opacity-50 hover:opacity-100 transition-opacity touch-hit">
               <X className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="sr-only">Close</span>
             </DialogClose>
@@ -309,7 +312,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
           <CommandInput ref={inputRef} placeholder="Type a command or search..." className="border-0 pl-5" />
         </div>
 
-        <CommandList className="max-h-[400px]">
+        <CommandList className="max-h-[min(400px,calc(100vh-14rem))] supports-[height:100dvh]:max-h-[min(400px,calc(100dvh-14rem))]">
           <CommandEmpty className="py-6 text-center text-xs font-mono text-muted-foreground/50">
             No commands found.
           </CommandEmpty>
@@ -342,8 +345,8 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
           ))}
         </CommandList>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-3 py-1.5 border-t border-border bg-card text-[9px] text-muted-foreground font-mono">
+        {/* Footer (keyboard hints — pointless on phones) */}
+        <div className="hidden sm:flex items-center justify-between px-3 py-1.5 border-t border-border bg-card text-[9px] text-muted-foreground font-mono">
           <div className="flex items-center gap-3">
             <span><kbd className="px-1 py-0.5 rounded border border-border bg-muted/50">↑↓</kbd> navigate</span>
             <span><kbd className="px-1 py-0.5 rounded border border-border bg-muted/50">↵</kbd> select</span>

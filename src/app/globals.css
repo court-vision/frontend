@@ -67,6 +67,16 @@
 
     /* Grid system */
     --grid-line: 215 10% 10%;
+
+    /* Shell chrome height: header (48) + status bar (28). See Base.tsx. */
+    --chrome-h: 4.75rem;
+  }
+
+  /* Phones: header (48) + tab bar (56) + home-indicator inset. */
+  @media (max-width: 767.98px) {
+    :root {
+      --chrome-h: calc(3rem + 3.5rem + env(safe-area-inset-bottom, 0px));
+    }
   }
 
   /* Yahoo provider theme override */
@@ -84,6 +94,30 @@
 
   body {
     @apply bg-background text-foreground;
+    /* No rubber-band gap above the header on iOS; pages scroll inside <main>. */
+    overscroll-behavior-y: none;
+  }
+
+  /* Phones: 16 px inputs so iOS Safari doesn't zoom on focus (beats `.text-xs`). */
+  @media (max-width: 767.98px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  /* 44 px hit areas on touch screens without changing the visual size.
+     Lives in `base` so positioning utilities (`absolute`, `fixed`) still win. */
+  @media (pointer: coarse) {
+    .touch-hit {
+      position: relative;
+    }
+    .touch-hit::after {
+      content: "";
+      position: absolute;
+      inset: -8px;
+    }
   }
 
   /* Custom scrollbar */

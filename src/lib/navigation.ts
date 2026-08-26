@@ -1,6 +1,6 @@
 /**
- * Single source of truth for app navigation: nav bar tabs, mobile sheet,
- * command-palette entries, keyboard shortcuts, and page slide order.
+ * Single source of truth for app navigation: nav bar tabs, phone tab bar,
+ * mobile sheet, command-palette entries, keyboard shortcuts, and page slide order.
  *
  * ⌥1–7 mirror the desktop tab order; ⌥8/⌥9 reach Lineups/Streamers, which
  * have no desktop tab. ⌘-letter shortcuts are letters only (⌘1-9 collides
@@ -42,6 +42,10 @@ export interface NavItem {
   desktop?: boolean;
   mobile?: boolean;
   palette?: boolean;
+  /** Needs a wide screen: hidden from the phone sheet and, below `lg`, from the palette. */
+  desktopOnly?: boolean;
+  /** Position in the signed-in phone tab bar (1-based); the fifth tab is always "More". */
+  tab?: number;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -68,6 +72,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: true,
     mobile: true,
     palette: true,
+    tab: 4,
   },
   {
     href: "/matchup",
@@ -80,6 +85,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: true,
     mobile: true,
     palette: true,
+    tab: 1,
   },
   {
     href: "/rankings",
@@ -92,6 +98,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: true,
     mobile: true,
     palette: true,
+    tab: 3,
   },
   {
     href: "/playoffs",
@@ -114,6 +121,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: true,
     mobile: true,
     palette: true,
+    desktopOnly: true,
   },
   {
     href: "/query-builder",
@@ -126,6 +134,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: true,
     mobile: true,
     palette: true,
+    desktopOnly: true,
   },
   {
     href: "/lineup-generation",
@@ -149,6 +158,7 @@ export const NAV_ITEMS: NavItem[] = [
     cmdKey: "s",
     mobile: true,
     palette: true,
+    tab: 2,
   },
   {
     href: "/manage-teams",
@@ -156,6 +166,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Settings,
     description: "Add or edit team configurations",
     keywords: ["manage", "teams", "connect", "add team", "configure"],
+    mobile: true,
     palette: true,
   },
   {
@@ -195,8 +206,18 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 export const DESKTOP_NAV = NAV_ITEMS.filter((i) => i.desktop);
-export const MOBILE_NAV = NAV_ITEMS.filter((i) => i.mobile);
+export const MOBILE_NAV = NAV_ITEMS.filter((i) => i.mobile && !i.desktopOnly);
 export const PALETTE_NAV = NAV_ITEMS.filter((i) => i.palette);
+
+/** Signed-in phone tab bar, in `tab` order; the bar appends "More". */
+export const TAB_NAV = NAV_ITEMS.filter((i) => i.tab !== undefined).sort(
+  (a, b) => (a.tab as number) - (b.tab as number)
+);
+
+/** Signed-out phone tab bar; the bar appends "Sign in" and "More". */
+export const SIGNED_OUT_TAB_NAV = ["/", "/rankings", "/playoffs"].map(
+  (href) => NAV_ITEMS.find((i) => i.href === href) as NavItem
+);
 
 /** Page order used for slide-transition direction. */
 export const ROUTE_ORDER = DESKTOP_NAV.map((i) => i.href);

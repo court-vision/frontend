@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useSyncExternalStore } from "react";
+import { onlineManager, useQuery } from "@tanstack/react-query";
 import { API_BASE } from "@/endpoints";
 import { toApiError } from "@/lib/api-error";
 import { classifyHealth, DEGRADED, type ApiHealth } from "@/lib/health";
@@ -42,4 +43,55 @@ export function useApiHealthQuery() {
     retry: false,
     meta: { toast: false },
   });
+}
+
+export type Connectivity = "ok" | "degraded" | "offline" | "unknown";
+
+/** Status-dot colour per state (status bar; phone header dot). */
+export const CONNECTIVITY_DOT_CLASS: Record<Connectivity, string> = {
+  ok: "bg-signal-live",
+  degraded: "bg-status-projected",
+  offline: "bg-status-loss",
+  unknown: "bg-signal-stale",
+};
+
+const CONNECTIVITY_LABEL: Record<Exclude<Connectivity, "ok">, string> = {
+  degraded: "API degraded",
+  offline: "offline",
+  unknown: "API status unknown",
+};
+
+export function connectivityLabel(
+  connectivity: Connectivity,
+  dbLatencyMs?: number | null
+): string {
+  if (connectivity !== "ok") return CONNECTIVITY_LABEL[connectivity];
+  return dbLatencyMs !== null && dbLatencyMs !== undefined
+    ? `API ok · ${dbLatencyMs} ms`
+    : "API ok";
+}
+
+/** The browser's connectivity as TanStack sees it (drives its refetch-on-reconnect). */
+function useIsOnline(): boolean {
+  return useSyncExternalStore(
+    (onChange) => onlineManager.subscribe(onChange),
+    () => onlineManager.isOnline(),
+    () => true
+  );
+}
+
+/**
+ * API health folded with browser connectivity. "degraded" is reserved for a
+ * real 503 / `status: "degraded"` body; a 404 (endpoint not deployed yet),
+ * network failure or timeout is "unknown".
+ */
+export function useConnectivity() {
+  const health = useApiHealthQuery();
+  const isOnline = useIsOnline();
+  const connectivity: Connectivity = !isOnline
+    ? "offline"
+    : health.isError || !health.data
+      ? "unknown"
+      : health.data.status;
+  return { connectivity, health, isOnline };
 }

@@ -1,19 +1,24 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { ScrollX } from "@/components/ui/scroll-x"
 
-const Table = React.forwardRef<
-  HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
-    <table
-      ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
-      {...props}
-    />
-  </div>
-))
+export interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  /** Classes for the horizontal scroller around the table (e.g. a phone-only `max-h`). */
+  containerClassName?: string
+}
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, containerClassName, ...props }, ref) => (
+    <ScrollX wrapperClassName="w-full" className={containerClassName}>
+      <table
+        ref={ref}
+        className={cn("w-full caption-bottom text-sm", className)}
+        {...props}
+      />
+    </ScrollX>
+  )
+)
 Table.displayName = "Table"
 
 const TableHeader = React.forwardRef<
@@ -73,7 +78,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-10 px-4 text-left align-middle font-medium text-[11px] uppercase tracking-wider text-muted-foreground bg-muted/30 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "h-10 px-4 max-sm:px-2 text-left align-middle font-medium text-[11px] uppercase tracking-wider text-muted-foreground bg-muted/30 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     {...props}
@@ -88,7 +93,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-4 py-3 align-middle text-sm [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "px-4 py-3 max-sm:px-2 max-sm:py-2.5 align-middle text-sm [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     {...props}

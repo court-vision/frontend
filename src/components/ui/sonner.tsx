@@ -3,14 +3,20 @@
 import { useTheme } from "next-themes"
 import { Toaster as Sonner } from "sonner"
 
+import { useIsMobile } from "@/hooks/useBreakpoint"
+
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
-const Toaster = ({ ...props }: ToasterProps) => {
+const Toaster = ({ position, ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
+  const isMobile = useIsMobile()
 
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
+      // Phones: under the header, clear of the tab bar and the thumb zone.
+      position={position ?? (isMobile ? "top-center" : "bottom-right")}
+      mobileOffset={{ top: 56 }}
       className="toaster group"
       toastOptions={{
         classNames: {

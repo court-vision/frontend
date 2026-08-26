@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -91,6 +91,15 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Extend under the iOS home indicator / notch; Base.tsx pads with safe-area insets.
+  viewportFit: "cover",
+  themeColor: "#0f1117",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({

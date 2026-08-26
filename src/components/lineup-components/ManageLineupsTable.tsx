@@ -101,7 +101,7 @@ function ViewLineupButton({ lineup }: { lineup: Lineup }) {
           <Eye size={20} />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-md p-0 max-sm:p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-4 py-3 border-b border-border bg-muted/50">
           <DialogTitle className="text-base">
             Week {lineup.Week} Lineup

@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { onlineManager, useIsFetching } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useIsFetching } from "@tanstack/react-query";
 import { useCommandPalette } from "@/providers/CommandPaletteProvider";
-import { useApiHealthQuery } from "@/hooks/useApiHealth";
+import {
+  CONNECTIVITY_DOT_CLASS,
+  connectivityLabel,
+  useConnectivity,
+  type Connectivity,
+} from "@/hooks/useApiHealth";
 import { ALT_RANGE_LABEL } from "@/lib/navigation";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { cn } from "@/lib/utils";
@@ -16,15 +21,6 @@ const tips = [
   "Press ⌘G for lineup gen",
 ];
 
-type Connectivity = "ok" | "degraded" | "offline" | "unknown";
-
-const DOT_CLASS: Record<Connectivity, string> = {
-  ok: "bg-signal-live",
-  degraded: "bg-status-projected",
-  offline: "bg-status-loss",
-  unknown: "bg-signal-stale",
-};
-
 const LABEL_CLASS: Record<Connectivity, string> = {
   ok: "text-muted-foreground/40",
   degraded: "text-status-projected/80",
@@ -32,22 +28,13 @@ const LABEL_CLASS: Record<Connectivity, string> = {
   unknown: "text-muted-foreground/40",
 };
 
-/** The browser's connectivity as TanStack sees it (drives its refetch-on-reconnect). */
-function useIsOnline(): boolean {
-  return useSyncExternalStore(
-    (onChange) => onlineManager.subscribe(onChange),
-    () => onlineManager.isOnline(),
-    () => true
-  );
-}
-
+/** Desktop-only (md and up); phones get the tab bar and the header's health dot instead. */
 export function StatusBar() {
   const { open: openCommandPalette } = useCommandPalette();
   const [clock, setClock] = useState<string>("");
   const [now, setNow] = useState(0);
   const [tipIndex, setTipIndex] = useState(0);
-  const health = useApiHealthQuery();
-  const isOnline = useIsOnline();
+  const { connectivity, health } = useConnectivity();
   const isFetching = useIsFetching() > 0;
 
   // Update clock (and the relative "Sync" time) every second
@@ -77,21 +64,7 @@ export function StatusBar() {
     return () => clearInterval(interval);
   }, []);
 
-  // "degraded" is reserved for a real 503 / `status: "degraded"` body; a 404
-  // (endpoint not deployed yet), network failure or timeout is "unknown".
-  const connectivity: Connectivity = !isOnline
-    ? "offline"
-    : health.isError || !health.data
-      ? "unknown"
-      : health.data.status;
-
-  const latency = health.data?.dbLatencyMs;
-  const label: Record<Connectivity, string> = {
-    ok: latency !== null && latency !== undefined ? `API ok · ${latency} ms` : "API ok",
-    degraded: "API degraded",
-    offline: "offline",
-    unknown: "API status unknown",
-  };
+  const label = connectivityLabel(connectivity, health.data?.dbLatencyMs);
   const detail = [
     health.data?.version ? `version ${health.data.version}` : null,
     health.data?.environment ?? null,
@@ -102,9 +75,9 @@ export function StatusBar() {
   const syncLabel = health.dataUpdatedAt ? formatRelativeTime(health.dataUpdatedAt, now) : "—";
 
   return (
-    <div className="h-7 border-t border-border bg-card/80 px-3 flex items-center justify-between text-[11px] text-muted-foreground shrink-0">
+    <div className="hidden md:flex h-7 border-t border-border bg-card/80 px-3 items-center justify-between text-[11px] text-muted-foreground shrink-0">
       {/* Left: Tip ticker */}
-      <div className="flex items-center gap-2 hidden sm:flex">
+      <div className="hidden sm:flex items-center gap-2">
         <span className="text-muted-foreground/30">tip</span>
         <span className="text-muted-foreground/50">{tips[tipIndex]}</span>
       </div>
@@ -115,18 +88,18 @@ export function StatusBar() {
           type="button"
           onClick={() => health.refetch()}
           title={detail}
-          aria-label={`API status: ${label[connectivity]}`}
+          aria-label={`API status: ${label}`}
           className="flex items-center gap-1.5 hover:text-foreground transition-colors"
         >
           <span
             className={cn(
               "h-1.5 w-1.5 rounded-full",
-              DOT_CLASS[connectivity],
+              CONNECTIVITY_DOT_CLASS[connectivity],
               isFetching && "animate-beacon"
             )}
           />
           <span className={cn("hidden sm:inline", LABEL_CLASS[connectivity])}>
-            {label[connectivity]}
+            {label}
           </span>
         </button>
         <span className="text-muted-foreground/30 hidden sm:inline">Sync: {syncLabel}</span>

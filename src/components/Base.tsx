@@ -6,6 +6,7 @@ import * as Sentry from "@sentry/nextjs";
 
 import { CommandStrip } from "@/components/CommandStrip";
 import { StatusBar } from "@/components/StatusBar";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import { KeyboardShortcutOverlay } from "@/components/KeyboardShortcutOverlay";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
 import { ROUTE_ORDER } from "@/lib/navigation";
@@ -58,7 +59,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const isFullHeightPage = pathname === "/terminal" || pathname === "/";
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden">
+    <div className="flex flex-col h-screen supports-[height:100dvh]:h-dvh w-full overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       {/* Command Strip */}
       <CommandStrip />
 
@@ -73,14 +74,17 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
       )}
 
       {/* Main Content Area */}
-      <main className={`flex-1 overflow-y-auto overflow-x-clip relative ${isFullHeightPage ? '' : 'p-5 lg:p-8'}`}>
+      <main className={`flex-1 overflow-y-auto overflow-x-clip overscroll-y-contain relative ${isFullHeightPage ? '' : 'p-4 md:p-5 lg:p-8'}`}>
         <div key={pathname} className={`relative z-10 ${direction}`}>
           {loading && <SkeletonCard />}
           {!loading && children}
         </div>
       </main>
 
-      {/* Status Strip */}
+      {/* Phone tab bar (below md) — in flow, so no page needs bottom padding */}
+      <MobileTabBar />
+
+      {/* Status Strip (md and up) */}
       <StatusBar />
 
       {/* Keyboard Shortcut Overlay */}

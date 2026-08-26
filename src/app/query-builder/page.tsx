@@ -5,8 +5,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FolderOpen } from "lucide-react";
 
+import { DesktopOnlyNotice } from "@/components/DesktopOnlyNotice";
 import { QueryBuilderCanvas } from "@/components/query-builder/QueryBuilderCanvas";
 import { Button } from "@/components/ui/button";
+import { useIsBelowLg } from "@/hooks/useBreakpoint";
 import { getSchema } from "@/lib/sqlmateClient";
 import type { SchemaTable } from "@/types/sqlmate";
 
@@ -17,6 +19,7 @@ export default function QueryBuilderPage() {
   const [token, setToken] = useState<string | null>(null);
   const [schema, setSchema] = useState<SchemaTable[] | null>(null);
   const [schemaError, setSchemaError] = useState<string | null>(null);
+  const belowLg = useIsBelowLg();
 
   useEffect(() => {
     let isMounted = true;
@@ -70,8 +73,12 @@ export default function QueryBuilderPage() {
     };
   }, [token]);
 
+  // The canvas needs a wide screen; `hidden lg:flex` hides the SSR frame
+  // before hydration, then the hook swaps in the notice.
+  if (belowLg) return <DesktopOnlyNotice feature="Query Builder" />;
+
   return (
-    <div className="flex flex-col h-[calc(94vh-60px)]">
+    <div className="hidden lg:flex flex-col h-[calc(94vh-60px)]">
       <div className="flex items-center justify-between border-b border-border pb-3">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight">
