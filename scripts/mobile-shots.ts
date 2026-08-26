@@ -10,8 +10,10 @@
  * Console errors/warnings and uncaught exceptions (hydration mismatches!) are
  * printed under each shot. EVAL="<js expression>" prints its value per shot,
  * e.g. EVAL='document.documentElement.scrollWidth' to catch horizontal overflow.
+ * PRE_EVAL="<js expression>" runs before each shot to put the page in a state
+ * worth capturing, e.g. scrolling a sticky-column table sideways.
  *
- * Env (all optional): CHROME, BASE_URL, OUT, SIZES, ROUTES, SETTLE_MS, EVAL.
+ * Env (all optional): CHROME, BASE_URL, OUT, SIZES, ROUTES, SETTLE_MS, PRE_EVAL, EVAL.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -27,6 +29,8 @@ const ROUTES = (process.env.ROUTES ?? "/ /rankings /sign-in /terminal /query-bui
   .filter(Boolean);
 /** Time after `load` for hydration, Clerk and data fetches to settle. */
 const SETTLE_MS = Number(process.env.SETTLE_MS ?? 5000);
+/** Optional JS expression evaluated in the page before each shot (scroll/click into a state). */
+const PRE_EVAL = process.env.PRE_EVAL;
 /** Optional JS expression evaluated in the page after each shot; its value is printed (DOM probes). */
 const EVAL = process.env.EVAL;
 const LOAD_TIMEOUT_MS = 30_000;
@@ -196,6 +200,14 @@ async function main() {
         await cdp.send("Page.navigate", { url: `${BASE_URL}${route}` }, sessionId);
         await loaded;
         await Bun.sleep(SETTLE_MS);
+        if (PRE_EVAL) {
+          await cdp.send(
+            "Runtime.evaluate",
+            { expression: PRE_EVAL, awaitPromise: true },
+            sessionId
+          );
+          await Bun.sleep(300);
+        }
         const { data } = (await cdp.send(
           "Page.captureScreenshot",
           { format: "png" },
