@@ -31,10 +31,13 @@ export function useNBATeamRosterQuery(abbrev: string | null) {
 export function useNBATeamLiveGameQuery(abbrev: string | null) {
   return useQuery<NBATeamLiveGameData | null>({
     queryKey: nbaTeamKeys.liveGame(abbrev!),
-    queryFn: () => apiClient.getNBATeamLiveGame(abbrev!),
+    queryFn: ({ signal }) => apiClient.getNBATeamLiveGame(abbrev!, { signal }),
     enabled: !!abbrev,
     staleTime: 0,
     refetchInterval: 30 * 1000, // 30 seconds — matches live pipeline cadence
     refetchOnWindowFocus: true,
+    // Live polling: the next poll is the retry, and the panel shows its own badge
+    retry: false,
+    meta: { toast: false },
   });
 }

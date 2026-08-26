@@ -49,4 +49,6 @@ export interface RankingsParams {
 export interface RankingsResult {
   players: RankingsPlayer[];
   meta: RankingsMeta | null;
+  /** Backend message; explains an empty `players` list (e.g. before opening night). */
+  message: string;
 }

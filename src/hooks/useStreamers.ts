@@ -55,21 +55,20 @@ export function useStreamersQuery(
       targetDay,
       avgDays
     ),
-    queryFn: async (): Promise<StreamerData> => {
-      const response = await apiClient.findStreamers(getToken, {
-        league_info: leagueInfo!,
-        fa_count: faCount,
-        exclude_injured: excludeInjured,
-        b2b_only: b2bOnly,
-        mode: mode,
-        target_day: targetDay,
-        avg_days: avgDays,
-      });
-      if (response.status === "success" && response.data) {
-        return response.data;
-      }
-      throw new Error(response.message || "Failed to find streamers");
-    },
+    queryFn: ({ signal }): Promise<StreamerData> =>
+      apiClient.findStreamers(
+        getToken,
+        {
+          league_info: leagueInfo!,
+          fa_count: faCount,
+          exclude_injured: excludeInjured,
+          b2b_only: b2bOnly,
+          mode: mode,
+          target_day: targetDay,
+          avg_days: avgDays,
+        },
+        { signal }
+      ),
     enabled: !!leagueInfo && !!teamId && isSignedIn === true,
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: false,

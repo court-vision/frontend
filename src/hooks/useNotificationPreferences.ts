@@ -36,7 +36,6 @@ export function useUpdateNotificationPreferencesMutation() {
     },
     onError: (error) => {
       console.error("Update notification preferences error:", error);
-      toast.error("Failed to save preferences. Please try again.");
     },
   });
 }
@@ -61,9 +60,6 @@ export function useUpsertTeamPreferenceMutation() {
       toast.success("Team preferences saved.");
       queryClient.invalidateQueries({ queryKey: [...notificationKeys.all, "team-preferences"] });
     },
-    onError: () => {
-      toast.error("Failed to save team preferences. Please try again.");
-    },
   });
 }
 
@@ -76,9 +72,6 @@ export function useDeleteTeamPreferenceMutation() {
     onSuccess: () => {
       toast.success("Team override removed. Using global defaults.");
       queryClient.invalidateQueries({ queryKey: [...notificationKeys.all, "team-preferences"] });
-    },
-    onError: () => {
-      toast.error("Failed to remove team override.");
     },
   });
 }

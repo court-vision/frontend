@@ -44,6 +44,8 @@ export function useGenerateLineupMutation() {
   const { getToken } = useAuth();
 
   return useMutation({
+    // StopzForm reports the outcome inline; no global toast
+    meta: { toast: false },
     mutationFn: (data: LineupGenerationRequest) =>
       apiClient.generateLineup(getToken, data),
     onSuccess: (response, variables) => {
@@ -82,7 +84,6 @@ export function useSaveLineupMutation() {
     },
     onError: (error) => {
       console.error("Save lineup error:", error);
-      toast.error("Failed to save lineup. Please try again.");
     },
   });
 }
@@ -104,7 +105,6 @@ export function useDeleteLineupMutation() {
     },
     onError: (error) => {
       console.error("Delete lineup error:", error);
-      toast.error("Failed to delete lineup. Please try again.");
     },
   });
 }

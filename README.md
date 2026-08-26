@@ -113,6 +113,8 @@ bun run dev      # Start dev server at http://localhost:3000
 bun run build    # Production build
 bun run start    # Serve production build
 bun run lint     # ESLint
+bun run typecheck # tsc --noEmit
+bun test         # unit tests for src/lib (bun's built-in runner)
 ```
 
 ---

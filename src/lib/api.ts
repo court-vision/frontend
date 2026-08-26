@@ -1,4 +1,12 @@
-import { buildAuthHeaders, type GetTokenFn } from "./auth";
+import { ApiError } from "./api-error";
+import {
+  fetchJson,
+  nullOn404,
+  unwrap,
+  unwrapWithMessage,
+  type GetTokenFn,
+  type RequestOptions,
+} from "./http";
 import {
   API_BASE,
   LIVE_API,
@@ -17,7 +25,6 @@ import {
   API_KEYS_API,
 } from "@/endpoints";
 import type {
-  Team,
   RosterPlayer,
   LeagueInfoRequest,
   TeamResponseData,
@@ -32,13 +39,11 @@ import type {
 import type {
   Lineup,
   LineupGenerationRequest,
-  LineupSaveRequest,
   GenerateLineupResponse,
   GetLineupsResponse,
   SaveLineupResponse,
   DeleteLineupResponse,
   ScheduleWeeksData,
-  ScheduleWeeksResponse,
 } from "@/types/lineup";
 import type { RankingsMeta, RankingsParams, RankingsPlayer, RankingsResult } from "@/types/rankings";
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
@@ -46,7 +51,7 @@ import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData
 import type { BaseApiResponse } from "@/types/auth";
 import type { GamesOnDateData, TeamScheduleData, NBATeamLiveGameData } from "@/types/games";
 import type { NBATeamStatsData, NBATeamRosterData } from "@/types/nba-team";
-import type { PlayoffBracketData, PlayoffBracketResponse } from "@/types/playoff";
+import type { PlayoffBracketData } from "@/types/playoff";
 import type {
   MatchupData,
   MatchupResponse,
@@ -62,7 +67,7 @@ import type {
   SeasonSummaryData,
   SeasonSummaryResponse,
 } from "@/types/matchup";
-import type { StreamerRequest, StreamerResponse } from "@/types/streamer";
+import type { StreamerData, StreamerRequest, StreamerResponse } from "@/types/streamer";
 import type {
   YahooAuthUrlResponse,
   YahooLeaguesResponse,
@@ -70,11 +75,7 @@ import type {
   YahooLeague,
   YahooTeam,
 } from "@/types/yahoo";
-import type {
-  OwnershipTrendingData,
-  OwnershipTrendingResponse,
-  OwnershipTrendingParams,
-} from "@/types/ownership";
+import type { OwnershipTrendingData, OwnershipTrendingParams } from "@/types/ownership";
 import type {
   ApiKeyListItem,
   ApiKeyListResponse,
@@ -91,11 +92,19 @@ import type {
   NotificationTeamPreferenceListResponse,
   NotificationTeamPreferenceSingleResponse,
 } from "@/types/notifications";
-import type {
-  TeamInsightsData,
-  TeamInsightsResponse,
-} from "@/types/team-insights";
+import type { TeamInsightsData, TeamInsightsResponse } from "@/types/team-insights";
 
+/** The lineup optimiser runs a genetic algorithm; give it well beyond the default 15 s. */
+const LINEUP_GENERATION_TIMEOUT_MS = 100_000;
+/** Streamer search fans out to the league provider for the free-agent pool. */
+const STREAMERS_TIMEOUT_MS = 30_000;
+
+/**
+ * Every method is one of three shapes:
+ * - throw: returns the envelope's `data`; any failure is an `ApiError`
+ * - nullOn404: returns null when the thing doesn't exist; other failures throw
+ * - raw: returns the whole envelope (mutations read `status`/`message`)
+ */
 class ApiClient {
   private baseUrl: string;
 
@@ -103,58 +112,28 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
-  private async authenticatedRequest<T>(
-    url: string,
-    getToken: GetTokenFn,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const authHeaders = await buildAuthHeaders(getToken);
-
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...authHeaders,
-        ...options.headers,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(
-        errorData?.message ||
-          `Request failed: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
-    return data;
+  /** GET a public envelope and return its `data` (null when the backend has none). */
+  private async getData<T>(url: string, opts?: RequestOptions): Promise<T | null> {
+    const env = await fetchJson<BaseApiResponse<T>>(url, opts);
+    return unwrap(env, null);
   }
 
   // Teams API - calls backend directly
   async getTeams(getToken: GetTokenFn): Promise<TeamResponseData[]> {
-    const response = await this.authenticatedRequest<TeamGetResponse>(
-      `${TEAMS_API}/`,
-      getToken
-    );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || "Failed to fetch teams");
+    const env = await fetchJson<TeamGetResponse>(`${TEAMS_API}/`, { getToken });
+    return unwrap(env, []);
   }
 
   async addTeam(
     getToken: GetTokenFn,
     teamData: LeagueInfoRequest
   ): Promise<TeamAddResponse> {
-    const response = await this.authenticatedRequest<TeamAddResponse>(
-      `${TEAMS_API}/add`,
+    return fetchJson<TeamAddResponse>(`${TEAMS_API}/add`, {
       getToken,
-      {
-        method: "POST",
-        body: JSON.stringify({ league_info: teamData }),
-      }
-    );
-    return response;
+      method: "POST",
+      body: { league_info: teamData },
+      raw: true,
+    });
   }
 
   async updateTeam(
@@ -162,56 +141,44 @@ class ApiClient {
     teamId: number,
     teamData: LeagueInfoRequest
   ): Promise<TeamUpdateResponse> {
-    const response = await this.authenticatedRequest<TeamUpdateResponse>(
-      `${TEAMS_API}/update`,
+    return fetchJson<TeamUpdateResponse>(`${TEAMS_API}/update`, {
       getToken,
-      {
-        method: "PUT",
-        body: JSON.stringify({ team_id: teamId, league_info: teamData }),
-      }
-    );
-    return response;
+      method: "PUT",
+      body: { team_id: teamId, league_info: teamData },
+      raw: true,
+    });
   }
 
   async deleteTeam(
     getToken: GetTokenFn,
     teamId: number
   ): Promise<TeamRemoveResponse> {
-    const response = await this.authenticatedRequest<TeamRemoveResponse>(
-      `${TEAMS_API}/remove?team_id=${teamId}`,
+    return fetchJson<TeamRemoveResponse>(`${TEAMS_API}/remove?team_id=${teamId}`, {
       getToken,
-      {
-        method: "DELETE",
-      }
-    );
-    return response;
+      method: "DELETE",
+      raw: true,
+    });
   }
 
   async getTeamRoster(
     getToken: GetTokenFn,
     teamId: number
   ): Promise<RosterPlayer[]> {
-    const response = await this.authenticatedRequest<
-      BaseApiResponse<RosterPlayer[]>
-    >(`${TEAMS_API}/view?team_id=${teamId}`, getToken);
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || "Failed to fetch team roster");
+    const env = await fetchJson<BaseApiResponse<RosterPlayer[]>>(
+      `${TEAMS_API}/view?team_id=${teamId}`,
+      { getToken }
+    );
+    return unwrap(env, []);
   }
 
   async getTeamInsights(
     getToken: GetTokenFn,
     teamId: number
   ): Promise<TeamInsightsData> {
-    const response = await this.authenticatedRequest<TeamInsightsResponse>(
-      `${TEAMS_API}/${teamId}/insights`,
-      getToken
-    );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || "Failed to fetch team insights");
+    const env = await fetchJson<TeamInsightsResponse>(`${TEAMS_API}/${teamId}/insights`, {
+      getToken,
+    });
+    return unwrap(env);
   }
 
   // League settings (provider-detected scoring format) for an owned team
@@ -219,14 +186,10 @@ class ApiClient {
     getToken: GetTokenFn,
     teamId: number
   ): Promise<LeagueDetail | null> {
-    const response = await this.authenticatedRequest<LeagueGetResponse>(
-      `${TEAMS_API}/${teamId}/league`,
-      getToken
-    );
-    if (response.status === "success") {
-      return response.data ?? null;
-    }
-    throw new Error(response.message || "Failed to fetch league settings");
+    const env = await fetchJson<LeagueGetResponse>(`${TEAMS_API}/${teamId}/league`, {
+      getToken,
+    });
+    return unwrap(env, null);
   }
 
   /** Re-fetch league settings from the provider. Returns the raw envelope:
@@ -235,38 +198,32 @@ class ApiClient {
     getToken: GetTokenFn,
     teamId: number
   ): Promise<LeagueSyncResponse> {
-    return this.authenticatedRequest<LeagueSyncResponse>(
-      `${TEAMS_API}/${teamId}/league/sync`,
+    return fetchJson<LeagueSyncResponse>(`${TEAMS_API}/${teamId}/league/sync`, {
       getToken,
-      { method: "POST" }
-    );
+      method: "POST",
+      raw: true,
+    });
   }
 
   // Lineups API - calls backend directly
   async getLineups(getToken: GetTokenFn, teamId: number): Promise<Lineup[]> {
-    const response = await this.authenticatedRequest<GetLineupsResponse>(
-      `${LINEUPS_API}?team_id=${teamId}`,
-      getToken
-    );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    return [];
+    const env = await fetchJson<GetLineupsResponse>(`${LINEUPS_API}?team_id=${teamId}`, {
+      getToken,
+    });
+    return unwrap(env, []);
   }
 
   async generateLineup(
     getToken: GetTokenFn,
     data: LineupGenerationRequest
   ): Promise<GenerateLineupResponse> {
-    const response = await this.authenticatedRequest<GenerateLineupResponse>(
-      `${LINEUPS_API}/generate`,
+    return fetchJson<GenerateLineupResponse>(`${LINEUPS_API}/generate`, {
       getToken,
-      {
-        method: "POST",
-        body: JSON.stringify(data),
-      }
-    );
-    return response;
+      method: "POST",
+      body: data,
+      raw: true,
+      timeoutMs: LINEUP_GENERATION_TIMEOUT_MS,
+    });
   }
 
   async saveLineup(
@@ -274,45 +231,37 @@ class ApiClient {
     teamId: number,
     lineup: Lineup
   ): Promise<SaveLineupResponse> {
-    const response = await this.authenticatedRequest<SaveLineupResponse>(
-      `${LINEUPS_API}/save`,
+    return fetchJson<SaveLineupResponse>(`${LINEUPS_API}/save`, {
       getToken,
-      {
-        method: "PUT",
-        body: JSON.stringify({ team_id: teamId, lineup_info: lineup }),
-      }
-    );
-    return response;
+      method: "PUT",
+      body: { team_id: teamId, lineup_info: lineup },
+      raw: true,
+    });
   }
 
   async deleteLineup(
     getToken: GetTokenFn,
     lineupId: number
   ): Promise<DeleteLineupResponse> {
-    const response = await this.authenticatedRequest<DeleteLineupResponse>(
-      `${LINEUPS_API}/remove?lineup_id=${lineupId}`,
+    return fetchJson<DeleteLineupResponse>(`${LINEUPS_API}/remove?lineup_id=${lineupId}`, {
       getToken,
-      {
-        method: "DELETE",
-      }
-    );
-    return response;
+      method: "DELETE",
+      raw: true,
+    });
   }
 
   // Matchups API
   async getMatchup(
     getToken: GetTokenFn,
     teamId: number,
-    avgWindow: AvgWindow = "season"
+    avgWindow: AvgWindow = "season",
+    opts?: RequestOptions
   ): Promise<MatchupData> {
-    const response = await this.authenticatedRequest<MatchupResponse>(
+    const env = await fetchJson<MatchupResponse>(
       `${MATCHUPS_API}/current/${teamId}?avg_window=${avgWindow}`,
-      getToken
+      { ...opts, getToken }
     );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || "Failed to fetch matchup data");
+    return unwrap(env);
   }
 
   async getMatchupScoreHistory(
@@ -326,72 +275,55 @@ class ApiClient {
     }
     const queryString = params.toString();
     const url = `${MATCHUPS_API}/history/${teamId}${queryString ? `?${queryString}` : ""}`;
-    const response =
-      await this.authenticatedRequest<MatchupScoreHistoryResponse>(
-        url,
-        getToken
-      );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    return null;
+    return nullOn404(
+      fetchJson<MatchupScoreHistoryResponse>(url, { getToken }).then((env) => unwrap(env, null))
+    );
   }
 
   async getLiveMatchup(
     getToken: GetTokenFn,
-    teamId: number
+    teamId: number,
+    opts?: RequestOptions
   ): Promise<LiveMatchupData> {
-    const response = await this.authenticatedRequest<LiveMatchupResponse>(
-      `${MATCHUPS_API}/live/${teamId}`,
-      getToken
-    );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || "Failed to fetch live matchup data");
+    const env = await fetchJson<LiveMatchupResponse>(`${MATCHUPS_API}/live/${teamId}`, {
+      ...opts,
+      getToken,
+    });
+    return unwrap(env);
   }
 
   async getDailyMatchup(
     getToken: GetTokenFn,
     teamId: number,
-    date: string
+    date: string,
+    opts?: RequestOptions
   ): Promise<DailyMatchupData> {
-    const response = await this.authenticatedRequest<DailyMatchupResponse>(
+    const env = await fetchJson<DailyMatchupResponse>(
       `${MATCHUPS_API}/daily/${teamId}?date=${date}`,
-      getToken
+      { ...opts, getToken }
     );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || "Failed to fetch daily matchup data");
+    return unwrap(env);
   }
 
   async getWeeklyMatchup(
     getToken: GetTokenFn,
     teamId: number
   ): Promise<WeeklyMatchupData> {
-    const response = await this.authenticatedRequest<WeeklyMatchupResponse>(
-      `${MATCHUPS_API}/week/${teamId}`,
-      getToken
-    );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || "Failed to fetch weekly matchup data");
+    const env = await fetchJson<WeeklyMatchupResponse>(`${MATCHUPS_API}/week/${teamId}`, {
+      getToken,
+    });
+    return unwrap(env);
   }
 
   async getSeasonSummary(
     getToken: GetTokenFn,
     teamId: number
   ): Promise<SeasonSummaryData | null> {
-    const response = await this.authenticatedRequest<SeasonSummaryResponse>(
-      `${MATCHUPS_API}/season-summary/${teamId}`,
-      getToken
+    return nullOn404(
+      fetchJson<SeasonSummaryResponse>(`${MATCHUPS_API}/season-summary/${teamId}`, {
+        getToken,
+      }).then((env) => unwrap(env, null))
     );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    return null;
   }
 
   // Breakout Streamers API (internal, Clerk auth)
@@ -402,57 +334,45 @@ class ApiClient {
   ): Promise<BreakoutData | null> {
     const params = new URLSearchParams({ limit: limit.toString() });
     if (team) params.set("team", team);
-    const response = await this.authenticatedRequest<BreakoutResponse>(
-      `${STREAMERS_API}/breakout?${params}`,
-      getToken
+    return nullOn404(
+      fetchJson<BreakoutResponse>(`${STREAMERS_API}/breakout?${params}`, { getToken }).then(
+        (env) => unwrap(env, null)
+      )
     );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    return null;
   }
 
   // Streamers API
   async findStreamers(
     getToken: GetTokenFn,
-    request: StreamerRequest
-  ): Promise<StreamerResponse> {
-    const response = await this.authenticatedRequest<StreamerResponse>(
-      `${STREAMERS_API}/find`,
+    request: StreamerRequest,
+    opts?: RequestOptions
+  ): Promise<StreamerData> {
+    const env = await fetchJson<StreamerResponse>(`${STREAMERS_API}/find`, {
+      ...opts,
       getToken,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-      }
-    );
-    return response;
+      method: "POST",
+      body: request,
+      timeoutMs: STREAMERS_TIMEOUT_MS,
+    });
+    return unwrap(env);
   }
 
   // Yahoo API
   async getYahooAuthUrl(getToken: GetTokenFn): Promise<string> {
-    const response = await this.authenticatedRequest<YahooAuthUrlResponse>(
-      `${YAHOO_API}/authorize`,
-      getToken
-    );
-    if (response.status === "success" && response.auth_url) {
-      return response.auth_url;
-    }
-    throw new Error(response.message || "Failed to get Yahoo auth URL");
+    const env = await fetchJson<YahooAuthUrlResponse>(`${YAHOO_API}/authorize`, { getToken });
+    if (!env.auth_url) throw ApiError.empty(env);
+    return env.auth_url;
   }
 
   async getYahooLeagues(
     getToken: GetTokenFn,
     accessToken: string
   ): Promise<YahooLeague[]> {
-    const response = await this.authenticatedRequest<YahooLeaguesResponse>(
+    const env = await fetchJson<YahooLeaguesResponse>(
       `${YAHOO_API}/leagues?access_token=${encodeURIComponent(accessToken)}`,
-      getToken
+      { getToken }
     );
-    if (response.status === "success" && response.leagues) {
-      return response.leagues;
-    }
-    return [];
+    return env.leagues ?? [];
   }
 
   async getYahooTeams(
@@ -460,62 +380,43 @@ class ApiClient {
     accessToken: string,
     leagueKey: string
   ): Promise<YahooTeam[]> {
-    const response = await this.authenticatedRequest<YahooTeamsResponse>(
+    const env = await fetchJson<YahooTeamsResponse>(
       `${YAHOO_API}/teams?access_token=${encodeURIComponent(accessToken)}&league_key=${encodeURIComponent(leagueKey)}`,
-      getToken
+      { getToken }
     );
-    if (response.status === "success" && response.teams) {
-      return response.teams;
-    }
-    return [];
+    return env.teams ?? [];
   }
 
   // Notifications API
   async getNotificationPreferences(
     getToken: GetTokenFn
   ): Promise<NotificationPreference> {
-    const response =
-      await this.authenticatedRequest<NotificationPreferenceResponse>(
-        `${NOTIFICATIONS_API}/preferences`,
-        getToken
-      );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || "Failed to fetch notification preferences");
+    const env = await fetchJson<NotificationPreferenceResponse>(
+      `${NOTIFICATIONS_API}/preferences`,
+      { getToken }
+    );
+    return unwrap(env);
   }
 
   async updateNotificationPreferences(
     getToken: GetTokenFn,
     data: NotificationPreference
   ): Promise<NotificationPreference> {
-    const response =
-      await this.authenticatedRequest<NotificationPreferenceResponse>(
-        `${NOTIFICATIONS_API}/preferences`,
-        getToken,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        }
-      );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || "Failed to update notification preferences");
+    const env = await fetchJson<NotificationPreferenceResponse>(
+      `${NOTIFICATIONS_API}/preferences`,
+      { getToken, method: "PUT", body: data }
+    );
+    return unwrap(env);
   }
 
   async getTeamNotificationPreferences(
     getToken: GetTokenFn
   ): Promise<NotificationTeamPreference[]> {
-    const response = await this.authenticatedRequest<NotificationTeamPreferenceListResponse>(
+    const env = await fetchJson<NotificationTeamPreferenceListResponse>(
       `${NOTIFICATIONS_API}/team-preferences`,
-      getToken
+      { getToken }
     );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    return [];
+    return unwrap(env, []);
   }
 
   async upsertTeamNotificationPreference(
@@ -523,80 +424,51 @@ class ApiClient {
     teamId: number,
     data: NotificationTeamPreferenceRequest
   ): Promise<NotificationTeamPreference> {
-    const response = await this.authenticatedRequest<NotificationTeamPreferenceSingleResponse>(
+    const env = await fetchJson<NotificationTeamPreferenceSingleResponse>(
       `${NOTIFICATIONS_API}/team-preferences/${teamId}`,
-      getToken,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }
+      { getToken, method: "PUT", body: data }
     );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || "Failed to update team notification preferences");
+    return unwrap(env);
   }
 
   async deleteTeamNotificationPreference(
     getToken: GetTokenFn,
     teamId: number
   ): Promise<void> {
-    await this.authenticatedRequest<{ status: string }>(
-      `${NOTIFICATIONS_API}/team-preferences/${teamId}`,
+    await fetchJson<BaseApiResponse>(`${NOTIFICATIONS_API}/team-preferences/${teamId}`, {
       getToken,
-      { method: "DELETE" }
-    );
+      method: "DELETE",
+    });
   }
 
   // Live API (public - no auth required)
-  async getLivePlayersToday(): Promise<LivePlayersData> {
-    const response = await fetch(`${LIVE_API}/players/today`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: LivePlayersResponse = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    throw new Error(data.message || "Failed to fetch live players");
+  async getLivePlayersToday(opts?: RequestOptions): Promise<LivePlayersData> {
+    const env = await fetchJson<LivePlayersResponse>(`${LIVE_API}/players/today`, opts);
+    return unwrap(env);
   }
 
   // Rankings API (public - no auth required)
   async getRankings(): Promise<RankingsPlayer[]> {
-    const response = await fetch(`${RANKINGS_API}/`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<RankingsPlayer[]> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return [];
+    const env = await fetchJson<BaseApiResponse<RankingsPlayer[]>>(`${RANKINGS_API}/`);
+    return unwrap(env, []);
   }
 
   /**
    * Rankings with the response `meta` block, in either format. Points-season
-   * (the default) matches `getRankings()` row for row.
+   * (the default) matches `getRankings()` row for row. Empty states (offseason)
+   * come back as an empty list with the backend's `message`.
    */
-  async getRankingsWithMeta(params?: Partial<RankingsParams> | null): Promise<RankingsResult> {
+  async getRankingsWithMeta(
+    params?: Partial<RankingsParams> | null,
+    opts?: RequestOptions
+  ): Promise<RankingsResult> {
     const qs = toApiQuery(normalizeParams(params));
-    const response = await fetch(`${RANKINGS_API}/${qs ? `?${qs}` : ""}`);
-    if (!response.ok) {
-      let detail = response.statusText;
-      try {
-        const body = await response.json();
-        detail = body?.detail ?? body?.message ?? detail;
-      } catch {
-        // ignore non-JSON error bodies
-      }
-      throw new Error(`Rankings request failed: ${detail}`);
-    }
-    const data: BaseApiResponse<RankingsPlayer[]> & { meta?: RankingsMeta | null } = await response.json();
-    if (data.status === "success" && data.data) {
-      return { players: data.data, meta: data.meta ?? null };
-    }
-    throw new Error(data.message || "Failed to fetch rankings");
+    const env = await fetchJson<BaseApiResponse<RankingsPlayer[]> & { meta?: RankingsMeta | null }>(
+      `${RANKINGS_API}/${qs ? `?${qs}` : ""}`,
+      opts
+    );
+    const { data, message } = unwrapWithMessage(env, []);
+    return { players: data, meta: env.meta ?? null, message };
   }
 
   // Players API (public - no auth required)
@@ -610,15 +482,7 @@ class ApiClient {
     if (window !== "season") {
       searchParams.append("window", window);
     }
-    const response = await fetch(`${PLAYERS_API}/stats?${searchParams.toString()}`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<PlayerStats> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+    return nullOn404(this.getData<PlayerStats>(`${PLAYERS_API}/stats?${searchParams.toString()}`));
   }
 
   async getPlayerStatsByName(
@@ -630,15 +494,7 @@ class ApiClient {
     if (window !== "season") {
       params.append("window", window);
     }
-    const response = await fetch(`${PLAYERS_API}/stats?${params.toString()}`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<PlayerStats> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+    return nullOn404(this.getData<PlayerStats>(`${PLAYERS_API}/stats?${params.toString()}`));
   }
 
   async getPlayerPercentiles(
@@ -651,40 +507,18 @@ class ApiClient {
     }
     const queryString = params.toString();
     const url = `${PLAYERS_API}/${playerId}/percentiles${queryString ? `?${queryString}` : ""}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<PercentileData> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+    return nullOn404(this.getData<PercentileData>(url));
   }
 
   async getPlayerStatus(playerId: number): Promise<PlayerStatusData | null> {
-    const response = await fetch(`${PLAYERS_API}/${playerId}/status`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<PlayerStatusData> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+    return nullOn404(this.getData<PlayerStatusData>(`${PLAYERS_API}/${playerId}/status`));
   }
 
   async getPlayerOwnership(playerId: number, days: number = 14): Promise<PlayerOwnershipData | null> {
     const params = days !== 14 ? `?days=${days}` : "";
-    const response = await fetch(`${PLAYERS_API}/${playerId}/ownership${params}`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<PlayerOwnershipData> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+    return nullOn404(
+      this.getData<PlayerOwnershipData>(`${PLAYERS_API}/${playerId}/ownership${params}`)
+    );
   }
 
   async getTeamSchedule(teamAbbrev: string, upcoming: boolean = false, limit: number = 12): Promise<TeamScheduleData | null> {
@@ -693,77 +527,31 @@ class ApiClient {
     if (limit !== 20) params.append("limit", limit.toString());
     const queryString = params.toString();
     const url = `${API_BASE}/v1/teams/${teamAbbrev}/schedule${queryString ? `?${queryString}` : ""}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<TeamScheduleData> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+    return nullOn404(this.getData<TeamScheduleData>(url));
   }
 
   async getNBATeamStats(abbrev: string): Promise<NBATeamStatsData | null> {
-    const response = await fetch(`${API_BASE}/v1/teams/${abbrev}/stats`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<NBATeamStatsData> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+    return nullOn404(this.getData<NBATeamStatsData>(`${API_BASE}/v1/teams/${abbrev}/stats`));
   }
 
   async getNBATeamRoster(abbrev: string): Promise<NBATeamRosterData | null> {
-    const response = await fetch(`${API_BASE}/v1/teams/${abbrev}/roster`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<NBATeamRosterData> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+    return nullOn404(this.getData<NBATeamRosterData>(`${API_BASE}/v1/teams/${abbrev}/roster`));
   }
 
-  async getNBATeamLiveGame(abbrev: string): Promise<NBATeamLiveGameData | null> {
-    const response = await fetch(`${API_BASE}/v1/teams/${abbrev}/live-game`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<NBATeamLiveGameData> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+  async getNBATeamLiveGame(abbrev: string, opts?: RequestOptions): Promise<NBATeamLiveGameData | null> {
+    return nullOn404(
+      this.getData<NBATeamLiveGameData>(`${API_BASE}/v1/teams/${abbrev}/live-game`, opts)
+    );
   }
 
   // Games API (public - no auth required)
-  async getGamesOnDate(date: string): Promise<GamesOnDateData | null> {
-    const response = await fetch(`${GAMES_API}/${date}`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: BaseApiResponse<GamesOnDateData> = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+  async getGamesOnDate(date: string, opts?: RequestOptions): Promise<GamesOnDateData | null> {
+    return nullOn404(this.getData<GamesOnDateData>(`${GAMES_API}/${date}`, opts));
   }
 
   // Schedule API (public - no auth required)
   async getScheduleWeeks(): Promise<ScheduleWeeksData | null> {
-    const response = await fetch(`${SCHEDULE_API}/weeks`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: ScheduleWeeksResponse = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+    return nullOn404(this.getData<ScheduleWeeksData>(`${SCHEDULE_API}/weeks`));
   }
 
   // Ownership API (public - no auth required)
@@ -786,67 +574,41 @@ class ApiClient {
 
     const queryString = searchParams.toString();
     const url = `${OWNERSHIP_API}/trending${queryString ? `?${queryString}` : ""}`;
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-    const data: OwnershipTrendingResponse = await response.json();
-    if (data.status === "success" && data.data) {
-      return data.data;
-    }
-    return null;
+    return nullOn404(this.getData<OwnershipTrendingData>(url));
   }
 
   // API Keys API
   async listApiKeys(getToken: GetTokenFn): Promise<ApiKeyListItem[]> {
-    const response = await this.authenticatedRequest<ApiKeyListResponse>(
-      `${API_KEYS_API}/`,
-      getToken
-    );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    return [];
+    const env = await fetchJson<ApiKeyListResponse>(`${API_KEYS_API}/`, { getToken });
+    return unwrap(env, []);
   }
 
   async createApiKey(
     getToken: GetTokenFn,
     body: CreateApiKeyRequest
   ): Promise<CreateApiKeyResponse> {
-    const response = await this.authenticatedRequest<CreateApiKeyResponse>(
-      `${API_KEYS_API}/`,
+    return fetchJson<CreateApiKeyResponse>(`${API_KEYS_API}/`, {
       getToken,
-      {
-        method: "POST",
-        body: JSON.stringify(body),
-      }
-    );
-    return response;
+      method: "POST",
+      body,
+    });
   }
 
   async revokeApiKey(
     getToken: GetTokenFn,
     keyId: string
   ): Promise<BaseApiResponse> {
-    const response = await this.authenticatedRequest<BaseApiResponse>(
-      `${API_KEYS_API}/${keyId}`,
+    return fetchJson<BaseApiResponse>(`${API_KEYS_API}/${keyId}`, {
       getToken,
-      {
-        method: "DELETE",
-      }
-    );
-    return response;
+      method: "DELETE",
+    });
   }
 
   async getPlayoffBracket(season?: string): Promise<PlayoffBracketData | null> {
     const url = season
       ? `${PLAYOFF_API}/bracket?season=${season}`
       : `${PLAYOFF_API}/bracket`;
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const data: PlayoffBracketResponse = await response.json();
-    return data.status === "success" ? data.data ?? null : null;
+    return nullOn404(this.getData<PlayoffBracketData>(url));
   }
 }
 

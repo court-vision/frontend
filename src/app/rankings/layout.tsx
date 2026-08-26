@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
+import * as Sentry from "@sentry/nextjs";
 import { apiClient } from "@/lib/api";
 import { rankingsKeys } from "@/hooks/useRankings";
 import { DEFAULT_RANKINGS_PARAMS } from "@/lib/rankings-params";
@@ -35,6 +36,14 @@ export default async function RankingsLayout({
     queryFn: () => apiClient.getRankingsWithMeta(DEFAULT_RANKINGS_PARAMS),
     staleTime: 1000 * 60 * 10,
   });
+
+  // prefetchQuery never throws; a failure here means Vercel could not reach the API.
+  const prefetchError = queryClient.getQueryState(
+    rankingsKeys.list(DEFAULT_RANKINGS_PARAMS)
+  )?.error;
+  if (prefetchError) {
+    Sentry.captureException(prefetchError, { tags: { prefetch: "rankings" } });
+  }
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

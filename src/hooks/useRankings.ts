@@ -25,7 +25,7 @@ export function useRankingsQuery() {
 export function useRankingsListQuery(params: RankingsParams) {
   return useQuery<RankingsResult>({
     queryKey: rankingsKeys.list(params),
-    queryFn: () => apiClient.getRankingsWithMeta(params),
+    queryFn: ({ signal }) => apiClient.getRankingsWithMeta(params, { signal }),
     staleTime: 1000 * 60 * 10,
     placeholderData: keepPreviousData,
   });

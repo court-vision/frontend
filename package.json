@@ -6,7 +6,9 @@
     "dev": "bun --bun next dev",
     "build": "bun --bun next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test src/lib"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.7",
@@ -28,10 +30,9 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
-    "@radix-ui/react-toast": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-three/fiber": "^8.16.1",
-    "@supabase/supabase-js": "^2.47.7",
+    "@sentry/nextjs": "^10.71.0",
     "@tabler/icons-react": "^3.2.0",
     "@tanstack/react-query": "^5.90.2",
     "@tanstack/react-query-devtools": "^5.90.2",
@@ -47,11 +48,9 @@
     "framer-motion": "^11.3.12",
     "geist": "^1.5.1",
     "input-otp": "^1.2.4",
-    "jwt-decode": "^4.0.0",
     "ldrs": "^1.0.1",
     "lucide-react": "^0.562.0",
     "next": "^16.1.1",
-    "next-auth": "^4.24.11",
     "next-themes": "^0.4.6",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
@@ -69,6 +68,7 @@
     "zustand": "^4.5.7"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.0",
     "@types/node": "^20.14.2",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
@@ -80,5 +80,8 @@
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
     "typescript": "^5"
-  }
+  },
+  "trustedDependencies": [
+    "@sentry/cli"
+  ]
 }

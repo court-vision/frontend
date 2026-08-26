@@ -33,7 +33,6 @@ export function useCreateApiKeyMutation() {
     },
     onError: (error) => {
       console.error("Create API key error:", error);
-      toast.error("Failed to create API key. Please try again.");
     },
   });
 }
@@ -50,7 +49,6 @@ export function useRevokeApiKeyMutation() {
     },
     onError: (error) => {
       console.error("Revoke API key error:", error);
-      toast.error("Failed to revoke API key. Please try again.");
     },
   });
 }

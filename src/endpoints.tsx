@@ -3,6 +3,12 @@ export const PROD_BACKEND_ENDPOINT = "https://api.courtvision.dev";
 // Set NEXT_PUBLIC_API_BASE (e.g. http://127.0.0.1:8000) to target a local backend
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || PROD_BACKEND_ENDPOINT;
 
+if (process.env.NODE_ENV === "development" && !process.env.NEXT_PUBLIC_API_BASE) {
+  console.warn(
+    `NEXT_PUBLIC_API_BASE is unset — API calls target production (${PROD_BACKEND_ENDPOINT}).`
+  );
+}
+
 // API v1 Internal endpoints
 export const AUTH_API = `${API_BASE}/v1/internal/auth`;
 export const USERS_API = `${API_BASE}/v1/internal/users`;

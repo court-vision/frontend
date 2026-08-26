@@ -30,7 +30,7 @@ export function useMatchupQuery(
 
   return useQuery({
     queryKey: matchupKeys.detail(teamId!, avgWindow),
-    queryFn: () => apiClient.getMatchup(getToken, teamId!, avgWindow),
+    queryFn: ({ signal }) => apiClient.getMatchup(getToken, teamId!, avgWindow, { signal }),
     enabled: !!teamId && isSignedIn === true,
     staleTime: 1000 * 60 * 2, // 2 minutes - matchup data changes during games
     refetchOnWindowFocus: true, // Refetch when user returns to tab
@@ -42,11 +42,14 @@ export function useLiveMatchupQuery(teamId: number | null) {
 
   return useQuery({
     queryKey: matchupKeys.live(teamId!),
-    queryFn: () => apiClient.getLiveMatchup(getToken, teamId!),
+    queryFn: ({ signal }) => apiClient.getLiveMatchup(getToken, teamId!, { signal }),
     enabled: !!teamId && isSignedIn === true,
     staleTime: 0,
     refetchInterval: 30 * 1000, // Poll every 30s in sync with the live pipeline
     refetchOnWindowFocus: true,
+    // Live polling: the next poll is the retry, and the panel shows its own badge
+    retry: false,
+    meta: { toast: false },
   });
 }
 
@@ -61,11 +64,13 @@ export function useDailyMatchupQuery(
 
   return useQuery({
     queryKey: matchupKeys.daily(teamId!, date!),
-    queryFn: () => apiClient.getDailyMatchup(getToken, teamId!, date!),
+    queryFn: ({ signal }) => apiClient.getDailyMatchup(getToken, teamId!, date!, { signal }),
     enabled: !!teamId && !!date && isSignedIn === true,
     staleTime: isToday ? 0 : 1000 * 60 * 10,
     refetchInterval: isToday ? 60 * 1000 : undefined,
     refetchOnWindowFocus: true,
+    // Live polling: the next poll is the retry, and the panel shows its own badge
+    ...(isToday ? { retry: false, meta: { toast: false } } : {}),
   });
 }
 

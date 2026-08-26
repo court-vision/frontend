@@ -101,7 +101,6 @@ export function useAddTeamMutation() {
     },
     onError: (error) => {
       console.error("Add team error:", error);
-      toast.error("Failed to add team. Please try again.");
     },
   });
 }
@@ -131,7 +130,6 @@ export function useUpdateTeamMutation() {
     },
     onError: (error) => {
       console.error("Update team error:", error);
-      toast.error("Failed to update team. Please try again.");
     },
   });
 }
@@ -158,7 +156,6 @@ export function useDeleteTeamMutation() {
     },
     onError: (error) => {
       console.error("Delete team error:", error);
-      toast.error("Failed to remove team. Please try again.");
     },
   });
 }
@@ -183,7 +180,6 @@ export function useSyncTeamLeagueMutation() {
     },
     onError: (error) => {
       console.error("Sync league error:", error);
-      toast.error("Failed to sync league settings. Please try again.");
     },
   });
 }

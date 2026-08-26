@@ -2,6 +2,7 @@
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
 
 interface PanelErrorBoundaryProps {
   children: ReactNode;
@@ -25,6 +26,10 @@ export class PanelErrorBoundary extends Component<
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(`Panel "${this.props.name ?? "unknown"}" crashed`, error, info.componentStack);
+    Sentry.captureException(error, {
+      tags: { panel: this.props.name ?? "unknown" },
+      contexts: { react: { componentStack: info.componentStack } },
+    });
   }
 
   reset = () => {

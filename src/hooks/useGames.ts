@@ -13,10 +13,12 @@ export function useGamesOnDateQuery(date: string) {
 
   return useQuery({
     queryKey: gamesKeys.onDate(date),
-    queryFn: () => apiClient.getGamesOnDate(date),
+    queryFn: ({ signal }) => apiClient.getGamesOnDate(date, { signal }),
     staleTime: isToday ? 0 : 1000 * 60 * 5,
     refetchInterval: isToday ? 60 * 1000 : false, // Poll every 60s for today
     enabled: !!date,
+    // Live polling: the next poll is the retry, and the panel shows its own badge
+    ...(isToday ? { retry: false, meta: { toast: false } } : {}),
   });
 }
 
