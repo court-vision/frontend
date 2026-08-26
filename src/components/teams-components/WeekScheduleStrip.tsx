@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollX } from "@/components/ui/scroll-x";
 import type {
   EnrichedRosterPlayer,
   ScheduleOverview,
@@ -104,7 +105,7 @@ export function WeekScheduleStrip({
     return (
       <div
         key={dayIndex}
-        className={`flex min-w-[72px] flex-1 flex-col gap-2 rounded-lg border px-2 py-2 transition-opacity ${
+        className={`flex min-w-[84px] md:min-w-[72px] flex-1 flex-col gap-2 rounded-lg border px-2 py-2 transition-opacity ${
           isPast
             ? "opacity-40"
             : isCurrent
@@ -165,7 +166,8 @@ export function WeekScheduleStrip({
               <div
                 key={p.player_id}
                 title={p.name}
-                className={`flex h-5 w-[26px] items-center justify-center rounded border font-mono text-[9px] font-bold tracking-wide ${
+                aria-label={p.name}
+                className={`flex h-6 w-8 text-[10px] md:h-5 md:w-[26px] md:text-[9px] items-center justify-center rounded border font-mono font-bold tracking-wide ${
                   getChipClass(p.valid_positions, p.injured)
                 }`}
               >
@@ -193,14 +195,14 @@ export function WeekScheduleStrip({
       <CardContent>
         <div className="flex flex-col gap-1.5">
           {rows.map((row) => (
-            <div key={row[0]} className="flex gap-1.5 overflow-x-auto pb-1">
+            <ScrollX key={row[0]} className="flex gap-1.5 pb-1">
               {row.map(renderDay)}
               {/* Pad a short trailing row so its cells line up with the row above */}
               {rows.length > 1 && row.length < DAYS_PER_ROW &&
                 Array.from({ length: DAYS_PER_ROW - row.length }, (_, i) => (
-                  <div key={`pad-${i}`} aria-hidden className="min-w-[72px] flex-1" />
+                  <div key={`pad-${i}`} aria-hidden className="min-w-[84px] md:min-w-[72px] flex-1" />
                 ))}
-            </div>
+            </ScrollX>
           ))}
         </div>
       </CardContent>

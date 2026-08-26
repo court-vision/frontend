@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect } from "react";
 import { X } from "lucide-react";
 import {
   ALT_RANGE_LABEL,
@@ -9,6 +9,7 @@ import {
   cmdShortcutLabel,
   paletteLabel,
 } from "@/lib/navigation";
+import { useShortcutOverlayStore } from "@/stores/useShortcutOverlayStore";
 
 interface ShortcutGroup {
   title: string;
@@ -68,11 +69,11 @@ const shortcutGroups: ShortcutGroup[] = [
 ];
 
 export function KeyboardShortcutOverlay() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const handleToggle = useCallback(() => {
-    setIsOpen((prev) => !prev);
-  }, []);
+  // Store-driven so the palette's "Keyboard shortcuts" command can open it
+  // on phones; `?` and Esc keep working here.
+  const isOpen = useShortcutOverlayStore((s) => s.isOpen);
+  const close = useShortcutOverlayStore((s) => s.close);
+  const toggle = useShortcutOverlayStore((s) => s.toggle);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -83,24 +84,24 @@ export function KeyboardShortcutOverlay() {
         target.isContentEditable
       ) {
         if (e.key === "Escape" && isOpen) {
-          setIsOpen(false);
+          close();
         }
         return;
       }
 
       if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
-        handleToggle();
+        toggle();
       }
 
       if (e.key === "Escape" && isOpen) {
-        setIsOpen(false);
+        close();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, handleToggle]);
+  }, [isOpen, close, toggle]);
 
   if (!isOpen) return null;
 
@@ -109,11 +110,11 @@ export function KeyboardShortcutOverlay() {
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={() => setIsOpen(false)}
+        onClick={close}
       />
 
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-3xl mx-4 animate-scale-in">
+      {/* Content — scrolls on its own when taller than a phone screen */}
+      <div className="relative z-10 w-full max-w-3xl mx-4 max-h-[100vh] supports-[height:100dvh]:max-h-[100dvh] overflow-y-auto overscroll-y-contain py-6 animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -125,8 +126,9 @@ export function KeyboardShortcutOverlay() {
             </p>
           </div>
           <button
-            onClick={() => setIsOpen(false)}
-            className="h-8 w-8 flex items-center justify-center rounded-md border border-border hover:bg-muted hover:border-primary/30 transition-all text-muted-foreground hover:text-foreground"
+            onClick={close}
+            aria-label="Close keyboard shortcuts"
+            className="h-10 w-10 md:h-8 md:w-8 flex items-center justify-center rounded-md border border-border hover:bg-muted hover:border-primary/30 transition-all text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>

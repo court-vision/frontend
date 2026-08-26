@@ -269,14 +269,14 @@ export function ApiKeyManager() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-[10px]">Name</TableHead>
-                <TableHead className="text-[10px]">Key</TableHead>
-                <TableHead className="text-[10px]">Scopes</TableHead>
-                <TableHead className="text-[10px]">Rate Limit</TableHead>
-                <TableHead className="text-[10px]">Last Used</TableHead>
-                <TableHead className="text-[10px]">Expires</TableHead>
-                <TableHead className="text-[10px]">Status</TableHead>
-                <TableHead className="text-[10px] w-[60px]" />
+                <TableHead className="text-[11px] md:text-[10px]">Name</TableHead>
+                <TableHead className="text-[11px] md:text-[10px]">Key</TableHead>
+                <TableHead className="text-[11px] md:text-[10px]">Scopes</TableHead>
+                <TableHead className="text-[11px] md:text-[10px]">Rate Limit</TableHead>
+                <TableHead className="text-[11px] md:text-[10px]">Last Used</TableHead>
+                <TableHead className="text-[11px] md:text-[10px]">Expires</TableHead>
+                <TableHead className="text-[11px] md:text-[10px]">Status</TableHead>
+                <TableHead className="text-[11px] md:text-[10px] w-[60px]" />
               </TableRow>
             </TableHeader>
             <TableBody>

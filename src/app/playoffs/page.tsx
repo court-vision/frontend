@@ -4,6 +4,7 @@ import { Medal, CheckCircle2, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePlayoffBracketQuery } from "@/hooks/usePlayoff";
 import { Card } from "@/components/ui/card";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-error";
 import type { PlayoffSeriesData } from "@/types/playoff";
@@ -99,19 +100,19 @@ function BracketCard({ series }: { series: PlayoffSeriesData | null }) {
         {series_complete ? (
           <>
             <CheckCircle2 className="h-2.5 w-2.5 text-muted-foreground/40 shrink-0" />
-            <span className="text-[9px] text-muted-foreground/40 truncate">
+            <span className="text-[10px] md:text-[9px] text-muted-foreground/40 truncate">
               {series_leader_abbr} wins
             </span>
           </>
         ) : active ? (
           <>
             <Circle className="h-2.5 w-2.5 text-signal-live animate-pulse shrink-0" />
-            <span className="text-[9px] text-muted-foreground/60 truncate">
+            <span className="text-[10px] md:text-[9px] text-muted-foreground/60 truncate">
               {series_leader_abbr ? `${series_leader_abbr} leads` : "Tied"}
             </span>
           </>
         ) : (
-          <span className="text-[9px] text-muted-foreground/30">Not started</span>
+          <span className="text-[10px] md:text-[9px] text-muted-foreground/30">Not started</span>
         )}
       </div>
     </div>
@@ -260,7 +261,7 @@ export default function PlayoffsPage() {
 
       {/* Bracket */}
       {bracket && (
-        <div className="overflow-x-auto pb-2">
+        <ScrollX className="pb-2">
           {/* Conference labels */}
           <div className="flex items-center min-w-[820px] mb-2 px-0.5">
             <div className="w-[100px] shrink-0 text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-widest">
@@ -288,7 +289,7 @@ export default function PlayoffsPage() {
             <BracketConnector outerCount={4} innerCount={2} direction="west" />
             <BracketColumn series={westR1} slotCount={4} label="First Round" />
           </div>
-        </div>
+        </ScrollX>
       )}
 
       {/* Empty state */}

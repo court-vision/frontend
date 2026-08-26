@@ -33,17 +33,18 @@ export function ConnectTeamPrompt({
     return (
       <div
         className={cn(
-          "flex items-center gap-3 px-4 py-2.5 rounded-lg bg-primary/5 border border-primary/15 text-sm",
+          "flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-2.5 rounded-lg bg-primary/5 border border-primary/15 text-sm",
           className
         )}
       >
         <Plug className="h-4 w-4 text-primary shrink-0" />
-        <div className="min-w-0 flex-1">
+        {/* `flex-1` alone (basis 0) never wraps; the phone min-width pushes the CTA to its own row. */}
+        <div className="min-w-[75%] flex-1 sm:min-w-0">
           <span className="font-medium text-foreground">{title}.</span>{" "}
           <span className="text-muted-foreground">{description}</span>
         </div>
-        <Link href={ADD_TEAM_HREF} className="shrink-0">
-          <Button size="sm" className="h-7 text-xs">
+        <Link href={ADD_TEAM_HREF} className="shrink-0 ml-auto">
+          <Button size="sm" className="h-8 md:h-7 text-xs">
             {ctaLabel}
           </Button>
         </Link>
