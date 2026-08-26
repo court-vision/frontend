@@ -67,7 +67,12 @@ interface ColumnDef {
   /** Header title (tooltip) */
   title?: string;
   align?: "left" | "right" | "center";
+  /** Applied to both the header and body cells of the column. */
   className?: string;
+  /** Header cell only. */
+  headClassName?: string;
+  /** Body cells only. */
+  cellClassName?: string;
   sortable?: boolean;
   /** Direction used the first time this column is clicked. */
   defaultDirection?: SortDirection;
@@ -92,10 +97,27 @@ function RankChange({ change }: { change: number }) {
   );
 }
 
+// Below `md` the Rank + Player columns stay put while the numeric columns
+// scroll under them, so they need opaque backgrounds (the row's own hover /
+// highlight colours included). Everything is `max-md:` — desktop gets no CSS.
+const STICKY_LEAD = "max-md:sticky max-md:z-10";
+const STICKY_LEAD_CELL =
+  "max-md:bg-card max-md:group-hover:bg-muted max-md:group-data-[highlighted]:bg-muted";
+// Header cells: `TableHead`'s translucent `bg-muted/30` painted over an opaque
+// card base as one layer (a flat gradient), so it matches the other headers.
+// Written as an arbitrary property: tailwind-merge would otherwise drop
+// `bg-card` in favour of a `bg-gradient-*` utility.
+const STICKY_LEAD_HEAD =
+  "max-md:bg-card max-md:[background-image:linear-gradient(hsl(var(--muted)/0.3),hsl(var(--muted)/0.3))]";
+/** Rank column width on phones; the Player column sticks right after it. */
+const RANK_W = "max-md:w-[48px] max-md:px-2";
+
 const RANK_COLUMN: ColumnDef = {
   key: "rank",
   label: "Rank",
-  className: "w-[60px] pl-4",
+  className: cn("w-[60px] pl-4", RANK_W, "max-md:left-0", STICKY_LEAD),
+  headClassName: STICKY_LEAD_HEAD,
+  cellClassName: STICKY_LEAD_CELL,
   render: (p) => (
     <span className="font-mono text-xs text-muted-foreground tabular-nums">{p.rank}</span>
   ),
@@ -104,7 +126,14 @@ const RANK_COLUMN: ColumnDef = {
 const PLAYER_COLUMN: ColumnDef = {
   key: "player_name",
   label: "Player",
-  render: (p) => <span className="font-medium text-sm">{p.player_name}</span>,
+  className: cn("max-md:left-[48px]", STICKY_LEAD),
+  headClassName: STICKY_LEAD_HEAD,
+  cellClassName: STICKY_LEAD_CELL,
+  render: (p) => (
+    <span className="font-medium text-sm max-md:block max-md:max-w-[150px] max-md:truncate">
+      {p.player_name}
+    </span>
+  ),
 };
 
 const POINTS_COLUMNS: ColumnDef[] = [
@@ -170,7 +199,7 @@ function buildColumns(format: ScoringFormat, meta: RankingsMeta | null): ColumnD
     {
       ...PLAYER_COLUMN,
       render: (p) => (
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 max-md:max-w-[150px]">
           <span className="font-medium text-sm truncate">{p.player_name}</span>
           <span className="text-[10px] font-mono text-muted-foreground/60 uppercase shrink-0">{p.team}</span>
         </div>
@@ -393,11 +422,11 @@ export default function RankingsDisplay() {
           placeholder="Search players...  (press / to focus)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 h-8 text-xs"
+          className="pl-9 h-10 md:h-8 text-xs"
         />
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {/* Format toggle */}
         <div className="flex rounded-md border border-border overflow-hidden text-xs">
           {(["points", "categories"] as ScoringFormat[]).map((f) => (
@@ -406,7 +435,7 @@ export default function RankingsDisplay() {
               type="button"
               onClick={() => setParams({ format: f })}
               className={cn(
-                "px-2.5 h-8 font-medium transition-colors",
+                "px-2.5 h-10 md:h-8 font-medium transition-colors",
                 params.format === f
                   ? "bg-primary/15 text-primary"
                   : "text-muted-foreground hover:text-foreground"
@@ -424,7 +453,7 @@ export default function RankingsDisplay() {
             setParams({ window: v === "season" ? null : (Number(v) as RankingsWindow) })
           }
         >
-          <SelectTrigger className="h-8 w-[120px] text-xs">
+          <SelectTrigger className="h-10 md:h-8 w-[120px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -495,79 +524,86 @@ export default function RankingsDisplay() {
       {toolbar}
       {caption}
 
-      <Card variant="panel" className="w-full">
+      <Card variant="panel" className="w-full max-md:bg-card">
         <CardContent className={cn("p-0 transition-opacity", isFetching && "opacity-70")}>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {columns.map((col) => (
-                    <TableHead
-                      key={col.key}
-                      title={col.title}
-                      className={cn(
-                        alignClass(col.align),
-                        col.className,
-                        col.sortable && "cursor-pointer hover:bg-muted/50 transition-colors"
-                      )}
-                      onClick={() => handleSort(col)}
-                    >
-                      {col.sortable ? (
-                        <div
-                          className={cn(
-                            "flex items-center gap-1.5",
-                            col.align === "right" ? "justify-end" : col.align === "center" ? "justify-center" : ""
-                          )}
-                        >
-                          {col.label}
-                          {getSortIcon(col.key)}
-                        </div>
-                      ) : (
-                        col.label
-                      )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody ref={tableRef}>
-                {paginatedRankings.map((player: RankingsPlayer, index: number) => {
-                  const isHighlighted = index === highlightedIndex;
-                  return (
-                    <TableRow
-                      key={player.id}
-                      className={`cursor-pointer transition-colors ${
-                        isHighlighted
-                          ? "bg-muted border-l-2 border-l-primary"
-                          : "border-l-2 border-l-transparent"
-                      }`}
-                      onClick={() => handlePlayerClick(player)}
-                      onMouseEnter={() => setHighlightedIndex(index)}
-                    >
-                      {columns.map((col) => (
-                        <TableCell key={col.key} className={cn(alignClass(col.align), col.className)}>
-                          {col.render(player)}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  );
-                })}
-                {paginatedRankings.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={columns.length} className="py-8 text-center text-sm text-muted-foreground">
-                      {players.length === 0
-                        ? data?.message || "No rankings available for this window yet."
-                        : "No players match your search."}
-                    </TableCell>
+          {/* Phones: the table scrolls inside its own box (both axes) so the
+              header and the Rank/Player columns can stick; desktop keeps page
+              scrolling. `vh` fallback for browsers without `dvh`. */}
+          <Table containerClassName="max-md:max-h-[calc(100vh-var(--chrome-h)-9rem)] max-md:supports-[height:100dvh]:max-h-[calc(100dvh-var(--chrome-h)-9rem)]">
+            {/* Collapsed borders don't travel with a sticky thead; the shadow is its bottom rule. */}
+            <TableHeader className="max-md:sticky max-md:top-0 max-md:z-20 max-md:bg-card max-md:shadow-[0_1px_0_hsl(var(--border))]">
+              <TableRow>
+                {columns.map((col) => (
+                  <TableHead
+                    key={col.key}
+                    title={col.title}
+                    className={cn(
+                      alignClass(col.align),
+                      col.className,
+                      col.headClassName,
+                      col.sortable && "cursor-pointer hover:bg-muted/50 transition-colors"
+                    )}
+                    onClick={() => handleSort(col)}
+                  >
+                    {col.sortable ? (
+                      <div
+                        className={cn(
+                          "flex items-center gap-1.5",
+                          col.align === "right" ? "justify-end" : col.align === "center" ? "justify-center" : ""
+                        )}
+                      >
+                        {col.label}
+                        {getSortIcon(col.key)}
+                      </div>
+                    ) : (
+                      col.label
+                    )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody ref={tableRef}>
+              {paginatedRankings.map((player: RankingsPlayer, index: number) => {
+                const isHighlighted = index === highlightedIndex;
+                return (
+                  <TableRow
+                    key={player.id}
+                    className={`cursor-pointer transition-colors ${
+                      isHighlighted
+                        ? "bg-muted border-l-2 border-l-primary"
+                        : "border-l-2 border-l-transparent"
+                    }`}
+                    data-highlighted={isHighlighted || undefined}
+                    onClick={() => handlePlayerClick(player)}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                  >
+                    {columns.map((col) => (
+                      <TableCell
+                        key={col.key}
+                        className={cn(alignClass(col.align), col.className, col.cellClassName)}
+                      >
+                        {col.render(player)}
+                      </TableCell>
+                    ))}
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                );
+              })}
+              {paginatedRankings.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="py-8 text-center text-sm text-muted-foreground">
+                    {players.length === 0
+                      ? data?.message || "No rankings available for this window yet."
+                      : "No players match your search."}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-              <p className="text-xs text-muted-foreground">
+            <div className="flex flex-col gap-2 px-4 py-3 border-t border-border sm:flex-row sm:items-center sm:justify-between">
+              <p className="hidden text-xs text-muted-foreground sm:block">
                 {startIndex + 1}–{Math.min(endIndex, filteredRankings.length)}{" "}
                 of {filteredRankings.length}
               </p>
@@ -589,7 +625,13 @@ export default function RankingsDisplay() {
                         <PaginationEllipsis />
                       </PaginationItem>
                     ) : (
-                      <PaginationItem key={page}>
+                      <PaginationItem
+                        key={page}
+                        // Phones: first / current / last only, with prev/next icons.
+                        className={cn(
+                          page !== 1 && page !== totalPages && page !== currentPage && "hidden sm:block"
+                        )}
+                      >
                         <PaginationLink
                           onClick={() => setCurrentPage(page)}
                           isActive={currentPage === page}
