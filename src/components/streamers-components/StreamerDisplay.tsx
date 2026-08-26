@@ -1,19 +1,12 @@
 "use client";
 
 import { useState, useMemo, Fragment } from "react";
-import { Search } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -31,41 +24,68 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { HintPopover } from "@/components/ui/hint";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { QueryErrorState } from "@/components/ui/query-error";
 
 import { WeekSchedule, WeekScheduleHeader } from "./WeekSchedule";
 import { BreakoutContextSection } from "./BreakoutContextSection";
+import { OppBadge, PositionBadges, PriorSeasonBadge } from "./StreamerBadges";
+import { StreamerCard } from "./StreamerCard";
+import {
+  StreamerFilterControls,
+  countActiveStreamerFilters,
+  DEFAULT_AVG_DAYS,
+  type Position,
+} from "./StreamerFilterControls";
+import { StreamerFilterSheet } from "./StreamerFilterSheet";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
+import { useIsMobile } from "@/hooks/useBreakpoint";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
-import { BASELINE_VALUE_TITLE, CAT_VALUE_TITLE } from "@/lib/category-format";
+import { CAT_VALUE_TITLE } from "@/lib/category-format";
 import { userMessage } from "@/lib/api-error";
 import type { StreamerPlayer, StreamerMode } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
-
-const POSITIONS = ["PG", "SG", "SF", "PF", "C", "G", "F"] as const;
-type Position = (typeof POSITIONS)[number];
-
-const AVG_DAYS_OPTIONS = [
-  { value: 7, label: "Last 7 days" },
-  { value: 14, label: "Last 14 days" },
-  { value: 30, label: "Last 30 days" },
-] as const;
 
 interface SelectedPlayer {
   playerId: number;
   playerName: string;
   playerTeam: string;
   breakoutContext?: BreakoutCandidateResp;
+}
+
+function ModeTabs({
+  mode,
+  onChange,
+  className,
+  listClassName,
+  triggerClassName,
+}: {
+  mode: StreamerMode;
+  onChange: (mode: StreamerMode) => void;
+  className?: string;
+  listClassName?: string;
+  triggerClassName?: string;
+}) {
+  return (
+    <Tabs
+      value={mode}
+      onValueChange={(v) => onChange(v as StreamerMode)}
+      className={className}
+    >
+      <TabsList className={listClassName}>
+        <TabsTrigger value="daily" className={triggerClassName}>
+          Daily Pickup
+        </TabsTrigger>
+        <TabsTrigger value="week" className={triggerClassName}>
+          Rest of Week
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
 }
 
 export default function StreamerDisplay() {
@@ -77,6 +97,9 @@ export default function StreamerDisplay() {
     refetchTeams,
   } = useSelectedTeam();
   const leagueInfo = selectedTeamData?.league_info || null;
+  // Safe to branch on: Base withholds this page until Clerk has loaded, so the
+  // hook has its real value before we mount (no desktop flash).
+  const isMobile = useIsMobile();
 
   // Local state for filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -87,8 +110,9 @@ export default function StreamerDisplay() {
   const [b2bOnly, setB2bOnly] = useState(false);
   const [breakoutOnly, setBreakoutOnly] = useState(false);
   const [targetDay, setTargetDay] = useState<number | null>(null);
-  const [avgDays, setAvgDays] = useState(7);
+  const [avgDays, setAvgDays] = useState(DEFAULT_AVG_DAYS);
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Fetch streamers
   const { data, isLoading, error, refetch, isFetching } = useStreamersQuery(
@@ -168,6 +192,30 @@ export default function StreamerDisplay() {
     setSelectedPositions(new Set());
   };
 
+  const handleModeChange = (next: StreamerMode) => {
+    setMode(next);
+    if (next === "week") {
+      setTargetDay(null);
+    }
+  };
+
+  // Everything the sheet holds; search stays (it's in the phone header, not the sheet).
+  const clearAllFilters = () => {
+    setTargetDay(null);
+    setB2bOnly(false);
+    setBreakoutOnly(false);
+    setAvgDays(DEFAULT_AVG_DAYS);
+    clearPositionFilters();
+  };
+
+  const selectPlayer = (player: StreamerPlayer) =>
+    setSelectedPlayer({
+      playerId: player.player_id,
+      playerName: player.name,
+      playerTeam: player.team,
+      breakoutContext: player.breakout_context,
+    });
+
   // Generate day options for daily mode day picker
   const dayOptions = useMemo(() => {
     if (!data) return [];
@@ -176,6 +224,22 @@ export default function StreamerDisplay() {
       label: `Day ${i + 1}${i === data.current_day_index ? " (Today)" : ""}`,
     }));
   }, [data]);
+
+  const breakoutAvailable = breakoutMap.size > 0;
+  const breakoutUnavailableReason = breakoutError
+    ? `Breakout data unavailable — ${userMessage(breakoutError)}`
+    : !breakoutData
+      ? "Breakout candidates are still loading."
+      : "No breakout candidates right now.";
+
+  const activeFilterCount = countActiveStreamerFilters({
+    mode,
+    targetDay,
+    b2bOnly,
+    breakoutOnly,
+    avgDays,
+    selectedPositions,
+  });
 
   // The selected team id is persisted; without the teams list it can't become a league.
   if (teamsError && !selectedTeamData) {
@@ -227,138 +291,99 @@ export default function StreamerDisplay() {
   const totalDays = data.game_span;
   const pickupDay = data.target_day ?? data.current_day_index;
   const isCatValue = data.value_kind === "cat_value";
+  const valueHeader = isCatValue ? `Cat value (L${avgDays})` : `${avgDays}D Avg`;
+
+  const filterProps = {
+    mode,
+    searchQuery,
+    targetDay,
+    b2bOnly,
+    breakoutOnly,
+    avgDays,
+    selectedPositions,
+    setSearchQuery,
+    setTargetDay,
+    setB2bOnly,
+    setBreakoutOnly,
+    setAvgDays,
+    togglePosition,
+    clearPositionFilters,
+    dayOptions,
+    breakoutAvailable,
+    breakoutUnavailableReason,
+  };
+
+  /** Per-row flags shared by the table and the card list. */
+  const rowFlags = (player: StreamerPlayer, index: number) => {
+    const hasDailyPickupB2b =
+      player.game_days.includes(pickupDay) &&
+      player.game_days.includes(pickupDay + 1);
+    // Show a visual divider between the breakout group and regular streamers
+    const prevHasBreakout =
+      index > 0 && !!filteredStreamers[index - 1].breakout_context;
+    return {
+      showB2bBadge: mode === "daily" ? hasDailyPickupB2b : player.has_b2b,
+      showDivider: prevHasBreakout && !player.breakout_context,
+    };
+  };
 
   return (
     <div className="flex flex-col w-full gap-3">
-      {/* Filters Section */}
-      <Card variant="panel" className="p-3">
+      {/* Filters (md and up): one wrapping row */}
+      <Card variant="panel" className="hidden md:block p-3">
         <div className="flex flex-wrap items-center gap-3">
           {/* Mode Toggle */}
-          <Tabs
-            value={mode}
-            onValueChange={(v) => {
-              setMode(v as StreamerMode);
-              if (v === "week") {
-                setTargetDay(null);
-              }
-            }}
-          >
-            <TabsList className="h-8">
-              <TabsTrigger value="daily" className="text-xs px-3">
-                Daily Pickup
-              </TabsTrigger>
-              <TabsTrigger value="week" className="text-xs px-3">
-                Rest of Week
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          {/* Search */}
-          <div className="relative flex-1 min-w-[180px] max-w-[260px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search players..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-xs"
-            />
-          </div>
-
-          {/* Daily mode: Day Picker */}
-          {mode === "daily" && (
-            <Select
-              value={targetDay?.toString() ?? "today"}
-              onValueChange={(val) =>
-                setTargetDay(val === "today" ? null : parseInt(val))
-              }
-            >
-              <SelectTrigger className="w-[130px] h-8 text-xs">
-                <SelectValue placeholder="Select day" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Today</SelectItem>
-                {dayOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value.toString()}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {/* B2B Only Toggle */}
-          <Button
-            variant={b2bOnly ? "default" : "outline"}
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => setB2bOnly(!b2bOnly)}
-          >
-            B2B Only
-          </Button>
-
-          {/* Breakout Only Toggle */}
-          <Button
-            variant={breakoutOnly ? "default" : "outline"}
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => setBreakoutOnly(!breakoutOnly)}
-            disabled={breakoutMap.size === 0}
-            title={
-              breakoutError
-                ? `Breakout data unavailable — ${userMessage(breakoutError)}`
-                : undefined
-            }
-          >
-            Breakout Only
-          </Button>
-
-          {/* Avg Days Selector */}
-          <Select
-            value={avgDays.toString()}
-            onValueChange={(val) => setAvgDays(parseInt(val))}
-          >
-            <SelectTrigger className="w-[130px] h-8 text-xs">
-              <SelectValue placeholder="Avg period" />
-            </SelectTrigger>
-            <SelectContent>
-              {AVG_DAYS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value.toString()}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Position Filters */}
-          <div className="flex items-center gap-1.5">
-            <div className="flex gap-1">
-              {POSITIONS.map((pos) => (
-                <Badge
-                  key={pos}
-                  variant={selectedPositions.has(pos) ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-primary/80 text-[11px]"
-                  onClick={() => togglePosition(pos)}
-                >
-                  {pos}
-                </Badge>
-              ))}
-            </div>
-            {selectedPositions.size > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearPositionFilters}
-                className="text-[11px] h-5 px-1.5"
-              >
-                Clear
-              </Button>
-            )}
-          </div>
+          <ModeTabs
+            mode={mode}
+            onChange={handleModeChange}
+            listClassName="h-8"
+            triggerClassName="text-xs px-3"
+          />
+          <StreamerFilterControls layout="inline" {...filterProps} />
         </div>
       </Card>
 
+      {/* Filters (phones): mode + sheet trigger, then a full-width search */}
+      <div className="md:hidden flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <ModeTabs
+            mode={mode}
+            onChange={handleModeChange}
+            className="min-w-0 flex-1"
+            listClassName="grid h-10 w-full grid-cols-2"
+            triggerClassName="text-xs"
+          />
+          <Button
+            variant="outline"
+            className="h-10 shrink-0 px-3 text-xs"
+            onClick={() => setFiltersOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={filtersOpen}
+          >
+            <SlidersHorizontal />
+            Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
+          </Button>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search players..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-10 pl-9"
+          />
+        </div>
+      </div>
+      <StreamerFilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        activeCount={activeFilterCount}
+        onClearAll={clearAllFilters}
+        {...filterProps}
+      />
+
       {/* Info Bar */}
-      <div className="flex items-center gap-3 text-xs text-muted-foreground px-1">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground px-1">
         <span>
           Matchup {data.matchup_number} &middot;{" "}
           {mode === "daily"
@@ -374,10 +399,34 @@ export default function StreamerDisplay() {
         </span>
       </div>
 
-      {/* Streamers Table */}
+      {/* Streamers: card list on phones, table from md up */}
       <Card variant="panel" className="overflow-hidden">
         <CardContent className="p-0">
-          <TooltipProvider>
+          {isMobile ? (
+            filteredStreamers.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No streamers found matching your filters.
+              </p>
+            ) : (
+              <ul className="list-none">
+                {filteredStreamers.map((player: StreamerPlayer, index: number) => {
+                  const { showB2bBadge, showDivider } = rowFlags(player, index);
+                  return (
+                    <StreamerCard
+                      key={player.player_id}
+                      player={player}
+                      index={index}
+                      showB2bBadge={showB2bBadge}
+                      showDivider={showDivider}
+                      totalDays={totalDays}
+                      currentDay={data.current_day_index}
+                      onSelect={selectPlayer}
+                    />
+                  );
+                })}
+              </ul>
+            )
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -385,13 +434,20 @@ export default function StreamerDisplay() {
                   <TableHead className="min-w-[200px]">Player</TableHead>
                   <TableHead className="w-[50px] text-center">Team</TableHead>
                   <TableHead className="w-[120px]">Pos</TableHead>
-                  <TableHead
-                    className="w-[70px] text-right whitespace-nowrap"
-                    title={isCatValue ? CAT_VALUE_TITLE : undefined}
-                  >
-                    {isCatValue ? `Cat value (L${avgDays})` : `${avgDays}D Avg`}
+                  <TableHead className="w-[70px] text-right whitespace-nowrap">
+                    {isCatValue ? (
+                      <HintPopover content={CAT_VALUE_TITLE} contentClassName="max-w-[260px]">
+                        <span>{valueHeader}</span>
+                      </HintPopover>
+                    ) : (
+                      valueHeader
+                    )}
                   </TableHead>
-                  <TableHead className="w-[70px] text-center" title="Games remaining in the matchup">Games left</TableHead>
+                  <TableHead className="w-[70px] text-center">
+                    <HintPopover content="Games remaining in the matchup">
+                      <span>Games left</span>
+                    </HintPopover>
+                  </TableHead>
                   <TableHead className="text-center">
                     <div className="flex flex-col items-center gap-1">
                       <span>Schedule</span>
@@ -415,16 +471,7 @@ export default function StreamerDisplay() {
                   </TableRow>
                 ) : (
                   filteredStreamers.map((player: StreamerPlayer, index: number) => {
-                    const hasDailyPickupB2b =
-                      player.game_days.includes(pickupDay) &&
-                      player.game_days.includes(pickupDay + 1);
-                    const showB2bBadge =
-                      mode === "daily" ? hasDailyPickupB2b : player.has_b2b;
-
-                    // Show a visual divider between the breakout group and regular streamers
-                    const prevHasBreakout =
-                      index > 0 && !!filteredStreamers[index - 1].breakout_context;
-                    const showDivider = prevHasBreakout && !player.breakout_context;
+                    const { showB2bBadge, showDivider } = rowFlags(player, index);
 
                     return (
                       <Fragment key={player.player_id}>
@@ -435,12 +482,7 @@ export default function StreamerDisplay() {
                         )}
                         <TableRow
                           className="cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary"
-                          onClick={() => setSelectedPlayer({
-                            playerId: player.player_id,
-                            playerName: player.name,
-                            playerTeam: player.team,
-                            breakoutContext: player.breakout_context,
-                          })}
+                          onClick={() => selectPlayer(player)}
                         >
                           <TableCell className="text-center pl-3 font-mono text-xs text-muted-foreground tabular-nums">
                             {index + 1}
@@ -457,28 +499,7 @@ export default function StreamerDisplay() {
                                 </Badge>
                               )}
                               {player.breakout_context && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge
-                                      variant="breakout"
-                                      className="text-[11px] cursor-help"
-                                    >
-                                      OPP
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent className="max-w-[240px] space-y-1">
-                                    <p className="font-semibold text-xs">
-                                      {player.breakout_context.injured_player.name} is{" "}
-                                      {player.breakout_context.injured_player.status.toLowerCase()}
-                                    </p>
-                                    <p className="text-xs text-primary-foreground/70">
-                                      +{player.breakout_context.signals.projected_min_boost.toFixed(1)} min projected boost
-                                      {player.breakout_context.signals.opp_fpts_avg !== null
-                                        ? ` · ${player.breakout_context.signals.opp_fpts_avg.toFixed(1)} fpts in ${player.breakout_context.signals.opp_game_count} opp games`
-                                        : ""}
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
+                                <OppBadge context={player.breakout_context} />
                               )}
                             </div>
                           </TableCell>
@@ -486,41 +507,14 @@ export default function StreamerDisplay() {
                             {player.team}
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {player.valid_positions
-                                .filter((pos) =>
-                                  ["PG", "SG", "SF", "PF", "C", "G", "F"].includes(pos)
-                                )
-                                .slice(0, 4)
-                                .map((pos) => (
-                                  <Badge
-                                    key={pos}
-                                    variant="outline"
-                                    className="text-[11px] px-1.5 py-0"
-                                  >
-                                    {pos}
-                                  </Badge>
-                                ))}
-                            </div>
+                            <PositionBadges positions={player.valid_positions} />
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm tabular-nums whitespace-nowrap">
                             {player.avg_points_last_n !== null
                               ? player.avg_points_last_n.toFixed(1)
                               : "-"}
                             {player.avg_source === "baseline" && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Badge
-                                    variant="neutral"
-                                    className="ml-1 px-1 py-0 text-[9px] font-medium cursor-help"
-                                  >
-                                    prior season
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-[220px]">
-                                  <p className="text-xs">{BASELINE_VALUE_TITLE}</p>
-                                </TooltipContent>
-                              </Tooltip>
+                              <PriorSeasonBadge className="ml-1" />
                             )}
                           </TableCell>
                           <TableCell className="text-center font-mono text-sm tabular-nums">
@@ -542,7 +536,7 @@ export default function StreamerDisplay() {
                 )}
               </TableBody>
             </Table>
-          </TooltipProvider>
+          )}
         </CardContent>
       </Card>
 
