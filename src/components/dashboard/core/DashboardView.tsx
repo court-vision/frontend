@@ -5,9 +5,16 @@ import { useUIStore } from "@/stores/useUIStore";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useDashboardStore } from "@/stores/useDashboardStore";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
+import { useIsMobile } from "@/hooks/useBreakpoint";
+import { orderForMobile } from "@/lib/dashboard-order";
 import { ConnectTeamPrompt } from "@/components/teams-components/ConnectTeamPrompt";
-import { DEFAULT_LAYOUTS, layoutTemplateFor } from "./defaultLayouts";
+import {
+  DEFAULT_LAYOUTS,
+  MOBILE_ORDER,
+  layoutTemplateFor,
+} from "./defaultLayouts";
 import { DashboardGrid } from "./DashboardGrid";
+import { DashboardStack } from "./DashboardStack";
 import { DashboardToolbar } from "./DashboardToolbar";
 import { WidgetCatalog } from "./WidgetCatalog";
 
@@ -17,6 +24,9 @@ export function DashboardView() {
   const { layouts, setLayout } = useDashboardStore();
   const { format, teams, isLoading: isTeamsLoading } = useSelectedTeam();
   const [catalogOpen, setCatalogOpen] = useState(false);
+  // Safe to branch on: `Base` withholds the page until Clerk has loaded, so
+  // the media query has hydrated before this mounts (no desktop flash).
+  const isMobile = useIsMobile();
 
   // Derive the team key for layout lookup
   const teamKey = selectedTeam !== null ? String(selectedTeam) : "default";
@@ -29,7 +39,10 @@ export function DashboardView() {
 
   // Seed default layout if this teamKey has never been customized.
   // Wait for teams to load so a category league seeds the category template.
+  // The phone stack never writes the persisted store — it renders the
+  // template directly until a desktop session seeds it.
   useEffect(() => {
+    if (isMobile) return;
     if (layouts[teamKey] || (selectedTeam !== null && isTeamsLoading)) return;
     const source = DEFAULT_LAYOUTS[template];
     const seeded = {
@@ -40,9 +53,11 @@ export function DashboardView() {
       })),
     };
     setLayout(teamKey, seeded);
-  }, [teamKey, layouts, setLayout, selectedTeam, template, isTeamsLoading]);
+  }, [isMobile, teamKey, layouts, setLayout, selectedTeam, template, isTeamsLoading]);
 
-  const widgets = layouts[teamKey]?.widgets ?? [];
+  const widgets =
+    layouts[teamKey]?.widgets ??
+    (isMobile ? DEFAULT_LAYOUTS[template].widgets : []);
   const showConnectPrompt =
     !isTeamsLoading && teams.length === 0 && !dismissedConnectPrompt;
 
@@ -52,8 +67,9 @@ export function DashboardView() {
         teamKey={teamKey}
         template={template}
         onOpenCatalog={() => setCatalogOpen(true)}
+        readOnly={isMobile}
       />
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4">
         {showConnectPrompt && (
           <ConnectTeamPrompt
             variant="banner"
@@ -61,7 +77,14 @@ export function DashboardView() {
             onDismiss={() => setDismissedConnectPrompt(true)}
           />
         )}
-        <DashboardGrid teamKey={teamKey} widgets={widgets} />
+        {isMobile ? (
+          <DashboardStack
+            teamKey={teamKey}
+            widgets={orderForMobile(widgets, MOBILE_ORDER[template])}
+          />
+        ) : (
+          <DashboardGrid teamKey={teamKey} widgets={widgets} />
+        )}
       </div>
       <WidgetCatalog
         open={catalogOpen}

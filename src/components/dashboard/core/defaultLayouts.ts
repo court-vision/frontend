@@ -215,3 +215,34 @@ export function layoutTemplateFor(
   if (selectedTeam === null) return "default";
   return format === "categories" ? "categories" : "team";
 }
+
+/**
+ * Widget order for the single-column phone stack, per template (definition
+ * ids, top → bottom). Widgets not listed here follow in grid reading order —
+ * see `orderForMobile` in `lib/dashboard-order.ts`.
+ */
+export const MOBILE_ORDER: Record<LayoutTemplate, string[]> = {
+  default: [
+    "today-leaders",
+    "schedule",
+    "streamers",
+    "trending",
+    "watchlist",
+    "quick-actions",
+  ],
+  team: [
+    "matchup-score",
+    "daily-breakdown",
+    "score-history",
+    "roster-overview",
+    "team-streamers",
+  ],
+  categories: [
+    "category-comparison",
+    "matchup-score",
+    "category-strengths",
+    "daily-breakdown",
+    "roster-overview",
+    "team-streamers",
+  ],
+};

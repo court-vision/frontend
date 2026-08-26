@@ -40,7 +40,7 @@ export function WidgetCatalog({ open, onClose, teamKey }: WidgetCatalogProps) {
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="right" className="w-80 p-0">
+      <SheetContent side="right" className="w-full sm:w-80 p-0">
         <SheetHeader className="p-4 pb-2">
           <SheetTitle className="text-sm">Add Widget</SheetTitle>
           <SheetDescription className="text-xs">
