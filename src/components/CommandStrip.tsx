@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import { useHydrated } from "@/hooks/useHydrated";
 import { Search, User, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DESKTOP_NAV } from "@/lib/navigation";
@@ -18,6 +19,8 @@ import { Button } from "@/components/ui/button";
 export function CommandStrip() {
   const pathname = usePathname();
   const { isSignedIn, isLoaded } = useUser();
+  // Clerk can finish loading before React hydrates; keep the first client render equal to the SSR output.
+  const authReady = useHydrated() && isLoaded;
   const { open: openCommandPalette } = useCommandPalette();
   const { connectivity, health } = useConnectivity();
   const healthLabel = connectivityLabel(connectivity, health.data?.dbLatencyMs);
@@ -83,7 +86,7 @@ export function CommandStrip() {
       <div className="flex-1" />
 
       {/* Team selector - desktop */}
-      {isLoaded && isSignedIn && (
+      {authReady && isSignedIn && (
         <div className="hidden sm:block">
           <TeamDropdown />
         </div>
@@ -113,7 +116,7 @@ export function CommandStrip() {
 
       {/* Settings + User */}
       <div className="ml-2 flex items-center gap-1.5">
-        {isLoaded && isSignedIn && (
+        {authReady && isSignedIn && (
           <Link href="/settings" aria-label="Settings">
             <div className={cn(
               "h-9 w-9 md:h-7 md:w-7 rounded-md flex items-center justify-center transition-all cursor-pointer",
@@ -123,14 +126,14 @@ export function CommandStrip() {
             </div>
           </Link>
         )}
-        {isLoaded && !isSignedIn && (
+        {authReady && !isSignedIn && (
           <Link href="/account">
             <Button variant="outline" size="sm" className="h-9 md:h-7 text-[11px]">
               Sign In
             </Button>
           </Link>
         )}
-        {isLoaded && isSignedIn && (
+        {authReady && isSignedIn && (
           <Link href="/account" aria-label="Account">
             <div className="h-9 w-9 md:h-7 md:w-7 rounded-full bg-primary/15 border border-primary/25 flex items-center justify-center hover:bg-primary/25 transition-all cursor-pointer">
               <User className="h-3.5 w-3.5 text-primary" />

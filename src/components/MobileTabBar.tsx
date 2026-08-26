@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import { useHydrated } from "@/hooks/useHydrated";
 import { LogIn, Menu, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -46,7 +47,8 @@ export function MobileTabBar() {
   const { isSignedIn } = useUser();
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const tabs = isSignedIn ? TAB_NAV : SIGNED_OUT_TAB_NAV;
+  // Same SSR/hydration rule as CommandStrip: the signed-out bar is what the server rendered.
+  const tabs = useHydrated() && isSignedIn ? TAB_NAV : SIGNED_OUT_TAB_NAV;
 
   return (
     <>
