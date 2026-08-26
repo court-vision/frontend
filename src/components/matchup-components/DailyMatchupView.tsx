@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryComparisonGrid } from "@/components/matchup-components/CategoryComparisonGrid";
+import { SideTabs } from "@/components/matchup-components/SideTabs";
 import { formatRecord, recordOutcome, winnerBadgeVariant } from "@/lib/category-format";
 import { dayRecord, type TeamRecord } from "@/lib/matchup-headline";
 import type {
@@ -361,22 +362,27 @@ export function DailyMatchupView({ dailyData, isLoading }: DailyMatchupViewProps
           />
         </Card>
       )}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <DailyTeamCard
-          team={dailyData.your_team}
-          dayType={dailyData.day_type}
-          isYourTeam={true}
-          format={format}
-          record={yourRecord}
-        />
-        <DailyTeamCard
-          team={dailyData.opponent_team}
-          dayType={dailyData.day_type}
-          isYourTeam={false}
-          format={format}
-          record={oppRecord}
-        />
-      </div>
+      <SideTabs
+        opponentName={dailyData.opponent_team.team_name}
+        you={
+          <DailyTeamCard
+            team={dailyData.your_team}
+            dayType={dailyData.day_type}
+            isYourTeam={true}
+            format={format}
+            record={yourRecord}
+          />
+        }
+        opponent={
+          <DailyTeamCard
+            team={dailyData.opponent_team}
+            dayType={dailyData.day_type}
+            isYourTeam={false}
+            format={format}
+            record={oppRecord}
+          />
+        }
+      />
     </div>
   );
 }

@@ -29,6 +29,7 @@ import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreC
 import { DayNavigationBar } from "@/components/matchup-components/DayNavigationBar";
 import { DailyMatchupView } from "@/components/matchup-components/DailyMatchupView";
 import { CategoryComparisonGrid } from "@/components/matchup-components/CategoryComparisonGrid";
+import { SideTabs } from "@/components/matchup-components/SideTabs";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useGamesOnDateQuery } from "@/hooks/useGames";
 import { useDailyMatchupQuery, useLiveMatchupQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
@@ -361,136 +362,135 @@ function LiveTeamRosterTable({ team, games, onPlayerClick, format, categories }:
   const isCategories = format === "categories";
   const columns = isCategories ? liveColumns(categories) : POINTS_LIVE_COLUMNS;
 
+  // No scroll wrapper here: `Table` is already a horizontal scroller with edge fades.
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[50px] pl-3">Slot</TableHead>
-            <TableHead>Player</TableHead>
-            <TableHead className="w-[110px] font-mono text-[11px] uppercase tracking-wider">Game</TableHead>
-            <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">MIN</TableHead>
-            {columns.map((col, i) => (
-              <TableHead
-                key={col.key}
-                className={cn(
-                  "text-right font-mono text-[11px] uppercase tracking-wider",
-                  col.widthClass,
-                  isCategories && i === columns.length - 1 && "pr-3"
-                )}
-              >
-                {col.label}
-              </TableHead>
-            ))}
-            {!isCategories && (
-              <TableHead className="w-[46px] text-right pr-3 font-mono text-[11px] uppercase tracking-wider">FP</TableHead>
-            )}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.map((player) => {
-            const live = player.live;
-            const hasStats = live !== null && live.game_status >= 2;
-            const isBench = player.lineup_slot === "BE" || player.lineup_slot === "IR";
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[50px] pl-3">Slot</TableHead>
+          <TableHead>Player</TableHead>
+          <TableHead className="w-[84px] md:w-[110px] font-mono text-[11px] uppercase tracking-wider">Game</TableHead>
+          <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">MIN</TableHead>
+          {columns.map((col, i) => (
+            <TableHead
+              key={col.key}
+              className={cn(
+                "text-right font-mono text-[11px] uppercase tracking-wider",
+                col.widthClass,
+                isCategories && i === columns.length - 1 && "pr-3"
+              )}
+            >
+              {col.label}
+            </TableHead>
+          ))}
+          {!isCategories && (
+            <TableHead className="w-[46px] text-right pr-3 font-mono text-[11px] uppercase tracking-wider">FP</TableHead>
+          )}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sorted.map((player) => {
+          const live = player.live;
+          const hasStats = live !== null && live.game_status >= 2;
+          const isBench = player.lineup_slot === "BE" || player.lineup_slot === "IR";
 
-            return (
-              <TableRow
-                key={player.player_id}
-                className={cn(
-                  "cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary",
-                  isBench && "opacity-50"
-                )}
-                onClick={() => onPlayerClick(player)}
-              >
-                <TableCell className="pl-3">
-                  <Badge
-                    variant={
-                      player.lineup_slot === "IR"
-                        ? "outline"
-                        : player.lineup_slot === "BE"
-                          ? "secondary"
-                          : "default"
-                    }
-                    className={player.lineup_slot === "IR" ? "text-muted-foreground" : ""}
-                  >
-                    {player.lineup_slot}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className={cn(
-                      "text-sm truncate",
-                      player.injured && "text-muted-foreground"
-                    )}>
-                      {player.name}
-                    </span>
-                    {player.injured && player.injury_status && (
-                      <Badge variant="destructive" className="text-[11px] shrink-0">
-                        {player.injury_status}
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <GameStatusCell player={player} game={getPlayerGame(player.team, games)} />
-                </TableCell>
-                <TableCell className="text-right font-mono text-xs tabular-nums">
-                  <StatCell value={live?.live_min ?? 0} hasStats={hasStats} />
-                </TableCell>
-                {columns.map((col, i) => (
-                  <TableCell
-                    key={col.key}
-                    className={cn(
-                      "text-right font-mono text-xs tabular-nums",
-                      isCategories && i === columns.length - 1 && "pr-3"
-                    )}
-                  >
-                    <StatCell value={live ? col.cell(live) : 0} hasStats={hasStats} />
-                  </TableCell>
-                ))}
-                {!isCategories && (
-                  <TableCell className={cn(
-                    "text-right font-mono text-sm tabular-nums pr-3 font-semibold",
-                    hasStats && !isBench && "text-foreground"
+          return (
+            <TableRow
+              key={player.player_id}
+              className={cn(
+                "cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary",
+                isBench && "opacity-50"
+              )}
+              onClick={() => onPlayerClick(player)}
+            >
+              <TableCell className="pl-3">
+                <Badge
+                  variant={
+                    player.lineup_slot === "IR"
+                      ? "outline"
+                      : player.lineup_slot === "BE"
+                        ? "secondary"
+                        : "default"
+                  }
+                  className={player.lineup_slot === "IR" ? "text-muted-foreground" : ""}
+                >
+                  {player.lineup_slot}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={cn(
+                    "text-sm truncate",
+                    player.injured && "text-muted-foreground"
                   )}>
-                    <StatCell value={live?.live_fpts ?? 0} hasStats={hasStats} />
-                  </TableCell>
-                )}
-              </TableRow>
-            );
-          })}
-
-          {/* Summary row — active players only */}
-          {isCategories ? (
-            <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
-              <TableCell colSpan={4} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
-                Active total {!hasAnyLive && <span className="normal-case">(no games yet)</span>}
+                    {player.name}
+                  </span>
+                  {player.injured && player.injury_status && (
+                    <Badge variant="destructive" className="text-[11px] shrink-0">
+                      {player.injury_status}
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <GameStatusCell player={player} game={getPlayerGame(player.team, games)} />
+              </TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">
+                <StatCell value={live?.live_min ?? 0} hasStats={hasStats} />
               </TableCell>
               {columns.map((col, i) => (
                 <TableCell
                   key={col.key}
                   className={cn(
-                    "text-right font-mono text-xs font-bold py-2 tabular-nums",
-                    i === columns.length - 1 && "pr-3"
+                    "text-right font-mono text-xs tabular-nums",
+                    isCategories && i === columns.length - 1 && "pr-3"
                   )}
                 >
-                  {hasAnyLive ? col.total(activeLives) : <span className="text-muted-foreground/30">—</span>}
+                  <StatCell value={live ? col.cell(live) : 0} hasStats={hasStats} />
                 </TableCell>
               ))}
+              {!isCategories && (
+                <TableCell className={cn(
+                  "text-right font-mono text-sm tabular-nums pr-3 font-semibold",
+                  hasStats && !isBench && "text-foreground"
+                )}>
+                  <StatCell value={live?.live_fpts ?? 0} hasStats={hasStats} />
+                </TableCell>
+              )}
             </TableRow>
-          ) : (
-            <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
-              <TableCell colSpan={10} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
-                Active total {!hasAnyLive && <span className="normal-case">(no games yet)</span>}
+          );
+        })}
+
+        {/* Summary row — active players only */}
+        {isCategories ? (
+          <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
+            <TableCell colSpan={4} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
+              Active total {!hasAnyLive && <span className="normal-case">(no games yet)</span>}
+            </TableCell>
+            {columns.map((col, i) => (
+              <TableCell
+                key={col.key}
+                className={cn(
+                  "text-right font-mono text-xs font-bold py-2 tabular-nums",
+                  i === columns.length - 1 && "pr-3"
+                )}
+              >
+                {hasAnyLive ? col.total(activeLives) : <span className="text-muted-foreground/30">—</span>}
               </TableCell>
-              <TableCell className="text-right font-mono text-sm font-bold pr-3 py-2 tabular-nums">
-                {hasAnyLive ? totalFpts : <span className="text-muted-foreground/30">—</span>}
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+            ))}
+          </TableRow>
+        ) : (
+          <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
+            <TableCell colSpan={10} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
+              Active total {!hasAnyLive && <span className="normal-case">(no games yet)</span>}
+            </TableCell>
+            <TableCell className="text-right font-mono text-sm font-bold pr-3 py-2 tabular-nums">
+              {hasAnyLive ? totalFpts : <span className="text-muted-foreground/30">—</span>}
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -776,7 +776,7 @@ export function MatchupDisplay({
             <Button
               size="sm"
               variant="outline"
-              className="h-6 text-[11px] gap-1 ml-auto"
+              className="h-8 md:h-6 text-[11px] gap-1 ml-auto"
               onClick={() => syncLeague.mutate(teamId as number)}
               disabled={syncLeague.isPending}
             >
@@ -812,13 +812,14 @@ export function MatchupDisplay({
             </div>
           </div>
 
-          {/* Score display */}
-          <div className="flex items-center justify-between">
+          {/* Score display — phones: equal 1fr columns keep VS centred and both
+              name-over-score blocks inside ~350 px; from `sm` the original flex row */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:flex sm:justify-between sm:gap-0">
             <div>
-              <p className="text-xs text-muted-foreground truncate max-w-[160px]">
+              <p className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[160px]">
                 {display.your_team.team_name}
               </p>
-              <p className="font-mono text-3xl font-bold tabular-nums mt-0.5">
+              <p className="font-mono text-2xl sm:text-3xl font-bold tabular-nums mt-0.5">
                 {formatScalar(h.you, h.format, { round: true })}
               </p>
               {h.isCategories && h.yourRecord && (
@@ -827,7 +828,7 @@ export function MatchupDisplay({
                 </p>
               )}
             </div>
-            <div className="text-center px-4">
+            <div className="text-center px-2 sm:px-4">
               <span className="text-sm font-medium text-muted-foreground/40">VS</span>
               {h.isCategories && (
                 <p className="text-[10px] font-mono text-muted-foreground/50 mt-1">
@@ -836,10 +837,10 @@ export function MatchupDisplay({
               )}
             </div>
             <div className="text-right">
-              <p className="text-xs text-muted-foreground truncate max-w-[160px] ml-auto">
+              <p className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[160px] ml-auto">
                 {display.opponent_team.team_name}
               </p>
-              <p className="font-mono text-3xl font-bold tabular-nums text-muted-foreground mt-0.5">
+              <p className="font-mono text-2xl sm:text-3xl font-bold tabular-nums text-muted-foreground mt-0.5">
                 {formatScalar(h.opp, h.format, { round: true })}
               </p>
               {h.isCategories && h.oppRecord && (
@@ -857,13 +858,14 @@ export function MatchupDisplay({
             ) : (
               <PointsScoreBar you={h.you} opp={h.opp} />
             )}
-            <div className="flex justify-between mt-2 text-[11px] text-muted-foreground">
+            {/* Phones: winner line on top, the two projections underneath */}
+            <div className="grid grid-cols-2 gap-x-2 sm:flex sm:justify-between sm:gap-x-0 mt-2 text-[11px] text-muted-foreground">
               <span>{h.yourProjLabel}</span>
-              <span className="text-center">
+              <span className="col-span-2 order-first text-center sm:order-none">
                 Winner: <span className="text-foreground font-medium">{h.projWinner}</span>
                 {" "}{h.projMarginLabel}
               </span>
-              <span>{h.oppProjLabel}</span>
+              <span className="text-right">{h.oppProjLabel}</span>
             </div>
           </div>
         </Card>
@@ -917,52 +919,56 @@ export function MatchupDisplay({
             dailyData={dailyMatchup}
             isLoading={dailyLoading}
           />
-        ) : (
-          <>
-            {/* Side-by-side team cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {liveMatchup ? (
-                <>
-                  <LiveTeamCard
-                    team={liveMatchup.your_team}
-                    isYourTeam={true}
-                    games={gamesData?.games ?? []}
-                    onPlayerClick={handlePlayerClick}
-                    format={h.format}
-                    categories={h.categories}
-                    record={h.yourRecord}
-                  />
-                  <LiveTeamCard
-                    team={liveMatchup.opponent_team}
-                    isYourTeam={false}
-                    games={gamesData?.games ?? []}
-                    onPlayerClick={handlePlayerClick}
-                    format={h.format}
-                    categories={h.categories}
-                    record={h.oppRecord}
-                  />
-                </>
-              ) : matchup ? (
-                <>
-                  <TeamCard
-                    team={matchup.your_team}
-                    isYourTeam={true}
-                    onPlayerClick={handlePlayerClick}
-                    format={h.format}
-                    record={h.yourRecord}
-                  />
-                  <TeamCard
-                    team={matchup.opponent_team}
-                    isYourTeam={false}
-                    onPlayerClick={handlePlayerClick}
-                    format={h.format}
-                    record={h.oppRecord}
-                  />
-                </>
-              ) : null}
-            </div>
-          </>
-        )}
+        ) : liveMatchup ? (
+          /* Team cards: side by side from `lg`, You / Opponent tabs below */
+          <SideTabs
+            opponentName={liveMatchup.opponent_team.team_name}
+            you={
+              <LiveTeamCard
+                team={liveMatchup.your_team}
+                isYourTeam={true}
+                games={gamesData?.games ?? []}
+                onPlayerClick={handlePlayerClick}
+                format={h.format}
+                categories={h.categories}
+                record={h.yourRecord}
+              />
+            }
+            opponent={
+              <LiveTeamCard
+                team={liveMatchup.opponent_team}
+                isYourTeam={false}
+                games={gamesData?.games ?? []}
+                onPlayerClick={handlePlayerClick}
+                format={h.format}
+                categories={h.categories}
+                record={h.oppRecord}
+              />
+            }
+          />
+        ) : matchup ? (
+          <SideTabs
+            opponentName={matchup.opponent_team.team_name}
+            you={
+              <TeamCard
+                team={matchup.your_team}
+                isYourTeam={true}
+                onPlayerClick={handlePlayerClick}
+                format={h.format}
+                record={h.yourRecord}
+              />
+            }
+            opponent={
+              <TeamCard
+                team={matchup.opponent_team}
+                isYourTeam={false}
+                onPlayerClick={handlePlayerClick}
+                format={h.format}
+                record={h.oppRecord}
+              />
+            }
+          />
+        ) : null}
       </div>
 
       {/* Player Stats Dialog */}

@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { ScrollX } from "@/components/ui/scroll-x";
 import type { Outcome } from "@/lib/category-format";
 
 interface DayNavigationBarProps {
@@ -65,6 +66,30 @@ export function DayNavigationBar({
   const trackRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Phones: long weeks overflow the strip, so keep the selected (else today's)
+  // cell centred — instantly on mount, smoothly afterwards. A no-op whenever
+  // the cells fit (the `md+` grid), so desktop never scrolls.
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const hasCentredRef = useRef(false);
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const overflow = scroller.scrollWidth - scroller.clientWidth;
+    if (overflow <= 1) return;
+    const target = scroller.querySelector<HTMLElement>(
+      `[data-date="${selectedDate ?? todayDate}"]`
+    );
+    if (!target) return;
+    const targetRect = target.getBoundingClientRect();
+    const targetLeft = targetRect.left - scroller.getBoundingClientRect().left + scroller.scrollLeft;
+    const left = targetLeft - (scroller.clientWidth - targetRect.width) / 2;
+    scroller.scrollTo({
+      left: Math.max(0, Math.min(overflow, left)),
+      behavior: hasCentredRef.current ? "smooth" : "auto",
+    });
+    hasCentredRef.current = true;
+  }, [selectedDate, todayDate, matchupPeriodStart]);
+
   const getDateFromClientX = useCallback(
     (clientX: number): string | null => {
       if (!trackRef.current) return null;
@@ -101,16 +126,14 @@ export function DayNavigationBar({
 
   return (
     // Outer 2-col grid: [All button | Day cells + progress track]
-    // This ensures the progress track is naturally aligned with the day cells
-    <div
-      className="grid border border-border/40 rounded-lg overflow-visible bg-card/20"
-      style={{ gridTemplateColumns: "minmax(44px, 52px) 1fr" }}
-    >
+    // This ensures the progress track is naturally aligned with the day cells.
+    // Phones get a 44 px "All" column so a 7-day week of 44 px cells still fits.
+    <div className="grid grid-cols-[44px_1fr] md:grid-cols-[minmax(44px,52px)_1fr] border border-border/40 rounded-lg overflow-visible bg-card/20">
       {/* ── "All / Week" column ───────────────────────────────────────────── */}
       <button
         onClick={() => onSelectDate(null)}
         className={cn(
-          "relative flex flex-col items-center justify-center py-2.5 px-2 gap-0.5 rounded-l-lg",
+          "relative flex flex-col items-center justify-center py-3 md:py-2.5 px-2 gap-0.5 rounded-l-lg",
           "border-r border-border/40 transition-colors duration-150",
           selectedDate === null
             ? "bg-primary/10 text-primary"
@@ -130,90 +153,101 @@ export function DayNavigationBar({
       </button>
 
       {/* ── Right column: day cells + progress track ─────────────────────── */}
-      <div className="flex flex-col">
-        {/* Day buttons */}
-        <div
-          className="grid"
-          style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}
-        >
-          {days.map(({ date, dayAbbr, dateNum }) => {
-            const isToday = date === todayDate;
-            const isPast = date < todayDate;
-            const isFuture = date > todayDate;
-            const isSelected = date === selectedDate;
-            const outcome = dayOutcomes?.[date];
+      {/* `min-w-0` so the overflowing phone strip scrolls instead of widening the column */}
+      <div className="flex flex-col min-w-0">
+        {/* Day buttons — phones: a scrollable flex strip of ≥44 px cells with
+            edge fades; `md+`: the equal-column grid (the inline template only
+            applies once `md:grid` kicks in) */}
+        <ScrollX ref={scrollerRef} className="snap-x md:snap-none">
+          <div
+            className="flex md:grid"
+            style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}
+          >
+            {days.map(({ date, dayAbbr, dateNum }) => {
+              const isToday = date === todayDate;
+              const isPast = date < todayDate;
+              const isFuture = date > todayDate;
+              const isSelected = date === selectedDate;
+              const outcome = dayOutcomes?.[date];
+              const outcomeLabel = outcome
+                ? `${dayAbbr} ${dateNum}: ${outcome === "win" ? "won the day" : outcome === "loss" ? "lost the day" : "split the day"}`
+                : undefined;
 
-            return (
-              <button
-                key={date}
-                title={outcome ? `${dayAbbr} ${dateNum}: ${outcome === "win" ? "won the day" : outcome === "loss" ? "lost the day" : "split the day"}` : undefined}
-                onClick={() => {
-                  if (isToday || isSelected) onSelectDate(null);
-                  else onSelectDate(date);
-                }}
-                className={cn(
-                  "relative flex flex-col items-center justify-center py-2.5 px-1 gap-[3px]",
-                  "border-r border-border/25 last:border-r-0 transition-colors duration-150",
-                  isSelected
-                    ? "bg-primary/10 text-primary"
-                    : isToday
-                      ? "bg-emerald-500/[0.06] text-emerald-400 hover:bg-emerald-500/[0.12]"
-                      : isPast
-                        ? "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                        : "text-muted-foreground/35 hover:bg-muted/15 hover:text-muted-foreground/60"
-                )}
-              >
-                <span
+              return (
+                <button
+                  key={date}
+                  data-date={date}
+                  title={outcomeLabel}
+                  aria-label={outcomeLabel}
+                  onClick={() => {
+                    if (isToday || isSelected) onSelectDate(null);
+                    else onSelectDate(date);
+                  }}
                   className={cn(
-                    "absolute top-0 inset-x-0 h-[2px] transition-colors duration-200",
+                    "relative flex flex-col items-center justify-center py-3 md:py-2.5 px-1 gap-[3px]",
+                    "basis-[44px] shrink-0 grow snap-start md:basis-auto",
+                    "border-r border-border/25 last:border-r-0 transition-colors duration-150",
                     isSelected
-                      ? "bg-primary"
+                      ? "bg-primary/10 text-primary"
                       : isToday
-                        ? "bg-emerald-500"
-                        : "bg-transparent"
-                  )}
-                />
-                <span className="text-[9px] font-mono tracking-wide leading-none">
-                  {dayAbbr}
-                </span>
-                <span
-                  className={cn(
-                    "text-[13px] font-semibold tabular-nums leading-none",
-                    isFuture && !isSelected ? "opacity-40" : ""
+                        ? "bg-emerald-500/[0.06] text-emerald-400 hover:bg-emerald-500/[0.12]"
+                        : isPast
+                          ? "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                          : "text-muted-foreground/35 hover:bg-muted/15 hover:text-muted-foreground/60"
                   )}
                 >
-                  {dateNum}
-                </span>
-                <span className="h-[5px] flex items-center justify-center">
-                  {isToday ? (
-                    <span className="block w-[5px] h-[5px] rounded-full bg-emerald-500 animate-pulse" />
-                  ) : isPast ? (
-                    <span
-                      className={cn(
-                        "block rounded-full",
-                        outcome ? "w-[5px] h-[5px]" : "w-[3px] h-[3px]",
-                        outcome
-                          ? OUTCOME_DOT[outcome]
-                          : isSelected
-                            ? "bg-primary/70"
-                            : "bg-muted-foreground/25"
-                      )}
-                    />
-                  ) : (
-                    <span className="block w-[3px] h-[3px] rounded-full border border-muted-foreground/20" />
-                  )}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                  <span
+                    className={cn(
+                      "absolute top-0 inset-x-0 h-[2px] transition-colors duration-200",
+                      isSelected
+                        ? "bg-primary"
+                        : isToday
+                          ? "bg-emerald-500"
+                          : "bg-transparent"
+                    )}
+                  />
+                  <span className="text-[10px] md:text-[9px] font-mono tracking-wide leading-none">
+                    {dayAbbr}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[13px] font-semibold tabular-nums leading-none",
+                      isFuture && !isSelected ? "opacity-40" : ""
+                    )}
+                  >
+                    {dateNum}
+                  </span>
+                  <span className="h-[5px] flex items-center justify-center">
+                    {isToday ? (
+                      <span className="block w-[5px] h-[5px] rounded-full bg-emerald-500 animate-pulse" />
+                    ) : isPast ? (
+                      <span
+                        className={cn(
+                          "block rounded-full",
+                          outcome ? "w-[5px] h-[5px]" : "w-[3px] h-[3px]",
+                          outcome
+                            ? OUTCOME_DOT[outcome]
+                            : isSelected
+                              ? "bg-primary/70"
+                              : "bg-muted-foreground/25"
+                        )}
+                      />
+                    ) : (
+                      <span className="block w-[3px] h-[3px] rounded-full border border-muted-foreground/20" />
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </ScrollX>
 
-        {/* ── Progress track + draggable scrubber ──────────────────────── */}
+        {/* ── Progress track + draggable scrubber (pointer-only; hidden on phones) ── */}
         {todayPct >= 0 && (
           <div
             ref={trackRef}
             className={cn(
-              "relative h-[14px] flex items-center px-0 select-none",
+              "relative h-[14px] hidden md:flex items-center px-0 select-none",
               isDragging ? "cursor-grabbing" : "cursor-pointer"
             )}
             onPointerDown={handlePointerDown}
