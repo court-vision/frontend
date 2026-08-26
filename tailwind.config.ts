@@ -2,6 +2,9 @@ import type { Config } from "tailwindcss"
 
 const config = {
   darkMode: ["class"],
+  // `hover:` only on devices that can hover, so taps don't leave sticky hover
+  // styles on phones. Safe here: no element is revealed only on hover.
+  future: { hoverOnlyWhenSupported: true },
   content: [
     './pages/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',

@@ -33,6 +33,7 @@ import type { FantasyProvider } from "@/types/team";
 import type { EnrichedRosterPlayer } from "@/types/team-insights";
 import type { ValueKind } from "@/types/scoring";
 import { CAT_VALUE_TITLE } from "@/lib/category-format";
+import { HintPopover } from "@/components/ui/hint";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 
 type StatWindow = "season" | "l7" | "l14" | "l30";
@@ -134,15 +135,15 @@ export function RosterDisplay({ roster, provider = "espn", valueKind = "fpts" }:
   return (
     <>
       <Card variant="panel" className="w-full overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-border">
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-border">
           <Input
             placeholder="Search players..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-7 font-mono text-xs max-w-[200px]"
+            className="h-9 md:h-7 font-mono text-xs max-w-none sm:max-w-[200px]"
           />
           <Select value={statWindow} onValueChange={(v) => setStatWindow(v as StatWindow)}>
-            <SelectTrigger className="h-7 w-[90px] font-mono text-xs">
+            <SelectTrigger className="h-9 md:h-7 w-[90px] font-mono text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -161,11 +162,14 @@ export function RosterDisplay({ roster, provider = "espn", valueKind = "fpts" }:
                 <TableHead className="w-[50px] pl-4">#</TableHead>
                 <TableHead>Player</TableHead>
                 <TableHead className="w-[60px]">Team</TableHead>
-                <TableHead
-                  className="w-[100px] text-right"
-                  title={isCatValue ? CAT_VALUE_TITLE : undefined}
-                >
-                  {isCatValue ? "Cat val" : "Avg Pts"}
+                <TableHead className="w-[100px] text-right">
+                  {isCatValue ? (
+                    <HintPopover content={CAT_VALUE_TITLE}>
+                      <span className="cursor-help">Cat val</span>
+                    </HintPopover>
+                  ) : (
+                    "Avg Pts"
+                  )}
                 </TableHead>
                 <TableHead className="w-[70px] text-right">Games</TableHead>
                 <TableHead className="w-[120px] text-right pr-4">

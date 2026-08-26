@@ -41,12 +41,13 @@ export function ManageLineupsTable() {
       </TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead className="text-left w-[20vw]">Timestamp</TableHead>
-          <TableHead className="text-center w-[10vw]">Improvement</TableHead>
-          <TableHead className="text-center w-[10vw]">Week</TableHead>
-          <TableHead className="text-center w-[10vw]">Streaming Slots</TableHead>
-          <TableHead className="text-center w-[8vw]">View</TableHead>
-          <TableHead className="text-center w-[8vw]">Delete</TableHead>
+          {/* vw widths collapse to ~30 px on phones; fixed minimums there, unchanged from md up */}
+          <TableHead className="text-left min-w-[160px] whitespace-nowrap md:w-[20vw]">Timestamp</TableHead>
+          <TableHead className="text-center w-[110px] md:w-[10vw]">Improvement</TableHead>
+          <TableHead className="text-center w-[110px] md:w-[10vw]">Week</TableHead>
+          <TableHead className="text-center w-[110px] md:w-[10vw]">Streaming Slots</TableHead>
+          <TableHead className="text-center w-[80px] md:w-[8vw]">View</TableHead>
+          <TableHead className="text-center w-[80px] md:w-[8vw]">Delete</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -54,7 +55,7 @@ export function ManageLineupsTable() {
           <>
             {savedLineups.map((savedLineup) => (
               <TableRow key={savedLineup.Id}>
-                <TableCell className="font-medium">
+                <TableCell className="font-medium whitespace-nowrap md:whitespace-normal">
                   {savedLineup.Timestamp}
                 </TableCell>
                 <TableCell className="text-center">

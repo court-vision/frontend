@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { HintPopover } from "@/components/ui/hint";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   polarityGlyph,
@@ -159,15 +160,13 @@ export function LeagueFormatCard({ team, league, isLoading, onSync, isSyncing }:
           <SectionTitle>Categories ({league.categories.length})</SectionTitle>
           <div className="flex flex-wrap gap-1.5">
             {league.categories.map((c) => (
-              <span
-                key={c.key}
-                className="inline-flex items-center gap-1 rounded border border-border bg-muted/30 px-2 py-0.5 text-xs font-mono"
-                title={c.higher_is_better ? "Higher is better" : "Lower is better"}
-              >
-                {c.label}
-                {polarityGlyph(c) && <span className="text-muted-foreground">{polarityGlyph(c)}</span>}
-                {c.is_rate && <span className="text-[9px] text-muted-foreground/60 uppercase">rate</span>}
-              </span>
+              <HintPopover key={c.key} content={c.higher_is_better ? "Higher is better" : "Lower is better"}>
+                <span className="inline-flex items-center gap-1 rounded border border-border bg-muted/30 px-2 py-0.5 text-xs font-mono">
+                  {c.label}
+                  {polarityGlyph(c) && <span className="text-muted-foreground">{polarityGlyph(c)}</span>}
+                  {c.is_rate && <span className="text-[9px] text-muted-foreground/60 uppercase">rate</span>}
+                </span>
+              </HintPopover>
             ))}
           </div>
         </div>

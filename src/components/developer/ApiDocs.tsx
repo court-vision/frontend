@@ -160,10 +160,10 @@ function EndpointCard({
           <table className="w-full text-[11px]">
             <thead>
               <tr className="bg-muted/30 border-b border-border/60">
-                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground uppercase tracking-wider text-[9px]">Parameter</th>
-                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground uppercase tracking-wider text-[9px]">Type</th>
-                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground uppercase tracking-wider text-[9px]">Required</th>
-                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground uppercase tracking-wider text-[9px]">Description</th>
+                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground uppercase tracking-wider text-[10px] md:text-[9px]">Parameter</th>
+                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground uppercase tracking-wider text-[10px] md:text-[9px]">Type</th>
+                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground uppercase tracking-wider text-[10px] md:text-[9px]">Required</th>
+                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground uppercase tracking-wider text-[10px] md:text-[9px]">Description</th>
               </tr>
             </thead>
             <tbody>

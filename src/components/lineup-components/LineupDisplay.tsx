@@ -15,12 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { HintPopover } from "@/components/ui/hint";
 import { Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CAT_VALUE_TITLE, resolveValueKind, valueLabel } from "@/lib/category-format";
@@ -59,21 +54,23 @@ export default function LineupDisplay({ lineup }: { lineup: Lineup }) {
             +{lineup.Improvement}
             <TrendingUp className="h-5 w-5" />
           </span>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button className="h-5 w-5 rounded-full border border-border text-xs text-muted-foreground hover:bg-muted transition-colors">
-                  ?
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[250px] text-center">
-                <p>
-                  Expected additional points compared to your current lineup
-                  with no acquisitions.
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <HintPopover
+            content={
+              <p>
+                Expected additional points compared to your current lineup
+                with no acquisitions.
+              </p>
+            }
+            contentClassName="max-w-[250px] text-center"
+          >
+            <button
+              type="button"
+              aria-label="What the improvement number means"
+              className="h-5 w-5 rounded-full border border-border text-xs text-muted-foreground hover:bg-muted transition-colors touch-hit"
+            >
+              ?
+            </button>
+          </HintPopover>
         </div>
         <Button
           onClick={handleSaveLineup}
@@ -190,11 +187,14 @@ function LineupDayContent({
               <TableHead className="w-10 py-2 text-xs">Pos</TableHead>
               <TableHead className="py-2 text-xs">Player</TableHead>
               <TableHead className="w-12 py-2 text-xs">Team</TableHead>
-              <TableHead
-                className="w-12 py-2 text-xs text-right"
-                title={valueKind === "cat_value" ? CAT_VALUE_TITLE : undefined}
-              >
-                {valueLabel(valueKind, "Avg")}
+              <TableHead className="w-12 py-2 text-xs text-right">
+                {valueKind === "cat_value" ? (
+                  <HintPopover content={CAT_VALUE_TITLE}>
+                    <span className="cursor-help">{valueLabel(valueKind, "Avg")}</span>
+                  </HintPopover>
+                ) : (
+                  valueLabel(valueKind, "Avg")
+                )}
               </TableHead>
               <TableHead className="w-8 py-2"></TableHead>
             </TableRow>

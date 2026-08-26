@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useClerk } from "@clerk/nextjs";
-import { Check, UserCircle, LogIn, LogOut } from "lucide-react";
+import { Check, UserCircle, LogIn, LogOut, Keyboard } from "lucide-react";
 import {
   CommandDialog,
   CommandInput,
@@ -18,6 +18,7 @@ import { DialogClose } from "@/components/ui/dialog";
 import { Command as CommandIcon, X } from "lucide-react";
 import { useTeams } from "@/app/context/TeamsContext";
 import { useIsBelowLg } from "@/hooks/useBreakpoint";
+import { useShortcutOverlayStore } from "@/stores/useShortcutOverlayStore";
 import {
   ALT_RANGE_LABEL,
   ALT_SHORTCUTS,
@@ -81,6 +82,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   const [dynamicCommands, setDynamicCommands] = useState<Command[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const belowLg = useIsBelowLg();
+  const openShortcutOverlay = useShortcutOverlayStore((s) => s.open);
 
   useEffect(() => {
     if (isOpen) {
@@ -175,8 +177,35 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
         },
       ];
 
+  // ---------------------------------------------------------------------------
+  // Help Commands
+  // ---------------------------------------------------------------------------
+
+  // The overlay is otherwise only reachable via `?`, which phones can't press.
+  const helpCommands: Command[] = useMemo(
+    () => [
+      {
+        id: "help-shortcuts",
+        label: "Keyboard shortcuts",
+        description: "Every shortcut on one screen",
+        icon: <Keyboard className="h-4 w-4" />,
+        shortcut: "?",
+        group: "Help",
+        keywords: ["help", "keys", "hotkeys", "shortcuts", "keyboard"],
+        action: openShortcutOverlay,
+      },
+    ],
+    [openShortcutOverlay]
+  );
+
   // Combine built-in and dynamic commands
-  const allCommands = [...navigationCommands, ...teamCommands, ...authCommands, ...dynamicCommands];
+  const allCommands = [
+    ...navigationCommands,
+    ...teamCommands,
+    ...authCommands,
+    ...helpCommands,
+    ...dynamicCommands,
+  ];
 
   // Group commands by their group property
   const groupedCommands = allCommands.reduce((acc, command) => {

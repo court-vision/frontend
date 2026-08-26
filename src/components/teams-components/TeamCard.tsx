@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { HintPopover } from "@/components/ui/hint";
 import { Pencil, Trash2, ExternalLink, Copy, Check, RefreshCw, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useSyncTeamLeagueMutation, useTeamRosterQuery } from "@/hooks/useTeams";
@@ -99,7 +100,9 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
             <p className="text-xs text-muted-foreground">
               {playerCount} players | {avgFpts}{" "}
               {isCatValue ? (
-                <span title={CAT_VALUE_TITLE} className="cursor-help">avg cat val</span>
+                <HintPopover content={CAT_VALUE_TITLE}>
+                  <span className="cursor-help">avg cat val</span>
+                </HintPopover>
               ) : (
                 "avg"
               )}{" "}
@@ -114,8 +117,8 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
           </span>
           <button
             onClick={handleCopyId}
-            className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded"
-            title="Copy team ID"
+            className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded touch-hit"
+            aria-label="Copy team ID"
           >
             {copied
               ? <Check className="h-2.5 w-2.5 text-green-500" />
@@ -128,7 +131,7 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
           <Button
             variant="outline"
             size="sm"
-            className="h-7 text-xs hover:bg-input"
+            className="h-9 md:h-7 text-xs hover:bg-input"
             onClick={handleViewTeam}
           >
             <ExternalLink className="h-3 w-3 mr-1" />
@@ -136,31 +139,27 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
           </Button>
 
           {isYahoo ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 opacity-50 cursor-not-allowed hover:bg-input"
-                      disabled
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Yahoo teams cannot be edited. Delete and reconnect to update.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            // The disabled button has `pointer-events-none`, so the wrapper span takes the hover/tap.
+            <HintPopover content={<p>Yahoo teams cannot be edited. Delete and reconnect to update.</p>}>
+              <span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 md:h-7 opacity-50 cursor-not-allowed hover:bg-input"
+                  disabled
+                  aria-label="Edit team (unavailable for Yahoo teams)"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              </span>
+            </HintPopover>
           ) : (
             <Button
               variant="outline"
               size="sm"
-              className="h-7 hover:bg-input"
+              className="h-9 md:h-7 hover:bg-input"
               onClick={() => onEdit?.(team)}
+              aria-label="Edit team"
             >
               <Pencil className="h-3 w-3" />
             </Button>
@@ -169,8 +168,9 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
           <Button
             variant="outline"
             size="sm"
-            className="h-7 hover:bg-input"
+            className="h-9 md:h-7 hover:bg-input"
             onClick={() => onDelete?.(team.team_id)}
+            aria-label="Delete team"
           >
             <Trash2 className="h-3 w-3" />
           </Button>
@@ -181,7 +181,7 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 hover:bg-input ml-auto"
+                  className="h-9 md:h-7 hover:bg-input ml-auto"
                   onClick={() => syncLeague(team.team_id)}
                   disabled={isSyncing}
                   aria-label="Sync league settings"
@@ -207,27 +207,27 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
 function ScoringBadge({ league }: { league: LeagueSummary | null }) {
   const synced = !!league?.settings_synced;
   const preview = !!league?.scoring_preview;
+  const hint = preview
+    ? "Display override set in Edit Team — the league's real settings are unchanged"
+    : synced
+      ? "Detected from your league settings"
+      : "Sync to detect the league format";
   return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "text-xs shrink-0 normal-case tracking-normal",
-        preview
-          ? "border-status-projected/50 text-status-projected"
-          : synced
-            ? "border-primary/40 text-primary"
-            : "border-border text-muted-foreground/60"
-      )}
-      title={
-        preview
-          ? "Display override set in Edit Team — the league's real settings are unchanged"
-          : synced
-            ? "Detected from your league settings"
-            : "Sync to detect the league format"
-      }
-    >
-      {scoringLabel(league)}
-    </Badge>
+    <HintPopover content={hint}>
+      <Badge
+        variant="outline"
+        className={cn(
+          "text-xs shrink-0 normal-case tracking-normal",
+          preview
+            ? "border-status-projected/50 text-status-projected"
+            : synced
+              ? "border-primary/40 text-primary"
+              : "border-border text-muted-foreground/60"
+        )}
+      >
+        {scoringLabel(league)}
+      </Badge>
+    </HintPopover>
   );
 }
 

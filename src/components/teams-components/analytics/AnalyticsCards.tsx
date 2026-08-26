@@ -89,7 +89,7 @@ function CategoryStrengthsCard({
         </span>
       </div>
       {strengths ? (
-        <div className="grid grid-cols-3 gap-x-3 gap-y-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1">
           {CATEGORY_KEYS.map(({ label, key, isRate }) => (
             <div key={key} className="flex items-baseline justify-between">
               <span className="text-[11px] text-muted-foreground">{label}</span>
@@ -174,7 +174,7 @@ export default function AnalyticsCardGrid({
   insights: TeamInsightsData;
 }) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <ProjectedPointsCard projectedFpts={insights.projected_week_fpts} />
       <RosterHealthCard health={insights.roster_health} />
       <CategoryStrengthsCard strengths={insights.category_strengths} />
