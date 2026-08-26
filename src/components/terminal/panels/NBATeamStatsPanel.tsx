@@ -1,10 +1,11 @@
 "use client";
 
-import { BarChart3, AlertCircle } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useNBATeamStatsQuery } from "@/hooks/useNBATeam";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 
 function RatingBlock({
   label,
@@ -51,7 +52,7 @@ function StatRow({ label, value, pct = false }: { label: string; value: number |
 
 export function NBATeamStatsPanel() {
   const { focusedNBATeamId } = useTerminalStore();
-  const { data: stats, isLoading, error } = useNBATeamStatsQuery(focusedNBATeamId);
+  const { data: stats, isLoading, error, refetch, isFetching } = useNBATeamStatsQuery(focusedNBATeamId);
 
   if (!focusedNBATeamId) {
     return (
@@ -72,11 +73,23 @@ export function NBATeamStatsPanel() {
     );
   }
 
-  if (error || !stats) {
+  if (error) {
+    return (
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  // 404 → null: nothing on file for this team, which is not a failure.
+  if (!stats) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <AlertCircle className="h-5 w-5 text-destructive/50 mb-2" />
-        <p className="text-xs text-destructive">Failed to load team stats</p>
+        <p className="text-xs text-muted-foreground">No stats available</p>
       </div>
     );
   }

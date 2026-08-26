@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { usePlayoffBracketQuery } from "@/hooks/usePlayoff";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import type { PlayoffSeriesData } from "@/types/playoff";
 
 // ─── Series card ─────────────────────────────────────────────────────────────
@@ -218,7 +219,7 @@ function StraightConnector() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PlayoffsPage() {
-  const { data: bracket, isLoading } = usePlayoffBracketQuery();
+  const { data: bracket, isLoading, error, refetch, isFetching } = usePlayoffBracketQuery();
 
   const rounds = bracket?.rounds ?? [];
   const get = (round: number, conf: string) =>
@@ -249,6 +250,13 @@ export default function PlayoffsPage() {
 
       {/* Loading */}
       {isLoading && <Skeleton className="h-[520px] w-full rounded-lg" />}
+
+      {/* Error (a 404 resolves to null and is the empty state below, not this) */}
+      {error && !bracket && (
+        <Card variant="panel">
+          <QueryErrorState error={error} onRetry={() => refetch()} isRetrying={isFetching} />
+        </Card>
+      )}
 
       {/* Bracket */}
       {bracket && (
@@ -284,7 +292,7 @@ export default function PlayoffsPage() {
       )}
 
       {/* Empty state */}
-      {!isLoading && !bracket && (
+      {!isLoading && !error && !bracket && (
         <Card variant="panel" className="p-8">
           <div className="text-center space-y-2">
             <Medal className="h-8 w-8 text-muted-foreground/20 mx-auto" />

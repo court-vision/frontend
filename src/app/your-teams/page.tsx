@@ -9,6 +9,7 @@ import { TeamDashboard } from "@/components/teams-components/TeamDashboard";
 import { ConnectTeamPrompt } from "@/components/teams-components/ConnectTeamPrompt";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Settings } from "lucide-react";
@@ -24,9 +25,16 @@ export default function Teams() {
     league,
     provider,
     isLoading: isTeamsLoading,
+    teamsError,
+    refetchTeams,
   } = useSelectedTeam();
-  const { data: insights, isLoading: isInsightsLoading } =
-    useTeamInsightsQuery(selectedTeam);
+  const {
+    data: insights,
+    isLoading: isInsightsLoading,
+    error: insightsError,
+    refetch: refetchInsights,
+    isFetching: isInsightsFetching,
+  } = useTeamInsightsQuery(selectedTeam);
 
   // Auto-select first team if none selected
   useEffect(() => {
@@ -84,6 +92,18 @@ export default function Teams() {
     );
   }
 
+  // A failed teams fetch is an error with Retry, not "connect your league".
+  if (teamsError && teams.length === 0) {
+    return (
+      <div className="space-y-4 animate-slide-up-fade">
+        {pageHeader}
+        <Card variant="panel">
+          <QueryErrorState error={teamsError} onRetry={refetchTeams} />
+        </Card>
+      </div>
+    );
+  }
+
   if (teams.length === 0) {
     return (
       <div className="space-y-4 animate-slide-up-fade">
@@ -133,6 +153,14 @@ export default function Teams() {
 
       {insights ? (
         <TeamDashboard insights={insights} provider={provider} />
+      ) : insightsError ? (
+        <Card variant="panel">
+          <QueryErrorState
+            error={insightsError}
+            onRetry={() => refetchInsights()}
+            isRetrying={isInsightsFetching}
+          />
+        </Card>
       ) : (
         <Card variant="panel" className="p-8">
           <p className="text-sm text-muted-foreground text-center">

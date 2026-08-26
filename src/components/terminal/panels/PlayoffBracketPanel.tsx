@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { usePlayoffBracketQuery } from "@/hooks/usePlayoff";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import type { PlayoffSeriesData, PlayoffRound } from "@/types/playoff";
 
 function SeriesRow({ series, onTeamClick }: { series: PlayoffSeriesData; onTeamClick: (abbr: string) => void }) {
@@ -118,7 +119,7 @@ function ConferenceColumn({ label, rounds, onTeamClick }: { label: "East" | "Wes
 
 export function PlayoffBracketPanel() {
   const { setFocusedNBATeam } = useTerminalStore();
-  const { data: bracket, isLoading, error } = usePlayoffBracketQuery();
+  const { data: bracket, isLoading, error, refetch, isFetching } = usePlayoffBracketQuery();
 
   if (isLoading) {
     return (
@@ -130,7 +131,20 @@ export function PlayoffBracketPanel() {
     );
   }
 
-  if (error || !bracket) {
+  if (error && !bracket) {
+    return (
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  // 404 → null: the bracket pipeline hasn't produced anything yet.
+  if (!bracket) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
         <Medal className="h-8 w-8 opacity-20" />

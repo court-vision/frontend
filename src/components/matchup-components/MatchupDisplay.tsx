@@ -23,15 +23,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreChart";
 import { DayNavigationBar } from "@/components/matchup-components/DayNavigationBar";
 import { DailyMatchupView } from "@/components/matchup-components/DailyMatchupView";
 import { CategoryComparisonGrid } from "@/components/matchup-components/CategoryComparisonGrid";
-import Link from "next/link";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useGamesOnDateQuery } from "@/hooks/useGames";
-import { useDailyMatchupQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
+import { useDailyMatchupQuery, useLiveMatchupQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useSyncTeamLeagueMutation } from "@/hooks/useTeams";
 import { formatRecord, winnerBadgeVariant } from "@/lib/category-format";
@@ -689,6 +689,8 @@ interface MatchupDisplayProps {
   liveMatchup: LiveMatchupData | undefined;
   isLoading: boolean;
   error: Error | null;
+  /** Refetch for the matchup query; wired to the error state's Retry. */
+  onRetry?: () => void;
   teamId: number | null;
   provider?: FantasyProvider;
 }
@@ -700,12 +702,16 @@ export function MatchupDisplay({
   liveMatchup,
   isLoading,
   error,
+  onRetry,
   teamId,
   provider = "espn",
 }: MatchupDisplayProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const { data: gamesData } = useGamesOnDateQuery(liveMatchup?.game_date ?? "");
+  // Freshness of the live poll (deduped with the page's query by key): the live
+  // section stays on screen with a paused badge when a poll fails.
+  const live = useLiveMatchupQuery(teamId && teamId > 0 ? teamId : null);
   const { data: dailyMatchup, isLoading: dailyLoading } = useDailyMatchupQuery(
     teamId,
     selectedDate
@@ -722,34 +728,18 @@ export function MatchupDisplay({
     return <MatchupSkeleton />;
   }
 
-  if (error) {
-    const isYahooAuthError =
-      error.message.toLowerCase().includes("yahoo") &&
-      (error.message.toLowerCase().includes("authentication") ||
-        error.message.toLowerCase().includes("expired") ||
-        error.message.toLowerCase().includes("reconnect"));
+  // Use liveMatchup for scores when available; fall back to matchup
+  const display = liveMatchup ?? matchup;
 
+  // Nothing to show and the matchup query failed. Expired ESPN/Yahoo credentials
+  // get a "Reconnect" link, driven by `error_code` rather than message text.
+  if (error && !display) {
     return (
-      <Card variant="panel" className="p-8">
-        <div className="text-center space-y-3">
-          <p className="text-sm text-destructive">Error loading matchup: {error.message}</p>
-          {isYahooAuthError && (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                Your Yahoo connection has expired. Please reconnect your Yahoo account.
-              </p>
-              <Link href="/manage-teams">
-                <Button variant="outline" size="sm">Manage Teams</Button>
-              </Link>
-            </div>
-          )}
-        </div>
+      <Card variant="panel">
+        <QueryErrorState error={error} onRetry={onRetry} />
       </Card>
     );
   }
-
-  // Use liveMatchup for scores when available; fall back to matchup
-  const display = liveMatchup ?? matchup;
 
   if (!display) {
     return (
@@ -810,7 +800,16 @@ export function MatchupDisplay({
                 <span className="hidden sm:inline text-[11px] text-muted-foreground/50">· most categories wins</span>
               )}
             </div>
-            <Badge variant={winnerBadgeVariant(h.outcome)}>{h.statusLabel}</Badge>
+            <div className="flex items-center gap-2">
+              {liveMatchup && live.dataUpdatedAt > 0 && (
+                <StaleBadge
+                  dataUpdatedAt={live.dataUpdatedAt}
+                  isFetching={live.isFetching}
+                  error={live.error}
+                />
+              )}
+              <Badge variant={winnerBadgeVariant(h.outcome)}>{h.statusLabel}</Badge>
+            </div>
           </div>
 
           {/* Score display */}

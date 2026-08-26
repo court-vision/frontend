@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { Activity, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useFocusPlayer } from "@/hooks/useFocusPlayer";
 import { useLiveMatchupQuery } from "@/hooks/useMatchup";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 import { formatRecord } from "@/lib/category-format";
 import type { LiveMatchupPlayer } from "@/types/matchup";
 
@@ -190,7 +191,8 @@ function LiveRosterRow({ player, isActive, onFocus, showShooting }: LiveRosterRo
 export function LiveRosterPanel() {
   const { focusedTeamId } = useTerminalStore();
   const focusPlayer = useFocusPlayer();
-  const { data, isLoading, error } = useLiveMatchupQuery(focusedTeamId);
+  const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } =
+    useLiveMatchupQuery(focusedTeamId);
 
   const sorted = useMemo(() => {
     if (!data?.your_team.roster) return [];
@@ -225,12 +227,16 @@ export function LiveRosterPanel() {
     );
   }
 
-  if (error) {
+  // Stale-not-error: a failed poll keeps the last roster on screen with a paused badge.
+  if (error && !data) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 text-center gap-2">
-        <Activity className="h-6 w-6 text-destructive/50 mb-1" />
-        <p className="text-[10px] text-destructive">Failed to load live roster</p>
-      </div>
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
     );
   }
 
@@ -255,6 +261,14 @@ export function LiveRosterPanel() {
           <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">
             ROSTER
           </span>
+        )}
+        {data && (
+          <StaleBadge
+            className="ml-auto"
+            dataUpdatedAt={dataUpdatedAt}
+            isFetching={isFetching}
+            error={error}
+          />
         )}
       </div>
 

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useTeamInsightsQuery } from "@/hooks/useTeams";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import {
   barShare,
   formatCategoryValue,
@@ -92,7 +93,7 @@ function StrengthRow({ label, value, isRate, glyph }: { label: string; value: nu
 
 export function CategoryStrengthsPanel() {
   const { focusedTeamId } = useTerminalStore();
-  const { data, isLoading, error } = useTeamInsightsQuery(focusedTeamId);
+  const { data, isLoading, error, refetch, isFetching } = useTeamInsightsQuery(focusedTeamId);
 
   if (!focusedTeamId) {
     return (
@@ -116,9 +117,13 @@ export function CategoryStrengthsPanel() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 text-center gap-2">
-        <p className="text-[10px] text-destructive">Failed to load category data</p>
-      </div>
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
     );
   }
 

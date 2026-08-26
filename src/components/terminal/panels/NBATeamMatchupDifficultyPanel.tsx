@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { Shield, AlertCircle } from "lucide-react";
+import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import type { ScheduleGame } from "@/types/games";
 
 function DifficultyBadge({ rank, total }: { rank: number; total: number }) {
@@ -26,7 +27,7 @@ function DifficultyBadge({ rank, total }: { rank: number; total: number }) {
 export function NBATeamMatchupDifficultyPanel() {
   const { focusedNBATeamId } = useTerminalStore();
   // Use same params as NBATeamSchedulePanel so TanStack Query deduplicates the request
-  const { data: scheduleData, isLoading, error } = useTeamScheduleQuery(focusedNBATeamId, false, 100);
+  const { data: scheduleData, isLoading, error, refetch, isFetching } = useTeamScheduleQuery(focusedNBATeamId, false, 100);
 
   const sortedUpcoming = useMemo<Array<ScheduleGame & { diffRank: number }>>(() => {
     if (!scheduleData?.schedule) return [];
@@ -57,11 +58,24 @@ export function NBATeamMatchupDifficultyPanel() {
     );
   }
 
-  if (error || !scheduleData) {
+  if (error) {
+    return (
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  // 404 → null: no schedule on file for this team, which is not a failure.
+  if (!scheduleData) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <AlertCircle className="h-5 w-5 text-destructive/50 mb-2" />
-        <p className="text-xs text-destructive">Failed to load schedule</p>
+        <Shield className="h-6 w-6 text-muted-foreground/30 mb-2" />
+        <p className="text-xs text-muted-foreground">No schedule available</p>
       </div>
     );
   }

@@ -14,6 +14,9 @@ interface LineupContextType {
   setLineup: (lineup: Lineup) => void;
   savedLineups: Lineup[];
   setSavedLineups: (lineups: Lineup[]) => void;
+  /** The saved-lineups query's error — a failed fetch is not "no saved lineups". */
+  savedLineupsError: Error | null;
+  refetchSavedLineups: () => void;
   isLoading: boolean;
   setIsLoading: (isLoading: boolean) => void;
   generateLineup: (streamingSlots: string, week: string) => void;
@@ -35,6 +38,8 @@ const LineupContext = createContext<LineupContextType>({
   setLineup: () => {},
   savedLineups: [],
   setSavedLineups: () => {},
+  savedLineupsError: null,
+  refetchSavedLineups: () => {},
   isLoading: false,
   setIsLoading: () => {},
   generateLineup: () => {},
@@ -52,7 +57,11 @@ export const LineupProvider = ({ children }: { children: React.ReactNode }) => {
   const { selectedTeam } = useTeams();
 
   // React Query Hooks - now uses Clerk auth internally
-  const { data: savedLineups = [] } = useLineupsQuery(selectedTeam);
+  const {
+    data: savedLineups = [],
+    error: savedLineupsError,
+    refetch: refetchSavedLineups,
+  } = useLineupsQuery(selectedTeam);
 
   const { mutate: generateLineupMutation } = useGenerateLineupMutation();
   const { mutate: saveLineupMutation } = useSaveLineupMutation();
@@ -102,6 +111,8 @@ export const LineupProvider = ({ children }: { children: React.ReactNode }) => {
         setLineup,
         savedLineups,
         setSavedLineups: () => {}, // Read-only from RQ
+        savedLineupsError,
+        refetchSavedLineups,
         isLoading,
         setIsLoading,
         generateLineup,

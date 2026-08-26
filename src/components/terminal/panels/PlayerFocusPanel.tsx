@@ -12,6 +12,7 @@ import { useRankingsQuery } from "@/hooks/useRankings";
 import { StatCell } from "../shared";
 import { calculateRecentFormTrend } from "@/lib/chart-utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import type { StatWindow } from "@/types/terminal";
 
 const WINDOW_LABELS: Record<StatWindow, string> = {
@@ -47,7 +48,7 @@ function DefRatingDot({ rating }: { rating: number }) {
 
 export function PlayerFocusPanel() {
   const { focusedPlayerId, statWindow } = useTerminalStore();
-  const { data: playerStats, isLoading, error } = usePlayerStatsQuery(
+  const { data: playerStats, isLoading, error, refetch, isFetching } = usePlayerStatsQuery(
     focusedPlayerId,
     "nba",
     statWindow
@@ -96,10 +97,24 @@ export function PlayerFocusPanel() {
     return <PlayerFocusSkeleton />;
   }
 
-  if (error || !playerStats) {
+  if (error) {
+    return (
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  // 404 → null: the player has no stats yet, which is not a failure.
+  if (!playerStats) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <p className="text-sm text-destructive">Failed to load player data</p>
+        
+        <p className="text-sm text-muted-foreground">No stats for this player yet</p>
       </div>
     );
   }

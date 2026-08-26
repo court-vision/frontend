@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import {
   Tooltip,
   TooltipContent,
@@ -43,9 +44,13 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const { data: roster, isLoading: isRosterLoading } = useTeamRosterQuery(
-    team.team_id
-  );
+  const {
+    data: roster,
+    isLoading: isRosterLoading,
+    error: rosterError,
+    refetch: refetchRoster,
+    isFetching: isRosterFetching,
+  } = useTeamRosterQuery(team.team_id);
 
   const playerCount = roster?.length ?? 0;
   const avgFpts =
@@ -82,6 +87,14 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
         <div className="mt-3">
           {isRosterLoading ? (
             <Skeleton className="h-4 w-48" />
+          ) : rosterError && !roster ? (
+            <QueryErrorState
+              error={rosterError}
+              onRetry={() => refetchRoster()}
+              isRetrying={isRosterFetching}
+              compact
+              className="flex-row justify-start gap-2 p-0 text-left"
+            />
           ) : (
             <p className="text-xs text-muted-foreground">
               {playerCount} players | {avgFpts}{" "}

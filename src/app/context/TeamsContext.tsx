@@ -20,6 +20,8 @@ interface TeamsContextType {
   setSelectedTeam: (team_id: number) => void;
   teams: any[]; // using any[] for now since we are moving away from this
   isTeamsLoading: boolean;
+  /** The teams query's error — a failed fetch is not "you have no teams". */
+  teamsError: Error | null;
   setTeams: Dispatch<SetStateAction<any[]>>;
   rosterInfo: RosterPlayer[];
   handleManageTeamsClick: () => void;
@@ -50,6 +52,7 @@ const TeamsContext = createContext<TeamsContextType>({
   setSelectedTeam: () => {},
   teams: [],
   isTeamsLoading: true,
+  teamsError: null,
   setTeams: () => {},
   rosterInfo: [],
   handleManageTeamsClick: () => {},
@@ -64,7 +67,12 @@ export const TeamsProvider = ({ children }: { children: React.ReactNode }) => {
   const { selectedTeam, setSelectedTeam } = useUIStore();
 
   // React Query Hooks - now use Clerk auth internally
-  const { data: teams = [], isLoading: isTeamsLoading, refetch: refetchTeams } = useTeamsQuery();
+  const {
+    data: teams = [],
+    isLoading: isTeamsLoading,
+    error: teamsError,
+    refetch: refetchTeams,
+  } = useTeamsQuery();
   const { data: rosterInfo = [], refetch: refetchRoster } =
     useTeamRosterQuery(selectedTeam);
 
@@ -143,6 +151,7 @@ export const TeamsProvider = ({ children }: { children: React.ReactNode }) => {
         setSelectedTeam,
         teams,
         isTeamsLoading,
+        teamsError,
         setTeams: () => {}, // No-op since we use RQ
         rosterInfo,
         handleManageTeamsClick,

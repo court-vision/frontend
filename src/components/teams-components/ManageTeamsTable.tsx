@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -48,28 +49,41 @@ interface ManageTeamsTableProps {
 }
 
 export function ManageTeamsTable({ yahooOAuthState, autoOpenAdd = false }: ManageTeamsTableProps) {
-  const { data: teams = [], isLoading } = useTeamsQuery();
+  const { data, isLoading, error, refetch, isFetching } = useTeamsQuery();
+  const teams = data ?? [];
   const [editingTeam, setEditingTeam] = useState<TeamResponseData | null>(null);
   const [deletingTeamId, setDeletingTeamId] = useState<number | null>(null);
 
   // First-run: a user with no teams lands straight in the Add dialog. A Yahoo
   // OAuth return also reopens it so the league/team picker is right there.
   const shouldAutoOpen =
-    autoOpenAdd || !!yahooOAuthState || (!isLoading && teams.length === 0);
+    autoOpenAdd || !!yahooOAuthState || (!isLoading && !error && teams.length === 0);
 
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {isLoading
-          ? [0, 1].map((i) => <Skeleton key={i} className="h-[150px] w-full rounded-md" />)
-          : teams.map((team) => (
-              <TeamCard
-                key={team.team_id}
-                team={team}
-                onEdit={(t) => setEditingTeam(t)}
-                onDelete={(id) => setDeletingTeamId(id)}
-              />
-            ))}
+        {isLoading ? (
+          [0, 1].map((i) => <Skeleton key={i} className="h-[150px] w-full rounded-md" />)
+        ) : error && !data ? (
+          // A failed fetch is an error state with Retry, never an empty table.
+          <Card className="md:col-span-2">
+            <QueryErrorState
+              error={error}
+              onRetry={() => refetch()}
+              isRetrying={isFetching}
+              compact
+            />
+          </Card>
+        ) : (
+          teams.map((team) => (
+            <TeamCard
+              key={team.team_id}
+              team={team}
+              onEdit={(t) => setEditingTeam(t)}
+              onDelete={(id) => setDeletingTeamId(id)}
+            />
+          ))
+        )}
         <AddTeamCard yahooOAuthState={yahooOAuthState} defaultOpen={shouldAutoOpen} />
       </div>
 

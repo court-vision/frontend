@@ -7,6 +7,7 @@ import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useFocusPlayer } from "@/hooks/useFocusPlayer";
 import { useTeamInsightsQuery } from "@/hooks/useTeams";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import type { EnrichedRosterPlayer, CategoryStrengths } from "@/types/team-insights";
 
 const POSITION_COLORS: Record<string, string> = {
@@ -160,7 +161,7 @@ function CategoryAveragesStrip({ strengths }: { strengths: CategoryStrengths }) 
 export function RosterOverviewPanel() {
   const { focusedTeamId, statWindow } = useTerminalStore();
   const focusPlayer = useFocusPlayer();
-  const { data, isLoading, error } = useTeamInsightsQuery(focusedTeamId);
+  const { data, isLoading, error, refetch, isFetching } = useTeamInsightsQuery(focusedTeamId);
   const windowLabel = getWindowLabel(statWindow);
 
   const sortedRoster = useMemo(() => {
@@ -199,9 +200,13 @@ export function RosterOverviewPanel() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 text-center gap-2">
-        <p className="text-[10px] text-destructive">Failed to load roster</p>
-      </div>
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
     );
   }
 

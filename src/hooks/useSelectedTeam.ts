@@ -21,6 +21,9 @@ export interface SelectedTeamState {
   isCategories: boolean;
   settingsSynced: boolean;
   isLoading: boolean;
+  /** Set when the teams query failed — "couldn't load teams" is not "no teams". */
+  teamsError: Error | null;
+  refetchTeams: () => void;
 }
 
 /**
@@ -31,7 +34,7 @@ export interface SelectedTeamState {
 export function useSelectedTeam(teamIdOverride?: number | null): SelectedTeamState {
   const selected = useUIStore((s) => s.selectedTeam);
   const teamId = teamIdOverride === undefined ? selected : teamIdOverride;
-  const { data: teams, isLoading } = useTeamsQuery();
+  const { data: teams, isLoading, error: teamsError, refetch } = useTeamsQuery();
 
   return useMemo(() => {
     const list = teams ?? [];
@@ -58,8 +61,10 @@ export function useSelectedTeam(teamIdOverride?: number | null): SelectedTeamSta
       isCategories: format === "categories",
       settingsSynced,
       isLoading,
+      teamsError,
+      refetchTeams: refetch,
     };
-  }, [teamId, teams, isLoading]);
+  }, [teamId, teams, isLoading, teamsError, refetch]);
 }
 
 export function useScoringFormat(teamId?: number | null): ScoringFormat {

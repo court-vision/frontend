@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Search, RefreshCw, Settings, ChevronRight, Terminal, Swords, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { QueryErrorState } from "@/components/ui/query-error";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useRankingsQuery } from "@/hooks/useRankings";
@@ -69,8 +70,16 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
     addToComparison,
     clearComparison,
   } = useTerminalStore();
-  const { data: rankings, refetch, isFetching } = useRankingsQuery();
-  const { data: teams } = useTeamsQuery();
+  const { data: rankings, refetch, isFetching, error: rankingsError } = useRankingsQuery();
+  const {
+    data: teams,
+    error: teamsError,
+    refetch: refetchTeams,
+    isFetching: teamsFetching,
+  } = useTeamsQuery();
+  // Search is blind without its lookup tables; say so inline (the refresh button is the retry).
+  const searchError =
+    rankingsError && !rankings ? rankingsError : teamsError && !teams ? teamsError : null;
 
   // Check if input is a command
   const isCommand = inputValue.startsWith(":");
@@ -364,6 +373,7 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
 
   const handleRefresh = () => {
     refetch();
+    if (teamsError) refetchTeams();
   };
 
   return (
@@ -501,6 +511,17 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
         <div className="text-xs font-mono text-primary animate-in fade-in slide-in-from-left-2 duration-200">
           {commandFeedback}
         </div>
+      )}
+
+      {!commandFeedback && searchError && (
+        <QueryErrorState
+          error={searchError}
+          onRetry={handleRefresh}
+          isRetrying={isFetching || teamsFetching}
+          compact
+          fallback="Search data unavailable"
+          className="flex-row gap-1.5 p-0 text-left"
+        />
       )}
 
       {/* Ticker — inline on md+, hidden here on small screens */}

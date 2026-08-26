@@ -6,6 +6,7 @@ import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useFocusPlayer } from "@/hooks/useFocusPlayer";
 import { useOwnershipTrendingQuery } from "@/hooks/useOwnershipTrending";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import type { TrendingPlayer } from "@/types/ownership";
 
 interface TrendingItemProps {
@@ -82,7 +83,7 @@ export function TrendingPanel() {
   // Fetch ownership trending data with velocity-based sorting
   // min_ownership=3 filters out deep roster noise
   // limit=5 for compact display
-  const { data, isLoading, error } = useOwnershipTrendingQuery({
+  const { data, isLoading, error, refetch, isFetching } = useOwnershipTrendingQuery({
     days: 2,
     min_change: 1.0,
     min_ownership: 3.0,
@@ -99,9 +100,13 @@ export function TrendingPanel() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <p className="text-sm text-destructive">Failed to load trending data</p>
-      </div>
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
     );
   }
 

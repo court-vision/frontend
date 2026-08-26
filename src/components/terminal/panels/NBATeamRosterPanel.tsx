@@ -1,10 +1,11 @@
 "use client";
 
-import { Users, AlertCircle } from "lucide-react";
+import { Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useNBATeamRosterQuery } from "@/hooks/useNBATeam";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import type { NBATeamRosterPlayer } from "@/types/nba-team";
 
 // --- Position badge colors ---
@@ -94,7 +95,7 @@ function PlayerRow({
 
 export function NBATeamRosterPanel() {
   const { focusedNBATeamId, setFocusedPlayer } = useTerminalStore();
-  const { data: roster, isLoading, error } = useNBATeamRosterQuery(focusedNBATeamId);
+  const { data: roster, isLoading, error, refetch, isFetching } = useNBATeamRosterQuery(focusedNBATeamId);
 
   if (!focusedNBATeamId) {
     return (
@@ -115,11 +116,23 @@ export function NBATeamRosterPanel() {
     );
   }
 
-  if (error || !roster) {
+  if (error) {
+    return (
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  // 404 → null: nothing on file for this team, which is not a failure.
+  if (!roster) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <AlertCircle className="h-5 w-5 text-destructive/50 mb-2" />
-        <p className="text-xs text-destructive">Failed to load roster</p>
+        <p className="text-xs text-muted-foreground">No roster available</p>
       </div>
     );
   }

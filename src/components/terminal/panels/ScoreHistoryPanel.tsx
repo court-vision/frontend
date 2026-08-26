@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, TrendingUp } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -16,6 +16,7 @@ import {
   useLiveMatchupQuery,
 } from "@/hooks/useMatchup";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import { DEFAULT_9CAT, formatNetCategories } from "@/lib/category-format";
 import { historyToCategoryPoints } from "@/lib/matchup-headline";
 import type { DailyScorePoint } from "@/types/matchup";
@@ -53,7 +54,7 @@ function TerminalTooltip({
 
 export function ScoreHistoryPanel() {
   const { focusedTeamId } = useTerminalStore();
-  const { data, isLoading, error } = useMatchupScoreHistoryQuery(focusedTeamId);
+  const { data, isLoading, error, refetch, isFetching } = useMatchupScoreHistoryQuery(focusedTeamId);
   const { data: liveData } = useLiveMatchupQuery(focusedTeamId);
 
   if (!focusedTeamId) {
@@ -75,11 +76,23 @@ export function ScoreHistoryPanel() {
     );
   }
 
-  if (error || !data) {
+  if (error) {
+    return (
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  // 404 → null: no history yet (e.g. the first day of a matchup period).
+  if (!data) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <AlertCircle className="h-6 w-6 text-destructive/50 mb-2" />
-        <p className="text-xs text-destructive">Failed to load score history</p>
+        <p className="text-xs text-muted-foreground">No score history yet</p>
       </div>
     );
   }

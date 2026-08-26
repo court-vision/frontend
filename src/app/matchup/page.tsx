@@ -6,6 +6,7 @@ import { MatchupDisplay } from "@/components/matchup-components/MatchupDisplay";
 import { useMatchupQuery, useLiveMatchupQuery, useSeasonSummaryQuery } from "@/hooks/useMatchup";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { Card } from "@/components/ui/card";
+import { QueryErrorState } from "@/components/ui/query-error";
 import { SeasonBanner } from "@/components/SeasonBanner";
 import { SeasonSummaryCard } from "@/components/matchup-components/SeasonSummaryCard";
 import { ConnectTeamPrompt } from "@/components/teams-components/ConnectTeamPrompt";
@@ -20,8 +21,15 @@ const MOCKS_ENABLED = process.env.NODE_ENV !== "production";
 function MatchupContent() {
   const searchParams = useSearchParams();
   const mock = MOCKS_ENABLED && searchParams.get("mock") === "cats";
-  const { teamId: selectedTeam, teams, isLoading: isTeamsLoading, provider } = useSelectedTeam();
-  const { data: matchup, isLoading, error } = useMatchupQuery(mock ? null : selectedTeam);
+  const {
+    teamId: selectedTeam,
+    teams,
+    isLoading: isTeamsLoading,
+    provider,
+    teamsError,
+    refetchTeams,
+  } = useSelectedTeam();
+  const { data: matchup, isLoading, error, refetch } = useMatchupQuery(mock ? null : selectedTeam);
   const { data: liveMatchup } = useLiveMatchupQuery(mock ? null : selectedTeam);
   const { data: seasonSummary } = useSeasonSummaryQuery(mock ? null : selectedTeam);
   const season = useSeason();
@@ -60,6 +68,10 @@ function MatchupContent() {
           teamId={0}
           provider={provider}
         />
+      ) : teamsError && !hasTeams ? (
+        <Card variant="panel">
+          <QueryErrorState error={teamsError} onRetry={refetchTeams} />
+        </Card>
       ) : !hasTeams ? (
         <ConnectTeamPrompt description="Add a team to see your weekly matchup, live scoring, and day-by-day breakdowns." />
       ) : !selectedTeam ? (
@@ -74,6 +86,7 @@ function MatchupContent() {
           liveMatchup={liveMatchup}
           isLoading={isLoading}
           error={error}
+          onRetry={() => refetch()}
           teamId={selectedTeam}
           provider={provider}
         />

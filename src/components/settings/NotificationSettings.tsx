@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import {
   useNotificationPreferencesQuery,
   useUpdateNotificationPreferencesMutation,
@@ -12,6 +13,7 @@ import {
   useDeleteTeamPreferenceMutation,
 } from "@/hooks/useNotificationPreferences";
 import { useTeamsQuery } from "@/hooks/useTeams";
+import { isEmptyResult } from "@/lib/api-error";
 import { LineupAlertForm } from "./LineupAlertForm";
 import type { NotificationPreference } from "@/types/notifications";
 import type { NotificationTeamPreference } from "@/types/notifications";
@@ -166,9 +168,12 @@ export function NotificationSettings() {
 
   const [activeTab, setActiveTab] = useState<"global" | string>("global");
 
-  const { data: globalPrefs, isLoading: prefsLoading } = useNotificationPreferencesQuery();
-  const { data: teams = [], isLoading: teamsLoading } = useTeamsQuery();
-  const { data: teamOverrides = [], isLoading: overridesLoading } = useTeamNotificationPreferencesQuery();
+  const prefsQuery = useNotificationPreferencesQuery();
+  const teamsQuery = useTeamsQuery();
+  const overridesQuery = useTeamNotificationPreferencesQuery();
+  const { data: globalPrefs, isLoading: prefsLoading } = prefsQuery;
+  const { data: teams = [], isLoading: teamsLoading } = teamsQuery;
+  const { data: teamOverrides = [], isLoading: overridesLoading } = overridesQuery;
 
   const updateGlobalMutation = useUpdateNotificationPreferencesMutation();
   const upsertTeamMutation = useUpsertTeamPreferenceMutation();
@@ -183,6 +188,27 @@ export function NotificationSettings() {
         <Skeleton className="h-40 w-full rounded-md" />
         <Skeleton className="h-20 w-full rounded-md" />
       </div>
+    );
+  }
+
+  // Any of the three failing with nothing cached is one error state with one
+  // Retry. No saved preferences yet (`EMPTY_RESULT`) is not a failure — the
+  // form renders the defaults.
+  const failed = [prefsQuery, teamsQuery, overridesQuery].find(
+    (q) => q.error && !isEmptyResult(q.error) && q.data === undefined
+  );
+  if (failed) {
+    return (
+      <QueryErrorState
+        error={failed.error}
+        onRetry={() => {
+          prefsQuery.refetch();
+          teamsQuery.refetch();
+          overridesQuery.refetch();
+        }}
+        isRetrying={prefsQuery.isFetching || teamsQuery.isFetching || overridesQuery.isFetching}
+        className="rounded-md border border-border/60"
+      />
     );
   }
 

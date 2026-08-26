@@ -2,6 +2,7 @@
 
 import { useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 
 import { CommandStrip } from "@/components/CommandStrip";
 import { StatusBar } from "@/components/StatusBar";
@@ -9,7 +10,7 @@ import { KeyboardShortcutOverlay } from "@/components/KeyboardShortcutOverlay";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
 import { ROUTE_ORDER } from "@/lib/navigation";
 
-import { FC, useEffect, useRef } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 
 function getRouteIndex(path: string): number {
   const idx = ROUTE_ORDER.indexOf(path);
@@ -21,11 +22,28 @@ function getRouteIndex(path: string): number {
 // of a skeleton waiting on Clerk.
 const RENDER_BEFORE_AUTH = new Set(["/rankings"]);
 
+// After this long without Clerk loading, render the page anyway (with a
+// banner) rather than leaving the user on a permanent skeleton.
+const CLERK_LOAD_TIMEOUT_MS = 8_000;
+
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isLoaded } = useUser();
   const pathname = usePathname();
-  const loading = !isLoaded && !RENDER_BEFORE_AUTH.has(pathname);
+  const [authTimedOut, setAuthTimedOut] = useState(false);
   const prevPathRef = useRef(pathname);
+
+  useEffect(() => {
+    if (isLoaded) return;
+    const timer = setTimeout(() => {
+      setAuthTimedOut(true);
+      Sentry.captureMessage("clerk_load_timeout", { level: "warning" });
+    }, CLERK_LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [isLoaded]);
+
+  const authPending = !isLoaded && !authTimedOut;
+  const loading = authPending && !RENDER_BEFORE_AUTH.has(pathname);
+  const showAuthBanner = !isLoaded && authTimedOut;
 
   // Determine slide direction based on nav order
   const prevIndex = getRouteIndex(prevPathRef.current);
@@ -43,6 +61,16 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
     <div className="flex flex-col h-screen w-full overflow-hidden">
       {/* Command Strip */}
       <CommandStrip />
+
+      {/* Sign-in service slow: keep the page usable, say why signed-in data may be missing */}
+      {showAuthBanner && (
+        <div
+          role="status"
+          className="shrink-0 border-b border-status-projected/30 bg-status-projected/10 px-3 py-1 text-center text-[11px] text-muted-foreground"
+        >
+          Sign-in service is slow to load — signed-in features will appear once it responds.
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className={`flex-1 overflow-y-auto overflow-x-clip relative ${isFullHeightPage ? '' : 'p-5 lg:p-8'}`}>

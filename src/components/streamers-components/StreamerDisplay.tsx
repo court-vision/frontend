@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
+import { QueryErrorState } from "@/components/ui/query-error";
 
 import { WeekSchedule, WeekScheduleHeader } from "./WeekSchedule";
 import { BreakoutContextSection } from "./BreakoutContextSection";
@@ -47,6 +48,7 @@ import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import { BASELINE_VALUE_TITLE, CAT_VALUE_TITLE } from "@/lib/category-format";
+import { userMessage } from "@/lib/api-error";
 import type { StreamerPlayer, StreamerMode } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
 
@@ -67,7 +69,13 @@ interface SelectedPlayer {
 }
 
 export default function StreamerDisplay() {
-  const { teamId: selectedTeam, team: selectedTeamData, provider } = useSelectedTeam();
+  const {
+    teamId: selectedTeam,
+    team: selectedTeamData,
+    provider,
+    teamsError,
+    refetchTeams,
+  } = useSelectedTeam();
   const leagueInfo = selectedTeamData?.league_info || null;
 
   // Local state for filters
@@ -83,7 +91,7 @@ export default function StreamerDisplay() {
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
 
   // Fetch streamers
-  const { data, isLoading, error } = useStreamersQuery(
+  const { data, isLoading, error, refetch, isFetching } = useStreamersQuery(
     leagueInfo,
     selectedTeam,
     {
@@ -97,7 +105,7 @@ export default function StreamerDisplay() {
   );
 
   // Fetch breakout candidates (public endpoint, no auth)
-  const { data: breakoutData } = useBreakoutStreamersQuery();
+  const { data: breakoutData, error: breakoutError } = useBreakoutStreamersQuery();
 
   // Build a lookup map keyed by player_id for O(1) merge
   const breakoutMap = useMemo(() => {
@@ -169,6 +177,15 @@ export default function StreamerDisplay() {
     }));
   }, [data]);
 
+  // The selected team id is persisted; without the teams list it can't become a league.
+  if (teamsError && !selectedTeamData) {
+    return (
+      <Card variant="panel" className="w-full">
+        <QueryErrorState error={teamsError} onRetry={refetchTeams} />
+      </Card>
+    );
+  }
+
   if (!selectedTeam) {
     return (
       <Card variant="panel" className="w-full p-8">
@@ -191,10 +208,8 @@ export default function StreamerDisplay() {
 
   if (error) {
     return (
-      <Card variant="panel" className="w-full p-8">
-        <p className="text-sm text-destructive text-center">
-          Error loading streamers. Please try again.
-        </p>
+      <Card variant="panel" className="w-full">
+        <QueryErrorState error={error} onRetry={() => refetch()} isRetrying={isFetching} />
       </Card>
     );
   }
@@ -288,6 +303,11 @@ export default function StreamerDisplay() {
             className="h-8 text-xs"
             onClick={() => setBreakoutOnly(!breakoutOnly)}
             disabled={breakoutMap.size === 0}
+            title={
+              breakoutError
+                ? `Breakout data unavailable — ${userMessage(breakoutError)}`
+                : undefined
+            }
           >
             Breakout Only
           </Button>

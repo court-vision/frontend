@@ -6,6 +6,7 @@ import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useFocusPlayer } from "@/hooks/useFocusPlayer";
 import { useTodayLeadersQuery } from "@/hooks/useTodayLeadersQuery";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 import type { LivePlayerData } from "@/types/live";
 
 function StatusBadge({ status }: { status: 1 | 2 | 3 }) {
@@ -74,17 +75,23 @@ function LeaderRow({ player, rank, isActive, onFocus }: LeaderRowProps) {
 export function TodayLeadersPanel() {
   const { focusedPlayerId } = useTerminalStore();
   const focusPlayer = useFocusPlayer();
-  const { data: players, isLoading, error } = useTodayLeadersQuery();
+  const { data: players, isLoading, error, refetch, isFetching, dataUpdatedAt } =
+    useTodayLeadersQuery();
 
   if (isLoading) {
     return <TodayLeadersSkeleton />;
   }
 
-  if (error) {
+  // Stale-not-error: a failed poll keeps the last leaders on screen with a paused badge.
+  if (error && !players) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <p className="text-sm text-destructive">Failed to load today&apos;s stats</p>
-      </div>
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
     );
   }
 
@@ -121,8 +128,14 @@ export function TodayLeadersPanel() {
           />
         ))}
       </div>
-      <div className="px-2 py-1 border-t text-[10px] text-muted-foreground font-mono shrink-0">
-        {players.length} players today
+      <div className="flex items-center gap-2 px-2 py-1 border-t text-[10px] text-muted-foreground font-mono shrink-0">
+        <span>{players.length} players today</span>
+        <StaleBadge
+          className="ml-auto"
+          dataUpdatedAt={dataUpdatedAt}
+          isFetching={isFetching}
+          error={error}
+        />
       </div>
     </div>
   );

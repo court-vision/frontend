@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { usePlayerStatsQuery } from "@/hooks/usePlayer";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 
 interface StatBarProps {
   label: string;
@@ -60,7 +61,7 @@ function EmptyStat({ label }: { label: string }) {
 
 export function AdvancedStatsPanel() {
   const { focusedPlayerId, statWindow } = useTerminalStore();
-  const { data: playerStats, isLoading, error } = usePlayerStatsQuery(
+  const { data: playerStats, isLoading, error, refetch, isFetching } = usePlayerStatsQuery(
     focusedPlayerId,
     "nba",
     statWindow
@@ -81,10 +82,24 @@ export function AdvancedStatsPanel() {
     return <AdvancedStatsSkeleton />;
   }
 
-  if (error || !playerStats) {
+  if (error) {
+    return (
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  // 404 → null: the player has no stats yet, which is not a failure.
+  if (!playerStats) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <p className="text-sm text-destructive">Failed to load advanced stats</p>
+        <BarChart3 className="h-8 w-8 text-muted-foreground/30 mb-2" />
+        <p className="text-sm text-muted-foreground">No stats for this player yet</p>
       </div>
     );
   }

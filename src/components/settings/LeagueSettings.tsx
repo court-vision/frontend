@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import { ConnectTeamPrompt } from "@/components/teams-components/ConnectTeamPrompt";
 import {
   useSyncTeamLeagueMutation,
@@ -17,7 +18,13 @@ import { LeagueFormatCard } from "./LeagueFormatCard";
  * categories/point weights, roster, schedule, parser warnings, and re-sync.
  */
 export function LeagueSettings() {
-  const { data: teams = [], isLoading } = useTeamsQuery();
+  const {
+    data: teams = [],
+    isLoading,
+    error: teamsError,
+    refetch: refetchTeams,
+    isFetching: teamsFetching,
+  } = useTeamsQuery();
   const selectedTeam = useUIStore((s) => s.selectedTeam);
   const [activeTeamId, setActiveTeamId] = useState<number | null>(null);
 
@@ -28,7 +35,13 @@ export function LeagueSettings() {
       : teams[0]?.team_id ?? null;
   const team = teams.find((t) => t.team_id === teamId) ?? null;
 
-  const { data: league, isLoading: leagueLoading } = useTeamLeagueQuery(teamId);
+  const {
+    data: league,
+    isLoading: leagueLoading,
+    error: leagueError,
+    refetch: refetchLeague,
+    isFetching: leagueFetching,
+  } = useTeamLeagueQuery(teamId);
   const sync = useSyncTeamLeagueMutation();
 
   if (isLoading) {
@@ -36,6 +49,26 @@ export function LeagueSettings() {
       <div className="space-y-3">
         <Skeleton className="h-8 w-64 rounded-full" />
         <Skeleton className="h-48 w-full rounded-md" />
+      </div>
+    );
+  }
+
+  // A failed teams fetch is an error with Retry, not "connect a team".
+  if (teamsError && teams.length === 0) {
+    return (
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold">League</h3>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            Scoring format detected from your league settings.
+          </p>
+        </div>
+        <QueryErrorState
+          error={teamsError}
+          onRetry={() => refetchTeams()}
+          isRetrying={teamsFetching}
+          className="rounded-md border border-border/60"
+        />
       </div>
     );
   }
@@ -96,14 +129,24 @@ export function LeagueSettings() {
         })}
       </div>
 
-      <LeagueFormatCard
-        key={teamId}
-        team={team}
-        league={league ?? null}
-        isLoading={leagueLoading}
-        onSync={() => sync.mutate(teamId)}
-        isSyncing={sync.isPending && sync.variables === teamId}
-      />
+      {leagueError && !league ? (
+        <QueryErrorState
+          error={leagueError}
+          onRetry={() => refetchLeague()}
+          isRetrying={leagueFetching}
+          compact
+          className="rounded-md border border-border/60"
+        />
+      ) : (
+        <LeagueFormatCard
+          key={teamId}
+          team={team}
+          league={league ?? null}
+          isLoading={leagueLoading}
+          onSync={() => sync.mutate(teamId)}
+          isSyncing={sync.isPending && sync.variables === teamId}
+        />
+      )}
     </div>
   );
 }

@@ -27,9 +27,11 @@ import {
   CardHeader,
 } from "../ui/card";
 import { Button } from "../ui/button";
+import { QueryErrorState } from "../ui/query-error";
 import { Switch } from "../ui/switch";
 import { useUIStore } from "@/stores/useUIStore";
 import { toast } from "sonner";
+import { userMessage } from "@/lib/api-error";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { GenerateLineupResponse, LineupGenerationRequest } from "@/types/lineup";
 import { useScheduleWeeksQuery } from "@/hooks/useLineups";
@@ -60,7 +62,12 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
     selectedLineupSeason,
     setSelectedLineupWeek,
   } = useUIStore();
-  const { data: scheduleData } = useScheduleWeeksQuery();
+  const {
+    data: scheduleData,
+    error: scheduleError,
+    refetch: refetchSchedule,
+    isFetching: scheduleFetching,
+  } = useScheduleWeeksQuery();
   const { data: matchupData } = useMatchupQuery(selectedTeam);
   const season = useSeason();
 
@@ -141,7 +148,7 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
         },
         onError: (error) => {
           console.error("Generate lineup error:", error);
-          toast.error("Failed to generate lineup. Please try again.");
+          toast.error(userMessage(error, "Failed to generate lineup. Please try again."));
         },
       }
     );
@@ -220,6 +227,16 @@ export default function StopzForm({ generateLineupMutation }: StopzFormProps) {
                       ))}
                     </SelectContent>
                   </Select>
+                  {scheduleError && !scheduleData && (
+                    <QueryErrorState
+                      error={scheduleError}
+                      onRetry={() => refetchSchedule()}
+                      isRetrying={scheduleFetching}
+                      compact
+                      fallback="Couldn't load the matchup weeks"
+                      className="flex-row justify-start gap-1.5 p-0 text-left"
+                    />
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

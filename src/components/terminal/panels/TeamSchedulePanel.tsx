@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useRef, useEffect } from "react";
-import { CalendarDays, AlertCircle } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useRankingsQuery } from "@/hooks/useRankings";
 import { usePlayerStatsQuery } from "@/hooks/usePlayer";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import type { ScheduleGame } from "@/types/games";
 
 function DefRatingDot({ rating }: { rating: number | null }) {
@@ -105,7 +106,7 @@ export function TeamSchedulePanel() {
   }, [playerStats, rankings, focusedPlayerId]);
 
   // Load full season
-  const { data: scheduleData, isLoading, error } = useTeamScheduleQuery(team, false, 100);
+  const { data: scheduleData, isLoading, error, refetch, isFetching } = useTeamScheduleQuery(team, false, 100);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const firstUpcomingRef = useRef<HTMLDivElement>(null);
@@ -141,11 +142,24 @@ export function TeamSchedulePanel() {
     );
   }
 
-  if (error || !scheduleData) {
+  if (error) {
+    return (
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  // 404 → null: no schedule on file for this team, which is not a failure.
+  if (!scheduleData) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <AlertCircle className="h-5 w-5 text-destructive/50 mb-2" />
-        <p className="text-xs text-destructive">Failed to load schedule</p>
+        <CalendarDays className="h-6 w-6 text-muted-foreground/30 mb-2" />
+        <p className="text-xs text-muted-foreground">No schedule available</p>
       </div>
     );
   }

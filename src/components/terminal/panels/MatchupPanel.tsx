@@ -23,6 +23,7 @@ import {
 import { useTeamInsightsQuery } from "@/hooks/useTeams";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 import { CategoryComparisonGrid } from "@/components/matchup-components/CategoryComparisonGrid";
 import { formatRecord } from "@/lib/category-format";
 import { deriveHeadline, formatScalar, historyToCategoryPoints } from "@/lib/matchup-headline";
@@ -109,8 +110,14 @@ function countPlayersWithGames(
 
 export function MatchupPanel() {
   const { focusedTeamId, generatedLineup } = useTerminalStore();
-  const { data: liveData, isLoading: liveLoading, error: liveError } =
-    useLiveMatchupQuery(focusedTeamId);
+  const {
+    data: liveData,
+    isLoading: liveLoading,
+    error: liveError,
+    refetch: refetchLive,
+    isFetching: liveFetching,
+    dataUpdatedAt: liveUpdatedAt,
+  } = useLiveMatchupQuery(focusedTeamId);
   const { data: matchupData } = useMatchupQuery(focusedTeamId);
   const { data: historyData } = useMatchupScoreHistoryQuery(focusedTeamId);
   const { data: insightsData } = useTeamInsightsQuery(focusedTeamId);
@@ -263,10 +270,23 @@ export function MatchupPanel() {
     );
   }
 
-  if (liveError || !liveData || !headline) {
+  // Stale-not-error: a failed poll keeps the last scoreboard on screen with a paused badge.
+  if (liveError && !liveData) {
+    return (
+      <QueryErrorState
+        error={liveError}
+        onRetry={() => refetchLive()}
+        isRetrying={liveFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  if (!liveData || !headline) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center gap-2">
-        <p className="text-[10px] text-destructive">Failed to load matchup</p>
+        <p className="text-[10px] text-muted-foreground">No matchup data</p>
       </div>
     );
   }
@@ -297,6 +317,10 @@ export function MatchupPanel() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {/* Freshness of the live poll */}
+      <div className="shrink-0 flex items-center justify-end px-3 py-0.5 border-b border-border/20">
+        <StaleBadge dataUpdatedAt={liveUpdatedAt} isFetching={liveFetching} error={liveError} />
+      </div>
       {/* Scoreboard header */}
       <div className="shrink-0 px-3 py-2 border-b border-border/40 bg-muted/10">
         <div className="flex items-center justify-between">

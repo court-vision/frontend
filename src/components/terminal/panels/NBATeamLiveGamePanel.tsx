@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Activity, AlertCircle } from "lucide-react";
+import { Activity } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -15,6 +15,7 @@ import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useNBATeamLiveGameQuery } from "@/hooks/useNBATeam";
 import { NBA_TEAM_BY_ABBREV } from "@/lib/nbaTeams";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 import type { TopPerformer, InjuredPlayer, GameScoreSnapshot } from "@/types/games";
 
 // --- Helpers ---
@@ -190,7 +191,8 @@ function InjuryRow({ p }: { p: InjuredPlayer }) {
 
 export function NBATeamLiveGamePanel() {
   const { focusedNBATeamId } = useTerminalStore();
-  const { data: game, isLoading, error } = useNBATeamLiveGameQuery(focusedNBATeamId);
+  const { data: game, isLoading, error, refetch, isFetching, dataUpdatedAt } =
+    useNBATeamLiveGameQuery(focusedNBATeamId);
 
   if (!focusedNBATeamId) {
     return (
@@ -212,11 +214,25 @@ export function NBATeamLiveGamePanel() {
     );
   }
 
-  if (error || !game) {
+  // Stale-not-error: a failed poll keeps the last score on screen with a paused badge.
+  if (error && !game) {
+    return (
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  // 404 → null: no game on the schedule for this team, which is not a failure.
+  if (!game) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <AlertCircle className="h-5 w-5 text-destructive/50 mb-2" />
-        <p className="text-xs text-destructive">Failed to load game data</p>
+        <Activity className="h-6 w-6 text-muted-foreground/30 mb-2" />
+        <p className="text-xs text-muted-foreground">No game found for {focusedNBATeamId}</p>
       </div>
     );
   }
@@ -427,6 +443,11 @@ export function NBATeamLiveGamePanel() {
               : "No performer data"}
           </div>
         )}
+      </div>
+
+      {/* Freshness of the live poll */}
+      <div className="shrink-0 flex items-center justify-end px-2 py-0.5 border-t border-border/30">
+        <StaleBadge dataUpdatedAt={dataUpdatedAt} isFetching={isFetching} error={error} />
       </div>
 
     </div>

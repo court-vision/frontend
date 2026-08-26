@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { cn, getTodayET } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import {
@@ -11,6 +11,7 @@ import {
   useWeeklyMatchupQuery,
 } from "@/hooks/useMatchup";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import { formatRecord } from "@/lib/category-format";
 import { dayNetCategories } from "@/lib/matchup-headline";
 import type {
@@ -112,7 +113,7 @@ function FuturePlayerRow({ player }: { player: DailyMatchupFuturePlayer }) {
 }
 
 function DayDetail({ teamId, date }: { teamId: number; date: string }) {
-  const { data, isLoading, error } = useDailyMatchupQuery(teamId, date);
+  const { data, isLoading, error, refetch, isFetching } = useDailyMatchupQuery(teamId, date);
 
   if (isLoading) {
     return (
@@ -124,10 +125,17 @@ function DayDetail({ teamId, date }: { teamId: number; date: string }) {
     );
   }
 
-  if (error || !data) {
+  // Today polls: a failed poll keeps the last day on screen rather than blanking it.
+  if (error && !data) {
+    return (
+      <QueryErrorState error={error} onRetry={() => refetch()} isRetrying={isFetching} compact />
+    );
+  }
+
+  if (!data) {
     return (
       <div className="flex items-center justify-center py-4">
-        <p className="text-[10px] text-destructive">Failed to load day data</p>
+        <p className="text-[10px] text-muted-foreground">No data for this day</p>
       </div>
     );
   }
@@ -237,8 +245,13 @@ export function DailyBreakdownPanel() {
     setLastSyncedDate(liveMatchup.game_date);
   }
 
-  const { data: historyData, isLoading: historyLoading, error: historyError } =
-    useMatchupScoreHistoryQuery(focusedTeamId);
+  const {
+    data: historyData,
+    isLoading: historyLoading,
+    error: historyError,
+    refetch: refetchHistory,
+    isFetching: historyFetching,
+  } = useMatchupScoreHistoryQuery(focusedTeamId);
   const isCategories = liveMatchup?.scoring_format === "categories";
   // Category leagues: per-day net categories come from the weekly days payload.
   const { data: weeklyData } = useWeeklyMatchupQuery(isCategories ? focusedTeamId : null);
@@ -266,11 +279,24 @@ export function DailyBreakdownPanel() {
     );
   }
 
-  if (historyError || !historyData) {
+  if (historyError) {
+    return (
+      <QueryErrorState
+        error={historyError}
+        onRetry={() => refetchHistory()}
+        isRetrying={historyFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  // 404 → null: no matchup history yet (e.g. the first day of a period).
+  if (!historyData) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <AlertCircle className="h-6 w-6 text-destructive/50 mb-2" />
-        <p className="text-xs text-destructive">Failed to load matchup data</p>
+        <Calendar className="h-8 w-8 text-muted-foreground/30 mb-2" />
+        <p className="text-xs text-muted-foreground">No matchup history yet</p>
       </div>
     );
   }

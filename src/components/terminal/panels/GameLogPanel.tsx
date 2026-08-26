@@ -7,6 +7,7 @@ import { useTerminalStore } from "@/stores/useTerminalStore";
 import { usePlayerStatsQuery } from "@/hooks/usePlayer";
 import { useLivePlayerToday } from "@/hooks/useLiveStats";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import type { GameLog } from "@/types/player";
 import type { LivePlayerData } from "@/types/live";
 
@@ -76,7 +77,7 @@ function projectFpts(livePlayer: LivePlayerData, avgMinutes: number | undefined)
 
 export function GameLogPanel() {
   const { focusedPlayerId, statWindow } = useTerminalStore();
-  const { data: playerStats, isLoading, error } = usePlayerStatsQuery(
+  const { data: playerStats, isLoading, error, refetch, isFetching } = usePlayerStatsQuery(
     focusedPlayerId,
     "nba",
     statWindow
@@ -142,10 +143,24 @@ export function GameLogPanel() {
     return <GameLogSkeleton />;
   }
 
-  if (error || !playerStats) {
+  if (error) {
+    return (
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
+    );
+  }
+
+  // 404 → null: the player has no stats yet, which is not a failure.
+  if (!playerStats) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <p className="text-sm text-destructive">Failed to load game log</p>
+        <Table className="h-8 w-8 text-muted-foreground/30 mb-2" />
+        <p className="text-sm text-muted-foreground">No stats for this player yet</p>
       </div>
     );
   }

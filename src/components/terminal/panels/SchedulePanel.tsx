@@ -1,5 +1,6 @@
 "use client";
 
+import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 import { useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, Clock, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -151,7 +152,8 @@ function GameCard({ game }: GameCardProps) {
 
 export function SchedulePanel() {
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
-  const { data, isLoading, error } = useGamesOnDateQuery(selectedDate);
+  const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } =
+    useGamesOnDateQuery(selectedDate);
 
   const goToPreviousDay = () => {
     const date = new Date(selectedDate);
@@ -182,11 +184,16 @@ export function SchedulePanel() {
     return <ScheduleSkeleton />;
   }
 
-  if (error) {
+  // Stale-not-error: a failed poll keeps the last slate on screen with a paused badge.
+  if (error && !data) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <p className="text-sm text-destructive">Failed to load schedule</p>
-      </div>
+      <QueryErrorState
+        error={error}
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+        compact
+        className="h-full"
+      />
     );
   }
 
@@ -204,6 +211,14 @@ export function SchedulePanel() {
           <span className="text-xs font-medium uppercase tracking-wider">
             Schedule
           </span>
+          {isToday && data && (
+            <StaleBadge
+              className="ml-1"
+              dataUpdatedAt={dataUpdatedAt}
+              isFetching={isFetching}
+              error={error}
+            />
+          )}
         </div>
         <div className="flex items-center gap-1">
           <Button

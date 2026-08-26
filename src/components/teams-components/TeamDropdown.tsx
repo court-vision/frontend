@@ -20,10 +20,11 @@ import {
 import { useTeamsQuery } from "@/hooks/useTeams";
 import { useUIStore } from "@/stores/useUIStore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import { scoringShortLabel } from "@/lib/category-format";
 
 export function TeamDropdown() {
-  const { data: teams = [], isLoading } = useTeamsQuery();
+  const { data: teams = [], isLoading, error, refetch, isFetching } = useTeamsQuery();
   const { selectedTeam, setSelectedTeam } = useUIStore();
   const [selectedTeamName, setSelectedTeamName] = useState("Select Team");
 
@@ -34,12 +35,14 @@ export function TeamDropdown() {
       if (team && team.league_info) {
         setSelectedTeamName(team.league_info.team_name);
       }
+    } else if (error && teams.length === 0) {
+      setSelectedTeamName("Teams unavailable");
     } else if (!teams || teams.length === 0) {
       setSelectedTeamName("No Teams");
     } else {
       setSelectedTeamName("Select Team");
     }
-  }, [teams, selectedTeam]);
+  }, [teams, selectedTeam, error]);
 
   // Auto-select first team if none selected
   useEffect(() => {
@@ -82,37 +85,46 @@ export function TeamDropdown() {
                   </Link>
                 </CommandGroup>
                 <CommandSeparator />
-                <CommandGroup
-                  className="font-gray-400 font-medium"
-                  heading="Teams"
-                >
-                  {teams &&
-                    teams.map((team) => (
-                      <CommandItem
-                        key={team.team_id}
-                        onSelect={() => setSelectedTeam(team.team_id)}
-                        value={team.league_info?.team_name || "Unknown Team"}
-                      >
-                        <span
-                          className={cn(
-                            "h-2 w-2 rounded-full mr-2 flex-shrink-0",
-                            team.league_info?.provider === "yahoo"
-                              ? "bg-purple-500"
-                              : "bg-orange-500"
+                {error && teams.length === 0 ? (
+                  <QueryErrorState
+                    error={error}
+                    onRetry={() => refetch()}
+                    isRetrying={isFetching}
+                    compact
+                  />
+                ) : (
+                  <CommandGroup
+                    className="font-gray-400 font-medium"
+                    heading="Teams"
+                  >
+                    {teams &&
+                      teams.map((team) => (
+                        <CommandItem
+                          key={team.team_id}
+                          onSelect={() => setSelectedTeam(team.team_id)}
+                          value={team.league_info?.team_name || "Unknown Team"}
+                        >
+                          <span
+                            className={cn(
+                              "h-2 w-2 rounded-full mr-2 flex-shrink-0",
+                              team.league_info?.provider === "yahoo"
+                                ? "bg-purple-500"
+                                : "bg-orange-500"
+                            )}
+                          />
+                          <span className="truncate">{team.league_info?.team_name || "Unknown Team"}</span>
+                          {scoringShortLabel(team.league) && (
+                            <span className="ml-auto pl-2 text-[9px] font-mono text-muted-foreground/60">
+                              {scoringShortLabel(team.league)}
+                            </span>
                           )}
-                        />
-                        <span className="truncate">{team.league_info?.team_name || "Unknown Team"}</span>
-                        {scoringShortLabel(team.league) && (
-                          <span className="ml-auto pl-2 text-[9px] font-mono text-muted-foreground/60">
-                            {scoringShortLabel(team.league)}
-                          </span>
-                        )}
-                        {selectedTeam === team.team_id && (
-                          <Check size={16} className="ml-1.5 shrink-0" />
-                        )}
-                      </CommandItem>
-                    ))}
-                </CommandGroup>
+                          {selectedTeam === team.team_id && (
+                            <Check size={16} className="ml-1.5 shrink-0" />
+                          )}
+                        </CommandItem>
+                      ))}
+                  </CommandGroup>
+                )}
               </CommandList>
             </Command>
           </SelectGroup>

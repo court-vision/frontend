@@ -25,9 +25,14 @@ import { useLineup } from "@/app/context/LineupContext";
 import type { Lineup } from "@/types/lineup";
 import { LineupViewer } from "@/components/lineup-components/LineupDisplay";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { QueryErrorState } from "@/components/ui/query-error";
 
 export function ManageLineupsTable() {
-  const { savedLineups } = useLineup();
+  const { savedLineups, savedLineupsError, refetchSavedLineups } = useLineup();
+
+  if (savedLineupsError && savedLineups.length === 0) {
+    return <QueryErrorState error={savedLineupsError} onRetry={refetchSavedLineups} />;
+  }
 
   return (
     <Table className="max-w-[100%]">

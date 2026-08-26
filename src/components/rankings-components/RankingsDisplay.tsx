@@ -30,6 +30,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
+import { QueryErrorState } from "@/components/ui/query-error";
 import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import {
   Dialog,
@@ -212,7 +213,7 @@ function alignClass(align: ColumnDef["align"]): string {
 
 export default function RankingsDisplay() {
   const { params, setParams, source, leagueName } = useRankingsParams();
-  const { data, isLoading, isFetching, error } = useRankingsListQuery(params);
+  const { data, isLoading, isFetching, error, refetch } = useRankingsListQuery(params);
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: SortDirection } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -474,13 +475,15 @@ export default function RankingsDisplay() {
     );
   }
 
-  if (error) {
+  // With `keepPreviousData`, a failed window switch keeps the last table on
+  // screen (the global toast reports it); only an empty screen gets the card.
+  if (error && !data) {
     return (
       <>
         {toolbar}
         <Card variant="panel" className="w-full">
-          <CardContent className="p-6 text-center">
-            <p className="text-sm text-destructive">{error.message}</p>
+          <CardContent className="p-0">
+            <QueryErrorState error={error} onRetry={() => refetch()} isRetrying={isFetching} />
           </CardContent>
         </Card>
       </>
@@ -551,7 +554,9 @@ export default function RankingsDisplay() {
                 {paginatedRankings.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={columns.length} className="py-8 text-center text-sm text-muted-foreground">
-                      {players.length === 0 ? "No rankings available for this window yet." : "No players match your search."}
+                      {players.length === 0
+                        ? data?.message || "No rankings available for this window yet."
+                        : "No players match your search."}
                     </TableCell>
                   </TableRow>
                 )}

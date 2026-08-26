@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Zap, AlertCircle, TrendingUp } from "lucide-react";
+import { Zap, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useFocusPlayer } from "@/hooks/useFocusPlayer";
@@ -9,6 +9,7 @@ import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useTeams } from "@/app/context/TeamsContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-error";
 import type { BreakoutCandidateResp } from "@/types/breakout";
 
 /** Unified streamer item for the panel list */
@@ -94,14 +95,24 @@ export function StreamersPanel() {
   );
   const leagueInfo = selectedTeamData?.league_info || null;
 
-  const { data: breakoutData, isLoading: breakoutLoading, error: breakoutError } =
-    useBreakoutStreamersQuery(30);
-  const { data: streamerData, isLoading: streamerLoading } =
-    useStreamersQuery(leagueInfo, selectedTeam, {
-      faCount: 50,
-      excludeInjured: true,
-      mode: "daily",
-    });
+  const {
+    data: breakoutData,
+    isLoading: breakoutLoading,
+    error: breakoutError,
+    refetch: refetchBreakout,
+    isFetching: breakoutFetching,
+  } = useBreakoutStreamersQuery(30);
+  const {
+    data: streamerData,
+    isLoading: streamerLoading,
+    error: streamerError,
+    refetch: refetchStreamers,
+    isFetching: streamerFetching,
+  } = useStreamersQuery(leagueInfo, selectedTeam, {
+    faCount: 50,
+    excludeInjured: true,
+    mode: "daily",
+  });
 
   const isLoading = breakoutLoading || (!!leagueInfo && streamerLoading);
 
@@ -163,12 +174,26 @@ export function StreamersPanel() {
     );
   }
 
-  if (breakoutError) {
+  // Only a failure with nothing to show is an error; breakout context is
+  // optional once the streamer list itself has loaded.
+  const loadError =
+    streamerError && !streamerData
+      ? streamerError
+      : breakoutError && !streamerData && !breakoutData
+        ? breakoutError
+        : null;
+  if (loadError) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <AlertCircle className="h-6 w-6 text-destructive/50 mb-2" />
-        <p className="text-sm text-destructive">Failed to load streamers</p>
-      </div>
+      <QueryErrorState
+        error={loadError}
+        onRetry={() => {
+          if (leagueInfo) refetchStreamers();
+          refetchBreakout();
+        }}
+        isRetrying={streamerFetching || breakoutFetching}
+        compact
+        className="h-full"
+      />
     );
   }
 
