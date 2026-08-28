@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LayoutGrid, Plus, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores/useUIStore";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useDashboardStore } from "@/stores/useDashboardStore";
@@ -18,10 +20,49 @@ import { DashboardStack } from "./DashboardStack";
 import { DashboardToolbar } from "./DashboardToolbar";
 import { WidgetCatalog } from "./WidgetCatalog";
 
+/**
+ * Shown when a team's dashboard has no widgets.
+ *
+ * A layout persisted with an empty `widgets` array is a dead end otherwise: the
+ * seeding effect skips it (the key exists, so it looks customised) and the grid
+ * renders nothing. Add Widget and Reset live behind the toolbar's edit toggle,
+ * so from here there is no discoverable way back — which is exactly what
+ * happened to team 20.
+ */
+function DashboardEmptyState({
+  onAddWidget,
+  onReset,
+}: {
+  onAddWidget: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border/60 bg-muted/10 py-16 text-center">
+      <LayoutGrid className="h-6 w-6 text-muted-foreground/60" />
+      <div className="space-y-1">
+        <p className="text-sm font-medium">This dashboard has no widgets</p>
+        <p className="text-xs text-muted-foreground">
+          Add the ones you want, or restore the default layout for this team.
+        </p>
+      </div>
+      <div className="flex items-center gap-2 pt-1">
+        <Button size="sm" onClick={onAddWidget} className="gap-1.5">
+          <Plus className="h-3.5 w-3.5" />
+          Add widgets
+        </Button>
+        <Button size="sm" variant="outline" onClick={onReset} className="gap-1.5">
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reset to default
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardView() {
   const { selectedTeam, dismissedConnectPrompt, setDismissedConnectPrompt } = useUIStore();
   const { setFocusedTeam } = useTerminalStore();
-  const { layouts, setLayout } = useDashboardStore();
+  const { layouts, setLayout, resetLayout } = useDashboardStore();
   const { format, teams, isLoading: isTeamsLoading } = useSelectedTeam();
   const [catalogOpen, setCatalogOpen] = useState(false);
   // Safe to branch on: `Base` withholds the page until Clerk has loaded, so
@@ -77,7 +118,12 @@ export function DashboardView() {
             onDismiss={() => setDismissedConnectPrompt(true)}
           />
         )}
-        {isMobile ? (
+        {widgets.length === 0 && !isMobile ? (
+          <DashboardEmptyState
+            onAddWidget={() => setCatalogOpen(true)}
+            onReset={() => resetLayout(teamKey, template)}
+          />
+        ) : isMobile ? (
           <DashboardStack
             teamKey={teamKey}
             widgets={orderForMobile(widgets, MOBILE_ORDER[template])}
