@@ -61,8 +61,10 @@ export function espnFormDefaults(info?: Partial<LeagueInfo> | null): EspnTeamFor
     leagueYear: info?.year !== undefined ? String(info.year) : "",
     teamName: info?.team_name ?? "",
     leagueName: info?.league_name ?? "",
-    s2: info?.espn_s2 ?? "",
-    swid: info?.swid ?? "",
+    // Always blank: the API does not return credentials. Blank means "keep the
+    // stored ones" — see LeagueInfo in types/team.ts.
+    s2: "",
+    swid: "",
     scoringPreview: info?.scoring_preview ?? "default",
   };
 }
@@ -90,6 +92,12 @@ interface EspnTeamFormFieldsProps {
   required?: boolean;
   /** Show the "View as" scoring-format override (edit flow). */
   showPreview?: boolean;
+  /**
+   * Credentials are already stored for this team. The API never returns their
+   * values, so the fields render blank — without saying so, an edit looks like
+   * the credentials were lost. Leaving them blank keeps the stored ones.
+   */
+  storedCredentials?: boolean;
 }
 
 function RequiredMark({ show }: { show: boolean }) {
@@ -101,7 +109,7 @@ function RequiredMark({ show }: { show: boolean }) {
  * The ESPN league fields shared by the add and edit dialogs: league id/year/
  * team/league name plus the collapsible private-league cookie section.
  */
-export function EspnTeamFormFields({ form, required = false, showPreview = false }: EspnTeamFormFieldsProps) {
+export function EspnTeamFormFields({ form, required = false, showPreview = false, storedCredentials = false }: EspnTeamFormFieldsProps) {
   const [cookieInput, setCookieInput] = useState("");
   const [parseSuccess, setParseSuccess] = useState(false);
 
@@ -209,11 +217,24 @@ export function EspnTeamFormFields({ form, required = false, showPreview = false
           <Lock className="h-3.5 w-3.5" />
           <span>Private league settings</span>
           <Badge variant="outline" className="text-[11px] px-1.5 py-0 ml-auto font-normal">
-            Optional
+            {storedCredentials ? "Stored" : "Optional"}
           </Badge>
         </summary>
 
         <div className="flex flex-col gap-3 pt-3">
+          {storedCredentials && (
+            <div className="rounded-md border border-dashed p-3 bg-muted/30">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-mono">••••••••</span> Cookies are saved and
+                encrypted. They are never sent back to the browser, so these
+                fields start empty.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Leave them blank to keep the saved cookies, or paste new ones to
+                replace them.
+              </p>
+            </div>
+          )}
           <div className="rounded-md border border-dashed p-3 bg-muted/30">
             <p className="text-sm text-muted-foreground mb-2">
               Step 1: Drag this button to your bookmarks bar:

@@ -6,10 +6,10 @@ import type { YahooLeague, YahooTeam } from "@/types/yahoo";
 export const yahooKeys = {
   all: ["yahoo"] as const,
   authUrl: () => [...yahooKeys.all, "authUrl"] as const,
-  leagues: (accessToken: string) =>
-    [...yahooKeys.all, "leagues", accessToken] as const,
-  teams: (accessToken: string, leagueKey: string) =>
-    [...yahooKeys.all, "teams", accessToken, leagueKey] as const,
+  leagues: (connectionId: string) =>
+    [...yahooKeys.all, "leagues", connectionId] as const,
+  teams: (connectionId: string, leagueKey: string) =>
+    [...yahooKeys.all, "teams", connectionId, leagueKey] as const,
 };
 
 export function useYahooAuthUrl() {
@@ -23,27 +23,27 @@ export function useYahooAuthUrl() {
   });
 }
 
-export function useYahooLeagues(accessToken: string | null) {
+export function useYahooLeagues(connectionId: number | null) {
   const { getToken, isSignedIn } = useAuth();
 
   return useQuery<YahooLeague[]>({
-    queryKey: yahooKeys.leagues(accessToken || ""),
-    queryFn: () => apiClient.getYahooLeagues(getToken, accessToken!),
-    enabled: !!accessToken && isSignedIn === true,
+    queryKey: yahooKeys.leagues(String(connectionId ?? "")),
+    queryFn: () => apiClient.getYahooLeagues(getToken, connectionId!),
+    enabled: !!connectionId && isSignedIn === true,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 }
 
 export function useYahooTeams(
-  accessToken: string | null,
+  connectionId: number | null,
   leagueKey: string | null
 ) {
   const { getToken, isSignedIn } = useAuth();
 
   return useQuery<YahooTeam[]>({
-    queryKey: yahooKeys.teams(accessToken || "", leagueKey || ""),
-    queryFn: () => apiClient.getYahooTeams(getToken, accessToken!, leagueKey!),
-    enabled: !!accessToken && !!leagueKey && isSignedIn === true,
+    queryKey: yahooKeys.teams(String(connectionId ?? ""), leagueKey || ""),
+    queryFn: () => apiClient.getYahooTeams(getToken, connectionId!, leagueKey!),
+    enabled: !!connectionId && !!leagueKey && isSignedIn === true,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 }

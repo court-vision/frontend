@@ -22,9 +22,8 @@ function ManageTeamsContent() {
     // Check for Yahoo OAuth callback params
     const yahooConnected = searchParams.get("yahoo_connected");
     const yahooError = searchParams.get("yahoo_error");
-    const accessToken = searchParams.get("yahoo_access_token");
-    const refreshToken = searchParams.get("yahoo_refresh_token");
-    const tokenExpiry = searchParams.get("yahoo_token_expiry");
+    // An opaque connection id, not credentials. The tokens stay server-side.
+    const connectionId = searchParams.get("yahoo_connection");
 
     if (yahooError) {
       // Truncate to prevent message injection from crafted URLs
@@ -35,19 +34,17 @@ function ManageTeamsContent() {
       return;
     }
 
-    if (yahooConnected === "true" && accessToken && refreshToken) {
-      // Store OAuth state for the add team flow
+    if (yahooConnected === "true" && connectionId) {
+      // Store the handle for the add-team flow
       setYahooOAuthState({
-        accessToken,
-        refreshToken,
-        tokenExpiry: tokenExpiry || "",
+        connectionId: Number(connectionId),
         selectedLeague: null,
         selectedTeam: null,
       });
 
       toast.success("Yahoo account connected! Select your league and team.");
 
-      // Clean sensitive tokens from URL immediately
+      // Drop the handle from the URL once consumed
       router.replace("/manage-teams");
     }
   }, [searchParams, router]);
