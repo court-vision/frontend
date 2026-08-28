@@ -6,7 +6,14 @@ export type FantasyProvider = "espn" | "yahoo";
 /** Per-team override of the rendered scoring format (e.g. view a points league as 9-cat). */
 export type ScoringPreview = "points" | "categories";
 
-// League info structure (matches backend LeagueInfo)
+/**
+ * What the API returns about a stored team (backend `LeagueInfoPublic`).
+ *
+ * Credentials are deliberately absent — the server never sends ESPN cookies or
+ * Yahoo tokens to the browser. `has_*_credentials` says whether they are on
+ * file so the UI can show "stored"; to change them, send new values in a
+ * `LeagueInfoRequest`. Sending none leaves the stored ones untouched.
+ */
 export interface LeagueInfo {
   // Provider field - defaults to "espn" for backward compatibility
   provider?: FantasyProvider;
@@ -17,18 +24,15 @@ export interface LeagueInfo {
   league_name?: string | null;
   year: number;
 
-  // ESPN-specific fields
-  espn_s2?: string | null;
-  swid?: string | null;
-
-  // Yahoo-specific fields
-  yahoo_access_token?: string | null;
-  yahoo_refresh_token?: string | null;
-  yahoo_token_expiry?: string | null;
+  // Identifies a Yahoo team; not a credential and useless without a token.
   yahoo_team_key?: string | null;
 
   // View this team as a different format than its league uses; null = the league's real format
   scoring_preview?: ScoringPreview | null;
+
+  // Whether credentials are stored server-side. Never the values themselves.
+  has_espn_credentials?: boolean;
+  has_yahoo_credentials?: boolean;
 }
 
 // Provider-detected league settings (matches backend LeagueSummary)
@@ -95,6 +99,8 @@ export interface RosterPlayer {
   value_source?: ValueSource | null;
 }
 
+/** What the client sends. Credentials are optional: omit them to keep the
+ *  stored ones (the server merges), supply them to replace. */
 export interface LeagueInfoRequest {
   // Provider field - defaults to "espn" for backward compatibility
   provider?: FantasyProvider;
@@ -109,10 +115,8 @@ export interface LeagueInfoRequest {
   espn_s2?: string;
   swid?: string;
 
-  // Yahoo-specific fields
-  yahoo_access_token?: string;
-  yahoo_refresh_token?: string;
-  yahoo_token_expiry?: string;
+  // Yahoo: the browser holds an opaque connection id, never the tokens.
+  yahoo_connection_id?: number;
   yahoo_team_key?: string;
 
   scoring_preview?: ScoringPreview;

@@ -326,10 +326,10 @@ function YahooAddTeamFlow({ yahooOAuthState, onAdded }: YahooAddTeamFlowProps) {
 
   const { refetch: fetchAuthUrl, isFetching: isLoadingAuthUrl } = useYahooAuthUrl();
   const { data: leagues, isLoading: isLoadingLeagues } = useYahooLeagues(
-    yahooOAuthState?.accessToken || null
+    yahooOAuthState?.connectionId ?? null
   );
   const { data: teams, isLoading: isLoadingTeams } = useYahooTeams(
-    yahooOAuthState?.accessToken || null,
+    yahooOAuthState?.connectionId ?? null,
     selectedLeague?.league_key || null
   );
 
@@ -367,9 +367,8 @@ function YahooAddTeamFlow({ yahooOAuthState, onAdded }: YahooAddTeamFlowProps) {
         team_name: team.name,
         league_name: selectedLeague.name,
         year: parseInt(selectedLeague.season),
-        yahoo_access_token: yahooOAuthState.accessToken,
-        yahoo_refresh_token: yahooOAuthState.refreshToken,
-        yahoo_token_expiry: yahooOAuthState.tokenExpiry,
+        // The server resolves this to the tokens it stored at callback time.
+        yahoo_connection_id: yahooOAuthState.connectionId,
         yahoo_team_key: team.team_key,
       },
       {
@@ -556,7 +555,11 @@ function EditTeamFormContent({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-3">
-        <EspnTeamFormFields form={form} showPreview />
+        <EspnTeamFormFields
+          form={form}
+          showPreview
+          storedCredentials={Boolean(team_info.has_espn_credentials)}
+        />
 
         <div className="flex justify-between pt-1">
           <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isPending}>

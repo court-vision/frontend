@@ -366,10 +366,10 @@ class ApiClient {
 
   async getYahooLeagues(
     getToken: GetTokenFn,
-    accessToken: string
+    connectionId: number
   ): Promise<YahooLeague[]> {
     const env = await fetchJson<YahooLeaguesResponse>(
-      `${YAHOO_API}/leagues?access_token=${encodeURIComponent(accessToken)}`,
+      `${YAHOO_API}/leagues?connection_id=${encodeURIComponent(connectionId)}`,
       { getToken }
     );
     return env.leagues ?? [];
@@ -377,11 +377,11 @@ class ApiClient {
 
   async getYahooTeams(
     getToken: GetTokenFn,
-    accessToken: string,
+    connectionId: number,
     leagueKey: string
   ): Promise<YahooTeam[]> {
     const env = await fetchJson<YahooTeamsResponse>(
-      `${YAHOO_API}/teams?access_token=${encodeURIComponent(accessToken)}&league_key=${encodeURIComponent(leagueKey)}`,
+      `${YAHOO_API}/teams?connection_id=${encodeURIComponent(connectionId)}&league_key=${encodeURIComponent(leagueKey)}`,
       { getToken }
     );
     return env.teams ?? [];

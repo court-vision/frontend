@@ -36,19 +36,15 @@ export interface YahooTeamsResponse {
   teams: YahooTeam[] | null;
 }
 
-export interface YahooTokenResponse {
-  status: "success" | "error";
-  message: string;
-  access_token: string | null;
-  refresh_token: string | null;
-  token_expiry: string | null;
-}
-
 // Temporary OAuth state stored in component during flow
 export interface YahooOAuthState {
-  accessToken: string;
-  refreshToken: string;
-  tokenExpiry: string;
-  selectedLeague?: YahooLeague | null;
-  selectedTeam?: YahooTeam | null;
+  /**
+   * Opaque, user-scoped handle to credentials the server stored during the
+   * OAuth callback. The browser never receives Yahoo tokens — they used to
+   * arrive as query parameters, which put long-lived refresh tokens into
+   * browser history, the Referer header, and every log on the path.
+   */
+  connectionId: number;
+  selectedLeague: YahooLeague | null;
+  selectedTeam: YahooTeam | null;
 }
