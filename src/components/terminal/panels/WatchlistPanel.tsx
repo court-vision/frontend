@@ -50,6 +50,7 @@ function WatchlistItem({ player, isActive, onFocus, onRemove }: WatchlistItemPro
             {player.avg_fpts.toFixed(1)}
           </div>
           <div
+            title="Change in rank versus 7 days ago"
             className={cn(
               "text-[10px] font-mono tabular-nums",
               isPositive && "text-green-500",

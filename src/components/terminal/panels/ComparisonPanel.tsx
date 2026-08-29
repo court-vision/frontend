@@ -65,7 +65,7 @@ function ComparisonPlayerCard({
           </div>
           <div className="text-[9px] text-muted-foreground uppercase">Total</div>
         </div>
-        <div className="text-center">
+        <div className="text-center" title="Change in rank versus 7 days ago">
           <div
             className={cn(
               "text-sm font-mono tabular-nums font-medium",
@@ -76,7 +76,7 @@ function ComparisonPlayerCard({
             {player.rank_change > 0 && "+"}
             {player.rank_change}
           </div>
-          <div className="text-[9px] text-muted-foreground uppercase">Change</div>
+          <div className="text-[9px] text-muted-foreground uppercase">7d</div>
         </div>
       </div>
     </div>

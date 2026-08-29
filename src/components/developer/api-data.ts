@@ -350,7 +350,9 @@ const data = await res.json()`,
     "max_gp": 7,
     "categories": [{"key": "fg_pct", "label": "FG%", "higher_is_better": true, "is_rate": true}, "..."],
     "pool_size": 319,
-    "min_games": 1
+    "min_games": 1,
+    "scoring": {"basis": "categories", "point_weights": null, "league_id": null,
+                "league_name": null, "settings_synced": null, "unsupported": []}
   }
 }`,
       },

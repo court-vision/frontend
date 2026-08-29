@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/api";
 import { scoringLabel } from "@/lib/category-format";
 import { useUIStore } from "@/stores/useUIStore";
 import { matchupKeys } from "@/hooks/useMatchup";
+import { rankingsKeys } from "@/hooks/useRankings";
 import type { LeagueInfoRequest } from "@/types/team";
 
 import type { TeamInsightsData } from "@/types/team-insights";
@@ -177,6 +178,9 @@ export function useSyncTeamLeagueMutation() {
       queryClient.invalidateQueries({ queryKey: teamsKeys.league(teamId) });
       queryClient.invalidateQueries({ queryKey: teamsKeys.insights(teamId) });
       queryClient.invalidateQueries({ queryKey: matchupKeys.all });
+      // A re-sync changes the weights and categories league-scored rankings are
+      // computed from, so the cached ones are now wrong rather than merely stale.
+      queryClient.invalidateQueries({ queryKey: rankingsKeys.all });
     },
     onError: (error) => {
       console.error("Sync league error:", error);

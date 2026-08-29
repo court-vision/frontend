@@ -17,9 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRankingsListQuery } from "@/hooks/useRankings";
+import { useLeagueRankingsQuery, useRankingsListQuery } from "@/hooks/useRankings";
 import { useRankingsParams } from "@/hooks/useRankingsParams";
-import type { RankingsMeta, RankingsPlayer, RankingsWindow } from "@/types/rankings";
+import type { RankingsMeta, RankingsPlayer, RankingsScope, RankingsWindow } from "@/types/rankings";
 import type { ScoringFormat } from "@/types/scoring";
 import {
   TrendingUp,
@@ -162,6 +162,7 @@ const POINTS_COLUMNS: ColumnDef[] = [
   {
     key: "rank_change",
     label: "Change",
+    title: "Change in rank versus 7 days ago",
     align: "center",
     className: "w-[100px] pr-4",
     render: (p) => <RankChange change={p.rank_change} />,
@@ -176,8 +177,14 @@ function zTint(z: number | undefined): string {
 }
 
 /** Category columns follow `meta.categories` (or the standard 9-cat while meta loads). */
-function buildColumns(format: ScoringFormat, meta: RankingsMeta | null): ColumnDef[] {
-  if (format !== "categories") return POINTS_COLUMNS;
+function buildColumns(format: ScoringFormat, meta: RankingsMeta | null, window: RankingsWindow): ColumnDef[] {
+  if (format !== "categories") {
+    // Only season points tracks movement; every other path reports 0, and a
+    // column of zeros reads as "nobody moved" rather than "not measured here".
+    return window === null
+      ? POINTS_COLUMNS
+      : POINTS_COLUMNS.filter((c) => c.key !== "rank_change");
+  }
   const defs = meta?.categories?.length ? meta.categories : DEFAULT_9CAT;
   const categoryColumns: ColumnDef[] = defs.map((d, i) => ({
     key: `cat:${d.key}`,
@@ -241,8 +248,13 @@ function alignClass(align: ColumnDef["align"]): string {
 }
 
 export default function RankingsDisplay() {
-  const { params, setParams, source, leagueName } = useRankingsParams();
-  const { data, isLoading, isFetching, error, refetch } = useRankingsListQuery(params);
+  const { params, setParams, source, teamId, leagueName } = useRankingsParams();
+  // Both hooks are called every render (rules of hooks); `enabled` on each means
+  // only the one matching the active scope actually fetches.
+  const globalQuery = useRankingsListQuery(params);
+  const leagueQuery = useLeagueRankingsQuery(teamId, params);
+  const isLeagueScope = params.scope === "league";
+  const { data, isLoading, isFetching, error, refetch } = isLeagueScope ? leagueQuery : globalQuery;
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: SortDirection } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -254,7 +266,10 @@ export default function RankingsDisplay() {
   const players = useMemo(() => data?.players ?? [], [data]);
   const meta = data?.meta ?? null;
   const isCategories = params.format === "categories";
-  const columns = useMemo(() => buildColumns(params.format, meta), [params.format, meta]);
+  const columns = useMemo(
+    () => buildColumns(params.format, meta, params.window),
+    [params.format, meta, params.window]
+  );
 
   // Default sort: the ranking key for the format (rank order from the API).
   const activeSort = sortConfig ?? {
@@ -412,6 +427,27 @@ export default function RankingsDisplay() {
         : "Standard 9-cat"
     : null;
 
+  // What produced these numbers. Points rankings are not universal — the stored
+  // fantasy points everything sorts on are one specific league's formula — so
+  // the page says whose settings it used rather than leaving the reader to assume.
+  const scoring = meta?.scoring ?? null;
+  const scoringCaption = !scoring
+    ? null
+    : scoring.basis === "league_points"
+      ? `Scored by ${scoring.league_name ?? "your league"}'s point settings`
+      : scoring.basis === "categories" && scoring.league_name
+        ? `Scored by ${scoring.league_name}'s categories`
+        : scoring.basis === "default_points"
+          ? "Standard points scoring"
+          : null;
+  const scoringWarning = !scoring
+    ? null
+    : scoring.settings_synced === false
+      ? "Could not read your league's settings — showing standard scoring"
+      : scoring.unsupported.length
+        ? `${scoring.unsupported.map((k) => k.toUpperCase()).join(", ")} can't be scored from per-game averages and were left out`
+        : null;
+
   const toolbar = (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       {/* Search Bar */}
@@ -427,18 +463,51 @@ export default function RankingsDisplay() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {/* Format toggle */}
+        {/* Scope toggle: everyone's rankings, or the selected team's league scoring */}
+        <div className="flex rounded-md border border-border overflow-hidden text-xs">
+          {(["global", "league"] as RankingsScope[]).map((sc) => (
+            <button
+              key={sc}
+              type="button"
+              disabled={sc === "league" && teamId === null}
+              title={
+                sc === "league" && teamId === null
+                  ? "Select a team to rank by its league's scoring"
+                  : sc === "league"
+                    ? "Rank by this team's league scoring settings"
+                    : "Rank by standard scoring"
+              }
+              onClick={() => setParams({ scope: sc })}
+              className={cn(
+                "px-2.5 h-10 md:h-8 font-medium transition-colors",
+                params.scope === sc
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:text-foreground",
+                sc === "league" && teamId === null && "opacity-40 cursor-not-allowed hover:text-muted-foreground"
+              )}
+            >
+              {sc === "global" ? "Standard" : "My league"}
+            </button>
+          ))}
+        </div>
+
+        {/* Format toggle. In league scope the league decides the format, so this
+            reflects the answer rather than offering a choice. */}
         <div className="flex rounded-md border border-border overflow-hidden text-xs">
           {(["points", "categories"] as ScoringFormat[]).map((f) => (
             <button
               key={f}
               type="button"
+              disabled={isLeagueScope}
+              title={isLeagueScope ? "Your league's format — switch to Standard to choose" : undefined}
               onClick={() => setParams({ format: f })}
               className={cn(
                 "px-2.5 h-10 md:h-8 font-medium transition-colors",
                 params.format === f
                   ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+                isLeagueScope && "cursor-not-allowed",
+                isLeagueScope && params.format !== f && "opacity-40 hover:text-muted-foreground"
               )}
             >
               {f === "points" ? "Points" : "Categories"}
@@ -473,22 +542,28 @@ export default function RankingsDisplay() {
   );
 
   const caption = (
-    <p className="text-[11px] text-muted-foreground/70 px-0.5">
-      {isCategories ? (
-        <>
-          {categoriesCaption} · ranked by summed z-scores
-          {seasonCaption ? ` · ${seasonCaption}` : ""}
-          {minGamesCaption}
-          {meta ? ` · ${meta.pool_size} players` : ""}
-        </>
-      ) : (
-        <>
-          Fantasy points{params.window ? ` · last ${params.window} days` : " · full season"}
-          {seasonCaption ? ` · ${seasonCaption}` : ""}
-        </>
+    <div className="px-0.5 space-y-1">
+      <p className="text-[11px] text-muted-foreground/70">
+        {isCategories ? (
+          <>
+            {(isLeagueScope && scoringCaption) || categoriesCaption} · ranked by summed z-scores
+            {seasonCaption ? ` · ${seasonCaption}` : ""}
+            {minGamesCaption}
+            {meta ? ` · ${meta.pool_size} players` : ""}
+          </>
+        ) : (
+          <>
+            {scoringCaption ?? "Fantasy points"}
+            {params.window ? ` · last ${params.window} days` : " · full season"}
+            {seasonCaption ? ` · ${seasonCaption}` : ""}
+          </>
+        )}
+        {meta?.as_of ? ` · as of ${meta.as_of}` : ""}
+      </p>
+      {scoringWarning && (
+        <p className="text-[11px] text-status-loss/80">{scoringWarning}</p>
       )}
-      {meta?.as_of ? ` · as of ${meta.as_of}` : ""}
-    </p>
+    </div>
   );
 
   if (isLoading) {
