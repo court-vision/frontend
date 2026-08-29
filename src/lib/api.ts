@@ -13,6 +13,7 @@ import {
   TEAMS_API,
   LINEUPS_API,
   RANKINGS_API,
+  RANKINGS_INTERNAL_API,
   PLAYERS_API,
   MATCHUPS_API,
   STREAMERS_API,
@@ -466,6 +467,30 @@ class ApiClient {
     const env = await fetchJson<BaseApiResponse<RankingsPlayer[]> & { meta?: RankingsMeta | null }>(
       `${RANKINGS_API}/${qs ? `?${qs}` : ""}`,
       opts
+    );
+    const { data, message } = unwrapWithMessage(env, []);
+    return { players: data, meta: env.meta ?? null, message };
+  }
+
+  /**
+   * Rankings scored by a team's league settings rather than the platform
+   * default. `format` and `categories` are not sent: the league decides those,
+   * and the response reports which in `meta.scoring`.
+   */
+  async getLeagueRankingsWithMeta(
+    getToken: GetTokenFn,
+    teamId: number,
+    params?: Partial<RankingsParams> | null,
+    opts?: RequestOptions
+  ): Promise<RankingsResult> {
+    const p = normalizeParams(params);
+    const q = new URLSearchParams();
+    if (p.window !== null) q.set("window", String(p.window));
+    if (p.minGames !== null) q.set("min_games", String(p.minGames));
+    const qs = q.toString();
+    const env = await fetchJson<BaseApiResponse<RankingsPlayer[]> & { meta?: RankingsMeta | null }>(
+      `${RANKINGS_INTERNAL_API}/${teamId}${qs ? `?${qs}` : ""}`,
+      { ...opts, getToken }
     );
     const { data, message } = unwrapWithMessage(env, []);
     return { players: data, meta: env.meta ?? null, message };

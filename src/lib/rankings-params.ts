@@ -1,11 +1,15 @@
 /**
  * Rankings query parameters: URL <-> params <-> API query. Pure.
  *
- * URL keys: `format`, `window`, `cats` (csv), `min_games`. Defaults are
+ * URL keys: `scope`, `format`, `window`, `cats` (csv), `min_games`. Defaults are
  * omitted from the URL so `/rankings` stays canonical for the points view.
+ *
+ * `scope` never reaches `toApiQuery`: it selects which endpoint to call, not a
+ * query parameter. It is in `paramsKey` regardless, or the two scopes would
+ * share a react-query cache entry.
  */
 
-import type { RankingsParams, RankingsWindow } from "@/types/rankings";
+import type { RankingsParams, RankingsScope, RankingsWindow } from "@/types/rankings";
 import type { ScoringFormat } from "@/types/scoring";
 
 export const RANKINGS_WINDOWS: { value: RankingsWindow; label: string; long: string }[] = [
@@ -32,6 +36,7 @@ export const RANKABLE_KEYS = [
 export const STANDARD_9CAT_KEYS = ["fg_pct", "ft_pct", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"];
 
 export const DEFAULT_RANKINGS_PARAMS: RankingsParams = {
+  scope: "global",
   format: "points",
   window: null,
   categories: null,
@@ -69,6 +74,7 @@ export function isStandard9Cat(keys: string[] | null): boolean {
 }
 
 export function normalizeParams(p: Partial<RankingsParams> | null | undefined): RankingsParams {
+  const scope: RankingsScope = p?.scope === "league" ? "league" : "global";
   const format: ScoringFormat = p?.format === "categories" ? "categories" : "points";
   const window: RankingsWindow =
     typeof p?.window === "number" && isWindow(p.window) ? p.window : null;
@@ -77,7 +83,7 @@ export function normalizeParams(p: Partial<RankingsParams> | null | undefined): 
     format === "categories" && typeof p?.minGames === "number" && Number.isFinite(p.minGames)
       ? Math.min(82, Math.max(1, Math.round(p.minGames)))
       : null;
-  return { format, window, categories, minGames };
+  return { scope, format, window, categories, minGames };
 }
 
 type SearchLike = URLSearchParams | Record<string, string | string[] | undefined> | string;
@@ -92,6 +98,8 @@ function getParam(sp: SearchLike, key: string): string | null {
 /** Only the keys present in the URL (so league defaults can fill the rest). */
 export function parseRankingsSearchParams(sp: SearchLike): Partial<RankingsParams> {
   const out: Partial<RankingsParams> = {};
+  const scope = getParam(sp, "scope");
+  if (scope === "global" || scope === "league") out.scope = scope;
   const format = getParam(sp, "format");
   if (format === "points" || format === "categories") out.format = format;
   const window = getParam(sp, "window");
@@ -113,6 +121,7 @@ export function hasFormatParam(sp: SearchLike): boolean {
 /** URL query for these params, omitting defaults. Empty string for the canonical points view. */
 export function toSearchString(p: RankingsParams): string {
   const q = new URLSearchParams();
+  if (p.scope !== "global") q.set("scope", p.scope);
   if (p.format !== "points") q.set("format", p.format);
   if (p.window !== null) q.set("window", String(p.window));
   if (p.format === "categories" && p.categories && !isStandard9Cat(p.categories)) {
@@ -134,7 +143,13 @@ export function toApiQuery(p: RankingsParams): string {
   return q.toString();
 }
 
-/** Stable identity for query keys. */
+/**
+ * Stable identity for query keys.
+ *
+ * `scope` is added explicitly because it is deliberately absent from
+ * `toApiQuery` — without it, global and league rankings for the same
+ * window/format would collide on one cache entry.
+ */
 export function paramsKey(p: RankingsParams): string {
-  return toApiQuery(p) || "season-points";
+  return `${p.scope}:${toApiQuery(p) || "season-points"}`;
 }

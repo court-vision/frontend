@@ -19,6 +19,8 @@ export const STREAMERS_API = `${API_BASE}/v1/internal/streamers`;
 export const YAHOO_API = `${API_BASE}/v1/internal/yahoo`;
 export const NOTIFICATIONS_API = `${API_BASE}/v1/internal/notifications`;
 export const API_KEYS_API = `${API_BASE}/v1/internal/api-keys`;
+// Rankings scored by a team's own league settings (the public one is below).
+export const RANKINGS_INTERNAL_API = `${API_BASE}/v1/internal/rankings`;
 
 // API v1 Public endpoints
 export const LIVE_API = `${API_BASE}/v1/live`;

@@ -23,11 +23,15 @@ function readSearch(): string {
  *
  * The URL is read after mount (not via useSearchParams) so the statically
  * prerendered points table stays in the HTML for crawlers and first paint.
+ *
+ * `scope: "league"` needs a selected team, so it is downgraded to "global"
+ * when there is none — the URL can outlive a team selection (it is a
+ * bookmark, and the selection lives in local storage).
  */
 export function useRankingsParams() {
   const router = useRouter();
   const pathname = usePathname();
-  const { league, isCategories } = useSelectedTeam();
+  const { teamId, league, isCategories } = useSelectedTeam();
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -47,8 +51,11 @@ export function useRankingsParams() {
     const fromUrl = parseRankingsSearchParams(search);
     const leagueDefault: Partial<RankingsParams> =
       !urlHasFormat && isCategories ? { format: "categories", categories: leagueKeys } : {};
-    return normalizeParams({ ...leagueDefault, ...fromUrl });
-  }, [search, urlHasFormat, isCategories, leagueKeys]);
+    const resolved = normalizeParams({ ...leagueDefault, ...fromUrl });
+    return resolved.scope === "league" && teamId === null
+      ? { ...resolved, scope: "global" }
+      : resolved;
+  }, [search, urlHasFormat, isCategories, leagueKeys, teamId]);
 
   const source: RankingsParamsSource = urlHasFormat ? "url" : isCategories ? "league" : "default";
 
@@ -69,5 +76,5 @@ export function useRankingsParams() {
     [params, leagueKeys, pathname, router]
   );
 
-  return { params, setParams, source, leagueName: league?.name ?? null, leagueKeys };
+  return { params, setParams, source, teamId, leagueName: league?.name ?? null, leagueKeys };
 }
