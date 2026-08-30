@@ -107,6 +107,10 @@ export function ApiKeyManager() {
       { name: keyName, scopes, expires_days },
       {
         onSuccess: (data) => {
+          if (!data.data) {
+            toast.error(data.message || "Failed to create API key.");
+            return;
+          }
           setCreatedSecret(data.data.raw_key);
           setCreateOpen(false);
           setSecretDialogOpen(true);

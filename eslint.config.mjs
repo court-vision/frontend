@@ -3,7 +3,7 @@ import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 const config = [
   ...nextCoreWebVitals,
   {
-    ignores: [".claude/**"],
+    ignores: [".claude/**", "src/types/generated/**"],
   },
   {
     rules: {

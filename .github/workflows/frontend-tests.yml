@@ -1,0 +1,83 @@
+name: Frontend Tests
+
+# Note: GitHub disables scheduled workflows after 60 days without commits, which
+# also silences the push trigger below. If runs stop appearing, re-enable it
+# under Actions → Frontend Tests → Enable.
+
+on:
+  pull_request:
+    paths:
+      - "**"
+      - ".github/workflows/frontend-tests.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "**"
+      - ".github/workflows/frontend-tests.yml"
+  schedule:
+    # 07:00 UTC daily — same slot as the backend suites
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          # Keep in sync with the version used locally (bun --version).
+          bun-version: "1.3.3"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Unit tests
+        run: bun test src/lib
+
+      - name: Generated API types are fresh
+        # src/types/generated is codegen output from openapi/openapi.json —
+        # a stale checkout means someone edited one without the other.
+        run: |
+          bun run generate:api
+          git diff --exit-code src/types/generated
+
+  # A full production build on every PR: `tsc --noEmit` misses Next-specific
+  # failures (RSC boundary violations, route typing), and Vercel only builds
+  # after merge — this is the pre-merge gate.
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      # src/endpoints.tsx falls back to the PRODUCTION API when this is unset,
+      # and /rankings has a server-side prefetch that runs during the build.
+      # Point it at a dead port instead: the prefetch swallows failures
+      # (src/app/rankings/layout.tsx) and the client refetches at runtime.
+      NEXT_PUBLIC_API_BASE: "http://127.0.0.1:9"
+      # pk_test publishable keys are public by design — repo variable, not a secret.
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_PUBLISHABLE_KEY_TEST }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.3"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build

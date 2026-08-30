@@ -1,78 +1,39 @@
-import type { BaseApiResponse } from "./auth";
-import type { ValueKind } from "./scoring";
+/**
+ * Lineup-generation & schedule types — generated from the backend's OpenAPI
+ * schema. Shim over `src/types/generated/api.ts`; regenerate with `bun run
+ * generate:api`.
+ *
+ * Two hand-written fictions died in the codegen switch:
+ * - `SaveLineupResponse.already_exists` never existed server-side (the route's
+ *   response_model strips it) — the duplicate signal is
+ *   `error_code === "LINEUP_ALREADY_EXISTS"` on an error envelope.
+ * - `Lineup.value_kind` was declared "the response does not carry this yet";
+ *   it still doesn't, so the UI's fallback to the team's scoring format is the
+ *   only path and no longer pretends otherwise.
+ */
+import type { components } from "./generated/api";
 
-export interface SlimPlayer {
-  Name: string;
-  AvgPoints: number;
-  Team: string;
-}
+type S = components["schemas"];
 
-export interface SlimGene {
-  Day: number;
-  Additions: SlimPlayer[];
-  Removals: SlimPlayer[];
-  Roster: Record<string, SlimPlayer>;
-}
+export type SlimPlayer = S["SlimPlayer"];
+export type SlimGene = S["SlimGene-Output"];
 
-export interface Lineup {
-  Id: number | null;
-  Lineup: SlimGene[];
-  Improvement: number;
-  Timestamp: string;
-  Week: number;
-  StreamingSlots: number;
-  /**
-   * What `AvgPoints` means (default fpts). The lineup response does not carry
-   * this yet; until it does, the UI falls back to the team's scoring format.
-   */
-  value_kind?: ValueKind;
-}
+export type Lineup = S["LineupInfo-Output"];
 
-export interface LineupGenerationRequest {
-  team_id: number;
-  streaming_slots: number;
-  week: number;
-  avg_mode?: "season" | "recent";
-}
+export type LineupGenerationRequest = S["GenerateLineupReq"];
 
-export interface ScheduleWeek {
-  week: number;
-  start_date: string;
-  end_date: string;
-  /** Number of calendar days in the week (7, or 14 for the All-Star week). Absent from older API builds. */
-  game_span?: number;
-}
+export type ScheduleWeek = S["ScheduleWeek"];
 
 /** The active season as the server calendar sees it (`GET /schedule/weeks` → `season`). */
-export interface SeasonInfo {
-  key: string; // "2026-27"
-  label: string; // "2026–27"
-  espn_year: number; // 2027
-  preseason_start: string | null; // ISO date, null until the NBA publishes it
-  regular_season_start: string; // ISO date (opening night)
-  regular_season_end: string; // ISO date (last fantasy day)
-  phase: "preseason" | "regular" | "offseason";
-  season_day: number | null; // 1-based day of the regular season, null outside it
-  week_count: number;
-}
+export type SeasonInfo = S["SeasonInfo"];
 
-export interface ScheduleWeeksData {
-  weeks: ScheduleWeek[];
-  current_week: number | null;
-  /** Absent until the backend that publishes it is deployed. */
-  season?: SeasonInfo;
-}
+export type ScheduleWeeksData = S["ScheduleWeeksData"];
 
-export interface LineupSaveRequest {
-  team_id: number;
-  lineup_info: Lineup;
-}
+export type LineupSaveRequest = S["SaveLineupReq"];
 
 // Backend API Response Types
-export type ScheduleWeeksResponse = BaseApiResponse<ScheduleWeeksData>;
-export type GenerateLineupResponse = BaseApiResponse<Lineup>;
-export type GetLineupsResponse = BaseApiResponse<Lineup[]>;
-export type SaveLineupResponse = BaseApiResponse<{ lineup_id: number }> & {
-  already_exists?: boolean;
-};
-export type DeleteLineupResponse = BaseApiResponse<{ deleted: boolean }>;
+export type ScheduleWeeksResponse = S["ScheduleWeeksResp"];
+export type GenerateLineupResponse = S["GenerateLineupResp"];
+export type GetLineupsResponse = S["GetLineupsResp"];
+export type SaveLineupResponse = S["SaveLineupResp"];
+export type DeleteLineupResponse = S["DeleteLineupResp"];

@@ -107,6 +107,8 @@ export function ScoreHistoryPanel() {
         day_of_matchup: p.day_of_matchup,
         your_score: p.your_score,
         opponent_score: p.opponent_score,
+        your_categories: null,
+        opponent_categories: null,
       }))
     : history.history ?? [];
   const fmt = (v: number) => (isCategories ? String(Math.round(v)) : v.toFixed(1));

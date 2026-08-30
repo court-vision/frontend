@@ -140,7 +140,7 @@ export function LineupOptimizerPanel() {
   }, [defaultWeek, selectedWeek]);
 
   const lineup = generateMutation.data?.data ?? null;
-  const valueKind = resolveValueKind(lineup?.value_kind, isCategories);
+  const valueKind = resolveValueKind(null, isCategories);
   const isPending = generateMutation.isPending;
   const hasError = generateMutation.isError || generateMutation.data?.status === "error";
 

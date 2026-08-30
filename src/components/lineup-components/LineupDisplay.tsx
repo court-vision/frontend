@@ -26,7 +26,7 @@ export default function LineupDisplay({ lineup }: { lineup: Lineup }) {
   const { saveLineup } = useLineup();
   const { isCategories } = useSelectedTeam();
   const [currentDay, setCurrentDay] = useState(0);
-  const valueKind = resolveValueKind(lineup.value_kind, isCategories);
+  const valueKind = resolveValueKind(null, isCategories);
 
   const handleSaveLineup = () => {
     saveLineup(lineup);
@@ -295,7 +295,7 @@ export function LineupViewer({
 }) {
   const { isCategories } = useSelectedTeam();
   const [currentDay, setCurrentDay] = useState(0);
-  const valueKind = resolveValueKind(lineup.value_kind, isCategories);
+  const valueKind = resolveValueKind(null, isCategories);
 
   if (lineup.Lineup.length === 0) {
     return (

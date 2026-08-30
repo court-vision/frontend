@@ -109,6 +109,9 @@ export const MOCK_CATEGORY_MATCHUP: MatchupData = {
   matchup_period: 12,
   matchup_period_start: "2026-01-05",
   matchup_period_end: "2026-01-11",
+  schedule_week: 12,
+  scoring_period_id: null,
+  scoring_period_source: "unknown",
   your_team: {
     team_name: "Nuggets of Wisdom",
     team_id: 3,
@@ -173,6 +176,7 @@ export const MOCK_CATEGORY_LIVE_MATCHUP: LiveMatchupData = {
   matchup_period_start: "2026-01-05",
   matchup_period_end: "2026-01-11",
   game_date: "2026-01-08",
+  baseline_stale_days: 0,
   your_team: {
     team_name: "Nuggets of Wisdom",
     team_id: 3,

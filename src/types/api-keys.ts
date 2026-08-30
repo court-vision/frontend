@@ -1,37 +1,17 @@
-export interface ApiKeyListItem {
-  id: string;
-  name: string;
-  key_prefix: string; // e.g. "cv_abc1de2fg"
-  scopes: string[];
-  rate_limit: number;
-  created_at: string;
-  last_used_at: string | null;
-  expires_at: string | null;
-  is_active: boolean;
-}
+/**
+ * API-key management types — generated from the backend's OpenAPI schema.
+ *
+ * This file is a shim: the names below are the ones the app has always
+ * imported, re-exported from `src/types/generated/api.ts` (regenerate with
+ * `bun run generate:api` after updating `openapi/openapi.json`).
+ */
+import type { components } from "./generated/api";
 
-export interface CreateApiKeyRequest {
-  name: string;
-  scopes: string[];
-  expires_days?: number | null;
-}
+type S = components["schemas"];
 
-export interface CreateApiKeyResponseData {
-  raw_key: string; // Only shown once
-  key: ApiKeyListItem;
-}
-
-// Follows the BaseApiResponse<T> pattern
-export interface ApiKeyListResponse {
-  status: string;
-  message: string;
-  data: ApiKeyListItem[];
-  timestamp: string;
-}
-
-export interface CreateApiKeyResponse {
-  status: string;
-  message: string;
-  data: CreateApiKeyResponseData;
-  timestamp: string;
-}
+export type ApiKeyListItem = S["ApiKeyListItem"];
+export type CreateApiKeyRequest = S["CreateApiKeyRequest"];
+export type CreateApiKeyResponseData = S["CreateApiKeyData"];
+export type ApiKeyListResponse = S["ApiKeyListResp"];
+export type CreateApiKeyResponse = S["CreateApiKeyResp"];
+export type RevokeApiKeyResponse = S["RevokeApiKeyResp"];

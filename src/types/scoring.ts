@@ -1,12 +1,20 @@
 /**
  * Scoring-format primitives shared by team, matchup, rankings, and insights types.
  *
- * Mirrors backend `services/scoring/models.py` and `schemas/common.py`.
+ * Wire types are generated from the backend's OpenAPI schema (shim over
+ * `src/types/generated/api.ts`; regenerate with `bun run generate:api`).
  * Rates (FG%, FT%) are always 0–1 fractions on the wire.
+ *
+ * The unions kept hand-written here (`ScoringFormat`, `ValueKind`,
+ * `ValueSource`) are client-side vocabulary with no single backend schema to
+ * generate from.
  */
+import type { components } from "./generated/api";
+
+type S = components["schemas"];
 
 /** Provider-detected league scoring type (as stored on `usr.leagues`). */
-export type ScoringType = "points" | "categories" | "roto";
+export type ScoringType = S["LeagueSummary"]["scoring_type"];
 
 /** What the UI actually renders. Roto and unsynced leagues fall back to points. */
 export type ScoringFormat = "points" | "categories";
@@ -23,40 +31,15 @@ export type ValueSource = "rolling" | "recent" | "baseline";
 
 export type CategoryWinMode = "each_category" | "most_categories";
 
-export interface CategoryDef {
-  key: string;
-  label: string;
-  higher_is_better: boolean;
-  is_rate: boolean;
-}
+export type CategoryDef = S["CategoryDefResp"];
 
-export type CategoryWinner = "you" | "opp" | "tie";
+export type CategoryWinner = S["CategoryScoreItem"]["winner"];
 
-export interface CategoryScoreItem {
-  key: string;
-  label: string;
-  you: number;
-  opp: number;
-  winner: CategoryWinner;
-  higher_is_better: boolean;
-  is_rate: boolean;
-}
+export type CategoryScoreItem = S["CategoryScoreItem"];
 
-export interface CategoryComparison {
-  items: CategoryScoreItem[];
-  wins: number;
-  losses: number;
-  ties: number;
-}
+export type CategoryComparison = S["CategoryComparison"];
 
-export interface CategoryTeamScore {
-  totals: Record<string, number>; // rates are 0-1 fractions
-  raw?: Record<string, number> | null; // makes/attempts and other raw inputs
-  wins: number;
-  losses: number;
-  ties: number;
-  live_adjusted: boolean;
-}
+export type CategoryTeamScore = S["CategoryTeamScore"];
 
 /**
  * Resolve the format the UI should render, mirroring the backend resolver:
