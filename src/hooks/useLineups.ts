@@ -76,7 +76,10 @@ export function useSaveLineupMutation() {
       if (response.status === "success") {
         toast.success("Lineup saved successfully!");
         queryClient.invalidateQueries({ queryKey: lineupsKeys.lists() });
-      } else if (response.already_exists) {
+      } else if (response.error_code === "LINEUP_ALREADY_EXISTS") {
+        // The old `already_exists` flag never existed server-side (the route's
+        // response_model strips unknown fields), so this branch was dead until
+        // the generated types surfaced it.
         toast.error("This lineup has already been saved.");
       } else {
         toast.error(response.message || "Failed to save lineup.");

@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 import type { LivePlayerData } from "@/types/live";
 
-function StatusBadge({ status }: { status: 1 | 2 | 3 }) {
+function StatusBadge({ status }: { status: number }) {
   if (status === 2) {
     return (
       <span className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-green-500 shrink-0">

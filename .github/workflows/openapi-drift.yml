@@ -1,0 +1,37 @@
+name: OpenAPI Drift
+
+# Compares the live backend's /openapi.json against the checked-in snapshot the
+# API types are generated from (openapi/openapi.json). A failure means the
+# backend's contract moved and the generated types no longer describe
+# production — refresh with:
+#
+#   (in backend)   .venv/bin/python scripts/export_openapi.py > ../frontend/openapi/openapi.json
+#   (in frontend)  bun run generate:api    # then fix whatever the typecheck surfaces
+#
+# Transient drift is expected in the window between a backend schema change
+# merging and its nightly deploy reaching production — re-run the next day
+# before treating it as real. No secrets: /openapi.json is public.
+
+on:
+  schedule:
+    - cron: "30 8 * * *" # daily, after the nightly deploy window (08:00 UTC)
+  workflow_dispatch:
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Diff live schema against the snapshot
+        run: |
+          curl -fsS https://api.courtvision.dev/openapi.json | jq -S . > /tmp/live.json
+          jq -S . openapi/openapi.json > /tmp/snapshot.json
+          if ! diff -u /tmp/snapshot.json /tmp/live.json > /tmp/schema.diff; then
+            echo "::error::Live /openapi.json has drifted from openapi/openapi.json — regenerate the snapshot and types (see workflow header)."
+            head -100 /tmp/schema.diff
+            exit 1
+          fi
+          echo "Snapshot matches production."

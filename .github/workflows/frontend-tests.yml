@@ -45,6 +45,13 @@ jobs:
       - name: Unit tests
         run: bun test src/lib
 
+      - name: Generated API types are fresh
+        # src/types/generated is codegen output from openapi/openapi.json —
+        # a stale checkout means someone edited one without the other.
+        run: |
+          bun run generate:api
+          git diff --exit-code src/types/generated
+
   # A full production build on every PR: `tsc --noEmit` misses Next-specific
   # failures (RSC boundary violations, route typing), and Vercel only builds
   # after merge — this is the pre-merge gate.
