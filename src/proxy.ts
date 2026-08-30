@@ -13,7 +13,12 @@ const isProtectedRoute = createRouteMatcher([
 ]);
 
 // Public routes that should be crawlable by search engines
-const isIndexableRoute = createRouteMatcher(["/", "/rankings(.*)", "/terminal(.*)"]);
+const isIndexableRoute = createRouteMatcher([
+  "/",
+  "/rankings(.*)",
+  "/playoffs(.*)",
+  "/terminal(.*)",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
   // Protect routes that require authentication

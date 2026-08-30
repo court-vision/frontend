@@ -1,13 +1,11 @@
-"use client";
-
-import { useUser } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { DashboardView } from "@/components/dashboard/core/DashboardView";
 import { WelcomeView } from "@/components/dashboard/WelcomeView";
 
-export default function Home() {
-  const { isSignedIn } = useUser();
+export default async function Home() {
+  const { userId } = await auth();
 
-  if (!isSignedIn) {
+  if (!userId) {
     return <WelcomeView />;
   }
 
