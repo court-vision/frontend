@@ -21,6 +21,7 @@ export const NOTIFICATIONS_API = `${API_BASE}/v1/internal/notifications`;
 export const API_KEYS_API = `${API_BASE}/v1/internal/api-keys`;
 // Rankings scored by a team's own league settings (the public one is below).
 export const RANKINGS_INTERNAL_API = `${API_BASE}/v1/internal/rankings`;
+export const SQLMATE_INTERNAL_API = `${API_BASE}/v1/internal/sqlmate`;
 
 // API v1 Public endpoints
 export const LIVE_API = `${API_BASE}/v1/live`;
@@ -30,3 +31,4 @@ export const GAMES_API = `${API_BASE}/v1/games`;
 export const OWNERSHIP_API = `${API_BASE}/v1/ownership`;
 export const SCHEDULE_API = `${API_BASE}/v1/schedule`;
 export const PLAYOFF_API = `${API_BASE}/v1/playoff`;
+export const SQLMATE_API = `${API_BASE}/v1/sqlmate`;

@@ -9,9 +9,7 @@ import type {
   UpdateTableRequest,
   UpdateTableResponse,
 } from "@/types/sqlmate";
-
-const SQLMATE_ORIGIN =
-  process.env.NEXT_PUBLIC_SQLMATE_ORIGIN || "https://sqlmate-backend.courtvision.dev";
+import { SQLMATE_API, SQLMATE_INTERNAL_API } from "@/endpoints";
 
 type RequestOptions = {
   method?: "GET" | "POST";
@@ -37,6 +35,7 @@ function getErrorMessage(payload: unknown, fallback: string): string {
 
 async function apiFetch<T>(
   token: string | null,
+  baseUrl: string,
   path: string,
   options: RequestOptions = {}
 ): Promise<T> {
@@ -45,7 +44,7 @@ async function apiFetch<T>(
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const response = await fetch(`${SQLMATE_ORIGIN}${path}`, {
+  const response = await fetch(`${baseUrl}${path}`, {
     method: options.method || "GET",
     headers,
     credentials: "include",
@@ -62,14 +61,14 @@ async function apiFetch<T>(
 }
 
 export async function getSchema(token: string | null): Promise<SchemaTable[]> {
-  return apiFetch<SchemaTable[]>(token, "/schema");
+  return apiFetch<SchemaTable[]>(token, SQLMATE_API, "/schema");
 }
 
 export async function runVisualQuery(
   token: string | null,
   params: QueryRequest
 ): Promise<QueryResponse> {
-  return apiFetch<QueryResponse>(token, "/query", {
+  return apiFetch<QueryResponse>(token, SQLMATE_API, "/query", {
     method: "POST",
     body: params,
   });
@@ -79,14 +78,14 @@ export async function saveTable(
   token: string,
   req: SaveTableRequest
 ): Promise<SaveTableResponse> {
-  return apiFetch<SaveTableResponse>(token, "/users/save_table", {
+  return apiFetch<SaveTableResponse>(token, SQLMATE_INTERNAL_API, "/users/save_table", {
     method: "POST",
     body: req,
   });
 }
 
 export async function getTables(token: string): Promise<GetTablesResponse> {
-  return apiFetch<GetTablesResponse>(token, "/users/get_tables");
+  return apiFetch<GetTablesResponse>(token, SQLMATE_INTERNAL_API, "/users/get_tables");
 }
 
 export async function getTableData(
@@ -95,6 +94,7 @@ export async function getTableData(
 ): Promise<QueryResponse> {
   return apiFetch<QueryResponse>(
     token,
+    SQLMATE_INTERNAL_API,
     `/users/get_table_data?table_name=${encodeURIComponent(name)}`
   );
 }
@@ -103,7 +103,7 @@ export async function deleteTables(
   token: string,
   names: string[]
 ): Promise<DeleteTableResponse> {
-  return apiFetch<DeleteTableResponse>(token, "/users/delete_table", {
+  return apiFetch<DeleteTableResponse>(token, SQLMATE_INTERNAL_API, "/users/delete_table", {
     method: "POST",
     body: { table_names: names },
   });
@@ -113,7 +113,7 @@ export async function updateTable(
   token: string,
   params: UpdateTableRequest
 ): Promise<UpdateTableResponse> {
-  return apiFetch<UpdateTableResponse>(token, "/users/update_table", {
+  return apiFetch<UpdateTableResponse>(token, SQLMATE_INTERNAL_API, "/users/update_table", {
     method: "POST",
     body: params,
   });
