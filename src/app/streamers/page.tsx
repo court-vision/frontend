@@ -1,19 +1,5 @@
-"use client";
+import PageClient from "./PageClient";
 
-import StreamerDisplay from "@/components/streamers-components/StreamerDisplay";
-
-export default function Streamers() {
-  return (
-    <div className="space-y-4 animate-slide-up-fade">
-      <section>
-        <h1 className="font-display text-2xl font-bold tracking-tight">
-          Streamers
-        </h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          Find the best free agents to stream for the week or pick up today.
-        </p>
-      </section>
-      <StreamerDisplay />
-    </div>
-  );
+export default function Page() {
+  return <PageClient />;
 }

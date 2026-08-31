@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/rankings", "/terminal", "/sign-in", "/sign-up"],
+        allow: ["/", "/rankings", "/playoffs", "/terminal", "/sign-in", "/sign-up"],
         disallow: [
           "/your-teams",
           "/lineup-generation",
