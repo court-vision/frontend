@@ -24,6 +24,7 @@ import {
   PLAYOFF_API,
   NOTIFICATIONS_API,
   API_KEYS_API,
+  DRAFTS_API,
 } from "@/endpoints";
 import type {
   RosterPlayer,
@@ -94,6 +95,17 @@ import type {
   NotificationTeamPreferenceSingleResponse,
 } from "@/types/notifications";
 import type { TeamInsightsData, TeamInsightsResponse } from "@/types/team-insights";
+import type {
+  DraftBoardMeta,
+  DraftBoardResult,
+  DraftBoardRow,
+  DraftPick,
+  DraftPickCreate,
+  DraftRecommendation,
+  DraftSession,
+  DraftSessionCreate,
+  DraftSessionUpdate,
+} from "@/types/draft";
 
 /** The lineup optimiser runs a genetic algorithm; give it well beyond the default 15 s. */
 const LINEUP_GENERATION_TIMEOUT_MS = 100_000;
@@ -634,6 +646,128 @@ class ApiClient {
       ? `${PLAYOFF_API}/bracket?season=${season}`
       : `${PLAYOFF_API}/bracket`;
     return nullOn404(this.getData<PlayoffBracketData>(url));
+  }
+
+  // Drafts API (internal - Clerk auth required)
+
+  async getDraftSessions(getToken: GetTokenFn): Promise<DraftSession[]> {
+    const env = await fetchJson<BaseApiResponse<DraftSession[]>>(DRAFTS_API, { getToken });
+    return unwrap(env, []);
+  }
+
+  async getDraftSession(getToken: GetTokenFn, sessionId: number): Promise<DraftSession> {
+    const env = await fetchJson<BaseApiResponse<DraftSession>>(`${DRAFTS_API}/${sessionId}`, {
+      getToken,
+    });
+    return unwrap(env);
+  }
+
+  async createDraftSession(getToken: GetTokenFn, body: DraftSessionCreate): Promise<DraftSession> {
+    const env = await fetchJson<BaseApiResponse<DraftSession>>(DRAFTS_API, {
+      getToken,
+      method: "POST",
+      body,
+    });
+    return unwrap(env);
+  }
+
+  async updateDraftSession(
+    getToken: GetTokenFn,
+    sessionId: number,
+    body: DraftSessionUpdate
+  ): Promise<DraftSession> {
+    const env = await fetchJson<BaseApiResponse<DraftSession>>(`${DRAFTS_API}/${sessionId}`, {
+      getToken,
+      method: "PATCH",
+      body,
+    });
+    return unwrap(env);
+  }
+
+  /**
+   * The room's board. `meta` and `recommendations` ride beside `data` on the
+   * envelope, so this composes them rather than unwrapping and losing them
+   * (the `getRankingsWithMeta` pattern).
+   */
+  async getDraftBoard(
+    getToken: GetTokenFn,
+    sessionId: number,
+    opts?: RequestOptions
+  ): Promise<DraftBoardResult> {
+    const env = await fetchJson<
+      BaseApiResponse<DraftBoardRow[]> & {
+        meta?: DraftBoardMeta | null;
+        recommendations?: DraftRecommendation[] | null;
+      }
+    >(`${DRAFTS_API}/${sessionId}/board`, { ...opts, getToken });
+    const { data, message } = unwrapWithMessage(env, []);
+    return {
+      rows: data,
+      recommendations: env.recommendations ?? [],
+      meta: env.meta ?? null,
+      message,
+    };
+  }
+
+  /**
+   * The stateless big board for a team, with pick state passed in. No session
+   * required, and it carries no recommendations — use `getDraftBoard` once a
+   * room is open.
+   */
+  async getTeamDraftBoard(
+    getToken: GetTokenFn,
+    teamId: number,
+    picked: number[] = [],
+    mine: number[] = [],
+    opts?: RequestOptions
+  ): Promise<DraftBoardResult> {
+    const q = new URLSearchParams({ team_id: String(teamId) });
+    for (const id of picked) q.append("picked", String(id));
+    for (const id of mine) q.append("mine", String(id));
+    const env = await fetchJson<
+      BaseApiResponse<DraftBoardRow[]> & {
+        meta?: DraftBoardMeta | null;
+        recommendations?: DraftRecommendation[] | null;
+      }
+    >(`${DRAFTS_API}/board?${q.toString()}`, { ...opts, getToken });
+    const { data, message } = unwrapWithMessage(env, []);
+    return {
+      rows: data,
+      recommendations: env.recommendations ?? [],
+      meta: env.meta ?? null,
+      message,
+    };
+  }
+
+  /**
+   * Record a pick. Deliberately NOT `raw: true`: the route answers 400/404/409/422
+   * for real, and the pick mutation needs those to reject so its optimistic
+   * update rolls back.
+   */
+  async addDraftPick(
+    getToken: GetTokenFn,
+    sessionId: number,
+    body: DraftPickCreate
+  ): Promise<DraftPick> {
+    const env = await fetchJson<BaseApiResponse<DraftPick>>(`${DRAFTS_API}/${sessionId}/picks`, {
+      getToken,
+      method: "POST",
+      body,
+    });
+    return unwrap(env);
+  }
+
+  /** Undo a pick; resolves to the overall pick number that was removed. */
+  async deleteDraftPick(
+    getToken: GetTokenFn,
+    sessionId: number,
+    overallPick: number
+  ): Promise<number> {
+    const env = await fetchJson<BaseApiResponse<number>>(
+      `${DRAFTS_API}/${sessionId}/picks/${overallPick}`,
+      { getToken, method: "DELETE" }
+    );
+    return unwrap(env);
   }
 }
 

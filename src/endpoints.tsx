@@ -19,6 +19,8 @@ export const STREAMERS_API = `${API_BASE}/v1/internal/streamers`;
 export const YAHOO_API = `${API_BASE}/v1/internal/yahoo`;
 export const NOTIFICATIONS_API = `${API_BASE}/v1/internal/notifications`;
 export const API_KEYS_API = `${API_BASE}/v1/internal/api-keys`;
+// Draft Lab: sessions, picks, and the board scored for either.
+export const DRAFTS_API = `${API_BASE}/v1/internal/drafts`;
 // Rankings scored by a team's own league settings (the public one is below).
 export const RANKINGS_INTERNAL_API = `${API_BASE}/v1/internal/rankings`;
 export const SQLMATE_INTERNAL_API = `${API_BASE}/v1/internal/sqlmate`;
