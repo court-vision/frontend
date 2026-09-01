@@ -159,6 +159,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/drafts/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the draft board under a team's league scoring
+         * @description Every draftable player, valued by the scoring settings of the league this team belongs to (point weights, or the fpts-scale category value for a category league), from ESPN's published projections where available and last season's per-game baseline otherwise. Rows carry the latest ESPN market rank/ADP and a `market_rank − cv_rank` delta, and are flagged `cap_blocked` when the league's hard position caps leave no room for them on the caller's roster.
+         *
+         *     `cv_rank` is computed over the full pool before `picked`/`mine` are removed, so it stays stable and market-comparable throughout a draft.
+         */
+        get: operations["get_draft_board_v1_internal_drafts_board_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/espn/get_freeagent_data": {
         parameters: {
             query?: never;
@@ -594,6 +616,91 @@ export interface paths {
         get: operations["get_league_rankings_v1_internal_rankings__team_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/sqlmate/users/delete_table": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Delete saved user tables */
+        post: operations["delete_table_v1_internal_sqlmate_users_delete_table_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/sqlmate/users/get_table_data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one saved table */
+        get: operations["get_table_data_v1_internal_sqlmate_users_get_table_data_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/sqlmate/users/get_tables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the caller's saved tables */
+        get: operations["get_tables_v1_internal_sqlmate_users_get_tables_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/sqlmate/users/save_table": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save a query as a user table */
+        post: operations["save_table_v1_internal_sqlmate_users_save_table_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/sqlmate/users/update_table": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update a saved user table */
+        post: operations["update_table_v1_internal_sqlmate_users_update_table_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1313,6 +1420,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sqlmate/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run a visual query */
+        post: operations["run_query_v1_sqlmate_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sqlmate/schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the query-builder schema */
+        get: operations["get_schema_v1_sqlmate_schema_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/teams/{team_abbrev}/live-game": {
         parameters: {
             query?: never;
@@ -1476,7 +1617,7 @@ export interface components {
          * @description Standard API response statuses
          * @enum {string}
          */
-        ApiStatus: "success" | "error" | "bad_request" | "validation_error" | "authentication_error" | "authorization_error" | "not_found" | "conflict" | "rate_limited" | "server_error";
+        ApiStatus: "success" | "error" | "skipped" | "bad_request" | "validation_error" | "authentication_error" | "authorization_error" | "not_found" | "conflict" | "rate_limited" | "server_error";
         /** AvgStats */
         AvgStats: {
             /** Avg Assists */
@@ -1948,6 +2089,161 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** DraftBoardMeta */
+        DraftBoardMeta: {
+            /** Available */
+            available: number;
+            /** Baseline Count */
+            baseline_count: number;
+            /**
+             * Categories
+             * @default []
+             */
+            categories: components["schemas"]["CategoryDefResp"][];
+            /** Format */
+            format: string;
+            /** Market As Of */
+            market_as_of: string | null;
+            /** Pool Size */
+            pool_size: number;
+            /**
+             * Position Limits
+             * @default {}
+             */
+            position_limits: {
+                [key: string]: number;
+            };
+            /** Projection Count */
+            projection_count: number;
+            /** Projections As Of */
+            projections_as_of: string | null;
+            /** Season */
+            season: string;
+            /** Settings Synced */
+            settings_synced: boolean | null;
+            /**
+             * Unsupported
+             * @description League scoring keys the board cannot honor: dd/td are per-game bonuses, and the aggregate projection and season-baseline lines the board is valued from cannot carry them
+             * @default []
+             */
+            unsupported: string[];
+            /**
+             * Value Kind
+             * @enum {string}
+             */
+            value_kind: "fpts" | "cat_value";
+        };
+        /** DraftBoardResp */
+        DraftBoardResp: {
+            /** Data */
+            data: components["schemas"]["DraftBoardRow"][];
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            meta: components["schemas"]["DraftBoardMeta"] | null;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** DraftBoardRow */
+        DraftBoardRow: {
+            /**
+             * Adp
+             * @description Average draft position across real ESPN drafts
+             */
+            adp: number | null;
+            /**
+             * Auction Value
+             * @description ESPN editorial auction value
+             */
+            auction_value: number | null;
+            /**
+             * Cap Blocked
+             * @description Drafting this player would exceed a hard per-position roster cap (league position_limits vs the caller's current roster). Shown greyed with a CAP badge, never hidden.
+             * @default false
+             */
+            cap_blocked: boolean;
+            /**
+             * Categories
+             * @description Per-game value per category; rates are 0-1 fractions (None when the player has no attempts)
+             */
+            categories: {
+                [key: string]: number | null;
+            } | null;
+            /**
+             * Category Z
+             * @description Signed z-score per category over the full pool (positive is always good; TOV is inverted)
+             */
+            category_z: {
+                [key: string]: number;
+            } | null;
+            /**
+             * Cv Rank
+             * @description Rank by CV value over the full pool, picked players included — a pre-draft big board rank that stays stable (and comparable to market_rank) as picks remove rows
+             */
+            cv_rank: number;
+            /** Espn Id */
+            espn_id: number | null;
+            /**
+             * Fpts Avg
+             * @description Per-game fantasy points under the platform default formula (familiar scale, tiebreak)
+             */
+            fpts_avg: number;
+            /**
+             * Last Season Gp
+             * @description Games played last season; None for rookies
+             */
+            last_season_gp: number | null;
+            /**
+             * Market Delta
+             * @description market_rank − cv_rank; positive means the market ranks the player worse than CV does (a bargain)
+             */
+            market_delta: number | null;
+            /**
+             * Market Rank
+             * @description ESPN editorial overall draft rank (latest snapshot)
+             */
+            market_rank: number | null;
+            /** Name */
+            name: string;
+            /**
+             * Player Id
+             * @description NBA player id (nba.players.id) — the id terminal panels expect
+             */
+            player_id: number;
+            /**
+             * Position
+             * @description NBA-style position (G, F, C, F-C, ...)
+             */
+            position: string | null;
+            /**
+             * Projected Gp
+             * @description Projected games this season, when a projection exists
+             */
+            projected_gp: number | null;
+            /**
+             * Score
+             * @description Sum of category z-scores; what `value` is mapped from
+             */
+            score: number | null;
+            /**
+             * Team
+             * @description NBA team abbreviation from last season's stats; None for rookies (and anyone without a baseline row)
+             */
+            team: string | null;
+            /**
+             * Value
+             * @description League-scored per-game value: fantasy points under the league's weights, or the fpts-scale category value
+             */
+            value: number;
+            /**
+             * Value Source
+             * @description projection: ESPN's published per-game projection. baseline: last season's per-game averages.
+             * @enum {string}
+             */
+            value_source: "projection" | "baseline";
+        };
         /**
          * EnrichedRosterPlayer
          * @description Roster player with schedule and multi-window stat data.
@@ -2300,6 +2596,13 @@ export interface components {
             categories: components["schemas"]["CategoryDefResp"][];
             /** Category Win Mode */
             category_win_mode: ("each_category" | "most_categories") | null;
+            /**
+             * Draft Settings
+             * @default {}
+             */
+            draft_settings: {
+                [key: string]: unknown;
+            };
             /** Id */
             id: number;
             /**
@@ -2316,6 +2619,13 @@ export interface components {
              * @default {}
              */
             point_weights: {
+                [key: string]: number;
+            };
+            /**
+             * Position Limits
+             * @default {}
+             */
+            position_limits: {
                 [key: string]: number;
             };
             provider: components["schemas"]["FantasyProvider"];
@@ -5395,6 +5705,46 @@ export interface operations {
             };
         };
     };
+    get_draft_board_v1_internal_drafts_board_get: {
+        parameters: {
+            query: {
+                /** @description NBA player ids already drafted by anyone; removed from the board */
+                picked?: number[];
+                /** @description NBA player ids drafted by the caller (no need to repeat them in `picked`); also removed, and counted against the league's position caps */
+                mine?: number[];
+                team_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board retrieved successfully (empty data with a message before any season data exists) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftBoardResp"];
+                };
+            };
+            /** @description No such team, or it does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid picked/mine player ids */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_free_agents_v1_internal_espn_get_freeagent_data_post: {
         parameters: {
             query?: never;
@@ -6137,6 +6487,162 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    delete_table_v1_internal_sqlmate_users_delete_table_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_table_data_v1_internal_sqlmate_users_get_table_data_get: {
+        parameters: {
+            query: {
+                table_name: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_tables_v1_internal_sqlmate_users_get_tables_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    save_table_v1_internal_sqlmate_users_save_table_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_table_v1_internal_sqlmate_users_update_table_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -7339,6 +7845,61 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    run_query_v1_sqlmate_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_schema_v1_sqlmate_schema_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
             };
         };
     };

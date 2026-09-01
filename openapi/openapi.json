@@ -302,6 +302,7 @@
         "enum": [
           "success",
           "error",
+          "skipped",
           "bad_request",
           "validation_error",
           "authentication_error",
@@ -1623,6 +1624,401 @@
         "title": "DeleteLineupResp",
         "type": "object"
       },
+      "DraftBoardMeta": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "integer"
+          },
+          "baseline_count": {
+            "title": "Baseline Count",
+            "type": "integer"
+          },
+          "categories": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CategoryDefResp"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "market_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market As Of"
+          },
+          "pool_size": {
+            "title": "Pool Size",
+            "type": "integer"
+          },
+          "position_limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "title": "Position Limits",
+            "type": "object"
+          },
+          "projection_count": {
+            "title": "Projection Count",
+            "type": "integer"
+          },
+          "projections_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projections As Of"
+          },
+          "season": {
+            "title": "Season",
+            "type": "string"
+          },
+          "settings_synced": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings Synced"
+          },
+          "unsupported": {
+            "default": [],
+            "description": "League scoring keys the board cannot honor: dd/td are per-game bonuses, and the aggregate projection and season-baseline lines the board is valued from cannot carry them",
+            "items": {
+              "type": "string"
+            },
+            "title": "Unsupported",
+            "type": "array"
+          },
+          "value_kind": {
+            "enum": [
+              "fpts",
+              "cat_value"
+            ],
+            "title": "Value Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "season",
+          "format",
+          "value_kind",
+          "pool_size",
+          "available",
+          "projection_count",
+          "baseline_count",
+          "projections_as_of",
+          "market_as_of",
+          "position_limits",
+          "categories",
+          "settings_synced",
+          "unsupported"
+        ],
+        "title": "DraftBoardMeta",
+        "type": "object"
+      },
+      "DraftBoardResp": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/DraftBoardRow"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftBoardMeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp",
+          "meta"
+        ],
+        "title": "DraftBoardResp",
+        "type": "object"
+      },
+      "DraftBoardRow": {
+        "properties": {
+          "adp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Average draft position across real ESPN drafts",
+            "title": "Adp"
+          },
+          "auction_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN editorial auction value",
+            "title": "Auction Value"
+          },
+          "cap_blocked": {
+            "default": false,
+            "description": "Drafting this player would exceed a hard per-position roster cap (league position_limits vs the caller's current roster). Shown greyed with a CAP badge, never hidden.",
+            "title": "Cap Blocked",
+            "type": "boolean"
+          },
+          "categories": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Per-game value per category; rates are 0-1 fractions (None when the player has no attempts)",
+            "title": "Categories"
+          },
+          "category_z": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signed z-score per category over the full pool (positive is always good; TOV is inverted)",
+            "title": "Category Z"
+          },
+          "cv_rank": {
+            "description": "Rank by CV value over the full pool, picked players included \u2014 a pre-draft big board rank that stays stable (and comparable to market_rank) as picks remove rows",
+            "title": "Cv Rank",
+            "type": "integer"
+          },
+          "espn_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Id"
+          },
+          "fpts_avg": {
+            "description": "Per-game fantasy points under the platform default formula (familiar scale, tiebreak)",
+            "title": "Fpts Avg",
+            "type": "number"
+          },
+          "last_season_gp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Games played last season; None for rookies",
+            "title": "Last Season Gp"
+          },
+          "market_delta": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "market_rank \u2212 cv_rank; positive means the market ranks the player worse than CV does (a bargain)",
+            "title": "Market Delta"
+          },
+          "market_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN editorial overall draft rank (latest snapshot)",
+            "title": "Market Rank"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "description": "NBA player id (nba.players.id) \u2014 the id terminal panels expect",
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA-style position (G, F, C, F-C, ...)",
+            "title": "Position"
+          },
+          "projected_gp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Projected games this season, when a projection exists",
+            "title": "Projected Gp"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sum of category z-scores; what `value` is mapped from",
+            "title": "Score"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA team abbreviation from last season's stats; None for rookies (and anyone without a baseline row)",
+            "title": "Team"
+          },
+          "value": {
+            "description": "League-scored per-game value: fantasy points under the league's weights, or the fpts-scale category value",
+            "title": "Value",
+            "type": "number"
+          },
+          "value_source": {
+            "description": "projection: ESPN's published per-game projection. baseline: last season's per-game averages.",
+            "enum": [
+              "projection",
+              "baseline"
+            ],
+            "title": "Value Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "espn_id",
+          "name",
+          "team",
+          "position",
+          "cv_rank",
+          "value",
+          "value_source",
+          "last_season_gp",
+          "projected_gp",
+          "fpts_avg",
+          "market_rank",
+          "adp",
+          "auction_value",
+          "market_delta",
+          "cap_blocked",
+          "categories",
+          "category_z",
+          "score"
+        ],
+        "title": "DraftBoardRow",
+        "type": "object"
+      },
       "EnrichedRosterPlayer": {
         "description": "Roster player with schedule and multi-window stat data.",
         "properties": {
@@ -2404,6 +2800,12 @@
             ],
             "title": "Category Win Mode"
           },
+          "draft_settings": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Draft Settings",
+            "type": "object"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -2431,6 +2833,14 @@
             },
             "default": {},
             "title": "Point Weights",
+            "type": "object"
+          },
+          "position_limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "title": "Position Limits",
             "type": "object"
           },
           "provider": {
@@ -2524,6 +2934,8 @@
           "scoring_preview",
           "matchup_periods",
           "roster_slots",
+          "position_limits",
+          "draft_settings",
           "unsupported",
           "warnings"
         ],
@@ -10651,6 +11063,80 @@
         ]
       }
     },
+    "/v1/internal/drafts/board": {
+      "get": {
+        "description": "Every draftable player, valued by the scoring settings of the league this team belongs to (point weights, or the fpts-scale category value for a category league), from ESPN's published projections where available and last season's per-game baseline otherwise. Rows carry the latest ESPN market rank/ADP and a `market_rank \u2212 cv_rank` delta, and are flagged `cap_blocked` when the league's hard position caps leave no room for them on the caller's roster.\n\n`cv_rank` is computed over the full pool before `picked`/`mine` are removed, so it stays stable and market-comparable throughout a draft.",
+        "operationId": "get_draft_board_v1_internal_drafts_board_get",
+        "parameters": [
+          {
+            "description": "NBA player ids already drafted by anyone; removed from the board",
+            "in": "query",
+            "name": "picked",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "NBA player ids already drafted by anyone; removed from the board",
+              "items": {
+                "type": "integer"
+              },
+              "title": "Picked",
+              "type": "array"
+            }
+          },
+          {
+            "description": "NBA player ids drafted by the caller (no need to repeat them in `picked`); also removed, and counted against the league's position caps",
+            "in": "query",
+            "name": "mine",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "NBA player ids drafted by the caller (no need to repeat them in `picked`); also removed, and counted against the league's position caps",
+              "items": {
+                "type": "integer"
+              },
+              "title": "Mine",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftBoardResp"
+                }
+              }
+            },
+            "description": "Board retrieved successfully (empty data with a message before any season data exists)"
+          },
+          "404": {
+            "description": "No such team, or it does not belong to the caller"
+          },
+          "422": {
+            "description": "Invalid picked/mine player ids"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get the draft board under a team's league scoring",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
     "/v1/internal/espn/get_freeagent_data": {
       "post": {
         "operationId": "get_free_agents_v1_internal_espn_get_freeagent_data_post",
@@ -11798,6 +12284,213 @@
         "summary": "Get player rankings under a team's league scoring",
         "tags": [
           "Rankings"
+        ]
+      }
+    },
+    "/v1/internal/sqlmate/users/delete_table": {
+      "post": {
+        "operationId": "delete_table_v1_internal_sqlmate_users_delete_table_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete saved user tables",
+        "tags": [
+          "SQLMate"
+        ]
+      }
+    },
+    "/v1/internal/sqlmate/users/get_table_data": {
+      "get": {
+        "operationId": "get_table_data_v1_internal_sqlmate_users_get_table_data_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get one saved table",
+        "tags": [
+          "SQLMate"
+        ]
+      }
+    },
+    "/v1/internal/sqlmate/users/get_tables": {
+      "get": {
+        "operationId": "get_tables_v1_internal_sqlmate_users_get_tables_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List the caller's saved tables",
+        "tags": [
+          "SQLMate"
+        ]
+      }
+    },
+    "/v1/internal/sqlmate/users/save_table": {
+      "post": {
+        "operationId": "save_table_v1_internal_sqlmate_users_save_table_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save a query as a user table",
+        "tags": [
+          "SQLMate"
+        ]
+      }
+    },
+    "/v1/internal/sqlmate/users/update_table": {
+      "post": {
+        "operationId": "update_table_v1_internal_sqlmate_users_update_table_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update a saved user table",
+        "tags": [
+          "SQLMate"
         ]
       }
     },
@@ -13728,6 +14421,66 @@
         "summary": "Get all schedule weeks",
         "tags": [
           "Schedule"
+        ]
+      }
+    },
+    "/v1/sqlmate/query": {
+      "post": {
+        "operationId": "run_query_v1_sqlmate_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run a visual query",
+        "tags": [
+          "SQLMate"
+        ]
+      }
+    },
+    "/v1/sqlmate/schema": {
+      "get": {
+        "operationId": "get_schema_v1_sqlmate_schema_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get the query-builder schema",
+        "tags": [
+          "SQLMate"
         ]
       }
     },
