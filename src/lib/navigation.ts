@@ -10,6 +10,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Calendar,
+  ClipboardList,
   Code,
   Database,
   Home,
@@ -159,6 +160,17 @@ export const NAV_ITEMS: NavItem[] = [
     mobile: true,
     palette: true,
     tab: 2,
+  },
+  {
+    href: "/draft",
+    label: "Draft",
+    mobileLabel: "Draft Lab",
+    icon: ClipboardList,
+    description: "Draft-day board, recommendations and pick tracking",
+    keywords: ["draft", "draft lab", "board", "adp", "picks", "draft day"],
+    cmdKey: "d",
+    mobile: true,
+    palette: true,
   },
   {
     href: "/manage-teams",

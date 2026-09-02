@@ -1646,6 +1646,17 @@
             "title": "Format",
             "type": "string"
           },
+          "league_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Size"
+          },
           "market_as_of": {
             "anyOf": [
               {
@@ -1658,6 +1669,11 @@
             ],
             "title": "Market As Of"
           },
+          "market_only_count": {
+            "default": 0,
+            "title": "Market Only Count",
+            "type": "integer"
+          },
           "pool_size": {
             "title": "Pool Size",
             "type": "integer"
@@ -1669,6 +1685,17 @@
             "default": {},
             "title": "Position Limits",
             "type": "object"
+          },
+          "position_source": {
+            "default": "none",
+            "description": "Where position data came from: espn (default_position_id on the market snapshot, exact caps), coarse (nba.players G/F/C, caps enforced per group only), none",
+            "enum": [
+              "espn",
+              "coarse",
+              "none"
+            ],
+            "title": "Position Source",
+            "type": "string"
           },
           "projection_count": {
             "title": "Projection Count",
@@ -1686,9 +1713,28 @@
             ],
             "title": "Projections As Of"
           },
+          "roster_slots": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "title": "Roster Slots",
+            "type": "object"
+          },
           "season": {
             "title": "Season",
             "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
           },
           "settings_synced": {
             "anyOf": [
@@ -1727,8 +1773,13 @@
           "available",
           "projection_count",
           "baseline_count",
+          "market_only_count",
           "projections_as_of",
           "market_as_of",
+          "session_id",
+          "league_size",
+          "roster_slots",
+          "position_source",
           "position_limits",
           "categories",
           "settings_synced",
@@ -1771,6 +1822,15 @@
               }
             ]
           },
+          "recommendations": {
+            "default": [],
+            "description": "Best available for the caller's next pick, best first. Cap-blocked players and rows with no value are never recommended. Empty when nothing can be valued.",
+            "items": {
+              "$ref": "#/components/schemas/DraftRecommendation"
+            },
+            "title": "Recommendations",
+            "type": "array"
+          },
           "status": {
             "$ref": "#/components/schemas/ApiStatus"
           },
@@ -1792,6 +1852,7 @@
           "data",
           "error_code",
           "timestamp",
+          "recommendations",
           "meta"
         ],
         "title": "DraftBoardResp",
@@ -1867,9 +1928,16 @@
             "title": "Category Z"
           },
           "cv_rank": {
-            "description": "Rank by CV value over the full pool, picked players included \u2014 a pre-draft big board rank that stays stable (and comparable to market_rank) as picks remove rows",
-            "title": "Cv Rank",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rank by CV value over the full pool, picked players included \u2014 a pre-draft big board rank that stays stable (and comparable to market_rank) as picks remove rows. None for market-only rows, which carry no value to rank.",
+            "title": "Cv Rank"
           },
           "espn_id": {
             "anyOf": [
@@ -1883,9 +1951,28 @@
             "title": "Espn Id"
           },
           "fpts_avg": {
-            "description": "Per-game fantasy points under the platform default formula (familiar scale, tiebreak)",
-            "title": "Fpts Avg",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Per-game fantasy points under the platform default formula (familiar scale, tiebreak); None for market-only rows",
+            "title": "Fpts Avg"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN injury status (OUT, DAY_TO_DAY, ...); None when active or unknown",
+            "title": "Injury Status"
           },
           "last_season_gp": {
             "anyOf": [
@@ -1944,6 +2031,33 @@
             "description": "NBA-style position (G, F, C, F-C, ...)",
             "title": "Position"
           },
+          "positions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN lineup slots the player is eligible for, verbatim and authoritative (a pure centre is simply not F-eligible). None until the market snapshot carries them.",
+            "title": "Positions"
+          },
+          "primary_position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN primary position (PG/SG/SF/PF/C) from the market snapshot \u2014 what hard position caps are counted against. None until the market snapshot carries the player.",
+            "title": "Primary Position"
+          },
           "projected_gp": {
             "anyOf": [
               {
@@ -1981,15 +2095,23 @@
             "title": "Team"
           },
           "value": {
-            "description": "League-scored per-game value: fantasy points under the league's weights, or the fpts-scale category value",
-            "title": "Value",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "League-scored per-game value: fantasy points under the league's weights, or the fpts-scale category value. None for a market-only row \u2014 a player ESPN ranks but neither a projection nor last season's baseline can value (a rookie, before projections).",
+            "title": "Value"
           },
           "value_source": {
-            "description": "projection: ESPN's published per-game projection. baseline: last season's per-game averages.",
+            "description": "projection: ESPN's published per-game projection. baseline: last season's per-game averages. market: no stat line at all \u2014 the row exists because ESPN drafts him.",
             "enum": [
               "projection",
-              "baseline"
+              "baseline",
+              "market"
             ],
             "title": "Value Source",
             "type": "string"
@@ -2001,6 +2123,9 @@
           "name",
           "team",
           "position",
+          "primary_position",
+          "positions",
+          "injury_status",
           "cv_rank",
           "value",
           "value_source",
@@ -2017,6 +2142,1041 @@
           "score"
         ],
         "title": "DraftBoardRow",
+        "type": "object"
+      },
+      "DraftKeeper-Input": {
+        "description": "One pre-designated keeper. Identity is whatever the client knows; the\nroom resolves it the same way a pick is resolved.",
+        "properties": {
+          "espn_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Player Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA player id (nba.players.id)",
+            "title": "Player Id"
+          },
+          "round": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Round the keeper costs, when the league assigns one",
+            "title": "Round"
+          }
+        },
+        "title": "DraftKeeper",
+        "type": "object"
+      },
+      "DraftKeeper-Output": {
+        "description": "One pre-designated keeper. Identity is whatever the client knows; the\nroom resolves it the same way a pick is resolved.",
+        "properties": {
+          "espn_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Player Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA player id (nba.players.id)",
+            "title": "Player Id"
+          },
+          "round": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Round the keeper costs, when the league assigns one",
+            "title": "Round"
+          }
+        },
+        "required": [
+          "player_id",
+          "espn_player_id",
+          "name",
+          "round"
+        ],
+        "title": "DraftKeeper",
+        "type": "object"
+      },
+      "DraftPickCreate": {
+        "description": "One pick. The player is identified by whatever the client has; the\nservice resolves NBA id -> ESPN id -> normalized name, in that order.",
+        "properties": {
+          "bid": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Auction price (v2; ignored by snake drafts)",
+            "title": "Bid"
+          },
+          "by_me": {
+            "default": false,
+            "description": "Drafted by the caller (counts against position caps and fills the roster zone)",
+            "title": "By Me",
+            "type": "boolean"
+          },
+          "espn_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Player Id"
+          },
+          "overall_pick": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the session's next unused pick",
+            "title": "Overall Pick"
+          },
+          "player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA player id (nba.players.id)",
+            "title": "Player Id"
+          },
+          "player_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Name"
+          },
+          "source": {
+            "default": "manual",
+            "enum": [
+              "manual",
+              "espn_sync",
+              "import"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "title": "DraftPickCreate",
+        "type": "object"
+      },
+      "DraftPickDeleteResponse": {
+        "description": "The overall pick number that was undone.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DraftPickDeleteResponse",
+        "type": "object"
+      },
+      "DraftPickResp": {
+        "properties": {
+          "bid": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bid"
+          },
+          "by_me": {
+            "default": false,
+            "title": "By Me",
+            "type": "boolean"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "espn_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Player Id"
+          },
+          "overall_pick": {
+            "title": "Overall Pick",
+            "type": "integer"
+          },
+          "player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA player id, when the pick resolved to one",
+            "title": "Player Id"
+          },
+          "player_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Name"
+          },
+          "round": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1-based round; None for auction drafts",
+            "title": "Round"
+          },
+          "slot": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1-based slot in pick_order that made the pick",
+            "title": "Slot"
+          },
+          "source": {
+            "default": "manual",
+            "enum": [
+              "manual",
+              "espn_sync",
+              "import"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "overall_pick",
+          "round",
+          "slot",
+          "player_id",
+          "espn_player_id",
+          "player_name",
+          "by_me",
+          "source",
+          "bid",
+          "created_at"
+        ],
+        "title": "DraftPickResp",
+        "type": "object"
+      },
+      "DraftPickResponse": {
+        "description": "The pick that was just recorded.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftPickResp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DraftPickResponse",
+        "type": "object"
+      },
+      "DraftRecommendation": {
+        "description": "One candidate for the caller's next pick, with the whole score decomposed.",
+        "properties": {
+          "components": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecommendationComponent"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "primary_position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Position"
+          },
+          "reason": {
+            "description": "One-sentence summary of the dominant terms",
+            "title": "Reason",
+            "type": "string"
+          },
+          "score": {
+            "description": "vorp + scarcity + flexibility + injury \u2014 the ranking number",
+            "title": "Score",
+            "type": "number"
+          },
+          "season_value": {
+            "description": "value x projected games",
+            "title": "Season Value",
+            "type": "number"
+          },
+          "value": {
+            "description": "Per-game league-scored value (the board row's `value`)",
+            "title": "Value",
+            "type": "number"
+          },
+          "vorp": {
+            "description": "season_value minus the replacement level at the player's position",
+            "title": "Vorp",
+            "type": "number"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "primary_position",
+          "value",
+          "season_value",
+          "vorp",
+          "score",
+          "components",
+          "reason"
+        ],
+        "title": "DraftRecommendation",
+        "type": "object"
+      },
+      "DraftSessionCreate": {
+        "description": "Everything omitted here is prefilled from the team's synced league.\n\n`my_slot` is the exception: `pick_order` holds ESPN team ids we cannot map\nback to `usr.teams`, so the user confirms their own slot at create time.",
+        "properties": {
+          "draft_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "snake",
+                  "auction"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the league's draft type, else snake",
+            "title": "Draft Type"
+          },
+          "keepers": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DraftKeeper-Input"
+            },
+            "title": "Keepers",
+            "type": "array"
+          },
+          "kind": {
+            "default": "manual",
+            "enum": [
+              "live",
+              "manual",
+              "mock",
+              "import"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "my_slot": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1-based slot the caller drafts from",
+            "title": "My Slot"
+          },
+          "pick_order": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Provider team ids in first-round order; defaults to the league's",
+            "title": "Pick Order"
+          },
+          "rounds": {
+            "anyOf": [
+              {
+                "maximum": 40.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the league's draftable roster size",
+            "title": "Rounds"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Owned team to draft for; omit for a mock draft",
+            "title": "Team Id"
+          }
+        },
+        "title": "DraftSessionCreate",
+        "type": "object"
+      },
+      "DraftSessionListResponse": {
+        "description": "Every draft session the caller owns, newest first.",
+        "properties": {
+          "data": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DraftSessionResp"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DraftSessionListResponse",
+        "type": "object"
+      },
+      "DraftSessionResp": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "draft_type": {
+            "enum": [
+              "snake",
+              "auction"
+            ],
+            "title": "Draft Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "keeper_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Keepers the league allows, from its draft settings",
+            "title": "Keeper Count"
+          },
+          "keepers": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DraftKeeper-Output"
+            },
+            "title": "Keepers",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "live",
+              "manual",
+              "mock",
+              "import"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "league_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Id"
+          },
+          "league_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Teams in the draft: len(pick_order) when known",
+            "title": "League Size"
+          },
+          "my_next_pick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Next overall pick belonging to my_slot, counted from the draft front rather than from a hole an undo left (snake drafts with a slot confirmed)",
+            "title": "My Next Pick"
+          },
+          "my_slot": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Slot"
+          },
+          "next_overall_pick": {
+            "default": 1,
+            "description": "The number a new pick takes by default: the lowest unused one, so an undo is re-fillable in place. Not necessarily where the draft front is \u2014 see my_next_pick.",
+            "title": "Next Overall Pick",
+            "type": "integer"
+          },
+          "pick_count": {
+            "default": 0,
+            "description": "Picks recorded so far",
+            "title": "Pick Count",
+            "type": "integer"
+          },
+          "pick_order": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Pick Order",
+            "type": "array"
+          },
+          "picks": {
+            "default": [],
+            "description": "Populated on the detail route; empty in list responses",
+            "items": {
+              "$ref": "#/components/schemas/DraftPickResp"
+            },
+            "title": "Picks",
+            "type": "array"
+          },
+          "picks_until_my_turn": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Picks between the draft front and my turn; 0 means I am on the clock",
+            "title": "Picks Until My Turn"
+          },
+          "rounds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rounds"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "completed",
+              "abandoned"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "total_picks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "league_size x rounds, when both are known",
+            "title": "Total Picks"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "team_id",
+          "league_id",
+          "kind",
+          "status",
+          "draft_type",
+          "pick_order",
+          "my_slot",
+          "rounds",
+          "keepers",
+          "league_size",
+          "keeper_count",
+          "total_picks",
+          "pick_count",
+          "next_overall_pick",
+          "my_next_pick",
+          "picks_until_my_turn",
+          "picks",
+          "started_at",
+          "completed_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DraftSessionResp",
+        "type": "object"
+      },
+      "DraftSessionResponse": {
+        "description": "One draft session.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftSessionResp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DraftSessionResponse",
+        "type": "object"
+      },
+      "DraftSessionUpdate": {
+        "description": "Partial update \u2014 only the fields present are written.",
+        "properties": {
+          "draft_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "snake",
+                  "auction"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Type"
+          },
+          "keepers": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DraftKeeper-Input"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keepers"
+          },
+          "my_slot": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Slot"
+          },
+          "pick_order": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pick Order"
+          },
+          "rounds": {
+            "anyOf": [
+              {
+                "maximum": 40.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rounds"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "active",
+                  "completed",
+                  "abandoned"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "DraftSessionUpdate",
         "type": "object"
       },
       "EnrichedRosterPlayer": {
@@ -7947,6 +9107,56 @@
         "title": "RankingsScoring",
         "type": "object"
       },
+      "RecommendationComponent": {
+        "description": "One visible term of a recommendation score, in season-value points.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "One line of why, for the room to render verbatim",
+            "title": "Detail"
+          },
+          "in_score": {
+            "description": "Whether this term is summed into `score`. `season_value` is the base the other terms are computed from and is shown for context, not added on top of `vorp`.",
+            "title": "In Score",
+            "type": "boolean"
+          },
+          "key": {
+            "enum": [
+              "season_value",
+              "vorp",
+              "scarcity",
+              "flexibility",
+              "injury"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "value",
+          "in_score",
+          "detail"
+        ],
+        "title": "RecommendationComponent",
+        "type": "object"
+      },
       "RecommendedMove": {
         "description": "A recommended roster move.",
         "properties": {
@@ -11063,9 +12273,80 @@
         ]
       }
     },
+    "/v1/internal/drafts": {
+      "get": {
+        "description": "Newest first, each with its pick count and whose turn is next. Picks themselves are on the detail route.",
+        "operationId": "list_draft_sessions_v1_internal_drafts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftSessionListResponse"
+                }
+              }
+            },
+            "description": "Sessions retrieved (empty list before the first draft)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List the caller's draft sessions",
+        "tags": [
+          "Drafts"
+        ]
+      },
+      "post": {
+        "description": "Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for a mock draft.\n\n`my_slot` is the one thing the caller must supply: `pick_order` holds ESPN team ids that nothing maps back to our teams, so the room asks which seat is yours.",
+        "operationId": "create_draft_session_v1_internal_drafts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftSessionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftSessionResponse"
+                }
+              }
+            },
+            "description": "Session created"
+          },
+          "400": {
+            "description": "Slot outside the draft"
+          },
+          "404": {
+            "description": "No such team, or it does not belong to the caller"
+          },
+          "422": {
+            "description": "Invalid session fields"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start a draft session",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
     "/v1/internal/drafts/board": {
       "get": {
-        "description": "Every draftable player, valued by the scoring settings of the league this team belongs to (point weights, or the fpts-scale category value for a category league), from ESPN's published projections where available and last season's per-game baseline otherwise. Rows carry the latest ESPN market rank/ADP and a `market_rank \u2212 cv_rank` delta, and are flagged `cap_blocked` when the league's hard position caps leave no room for them on the caller's roster.\n\n`cv_rank` is computed over the full pool before `picked`/`mine` are removed, so it stays stable and market-comparable throughout a draft.",
+        "description": "Every draftable player, valued by the scoring settings of the league this team belongs to (point weights, or the fpts-scale category value for a category league), from ESPN's published projections where available and last season's per-game baseline otherwise. Rows carry the latest ESPN market rank/ADP and a `market_rank \u2212 cv_rank` delta, and are flagged `cap_blocked` when the league's hard position caps leave no room for them on the caller's roster.\n\n`cv_rank` is computed over the full pool before `picked`/`mine` are removed, so it stays stable and market-comparable throughout a draft.\n\nStateless: pick state rides in the query params. Use the session board once a draft room is open.",
         "operationId": "get_draft_board_v1_internal_drafts_board_get",
         "parameters": [
           {
@@ -11132,6 +12413,282 @@
           }
         ],
         "summary": "Get the draft board under a team's league scoring",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/drafts/{session_id}": {
+      "get": {
+        "operationId": "get_draft_session_v1_internal_drafts__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftSessionResponse"
+                }
+              }
+            },
+            "description": "Session retrieved"
+          },
+          "404": {
+            "description": "No such session, or it does not belong to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get one draft session with its picks",
+        "tags": [
+          "Drafts"
+        ]
+      },
+      "patch": {
+        "description": "Partial update \u2014 only the fields present in the body are written. Used for confirming or correcting `my_slot`, editing pre-designated `keepers`, and closing the room (`status: completed`, which stamps `completed_at` the first time).",
+        "operationId": "update_draft_session_v1_internal_drafts__session_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftSessionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftSessionResponse"
+                }
+              }
+            },
+            "description": "Session updated"
+          },
+          "400": {
+            "description": "Slot outside the draft"
+          },
+          "404": {
+            "description": "No such session, or it does not belong to the caller"
+          },
+          "422": {
+            "description": "Empty or invalid update"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update a draft session",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/drafts/{session_id}/board": {
+      "get": {
+        "description": "The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick \u2014 every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`).\n\nPlayers the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.",
+        "operationId": "get_draft_session_board_v1_internal_drafts__session_id__board_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftBoardResp"
+                }
+              }
+            },
+            "description": "Board retrieved successfully (empty data with a message before any season data exists)"
+          },
+          "404": {
+            "description": "No such session, or it does not belong to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get the draft board for a session",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/drafts/{session_id}/picks": {
+      "post": {
+        "description": "Appends a pick. `overall_pick` defaults to the session's lowest unused number, so the normal path is to post the player alone; passing it explicitly is how a correction lands in a hole an undo left. The player is resolved NBA id \u2192 ESPN id \u2192 normalized name, and a pick whose player is not in `nba.players` yet is still recorded with the provider identity.",
+        "operationId": "add_draft_pick_v1_internal_drafts__session_id__picks_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftPickCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftPickResponse"
+                }
+              }
+            },
+            "description": "Pick recorded"
+          },
+          "400": {
+            "description": "Pick past the end of the draft"
+          },
+          "404": {
+            "description": "No such session/player, or the session does not belong to the caller"
+          },
+          "409": {
+            "description": "That pick number is already recorded"
+          },
+          "422": {
+            "description": "A pick that identifies no player"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record a pick",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/drafts/{session_id}/picks/{overall_pick}": {
+      "delete": {
+        "description": "Removes one pick by its overall number. The number becomes the next default, so a mis-entered pick is re-recorded in place.",
+        "operationId": "remove_draft_pick_v1_internal_drafts__session_id__picks__overall_pick__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "overall_pick",
+            "required": true,
+            "schema": {
+              "title": "Overall Pick",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftPickDeleteResponse"
+                }
+              }
+            },
+            "description": "Pick undone"
+          },
+          "404": {
+            "description": "No such session or pick, or the session does not belong to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Undo a pick",
         "tags": [
           "Drafts"
         ]

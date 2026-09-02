@@ -159,6 +159,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the caller's draft sessions
+         * @description Newest first, each with its pick count and whose turn is next. Picks themselves are on the detail route.
+         */
+        get: operations["list_draft_sessions_v1_internal_drafts_get"];
+        put?: never;
+        /**
+         * Start a draft session
+         * @description Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for a mock draft.
+         *
+         *     `my_slot` is the one thing the caller must supply: `pick_order` holds ESPN team ids that nothing maps back to our teams, so the room asks which seat is yours.
+         */
+        post: operations["create_draft_session_v1_internal_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/drafts/board": {
         parameters: {
             query?: never;
@@ -171,11 +197,96 @@ export interface paths {
          * @description Every draftable player, valued by the scoring settings of the league this team belongs to (point weights, or the fpts-scale category value for a category league), from ESPN's published projections where available and last season's per-game baseline otherwise. Rows carry the latest ESPN market rank/ADP and a `market_rank − cv_rank` delta, and are flagged `cap_blocked` when the league's hard position caps leave no room for them on the caller's roster.
          *
          *     `cv_rank` is computed over the full pool before `picked`/`mine` are removed, so it stays stable and market-comparable throughout a draft.
+         *
+         *     Stateless: pick state rides in the query params. Use the session board once a draft room is open.
          */
         get: operations["get_draft_board_v1_internal_drafts_board_get"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/drafts/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one draft session with its picks */
+        get: operations["get_draft_session_v1_internal_drafts__session_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a draft session
+         * @description Partial update — only the fields present in the body are written. Used for confirming or correcting `my_slot`, editing pre-designated `keepers`, and closing the room (`status: completed`, which stamps `completed_at` the first time).
+         */
+        patch: operations["update_draft_session_v1_internal_drafts__session_id__patch"];
+        trace?: never;
+    };
+    "/v1/internal/drafts/{session_id}/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the draft board for a session
+         * @description The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick — every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`).
+         *
+         *     Players the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.
+         */
+        get: operations["get_draft_session_board_v1_internal_drafts__session_id__board_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/drafts/{session_id}/picks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a pick
+         * @description Appends a pick. `overall_pick` defaults to the session's lowest unused number, so the normal path is to post the player alone; passing it explicitly is how a correction lands in a hole an undo left. The player is resolved NBA id → ESPN id → normalized name, and a pick whose player is not in `nba.players` yet is still recorded with the provider identity.
+         */
+        post: operations["add_draft_pick_v1_internal_drafts__session_id__picks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/drafts/{session_id}/picks/{overall_pick}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Undo a pick
+         * @description Removes one pick by its overall number. The number becomes the next default, so a mis-entered pick is re-recorded in place.
+         */
+        delete: operations["remove_draft_pick_v1_internal_drafts__session_id__picks__overall_pick__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2102,8 +2213,15 @@ export interface components {
             categories: components["schemas"]["CategoryDefResp"][];
             /** Format */
             format: string;
+            /** League Size */
+            league_size: number | null;
             /** Market As Of */
             market_as_of: string | null;
+            /**
+             * Market Only Count
+             * @default 0
+             */
+            market_only_count: number;
             /** Pool Size */
             pool_size: number;
             /**
@@ -2113,12 +2231,28 @@ export interface components {
             position_limits: {
                 [key: string]: number;
             };
+            /**
+             * Position Source
+             * @description Where position data came from: espn (default_position_id on the market snapshot, exact caps), coarse (nba.players G/F/C, caps enforced per group only), none
+             * @default none
+             * @enum {string}
+             */
+            position_source: "espn" | "coarse" | "none";
             /** Projection Count */
             projection_count: number;
             /** Projections As Of */
             projections_as_of: string | null;
+            /**
+             * Roster Slots
+             * @default {}
+             */
+            roster_slots: {
+                [key: string]: number;
+            };
             /** Season */
             season: string;
+            /** Session Id */
+            session_id: number | null;
             /** Settings Synced */
             settings_synced: boolean | null;
             /**
@@ -2142,6 +2276,12 @@ export interface components {
             /** Message */
             message: string;
             meta: components["schemas"]["DraftBoardMeta"] | null;
+            /**
+             * Recommendations
+             * @description Best available for the caller's next pick, best first. Cap-blocked players and rows with no value are never recommended. Empty when nothing can be valued.
+             * @default []
+             */
+            recommendations: components["schemas"]["DraftRecommendation"][];
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
@@ -2180,16 +2320,21 @@ export interface components {
             } | null;
             /**
              * Cv Rank
-             * @description Rank by CV value over the full pool, picked players included — a pre-draft big board rank that stays stable (and comparable to market_rank) as picks remove rows
+             * @description Rank by CV value over the full pool, picked players included — a pre-draft big board rank that stays stable (and comparable to market_rank) as picks remove rows. None for market-only rows, which carry no value to rank.
              */
-            cv_rank: number;
+            cv_rank: number | null;
             /** Espn Id */
             espn_id: number | null;
             /**
              * Fpts Avg
-             * @description Per-game fantasy points under the platform default formula (familiar scale, tiebreak)
+             * @description Per-game fantasy points under the platform default formula (familiar scale, tiebreak); None for market-only rows
              */
-            fpts_avg: number;
+            fpts_avg: number | null;
+            /**
+             * Injury Status
+             * @description ESPN injury status (OUT, DAY_TO_DAY, ...); None when active or unknown
+             */
+            injury_status: string | null;
             /**
              * Last Season Gp
              * @description Games played last season; None for rookies
@@ -2218,6 +2363,16 @@ export interface components {
              */
             position: string | null;
             /**
+             * Positions
+             * @description ESPN lineup slots the player is eligible for, verbatim and authoritative (a pure centre is simply not F-eligible). None until the market snapshot carries them.
+             */
+            positions: string[] | null;
+            /**
+             * Primary Position
+             * @description ESPN primary position (PG/SG/SF/PF/C) from the market snapshot — what hard position caps are counted against. None until the market snapshot carries the player.
+             */
+            primary_position: string | null;
+            /**
              * Projected Gp
              * @description Projected games this season, when a projection exists
              */
@@ -2234,15 +2389,389 @@ export interface components {
             team: string | null;
             /**
              * Value
-             * @description League-scored per-game value: fantasy points under the league's weights, or the fpts-scale category value
+             * @description League-scored per-game value: fantasy points under the league's weights, or the fpts-scale category value. None for a market-only row — a player ESPN ranks but neither a projection nor last season's baseline can value (a rookie, before projections).
+             */
+            value: number | null;
+            /**
+             * Value Source
+             * @description projection: ESPN's published per-game projection. baseline: last season's per-game averages. market: no stat line at all — the row exists because ESPN drafts him.
+             * @enum {string}
+             */
+            value_source: "projection" | "baseline" | "market";
+        };
+        /**
+         * DraftKeeper
+         * @description One pre-designated keeper. Identity is whatever the client knows; the
+         *     room resolves it the same way a pick is resolved.
+         */
+        "DraftKeeper-Input": {
+            /** Espn Player Id */
+            espn_player_id?: number | null;
+            /** Name */
+            name?: string | null;
+            /**
+             * Player Id
+             * @description NBA player id (nba.players.id)
+             */
+            player_id?: number | null;
+            /**
+             * Round
+             * @description Round the keeper costs, when the league assigns one
+             */
+            round?: number | null;
+        };
+        /**
+         * DraftKeeper
+         * @description One pre-designated keeper. Identity is whatever the client knows; the
+         *     room resolves it the same way a pick is resolved.
+         */
+        "DraftKeeper-Output": {
+            /** Espn Player Id */
+            espn_player_id: number | null;
+            /** Name */
+            name: string | null;
+            /**
+             * Player Id
+             * @description NBA player id (nba.players.id)
+             */
+            player_id: number | null;
+            /**
+             * Round
+             * @description Round the keeper costs, when the league assigns one
+             */
+            round: number | null;
+        };
+        /**
+         * DraftPickCreate
+         * @description One pick. The player is identified by whatever the client has; the
+         *     service resolves NBA id -> ESPN id -> normalized name, in that order.
+         */
+        DraftPickCreate: {
+            /**
+             * Bid
+             * @description Auction price (v2; ignored by snake drafts)
+             */
+            bid?: number | null;
+            /**
+             * By Me
+             * @description Drafted by the caller (counts against position caps and fills the roster zone)
+             * @default false
+             */
+            by_me?: boolean;
+            /** Espn Player Id */
+            espn_player_id?: number | null;
+            /**
+             * Overall Pick
+             * @description Defaults to the session's next unused pick
+             */
+            overall_pick?: number | null;
+            /**
+             * Player Id
+             * @description NBA player id (nba.players.id)
+             */
+            player_id?: number | null;
+            /** Player Name */
+            player_name?: string | null;
+            /**
+             * Source
+             * @default manual
+             * @enum {string}
+             */
+            source?: "manual" | "espn_sync" | "import";
+        };
+        /**
+         * DraftPickDeleteResponse
+         * @description The overall pick number that was undone.
+         */
+        DraftPickDeleteResponse: {
+            /** Data */
+            data: number | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** DraftPickResp */
+        DraftPickResp: {
+            /** Bid */
+            bid: number | null;
+            /**
+             * By Me
+             * @default false
+             */
+            by_me: boolean;
+            /** Created At */
+            created_at: string | null;
+            /** Espn Player Id */
+            espn_player_id: number | null;
+            /** Overall Pick */
+            overall_pick: number;
+            /**
+             * Player Id
+             * @description NBA player id, when the pick resolved to one
+             */
+            player_id: number | null;
+            /** Player Name */
+            player_name: string | null;
+            /**
+             * Round
+             * @description 1-based round; None for auction drafts
+             */
+            round: number | null;
+            /**
+             * Slot
+             * @description 1-based slot in pick_order that made the pick
+             */
+            slot: number | null;
+            /**
+             * Source
+             * @default manual
+             * @enum {string}
+             */
+            source: "manual" | "espn_sync" | "import";
+        };
+        /**
+         * DraftPickResponse
+         * @description The pick that was just recorded.
+         */
+        DraftPickResponse: {
+            data: components["schemas"]["DraftPickResp"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * DraftRecommendation
+         * @description One candidate for the caller's next pick, with the whole score decomposed.
+         */
+        DraftRecommendation: {
+            /**
+             * Components
+             * @default []
+             */
+            components: components["schemas"]["RecommendationComponent"][];
+            /** Name */
+            name: string;
+            /** Player Id */
+            player_id: number;
+            /** Primary Position */
+            primary_position: string | null;
+            /**
+             * Reason
+             * @description One-sentence summary of the dominant terms
+             */
+            reason: string;
+            /**
+             * Score
+             * @description vorp + scarcity + flexibility + injury — the ranking number
+             */
+            score: number;
+            /**
+             * Season Value
+             * @description value x projected games
+             */
+            season_value: number;
+            /**
+             * Value
+             * @description Per-game league-scored value (the board row's `value`)
              */
             value: number;
             /**
-             * Value Source
-             * @description projection: ESPN's published per-game projection. baseline: last season's per-game averages.
+             * Vorp
+             * @description season_value minus the replacement level at the player's position
+             */
+            vorp: number;
+        };
+        /**
+         * DraftSessionCreate
+         * @description Everything omitted here is prefilled from the team's synced league.
+         *
+         *     `my_slot` is the exception: `pick_order` holds ESPN team ids we cannot map
+         *     back to `usr.teams`, so the user confirms their own slot at create time.
+         */
+        DraftSessionCreate: {
+            /**
+             * Draft Type
+             * @description Defaults to the league's draft type, else snake
+             */
+            draft_type?: ("snake" | "auction") | null;
+            /**
+             * Keepers
+             * @default []
+             */
+            keepers?: components["schemas"]["DraftKeeper-Input"][];
+            /**
+             * Kind
+             * @default manual
              * @enum {string}
              */
-            value_source: "projection" | "baseline";
+            kind?: "live" | "manual" | "mock" | "import";
+            /**
+             * My Slot
+             * @description 1-based slot the caller drafts from
+             */
+            my_slot?: number | null;
+            /**
+             * Pick Order
+             * @description Provider team ids in first-round order; defaults to the league's
+             */
+            pick_order?: number[] | null;
+            /**
+             * Rounds
+             * @description Defaults to the league's draftable roster size
+             */
+            rounds?: number | null;
+            /**
+             * Team Id
+             * @description Owned team to draft for; omit for a mock draft
+             */
+            team_id?: number | null;
+        };
+        /**
+         * DraftSessionListResponse
+         * @description Every draft session the caller owns, newest first.
+         */
+        DraftSessionListResponse: {
+            /**
+             * Data
+             * @default []
+             */
+            data: components["schemas"]["DraftSessionResp"][];
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** DraftSessionResp */
+        DraftSessionResp: {
+            /** Completed At */
+            completed_at: string | null;
+            /** Created At */
+            created_at: string | null;
+            /**
+             * Draft Type
+             * @enum {string}
+             */
+            draft_type: "snake" | "auction";
+            /** Id */
+            id: number;
+            /**
+             * Keeper Count
+             * @description Keepers the league allows, from its draft settings
+             */
+            keeper_count: number | null;
+            /**
+             * Keepers
+             * @default []
+             */
+            keepers: components["schemas"]["DraftKeeper-Output"][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "live" | "manual" | "mock" | "import";
+            /** League Id */
+            league_id: number | null;
+            /**
+             * League Size
+             * @description Teams in the draft: len(pick_order) when known
+             */
+            league_size: number | null;
+            /**
+             * My Next Pick
+             * @description Next overall pick belonging to my_slot, counted from the draft front rather than from a hole an undo left (snake drafts with a slot confirmed)
+             */
+            my_next_pick: number | null;
+            /** My Slot */
+            my_slot: number | null;
+            /**
+             * Next Overall Pick
+             * @description The number a new pick takes by default: the lowest unused one, so an undo is re-fillable in place. Not necessarily where the draft front is — see my_next_pick.
+             * @default 1
+             */
+            next_overall_pick: number;
+            /**
+             * Pick Count
+             * @description Picks recorded so far
+             * @default 0
+             */
+            pick_count: number;
+            /**
+             * Pick Order
+             * @default []
+             */
+            pick_order: number[];
+            /**
+             * Picks
+             * @description Populated on the detail route; empty in list responses
+             * @default []
+             */
+            picks: components["schemas"]["DraftPickResp"][];
+            /**
+             * Picks Until My Turn
+             * @description Picks between the draft front and my turn; 0 means I am on the clock
+             */
+            picks_until_my_turn: number | null;
+            /** Rounds */
+            rounds: number | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "completed" | "abandoned";
+            /** Team Id */
+            team_id: number | null;
+            /**
+             * Total Picks
+             * @description league_size x rounds, when both are known
+             */
+            total_picks: number | null;
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /**
+         * DraftSessionResponse
+         * @description One draft session.
+         */
+        DraftSessionResponse: {
+            data: components["schemas"]["DraftSessionResp"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * DraftSessionUpdate
+         * @description Partial update — only the fields present are written.
+         */
+        DraftSessionUpdate: {
+            /** Draft Type */
+            draft_type?: ("snake" | "auction") | null;
+            /** Keepers */
+            keepers?: components["schemas"]["DraftKeeper-Input"][] | null;
+            /** My Slot */
+            my_slot?: number | null;
+            /** Pick Order */
+            pick_order?: number[] | null;
+            /** Rounds */
+            rounds?: number | null;
+            /** Status */
+            status?: ("active" | "completed" | "abandoned") | null;
         };
         /**
          * EnrichedRosterPlayer
@@ -4431,6 +4960,31 @@ export interface components {
             unsupported: string[];
         };
         /**
+         * RecommendationComponent
+         * @description One visible term of a recommendation score, in season-value points.
+         */
+        RecommendationComponent: {
+            /**
+             * Detail
+             * @description One line of why, for the room to render verbatim
+             */
+            detail: string | null;
+            /**
+             * In Score
+             * @description Whether this term is summed into `score`. `season_value` is the base the other terms are computed from and is shown for context, not added on top of `vorp`.
+             */
+            in_score: boolean;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "season_value" | "vorp" | "scarcity" | "flexibility" | "injury";
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+        };
+        /**
          * RecommendedMove
          * @description A recommended roster move.
          */
@@ -5705,6 +6259,71 @@ export interface operations {
             };
         };
     };
+    list_draft_sessions_v1_internal_drafts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sessions retrieved (empty list before the first draft) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftSessionListResponse"];
+                };
+            };
+        };
+    };
+    create_draft_session_v1_internal_drafts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftSessionCreate"];
+            };
+        };
+        responses: {
+            /** @description Session created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftSessionResponse"];
+                };
+            };
+            /** @description Slot outside the draft */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such team, or it does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid session fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_draft_board_v1_internal_drafts_board_get: {
         parameters: {
             query: {
@@ -5742,6 +6361,222 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_draft_session_v1_internal_drafts__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftSessionResponse"];
+                };
+            };
+            /** @description No such session, or it does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_draft_session_v1_internal_drafts__session_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftSessionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Session updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftSessionResponse"];
+                };
+            };
+            /** @description Slot outside the draft */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such session, or it does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Empty or invalid update */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_draft_session_board_v1_internal_drafts__session_id__board_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board retrieved successfully (empty data with a message before any season data exists) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftBoardResp"];
+                };
+            };
+            /** @description No such session, or it does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_draft_pick_v1_internal_drafts__session_id__picks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftPickCreate"];
+            };
+        };
+        responses: {
+            /** @description Pick recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftPickResponse"];
+                };
+            };
+            /** @description Pick past the end of the draft */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such session/player, or the session does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description That pick number is already recorded */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A pick that identifies no player */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_draft_pick_v1_internal_drafts__session_id__picks__overall_pick__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                overall_pick: number;
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pick undone */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftPickDeleteResponse"];
+                };
+            };
+            /** @description No such session or pick, or the session does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
