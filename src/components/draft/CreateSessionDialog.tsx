@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 
@@ -52,6 +52,10 @@ export function CreateSessionDialog() {
   const [draftType, setDraftType] = useState<DraftType | "">("");
   const [mySlot, setMySlot] = useState("");
   const [rounds, setRounds] = useState("");
+
+  useEffect(() => {
+    setTeamValue(selectedTeamId !== null ? String(selectedTeamId) : MOCK_TEAM);
+  }, [selectedTeamId]);
 
   const team = useMemo(
     () => teams.find((t) => String(t.team_id) === teamValue) ?? null,

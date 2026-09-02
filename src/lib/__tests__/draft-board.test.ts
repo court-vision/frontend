@@ -71,9 +71,9 @@ describe("naturalDirection", () => {
 });
 
 describe("sortValue", () => {
-  test("missing rank sorts to the far end, not to zero", () => {
-    expect(sortValue(marketOnly(9, 25), "cv_rank")).toBe(Number.POSITIVE_INFINITY);
-    expect(sortValue(marketOnly(9, 25), "value")).toBe(Number.NEGATIVE_INFINITY);
+  test("preserves missing values for direction-independent placement", () => {
+    expect(sortValue(marketOnly(9, 25), "cv_rank")).toBeNull();
+    expect(sortValue(marketOnly(9, 25), "value")).toBeNull();
   });
 
   test("projected games falls back to last season before giving up", () => {
@@ -81,7 +81,7 @@ describe("sortValue", () => {
     expect(sortValue(row({ player_id: 1, projected_gp: null }), "projected_gp")).toBe(70);
     expect(
       sortValue(row({ player_id: 1, projected_gp: null, last_season_gp: null }), "projected_gp")
-    ).toBe(Number.NEGATIVE_INFINITY);
+    ).toBeNull();
   });
 
   test("names sort case-insensitively", () => {
@@ -127,12 +127,24 @@ describe("visibleRows", () => {
     marketOnly(9, 25),
   ];
 
-  test("market-only rows land last ascending AND descending", () => {
-    const asc = visibleRows(rows, { ...VIEW, sortKey: "cv_rank", sortDirection: "asc" });
-    expect(asc.map((r) => r.player_id)).toEqual([1, 2, 3, 9]);
+  test("missing values land last in either sort direction", () => {
+    const cases = [
+      { sortKey: "cv_rank", populated: [1, 2, 3], missing: [9] },
+      { sortKey: "market_rank", populated: [1, 2, 9], missing: [3] },
+      { sortKey: "adp", populated: [1, 2], missing: [3, 9] },
+      { sortKey: "value", populated: [1, 2, 3], missing: [9] },
+      { sortKey: "market_delta", populated: [1, 2], missing: [3, 9] },
+      { sortKey: "projected_gp", populated: [1, 2, 3], missing: [9] },
+    ] as const;
 
-    const desc = visibleRows(rows, { ...VIEW, sortKey: "value", sortDirection: "desc" });
-    expect(desc.map((r) => r.player_id)).toEqual([1, 2, 3, 9]);
+    for (const { sortKey, populated, missing } of cases) {
+      for (const sortDirection of ["asc", "desc"] as const) {
+        const sorted = visibleRows(rows, { ...VIEW, sortKey, sortDirection });
+        const ids = sorted.map((r) => r.player_id);
+        expect(ids.slice(0, populated.length).sort()).toEqual([...populated].sort());
+        expect(ids.slice(populated.length).sort()).toEqual([...missing].sort());
+      }
+    }
   });
 
   test("sorting by value descending outranks the big board's own order", () => {

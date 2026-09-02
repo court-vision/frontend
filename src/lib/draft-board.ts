@@ -26,27 +26,25 @@ export interface BoardView {
 }
 
 /**
- * The sort value for a column, with missing data pushed to the losing end so it
- * lands last whichever way the column is sorted.
+ * The sort value for a column. Missing data stays null so the comparator can
+ * place it last independently of the active sort direction.
  */
-export function sortValue(row: DraftBoardRow, key: BoardSortKey): number | string {
-  const LAST_ASC = Number.POSITIVE_INFINITY;
-  const LAST_DESC = Number.NEGATIVE_INFINITY;
+export function sortValue(row: DraftBoardRow, key: BoardSortKey): number | string | null {
   switch (key) {
     case "name":
       return row.name.toLowerCase();
     case "cv_rank":
-      return row.cv_rank ?? LAST_ASC;
+      return row.cv_rank;
     case "market_rank":
-      return row.market_rank ?? LAST_ASC;
+      return row.market_rank;
     case "adp":
-      return row.adp ?? LAST_ASC;
+      return row.adp;
     case "value":
-      return row.value ?? LAST_DESC;
+      return row.value;
     case "market_delta":
-      return row.market_delta ?? LAST_DESC;
+      return row.market_delta;
     case "projected_gp":
-      return row.projected_gp ?? row.last_season_gp ?? LAST_DESC;
+      return row.projected_gp ?? row.last_season_gp;
   }
 }
 
@@ -67,14 +65,19 @@ export function visibleRows(rows: DraftBoardRow[], view: BoardView): DraftBoardR
   return rows.filter((row) => matchesView(row, view)).sort((a, b) => {
     const av = sortValue(a, view.sortKey);
     const bv = sortValue(b, view.sortKey);
+    if (av === null || bv === null) {
+      if (av === null && bv === null) {
+        return (a.cv_rank ?? Number.POSITIVE_INFINITY) -
+          (b.cv_rank ?? Number.POSITIVE_INFINITY);
+      }
+      return av === null ? 1 : -1;
+    }
     if (typeof av === "string" || typeof bv === "string") {
       return String(av).localeCompare(String(bv)) * direction;
     }
     if (av === bv) {
       return (a.cv_rank ?? Number.POSITIVE_INFINITY) - (b.cv_rank ?? Number.POSITIVE_INFINITY);
     }
-    // Infinities cancel to NaN when subtracted from themselves; the equality
-    // check above has already handled that case.
     return av < bv ? -direction : direction;
   });
 }
