@@ -87,9 +87,10 @@ export function countCapped(rows: DraftBoardRow[]): number {
 }
 
 /**
- * Keyboard movement over the visible rows. No current row (or one that has
- * since left the view) starts from the edge the key points away from, rather
- * than jumping somewhere the user did not see.
+ * Keyboard movement over the visible rows. Callers pass the row that is
+ * *visibly* active — which after a search is the fallback first row, not the
+ * stale highlight — so the first keypress moves off what the user can see
+ * rather than appearing to do nothing.
  */
 export function stepHighlight(
   visibleIds: number[],

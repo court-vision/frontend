@@ -12,6 +12,19 @@ export const SLOT_ORDER = [
   "PG", "SG", "SF", "PF", "C", "G", "F", "SG/SF", "G/F", "PF/C", "F/C", "UT", "BE",
 ] as const;
 
+/**
+ * Provider spellings of the same slot. The backend's own map emits `UT`, but
+ * other surfaces in this app carry ESPN's `UTIL` and a Yahoo league may too;
+ * an unrecognized label would silently drop those seats and understate the
+ * roster, so it is normalized rather than trusted.
+ */
+const SLOT_ALIASES: Record<string, string> = { UTIL: "UT", BN: "BE", BENCH: "BE", IL: "IR" };
+
+export function canonicalSlot(slot: string): string {
+  const name = String(slot).trim();
+  return SLOT_ALIASES[name.toUpperCase()] ?? name;
+}
+
 /** Where a primary position can start when ESPN's own eligibility list is missing. */
 const PRIMARY_SLOTS: Record<string, string[]> = {
   PG: ["PG", "G", "G/F", "UT"],
@@ -42,7 +55,9 @@ export interface RosterPlayer {
 export function startableSlots(
   player: Pick<RosterPlayer, "primary_position" | "positions">
 ): string[] {
-  const espn = (player.positions ?? []).filter((slot) => slot !== "BE" && slot !== "IR");
+  const espn = (player.positions ?? [])
+    .map(canonicalSlot)
+    .filter((slot) => slot !== "BE" && slot !== "IR");
   if (espn.length > 0) return espn;
   const implied = player.primary_position ? PRIMARY_SLOTS[player.primary_position] : undefined;
   return implied ?? ["UT"];
@@ -67,10 +82,14 @@ export interface Lineup {
  * "2 C slots open" honestly.
  */
 export function fillLineup(rosterSlots: Record<string, number>, players: RosterPlayer[]): Lineup {
+  const counts = new Map<string, number>();
+  for (const [raw, value] of Object.entries(rosterSlots)) {
+    const name = canonicalSlot(raw);
+    counts.set(name, (counts.get(name) ?? 0) + Math.max(0, Math.floor(Number(value) || 0)));
+  }
   const slots: LineupSlot[] = [];
   for (const name of SLOT_ORDER) {
-    const count = Math.max(0, Math.floor(Number(rosterSlots[name] ?? 0)));
-    for (let i = 0; i < count; i++) slots.push({ slot: name, player: null });
+    for (let i = 0; i < (counts.get(name) ?? 0); i++) slots.push({ slot: name, player: null });
   }
   const ordered = [...players].sort(
     (a, b) => startableSlots(a).length - startableSlots(b).length

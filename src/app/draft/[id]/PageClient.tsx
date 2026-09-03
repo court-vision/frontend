@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { ArrowLeft } from "lucide-react";
@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { stepHighlight, targetRow, visibleRows } from "@/lib/draft-board";
-import { keeperStatuses, lastPick, type KeeperStatus } from "@/lib/draft-roster";
+import { keeperStatuses, lastPick, samePlayer, type KeeperStatus } from "@/lib/draft-roster";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -70,6 +70,10 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
     () => keeperStatuses(session?.keepers ?? [], session?.picks ?? []),
     [session]
   );
+  const pendingKeepers = useMemo(
+    () => keepers.filter((k) => !k.recorded && k.blocker === null),
+    [keepers]
+  );
   const pendingKeeperIds = useMemo(
     () =>
       new Set(
@@ -82,6 +86,19 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
 
   const handlePick = useCallback(
     (row: DraftBoardRow, byMe: boolean) => {
+      // A pending keeper is not an ordinary pick. Marked as one it would be
+      // recorded at the draft front instead of the pick its round costs, and
+      // `keeperStatuses` would then count it as recorded — retiring the keeper
+      // flow and, if marked `out`, handing your own keeper to another team.
+      const identity = {
+        player_id: row.player_id,
+        espn_player_id: row.espn_id,
+        player_name: row.name,
+      };
+      if (pendingKeepers.some((k) => samePlayer(k.keeper, identity))) {
+        toast.error(`${row.name} is one of your keepers — record it from the roster zone`);
+        return;
+      }
       addPick.mutate(
         {
           player_id: row.player_id,
@@ -103,7 +120,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
         }
       );
     },
-    [addPick]
+    [addPick, pendingKeepers]
   );
 
   const handleRecommendationPick = useCallback(
@@ -120,15 +137,29 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
 
   // ---- keyboard: highlight, mark, undo ----
 
+  // What a keystroke would act on right now: the highlight while it is
+  // visible, else the first row — which is what the table renders as active.
+  const activeId = useMemo(
+    () => targetRow(visible, highlightId)?.player_id ?? null,
+    [visible, highlightId]
+  );
+
   const moveHighlight = useCallback(
     (delta: 1 | -1) => {
-      setHighlight(stepHighlight(visible.map((row) => row.player_id), highlightId, delta));
+      // Stepping from `activeId`, not the raw highlight: after a search clears
+      // the highlight the first row is already shown active, and stepping from
+      // null would leave it there (or jump to the last row on `k`).
+      setHighlight(stepHighlight(visible.map((row) => row.player_id), activeId, delta));
     },
-    [visible, highlightId, setHighlight]
+    [visible, activeId, setHighlight]
   );
 
   const markHighlighted = useCallback(
     (byMe: boolean) => {
+      // The row buttons disable while a pick is in flight; the keys have to
+      // agree, or two quick presses race two POSTs that both take "the lowest
+      // unused pick" and can land their players on each other's numbers.
+      if (addPick.isPending) return;
       const row = targetRow(visible, highlightId);
       if (!row) return;
       if (byMe && row.cap_blocked) {
@@ -140,7 +171,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
       setSearch("");
       setHighlight(null);
     },
-    [visible, highlightId, handlePick, setSearch, setHighlight]
+    [visible, highlightId, handlePick, setSearch, setHighlight, addPick.isPending]
   );
 
   const undoLast = useCallback(() => {
@@ -153,6 +184,13 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   }, [session, undoPick]);
 
   const focusInput = useCallback(() => inputRef.current?.focus(), []);
+
+  // The room store is a singleton, so a highlight survives client-side
+  // navigation between rooms. Clear it on arrival: the first `o`/`m` in a new
+  // room must not act on a player highlighted in the previous one.
+  useEffect(() => {
+    setHighlight(null);
+  }, [sessionId, setHighlight]);
 
   useDraftRoomHotkeys({
     enabled: Boolean(session && board && !keepersOpen),

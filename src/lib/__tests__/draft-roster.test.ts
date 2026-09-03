@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  canonicalSlot,
   capStatuses,
   fillLineup,
   keeperStatuses,
@@ -173,5 +174,33 @@ describe("myRoster and lastPick", () => {
     expect(lastPick([keeperAt18, pick({ overall_pick: 4 }), pick({ overall_pick: 2 })])?.overall_pick).toBe(4);
     expect(lastPick([keeperAt18])?.overall_pick).toBe(18);
     expect(lastPick([])).toBeNull();
+  });
+});
+
+describe("provider slot labels", () => {
+  test("UTIL, BN and IL normalize onto the labels the fill understands", () => {
+    expect(canonicalSlot("UTIL")).toBe("UT");
+    expect(canonicalSlot("util")).toBe("UT");
+    expect(canonicalSlot("BN")).toBe("BE");
+    expect(canonicalSlot("IL")).toBe("IR");
+    expect(canonicalSlot("PG")).toBe("PG");
+    expect(canonicalSlot(" C ")).toBe("C");
+  });
+
+  test("a league spelling its slots UTIL still gets those seats", () => {
+    const lineup = fillLineup({ C: 1, UTIL: 2, BN: 1 }, [
+      player({ player_id: 1, primary_position: "C", positions: ["C", "UTIL"] }),
+      player({ player_id: 2, primary_position: "PG", positions: ["PG", "UTIL"] }),
+      player({ player_id: 3, primary_position: "SF", positions: ["SF", "UTIL"] }),
+    ]);
+    expect(lineup.slots.map((s) => s.slot)).toEqual(["C", "UT", "UT", "BE"]);
+    expect(lineup.overflow).toEqual([]);
+    // ...and the UT seats really were filled, not merely present.
+    expect(lineup.slots.filter((s) => s.player !== null)).toHaveLength(3);
+  });
+
+  test("duplicate spellings of one slot add up rather than overwrite", () => {
+    const lineup = fillLineup({ UT: 1, UTIL: 1 }, []);
+    expect(lineup.slots.map((s) => s.slot)).toEqual(["UT", "UT"]);
   });
 });
