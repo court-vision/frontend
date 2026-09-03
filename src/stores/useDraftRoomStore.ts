@@ -20,12 +20,15 @@ interface DraftRoomStore {
   positionFilter: PositionFilter;
   hideCapped: boolean;
   search: string;
+  /** The row keyboard actions apply to; null means "the first visible row". */
+  highlightId: number | null;
 
   /** Sorting the current column flips it; a new column starts on its natural side. */
   toggleSort: (key: BoardSortKey) => void;
   setPositionFilter: (position: PositionFilter) => void;
   setHideCapped: (hide: boolean) => void;
   setSearch: (search: string) => void;
+  setHighlight: (highlightId: number | null) => void;
   resetView: () => void;
 }
 
@@ -35,6 +38,7 @@ const DEFAULT_VIEW = {
   positionFilter: "all" as PositionFilter,
   hideCapped: false,
   search: "",
+  highlightId: null as number | null,
 };
 
 export const useDraftRoomStore = create<DraftRoomStore>()(
@@ -51,12 +55,14 @@ export const useDraftRoomStore = create<DraftRoomStore>()(
       setPositionFilter: (positionFilter) => set({ positionFilter }),
       setHideCapped: (hideCapped) => set({ hideCapped }),
       setSearch: (search) => set({ search }),
+      setHighlight: (highlightId) => set({ highlightId }),
       resetView: () => set({ ...DEFAULT_VIEW }),
     }),
     {
       name: "draft-room-store",
-      // `search` is deliberately not persisted: a stale filter on reload would
-      // look like an empty board.
+      // `search` and `highlightId` are deliberately not persisted: a stale
+      // filter on reload would look like an empty board, and a stale highlight
+      // would aim a keystroke at a player who may have left it.
       partialize: (state) => ({
         sortKey: state.sortKey,
         sortDirection: state.sortDirection,

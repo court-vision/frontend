@@ -5,8 +5,10 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import type {
   DraftBoardResult,
+  DraftBoardRow,
   DraftPick,
   DraftPickCreate,
+  DraftRosterEntry,
   DraftSession,
   DraftSessionCreate,
   DraftSessionUpdate,
@@ -123,6 +125,20 @@ export function useUpdateDraftSessionMutation(sessionId: number) {
   });
 }
 
+/** The roster entry a board row becomes once drafted by the caller. */
+function rosterEntryOf(row: DraftBoardRow): DraftRosterEntry {
+  return {
+    player_id: row.player_id,
+    name: row.name,
+    team: row.team,
+    primary_position: row.primary_position,
+    positions: row.positions,
+    value: row.value,
+    value_source: row.value_source,
+    injury_status: row.injury_status,
+  };
+}
+
 /** What `onMutate` snapshots so `onError` can put the cache back exactly. */
 interface PickContext {
   board: DraftBoardResult | undefined;
@@ -157,7 +173,14 @@ export function useDraftPickMutation(sessionId: number) {
       const session = queryClient.getQueryData<DraftSession>(sessionKey);
 
       if (board && pick.player_id != null) {
+        const drafted = board.rows.find((row) => row.player_id === pick.player_id);
         const rows = board.rows.filter((row) => row.player_id !== pick.player_id);
+        // A pick of mine lands on the roster at once — the lineup slots and
+        // cap counts are read from it — provided the row is known here.
+        const roster =
+          pick.by_me && drafted && !board.roster.some((r) => r.player_id === drafted.player_id)
+            ? [...board.roster, rosterEntryOf(drafted)]
+            : board.roster;
         queryClient.setQueryData<DraftBoardResult>(boardKey, {
           ...board,
           rows,
@@ -166,16 +189,30 @@ export function useDraftPickMutation(sessionId: number) {
           recommendations: board.recommendations.filter(
             (rec) => rec.player_id !== pick.player_id
           ),
+          roster,
           meta: board.meta ? { ...board.meta, available: rows.length } : board.meta,
         });
       }
 
       if (session) {
         const overall = pick.overall_pick ?? session.next_overall_pick;
+        const optimistic: DraftPick = {
+          overall_pick: overall,
+          round: null,
+          slot: null,
+          player_id: pick.player_id ?? null,
+          espn_player_id: pick.espn_player_id ?? null,
+          player_name: pick.player_name ?? null,
+          by_me: pick.by_me ?? false,
+          source: pick.source ?? "manual",
+          bid: pick.bid ?? null,
+          created_at: null,
+        };
         queryClient.setQueryData<DraftSession>(sessionKey, {
           ...session,
           pick_count: session.pick_count + 1,
           next_overall_pick: Math.max(session.next_overall_pick, overall + 1),
+          picks: [...session.picks.filter((p) => p.overall_pick !== overall), optimistic],
         });
       }
 

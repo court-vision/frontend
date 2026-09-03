@@ -2,9 +2,10 @@
  * Single source of truth for app navigation: nav bar tabs, phone tab bar,
  * mobile sheet, command-palette entries, keyboard shortcuts, and page slide order.
  *
- * ⌥1–7 mirror the desktop tab order; ⌥8/⌥9 reach Lineups/Streamers, which
- * have no desktop tab. ⌘-letter shortcuts are letters only (⌘1-9 collides
- * with browser tab switching).
+ * ⌥1–7 mirror the desktop tab order (Draft sits between Rankings and
+ * Playoffs on ⌘D alone — every ⌥ digit is taken); ⌥8/⌥9 reach
+ * Lineups/Streamers, which have no desktop tab. ⌘-letter shortcuts are
+ * letters only (⌘1-9 collides with browser tab switching).
  */
 
 import type { LucideIcon } from "lucide-react";
@@ -102,6 +103,18 @@ export const NAV_ITEMS: NavItem[] = [
     tab: 3,
   },
   {
+    href: "/draft",
+    label: "Draft",
+    mobileLabel: "Draft Lab",
+    icon: ClipboardList,
+    description: "Draft-day board, recommendations and pick tracking",
+    keywords: ["draft", "draft lab", "board", "adp", "picks", "draft day"],
+    cmdKey: "d",
+    desktop: true,
+    mobile: true,
+    palette: true,
+  },
+  {
     href: "/playoffs",
     label: "Playoffs",
     icon: Medal,
@@ -160,17 +173,6 @@ export const NAV_ITEMS: NavItem[] = [
     mobile: true,
     palette: true,
     tab: 2,
-  },
-  {
-    href: "/draft",
-    label: "Draft",
-    mobileLabel: "Draft Lab",
-    icon: ClipboardList,
-    description: "Draft-day board, recommendations and pick tracking",
-    keywords: ["draft", "draft lab", "board", "adp", "picks", "draft day"],
-    cmdKey: "d",
-    mobile: true,
-    palette: true,
   },
   {
     href: "/manage-teams",

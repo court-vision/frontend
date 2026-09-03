@@ -102,6 +102,7 @@ import type {
   DraftPick,
   DraftPickCreate,
   DraftRecommendation,
+  DraftRosterEntry,
   DraftSession,
   DraftSessionCreate,
   DraftSessionUpdate,
@@ -698,12 +699,14 @@ class ApiClient {
       BaseApiResponse<DraftBoardRow[]> & {
         meta?: DraftBoardMeta | null;
         recommendations?: DraftRecommendation[] | null;
+        roster?: DraftRosterEntry[] | null;
       }
     >(`${DRAFTS_API}/${sessionId}/board`, { ...opts, getToken });
     const { data, message } = unwrapWithMessage(env, []);
     return {
       rows: data,
       recommendations: env.recommendations ?? [],
+      roster: env.roster ?? [],
       meta: env.meta ?? null,
       message,
     };
@@ -728,12 +731,14 @@ class ApiClient {
       BaseApiResponse<DraftBoardRow[]> & {
         meta?: DraftBoardMeta | null;
         recommendations?: DraftRecommendation[] | null;
+        roster?: DraftRosterEntry[] | null;
       }
     >(`${DRAFTS_API}/board?${q.toString()}`, { ...opts, getToken });
     const { data, message } = unwrapWithMessage(env, []);
     return {
       rows: data,
       recommendations: env.recommendations ?? [],
+      roster: env.roster ?? [],
       meta: env.meta ?? null,
       message,
     };

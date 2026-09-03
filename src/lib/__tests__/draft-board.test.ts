@@ -4,6 +4,8 @@ import {
   matchesView,
   naturalDirection,
   sortValue,
+  stepHighlight,
+  targetRow,
   visibleRows,
   type BoardView,
 } from "../draft-board";
@@ -189,5 +191,27 @@ describe("visibleRows", () => {
 
   test("an empty board stays empty rather than throwing", () => {
     expect(visibleRows([], VIEW)).toEqual([]);
+  });
+});
+
+describe("keyboard highlight", () => {
+  test("steps within the visible rows and clamps at the ends", () => {
+    expect(stepHighlight([3, 1, 2], 3, 1)).toBe(1);
+    expect(stepHighlight([3, 1, 2], 2, 1)).toBe(2);
+    expect(stepHighlight([3, 1, 2], 3, -1)).toBe(3);
+  });
+
+  test("no highlight, or one that left the view, starts from the edge the key points away from", () => {
+    expect(stepHighlight([3, 1, 2], null, 1)).toBe(3);
+    expect(stepHighlight([3, 1, 2], null, -1)).toBe(2);
+    expect(stepHighlight([3, 1, 2], 99, 1)).toBe(3);
+    expect(stepHighlight([], 1, 1)).toBeNull();
+  });
+
+  test("a keystroke lands on the highlighted row while visible, else the top match", () => {
+    const rows = [row({ player_id: 1 }), row({ player_id: 2 })];
+    expect(targetRow(rows, 2)?.player_id).toBe(2);
+    expect(targetRow(rows, 99)?.player_id).toBe(1);
+    expect(targetRow([], 1)).toBeNull();
   });
 });
