@@ -108,32 +108,36 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en" className="dark" suppressHydrationWarning>
-        <head>
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify({
-                "@context": "https://schema.org",
-                "@type": "WebApplication",
-                name: "Court Vision",
-                url: "https://www.courtvision.dev",
-                description:
-                  "Advanced fantasy basketball analytics platform. Player rankings, lineup optimization, matchup analysis, and streaming recommendations.",
-                applicationCategory: "SportsApplication",
-                operatingSystem: "Web",
-                offers: {
-                  "@type": "Offer",
-                  price: "0",
-                  priceCurrency: "USD",
-                },
-              }),
-            }}
-          />
-        </head>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              name: "Court Vision",
+              url: "https://www.courtvision.dev",
+              description:
+                "Advanced fantasy basketball analytics platform. Player rankings, lineup optimization, matchup analysis, and streaming recommendations.",
+              applicationCategory: "SportsApplication",
+              operatingSystem: "Web",
+              offers: {
+                "@type": "Offer",
+                price: "0",
+                priceCurrency: "USD",
+              },
+            }),
+          }}
+        />
+      </head>
 
-        <body className={`${jakartaSans.variable} ${jetbrainsMono.variable} ${outfit.variable} font-sans`}>
+      <body className={`${jakartaSans.variable} ${jetbrainsMono.variable} ${outfit.variable} font-sans`}>
+        <ClerkProvider
+          signInFallbackRedirectUrl="/your-teams"
+          signUpFallbackRedirectUrl="/manage-teams"
+          afterSignOutUrl="/"
+        >
           <QueryProvider>
             <TeamsProvider>
               <ProviderThemeSync />
@@ -152,12 +156,11 @@ export default function RootLayout({
               </LineupProvider>
             </TeamsProvider>
           </QueryProvider>
+        </ClerkProvider>
 
-          <SpeedInsights />
-          <Analytics />
-
-        </body>
-      </html>
-    </ClerkProvider>
+        <SpeedInsights />
+        <Analytics />
+      </body>
+    </html>
   );
 }

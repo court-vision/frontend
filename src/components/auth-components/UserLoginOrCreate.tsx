@@ -13,19 +13,14 @@
 "use client";
 
 import { SignIn } from "@clerk/nextjs";
-import { dark } from "@clerk/themes";
-import { useTheme } from "next-themes";
 
 export default function UserLoginOrCreate() {
-  const { resolvedTheme } = useTheme();
-
   // Render Clerk's SignIn component instead of the custom form
   return (
     <div className="flex justify-center mt-5">
       <SignIn
         routing="hash"
         appearance={{
-          baseTheme: resolvedTheme === "dark" ? dark : undefined,
           elements: {
             rootBox: "mx-auto",
             card: "bg-background border border-primary shadow-lg",

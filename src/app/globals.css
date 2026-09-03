@@ -5,6 +5,8 @@
 @layer base {
   /* Polished platform dark theme */
   :root {
+    color-scheme: dark;
+
     /* Core backgrounds - layered depth */
     --background: 222 16% 7%;
     --foreground: 215 15% 93%;

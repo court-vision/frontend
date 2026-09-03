@@ -1,14 +1,11 @@
 "use client";
 
 import {
-  SignedIn,
-  SignedOut,
+  Show,
   SignIn,
   UserButton,
   useUser,
 } from "@clerk/nextjs";
-import { dark } from "@clerk/themes";
-import { useTheme } from "next-themes";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
@@ -21,10 +18,8 @@ import { Separator } from "@/components/ui/separator";
 
 export default function Account() {
   const { user, isLoaded } = useUser();
-  const { resolvedTheme } = useTheme();
 
   const clerkAppearance = {
-    baseTheme: resolvedTheme === "dark" ? dark : undefined,
     elements: {
       rootBox: "mx-auto",
       card: "bg-background border border-primary shadow-lg",
@@ -79,19 +74,17 @@ export default function Account() {
         </p>
       </section>
 
-      <SignedOut>
+      <Show when="signed-out">
         <div className="flex justify-center py-8">
           <SignIn routing="hash" appearance={clerkAppearance} />
         </div>
-      </SignedOut>
+      </Show>
 
-      <SignedIn>
+      <Show when="signed-in">
         <Card variant="panel" className="max-w-lg">
           <CardHeader className="flex flex-row items-center gap-4">
             <UserButton
-              afterSignOutUrl="/"
               appearance={{
-                baseTheme: resolvedTheme === "dark" ? dark : undefined,
                 elements: {
                   avatarBox: "w-10 h-10",
                 },
@@ -118,7 +111,7 @@ export default function Account() {
             </span>
           </CardFooter>
         </Card>
-      </SignedIn>
+      </Show>
     </div>
   );
 }

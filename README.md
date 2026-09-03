@@ -131,8 +131,8 @@ CLERK_SECRET_KEY=sk_...
 # Clerk redirect paths (optional, defaults shown)
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/your-teams
+NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/manage-teams
 ```
 
 No other environment variables are required. The backend URL is controlled by a compile-time flag (see below).
