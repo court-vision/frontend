@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Search, RefreshCw, Settings, ChevronRight, Terminal, Swords, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useRankingsQuery } from "@/hooks/useRankings";
 import { useTeamsQuery } from "@/hooks/useTeams";
+import { useDraftSessionsQuery } from "@/hooks/useDrafts";
 import { GameScoreTicker } from "@/components/dashboard/GameScoreTicker";
 import { NBA_TEAMS, NBA_TEAM_BY_ABBREV } from "@/lib/nbaTeams";
 import type { LayoutPreset } from "@/types/terminal";
@@ -29,6 +31,7 @@ const COMMANDS: CommandSuggestion[] = [
   { command: ":compare", description: "Compare players", example: ":compare curry lebron" },
   { command: ":clear", description: "Clear comparison", example: ":clear" },
   { command: ":focus", description: "Focus a player", example: ":focus curry" },
+  { command: ":draft", description: "Open the active draft room", example: ":draft 12" },
 ];
 
 interface TeamSearchResult {
@@ -54,6 +57,7 @@ interface PlayerSearchResult {
 type SearchResultItem = NBATeamSearchResult | PlayerSearchResult | TeamSearchResult;
 
 export function TerminalCommandBar({ className }: CommandBarProps) {
+  const router = useRouter();
   const [inputValue, setInputValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -71,6 +75,7 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
     clearComparison,
   } = useTerminalStore();
   const { data: rankings, refetch, isFetching, error: rankingsError } = useRankingsQuery();
+  const { data: draftSessions } = useDraftSessionsQuery();
   const {
     data: teams,
     error: teamsError,
@@ -251,6 +256,25 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
           setCommandFeedback("Comparison cleared");
           break;
         }
+        case "draft": {
+          // Deep-link to a room: a session id, else the newest active session
+          // (the list arrives newest first), else the Draft Lab itself.
+          const arg = args[0]?.toLowerCase();
+          if (arg && /^\d+$/.test(arg)) {
+            router.push(`/draft/${arg}`);
+            setCommandFeedback(`Opening draft #${arg}`);
+            break;
+          }
+          const active = (draftSessions ?? []).find((s) => s.status === "active");
+          if (active) {
+            router.push(`/draft/${active.id}`);
+            setCommandFeedback(`Opening draft #${active.id}`);
+          } else {
+            router.push("/draft");
+            setCommandFeedback("No active draft — opening Draft Lab");
+          }
+          break;
+        }
         case "": {
           // Empty ':' returns to overview by clearing the focused player
           setFocusedPlayer(null);
@@ -269,6 +293,8 @@ export function TerminalCommandBar({ className }: CommandBarProps) {
     [
       rankings,
       teams,
+      draftSessions,
+      router,
       setStatWindow,
       setLayoutPreset,
       addToComparison,

@@ -19,6 +19,11 @@ export type DraftBoardRow = S["DraftBoardRow"];
 export type DraftBoardMeta = S["DraftBoardMeta"];
 export type DraftRecommendation = S["DraftRecommendation"];
 export type RecommendationComponent = S["RecommendationComponent"];
+/** A player the caller has drafted, with what the roster zone needs to place him. */
+export type DraftRosterEntry = S["DraftRosterEntry"];
+/** A keeper as the session reports it: identity, round, and the pick that round costs. */
+export type DraftKeeperOut = S["DraftKeeper-Output"];
+export type PickSource = DraftPick["source"];
 
 /** Request bodies. The `-Input` variant is the one a client sends. */
 export type DraftSessionCreate = S["DraftSessionCreate"];
@@ -38,6 +43,8 @@ export type ValueSource = DraftBoardRow["value_source"];
 export interface DraftBoardResult {
   rows: DraftBoardRow[];
   recommendations: DraftRecommendation[];
+  /** The caller's drafted players — lineup slots, caps and stacking are computed from these. */
+  roster: DraftRosterEntry[];
   meta: DraftBoardMeta | null;
   /** Backend message; explains an empty board (e.g. before any season data). */
   message: string;

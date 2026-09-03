@@ -226,6 +226,8 @@ export interface paths {
         /**
          * Update a draft session
          * @description Partial update — only the fields present in the body are written. Used for confirming or correcting `my_slot`, editing pre-designated `keepers`, and closing the room (`status: completed`, which stamps `completed_at` the first time).
+         *
+         *     Changing `draft_type` or `pick_order` re-derives the round and slot of every recorded pick. A change that would leave the session inconsistent — a slot outside the new pick order, or a draft resized shorter than the picks already recorded — is refused.
          */
         patch: operations["update_draft_session_v1_internal_drafts__session_id__patch"];
         trace?: never;
@@ -242,6 +244,8 @@ export interface paths {
          * @description The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick — every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`).
          *
          *     Players the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.
+         *
+         *     `roster` lists the caller's drafted players with primary position, eligible slots and NBA team — what the roster zone needs to fill lineup slots, count caps and flag stacking.
          */
         get: operations["get_draft_session_board_v1_internal_drafts__session_id__board_get"];
         put?: never;
@@ -263,7 +267,9 @@ export interface paths {
         put?: never;
         /**
          * Record a pick
-         * @description Appends a pick. `overall_pick` defaults to the session's lowest unused number, so the normal path is to post the player alone; passing it explicitly is how a correction lands in a hole an undo left. The player is resolved NBA id → ESPN id → normalized name, and a pick whose player is not in `nba.players` yet is still recorded with the provider identity.
+         * @description Appends a pick. `overall_pick` defaults to the session's lowest unused number, so the normal path is to post the player alone; passing it explicitly is how a correction lands in a hole an undo left. The player is resolved NBA id → ESPN id → normalized name, and a pick whose player is not in `nba.players` yet is still recorded with the provider identity. A player already in the session cannot be recorded a second time — undo the earlier pick to correct it.
+         *
+         *     `source: keeper` records a keeper at the pick its round costs (the session's `keepers` carry that number as `overall_pick`). A keeper pick leaves the board like any other but never counts as the draft front: whose-turn arithmetic steps over it.
          */
         post: operations["add_draft_pick_v1_internal_drafts__session_id__picks_post"];
         delete?: never;
@@ -2282,6 +2288,12 @@ export interface components {
              * @default []
              */
             recommendations: components["schemas"]["DraftRecommendation"][];
+            /**
+             * Roster
+             * @description The caller's drafted players (session picks plus `mine`), in big-board order
+             * @default []
+             */
+            roster: components["schemas"]["DraftRosterEntry"][];
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
@@ -2410,6 +2422,11 @@ export interface components {
             /** Name */
             name?: string | null;
             /**
+             * Overall Pick
+             * @description Computed on read, ignored on input: the pick this keeper consumes — the caller's slot in `round`, once the session has a slot and a pick order.
+             */
+            overall_pick?: number | null;
+            /**
              * Player Id
              * @description NBA player id (nba.players.id)
              */
@@ -2430,6 +2447,11 @@ export interface components {
             espn_player_id: number | null;
             /** Name */
             name: string | null;
+            /**
+             * Overall Pick
+             * @description Computed on read, ignored on input: the pick this keeper consumes — the caller's slot in `round`, once the session has a slot and a pick order.
+             */
+            overall_pick: number | null;
             /**
              * Player Id
              * @description NBA player id (nba.players.id)
@@ -2474,10 +2496,11 @@ export interface components {
             player_name?: string | null;
             /**
              * Source
+             * @description `keeper` records a pick spent before the draft started (at the pick its round costs): it leaves the board like any pick but never counts as the draft front
              * @default manual
              * @enum {string}
              */
-            source?: "manual" | "espn_sync" | "import";
+            source?: "manual" | "espn_sync" | "import" | "keeper";
         };
         /**
          * DraftPickDeleteResponse
@@ -2531,7 +2554,7 @@ export interface components {
              * @default manual
              * @enum {string}
              */
-            source: "manual" | "espn_sync" | "import";
+            source: "manual" | "espn_sync" | "import" | "keeper";
         };
         /**
          * DraftPickResponse
@@ -2588,6 +2611,34 @@ export interface components {
              * @description season_value minus the replacement level at the player's position
              */
             vorp: number;
+        };
+        /**
+         * DraftRosterEntry
+         * @description A player the caller has drafted, with what the roster zone needs to place
+         *     him: primary position for caps, eligible slots for the lineup, NBA team for
+         *     stacking. The session's picks say when he was taken.
+         */
+        DraftRosterEntry: {
+            /** Injury Status */
+            injury_status: string | null;
+            /** Name */
+            name: string;
+            /** Player Id */
+            player_id: number;
+            /** Positions */
+            positions: string[] | null;
+            /** Primary Position */
+            primary_position: string | null;
+            /** Team */
+            team: string | null;
+            /** Value */
+            value: number | null;
+            /**
+             * Value Source
+             * @default baseline
+             * @enum {string}
+             */
+            value_source: "projection" | "baseline" | "market";
         };
         /**
          * DraftSessionCreate
@@ -2869,95 +2920,37 @@ export interface components {
              */
             status: string;
         };
-        /**
-         * GameLog
-         * @description Individual game in a player's game log.
-         */
+        /** GameLog */
         GameLog: {
-            /**
-             * Ast
-             * @description Assists
-             */
+            /** Ast */
             ast: number;
-            /**
-             * Blk
-             * @description Blocks
-             */
+            /** Blk */
             blk: number;
-            /**
-             * Date
-             * @description Game date (YYYY-MM-DD)
-             */
+            /** Date */
             date: string;
-            /**
-             * Fg3A
-             * @description Three-pointers attempted
-             */
+            /** Fg3A */
             fg3a: number;
-            /**
-             * Fg3M
-             * @description Three-pointers made
-             */
+            /** Fg3M */
             fg3m: number;
-            /**
-             * Fga
-             * @description Field goals attempted
-             */
+            /** Fga */
             fga: number;
-            /**
-             * Fgm
-             * @description Field goals made
-             */
+            /** Fgm */
             fgm: number;
-            /**
-             * Fpts
-             * @description Fantasy points scored
-             */
+            /** Fpts */
             fpts: number;
-            /**
-             * Fta
-             * @description Free throws attempted
-             */
+            /** Fta */
             fta: number;
-            /**
-             * Ftm
-             * @description Free throws made
-             */
+            /** Ftm */
             ftm: number;
-            /**
-             * Home
-             * @description Whether this was a home game
-             */
-            home: boolean | null;
-            /**
-             * Min
-             * @description Minutes played
-             */
+            /** Min */
             min: number;
-            /**
-             * Opponent
-             * @description Opponent team abbreviation
-             */
-            opponent: string | null;
-            /**
-             * Pts
-             * @description Points
-             */
+            /** Pts */
             pts: number;
-            /**
-             * Reb
-             * @description Rebounds
-             */
+            /** Reb */
             reb: number;
-            /**
-             * Stl
-             * @description Steals
-             */
+            /** Stl */
             stl: number;
-            /**
-             * Tov
-             * @description Turnovers
-             */
+            /** Tov */
             tov: number;
         };
         /**
@@ -4390,7 +4383,7 @@ export interface components {
              * Games
              * @description List of games
              */
-            games: components["schemas"]["GameLog"][];
+            games: components["schemas"]["schemas__player_games__GameLog"][];
             /**
              * Player Id
              * @description NBA player ID
@@ -4645,7 +4638,7 @@ export interface components {
             advanced_stats: components["schemas"]["AdvancedStatsData"] | null;
             avg_stats: components["schemas"]["AvgStats"];
             /** Game Logs */
-            game_logs: components["schemas"]["schemas__player__GameLog"][];
+            game_logs: components["schemas"]["GameLog"][];
             /** Games Played */
             games_played: number;
             /** Id */
@@ -5918,37 +5911,95 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
-        /** GameLog */
-        schemas__player__GameLog: {
-            /** Ast */
+        /**
+         * GameLog
+         * @description Individual game in a player's game log.
+         */
+        schemas__player_games__GameLog: {
+            /**
+             * Ast
+             * @description Assists
+             */
             ast: number;
-            /** Blk */
+            /**
+             * Blk
+             * @description Blocks
+             */
             blk: number;
-            /** Date */
+            /**
+             * Date
+             * @description Game date (YYYY-MM-DD)
+             */
             date: string;
-            /** Fg3A */
+            /**
+             * Fg3A
+             * @description Three-pointers attempted
+             */
             fg3a: number;
-            /** Fg3M */
+            /**
+             * Fg3M
+             * @description Three-pointers made
+             */
             fg3m: number;
-            /** Fga */
+            /**
+             * Fga
+             * @description Field goals attempted
+             */
             fga: number;
-            /** Fgm */
+            /**
+             * Fgm
+             * @description Field goals made
+             */
             fgm: number;
-            /** Fpts */
+            /**
+             * Fpts
+             * @description Fantasy points scored
+             */
             fpts: number;
-            /** Fta */
+            /**
+             * Fta
+             * @description Free throws attempted
+             */
             fta: number;
-            /** Ftm */
+            /**
+             * Ftm
+             * @description Free throws made
+             */
             ftm: number;
-            /** Min */
+            /**
+             * Home
+             * @description Whether this was a home game
+             */
+            home: boolean | null;
+            /**
+             * Min
+             * @description Minutes played
+             */
             min: number;
-            /** Pts */
+            /**
+             * Opponent
+             * @description Opponent team abbreviation
+             */
+            opponent: string | null;
+            /**
+             * Pts
+             * @description Points
+             */
             pts: number;
-            /** Reb */
+            /**
+             * Reb
+             * @description Rebounds
+             */
             reb: number;
-            /** Stl */
+            /**
+             * Stl
+             * @description Steals
+             */
             stl: number;
-            /** Tov */
+            /**
+             * Tov
+             * @description Turnovers
+             */
             tov: number;
         };
     };
@@ -6426,7 +6477,7 @@ export interface operations {
                     "application/json": components["schemas"]["DraftSessionResponse"];
                 };
             };
-            /** @description Slot outside the draft */
+            /** @description Slot outside the draft, or a draft resized shorter than its recorded picks */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -6525,7 +6576,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description That pick number is already recorded */
+            /** @description That pick number is already recorded, or that player already is */
             409: {
                 headers: {
                     [name: string]: unknown;

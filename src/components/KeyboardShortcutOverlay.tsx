@@ -49,6 +49,16 @@ const shortcutGroups: ShortcutGroup[] = [
     ],
   },
   {
+    title: "DRAFT ROOM",
+    shortcuts: [
+      { keys: "/", description: "Focus the pick input" },
+      { keys: "↑ ↓ / J K", description: "Move over the board" },
+      { keys: "↵ / O", description: "Mark drafted by someone else" },
+      { keys: "⇧↵ / M", description: "Mark drafted by me" },
+      { keys: "⌘Z", description: "Undo the last pick" },
+    ],
+  },
+  {
     title: "COMMAND PALETTE",
     shortcuts: [
       { keys: "↑ ↓", description: "Navigate results" },
@@ -64,6 +74,7 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ":compare", description: "Add player to compare" },
       { keys: ":focus", description: "Focus on player" },
       { keys: ":clear", description: "Clear comparison" },
+      { keys: ":draft", description: "Open the active draft room" },
     ],
   },
 ];

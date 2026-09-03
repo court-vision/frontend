@@ -85,3 +85,29 @@ export function visibleRows(rows: DraftBoardRow[], view: BoardView): DraftBoardR
 export function countCapped(rows: DraftBoardRow[]): number {
   return rows.filter((row) => row.cap_blocked).length;
 }
+
+/**
+ * Keyboard movement over the visible rows. Callers pass the row that is
+ * *visibly* active — which after a search is the fallback first row, not the
+ * stale highlight — so the first keypress moves off what the user can see
+ * rather than appearing to do nothing.
+ */
+export function stepHighlight(
+  visibleIds: number[],
+  current: number | null,
+  delta: 1 | -1
+): number | null {
+  if (visibleIds.length === 0) return null;
+  const index = current === null ? -1 : visibleIds.indexOf(current);
+  if (index === -1) return delta > 0 ? visibleIds[0] : visibleIds[visibleIds.length - 1];
+  return visibleIds[Math.min(Math.max(index + delta, 0), visibleIds.length - 1)];
+}
+
+/**
+ * The row a keystroke applies to: the highlighted one while it is visible,
+ * else the first visible row — so typing a name and pressing Enter takes the
+ * top match without an arrow key first.
+ */
+export function targetRow(visible: DraftBoardRow[], highlightId: number | null): DraftBoardRow | null {
+  return visible.find((row) => row.player_id === highlightId) ?? visible[0] ?? null;
+}
