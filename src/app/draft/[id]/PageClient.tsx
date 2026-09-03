@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-error";
 import { DraftBoardTable } from "@/components/draft/DraftBoardTable";
 import { KeeperEditor } from "@/components/draft/KeeperEditor";
+import { SlotEditor } from "@/components/draft/SlotEditor";
 import { RecommendationStrip } from "@/components/draft/RecommendationStrip";
 import { RosterZone } from "@/components/draft/RosterZone";
 import { useDraftRoomHotkeys } from "@/hooks/useDraftRoomHotkeys";
@@ -56,6 +57,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [keepersOpen, setKeepersOpen] = useState(false);
+  const [slotOpen, setSlotOpen] = useState(false);
   const [recordingKeepers, setRecordingKeepers] = useState(false);
 
   const { sortKey, sortDirection, positionFilter, hideCapped, search, highlightId, setSearch, setHighlight } =
@@ -218,6 +220,25 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
     [updateSession]
   );
 
+  const saveSlot = useCallback(
+    (slot: number | null) => {
+      updateSession.mutate(
+        { my_slot: slot },
+        {
+          onSuccess: () => {
+            setSlotOpen(false);
+            toast.success(slot === null ? "Slot cleared" : `You are drafting from slot ${slot}`);
+          },
+          // The backend refuses a slot outside the pick order, and one that
+          // would strand or collide a recorded keeper — say which.
+          onError: (error) =>
+            toast.error(error instanceof Error ? error.message : "That slot could not be set"),
+        }
+      );
+    },
+    [updateSession]
+  );
+
   const recordKeepers = useCallback(
     async (pending: KeeperStatus[]) => {
       setRecordingKeepers(true);
@@ -264,7 +285,17 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
             <span className="font-mono text-xs">
               {session.draft_type}
               {session.league_size ? ` · ${session.league_size} teams` : ""}
-              {session.my_slot ? ` · slot ${session.my_slot}` : " · no slot set"}
+              {" · "}
+              <button
+                onClick={() => setSlotOpen(true)}
+                title="Set or correct which seat is yours"
+                className={cn(
+                  "underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground",
+                  session.my_slot === null && "text-amber-500"
+                )}
+              >
+                {session.my_slot ? `slot ${session.my_slot}` : "no slot set"}
+              </button>
               {` · pick ${session.next_overall_pick}`}
               {session.picks_until_my_turn !== null && session.picks_until_my_turn !== undefined
                 ? session.picks_until_my_turn === 0
@@ -342,9 +373,12 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
         >
           {onTheClock ? `On the clock — pick ${session?.next_overall_pick}` : "Best available"}
           {session?.my_slot === null && (
-            <span className="normal-case tracking-normal text-amber-500">
+            <button
+              onClick={() => setSlotOpen(true)}
+              className="normal-case tracking-normal text-amber-500 underline decoration-dotted underline-offset-2 hover:text-amber-400"
+            >
               set your slot to see whose turn it is
-            </span>
+            </button>
           )}
         </div>
         <RecommendationStrip
@@ -392,14 +426,28 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
       </div>
 
       {session && (
-        <KeeperEditor
-          open={keepersOpen}
-          onOpenChange={setKeepersOpen}
-          session={session}
-          rows={rows}
-          onSave={saveKeepers}
-          isSaving={updateSession.isPending}
-        />
+        <>
+          <KeeperEditor
+            open={keepersOpen}
+            onOpenChange={setKeepersOpen}
+            session={session}
+            rows={rows}
+            onSave={saveKeepers}
+            isSaving={updateSession.isPending}
+            onEditSlot={() => {
+              // One dialog at a time: hand off rather than stack.
+              setKeepersOpen(false);
+              setSlotOpen(true);
+            }}
+          />
+          <SlotEditor
+            open={slotOpen}
+            onOpenChange={setSlotOpen}
+            session={session}
+            onSave={saveSlot}
+            isSaving={updateSession.isPending}
+          />
+        </>
       )}
     </div>
   );
