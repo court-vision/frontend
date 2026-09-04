@@ -2609,6 +2609,11 @@ export interface components {
             /** Espn Player Id */
             espn_player_id?: number | null;
             /**
+             * Espn Team Id
+             * @description The ESPN team that made the pick (an id from `pick_order`), when the pick came from ESPN. Sets `slot` by lookup rather than by the snake geometry — a traded pick or an auction pick lands in the seat that actually made it.
+             */
+            espn_team_id?: number | null;
+            /**
              * Overall Pick
              * @description Defaults to the session's next unused pick
              */
@@ -2656,6 +2661,11 @@ export interface components {
             created_at: string | null;
             /** Espn Player Id */
             espn_player_id: number | null;
+            /**
+             * Espn Team Id
+             * @description The ESPN team that made the pick, when ESPN said
+             */
+            espn_team_id: number | null;
             /** Overall Pick */
             overall_pick: number;
             /**
@@ -2672,7 +2682,7 @@ export interface components {
             round: number | null;
             /**
              * Slot
-             * @description 1-based slot in pick_order that made the pick
+             * @description 1-based seat in pick_order that made the pick: the ESPN team's seat when the pick's team is known, else derived from the pick number (snake drafts only)
              */
             slot: number | null;
             /**

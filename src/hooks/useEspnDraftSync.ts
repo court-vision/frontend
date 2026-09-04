@@ -260,6 +260,9 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
         await refs.current.syncPick.mutateAsync({
           overall_pick: overall,
           espn_player_id: eff.espnPlayerId,
+          // Who ESPN says picked: the seat is a lookup from this, not a guess
+          // from the pick number, so traded picks and auctions attribute right.
+          espn_team_id: eff.teamId,
           player_id: row?.player_id ?? null,
           player_name: row?.name ?? null,
           by_me: myTeamId != null && eff.teamId === myTeamId,

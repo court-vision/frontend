@@ -2494,6 +2494,19 @@
             ],
             "title": "Espn Player Id"
           },
+          "espn_team_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The ESPN team that made the pick (an id from `pick_order`), when the pick came from ESPN. Sets `slot` by lookup rather than by the snake geometry \u2014 a traded pick or an auction pick lands in the seat that actually made it.",
+            "title": "Espn Team Id"
+          },
           "overall_pick": {
             "anyOf": [
               {
@@ -2642,6 +2655,18 @@
             ],
             "title": "Espn Player Id"
           },
+          "espn_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The ESPN team that made the pick, when ESPN said",
+            "title": "Espn Team Id"
+          },
           "overall_pick": {
             "title": "Overall Pick",
             "type": "integer"
@@ -2690,7 +2715,7 @@
                 "type": "null"
               }
             ],
-            "description": "1-based slot in pick_order that made the pick",
+            "description": "1-based seat in pick_order that made the pick: the ESPN team's seat when the pick's team is known, else derived from the pick number (snake drafts only)",
             "title": "Slot"
           },
           "source": {
@@ -2711,6 +2736,7 @@
           "slot",
           "player_id",
           "espn_player_id",
+          "espn_team_id",
           "player_name",
           "by_me",
           "source",
