@@ -62,20 +62,22 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   // belongs to is matched against this session's team; a mock or unsynced
   // session has none and accepts any room.
   const { data: teams } = useTeamsQuery();
-  const expectedLeagueId = useMemo(() => {
-    if (session?.team_id == null) return null;
-    const team = teams?.find((t) => t.team_id === session.team_id);
-    return team?.league_info.provider === "espn" ? team.league_info.league_id : null;
-  }, [teams, session?.team_id]);
+  const sessionTeam = useMemo(
+    () => (session?.team_id == null ? null : (teams?.find((t) => t.team_id === session.team_id) ?? null)),
+    [teams, session?.team_id]
+  );
+  const isEspnTeam = sessionTeam?.league_info.provider === "espn";
+  const expectedLeagueId = isEspnTeam ? sessionTeam.league_info.league_id : null;
   const sync = useEspnDraftSync({
     sessionId,
     session,
     board,
     expectedLeagueId,
-    // Wait for the teams list before enabling a team session, or the first
-    // frames would race an unknown expected league and briefly mis-flag a
-    // mismatch. A mock session (no team) needs no teams.
-    enabled: Boolean(session && session.status === "active" && (session.team_id == null || teams)),
+    // A mock session (no team) accepts any room. A team session syncs only once
+    // its team has resolved to an ESPN team: a Yahoo team, or a team missing
+    // from the list, must not quietly accept picks from whatever ESPN room the
+    // extension happens to be watching.
+    enabled: Boolean(session && session.status === "active" && (session.team_id == null || isEspnTeam)),
   });
 
   const inputRef = useRef<HTMLInputElement>(null);

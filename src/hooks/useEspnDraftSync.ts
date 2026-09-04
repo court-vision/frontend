@@ -55,6 +55,11 @@ export interface EspnDraftSync {
  * an INIT's reconciliation must land before the picks after it), and the pick /
  * undo mutations. All the decision logic lives in the pure reducer in
  * `sync-state.ts`; this hook only runs its effects and feeds back the results.
+ *
+ * Every queued effect carries the generation it was queued under. The
+ * generation advances when the session changes or the connection is torn down,
+ * and a stale effect neither starts nor reports — so work queued for one room
+ * can never post into the next, and a resync's replay starts clean.
  */
 export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
   const { sessionId, expectedLeagueId, enabled } = input;
@@ -77,6 +82,7 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
   refs.current = { paused, expectedLeagueId, syncPick, syncUndo, syncInit };
 
   const chain = useRef<Promise<void>>(Promise.resolve());
+  const genRef = useRef(0);
 
   const cachedSession = useCallback(
     () => queryClient.getQueryData<DraftSession>(draftKeys.detail(sessionId)) ?? input.session,
@@ -89,8 +95,9 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
 
   // Effects run through a ref so `dispatch` can stay stable (empty deps) while
   // the runners it schedules close over the latest render — breaking what would
-  // otherwise be a dispatch ⇄ runEffect dependency cycle.
-  const runEffectRef = useRef<(eff: SyncEffect) => void>(() => {});
+  // otherwise be a dispatch ⇄ runEffect dependency cycle. The ref MUST return
+  // the runner's promise: the chain serializes by awaiting it.
+  const runEffectRef = useRef<(eff: SyncEffect, gen: number) => Promise<void>>(async () => {});
 
   // ---- dispatch: reduce, then serialize effects ----
 
@@ -99,8 +106,10 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     const { state: next, effects } = reduce(stateRef.current, event, ctx);
     stateRef.current = next;
     setState(next);
+    const gen = genRef.current;
     for (const eff of effects) {
-      const run = () => runEffectRef.current(eff);
+      // A stale effect (queued under an earlier generation) is dropped unrun.
+      const run = () => (gen === genRef.current ? runEffectRef.current(eff, gen) : Promise.resolve());
       chain.current = chain.current.then(run, run);
     }
   }, []);
@@ -108,11 +117,13 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
   // ---- effect runners ----
 
   const runSyncInit = useCallback(
-    async (eff: Extract<SyncEffect, { kind: "sync-init" }>) => {
+    async (eff: Extract<SyncEffect, { kind: "sync-init" }>, gen: number) => {
       try {
         const result = await refs.current.syncInit.mutateAsync(eff.payload);
+        if (gen !== genRef.current) return;
         dispatch({ type: "init-result", ok: true, front: result.espn_front, myTeamId: result.espn_team_id });
       } catch (error) {
+        if (gen !== genRef.current) return;
         // Reconciliation failed (backend down, a league mismatch, a bad frame):
         // fall back to the session's own front so live picks still number, and
         // let the chip show the unreconciled state.
@@ -130,7 +141,7 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
   );
 
   const runPick = useCallback(
-    async (eff: Extract<SyncEffect, { kind: "pick" }>) => {
+    async (eff: Extract<SyncEffect, { kind: "pick" }>, gen: number) => {
       // A gate may have latched after this effect was queued (a server-side
       // league refusal, a RESET). Re-check at run time; never post through it.
       if (stateRef.current.mismatch || stateRef.current.reset) {
@@ -159,6 +170,7 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
           source: "espn_sync",
           bid: eff.bid,
         });
+        if (gen !== genRef.current) return;
         dispatch({ type: "pick-result", outcome: "inserted" });
         // Only a pick that just happened earns a toast; a late-join replay of
         // forty picks is a chip count, not forty notifications.
@@ -168,6 +180,7 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
           });
         }
       } catch (error) {
+        if (gen !== genRef.current) return;
         const api = toApiError(error);
         if (api.code === "DRAFT_PLAYER_ALREADY_DRAFTED") {
           dispatch({ type: "pick-result", outcome: "duplicate" });
@@ -190,11 +203,13 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
   );
 
   const runUndo = useCallback(
-    async (eff: Extract<SyncEffect, { kind: "undo" }>) => {
+    async (eff: Extract<SyncEffect, { kind: "undo" }>, gen: number) => {
       try {
         await refs.current.syncUndo.mutateAsync(eff.pickNumber);
+        if (gen !== genRef.current) return;
         dispatch({ type: "undo-result", ok: true });
       } catch (error) {
+        if (gen !== genRef.current) return;
         const api = toApiError(error);
         if (api.status === 404) {
           dispatch({ type: "undo-result", ok: true }); // already gone
@@ -206,11 +221,20 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     [dispatch]
   );
 
-  runEffectRef.current = (eff: SyncEffect) => {
-    if (eff.kind === "sync-init") void runSyncInit(eff);
-    else if (eff.kind === "pick") void runPick(eff);
-    else void runUndo(eff);
+  runEffectRef.current = (eff: SyncEffect, gen: number) => {
+    if (eff.kind === "sync-init") return runSyncInit(eff, gen);
+    if (eff.kind === "pick") return runPick(eff, gen);
+    return runUndo(eff, gen);
   };
+
+  // ---- session change: start the reducer clean, orphan any queued work ----
+
+  useEffect(() => {
+    genRef.current += 1;
+    stateRef.current = initialState();
+    setState(stateRef.current);
+    chain.current = Promise.resolve();
+  }, [sessionId]);
 
   // ---- port lifecycle ----
 
@@ -249,6 +273,9 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     const connect = () => {
       if (cancelled) return;
       dispatch({ type: "port", status: "connecting" });
+      // `connectToExtension` reports a synchronous connect failure through
+      // onDisconnect *and* returns null; only an unreported null is "unsupported".
+      let reported = false;
       handle = connectToExtension(DRAFT_TAP_EXTENSION_ID, {
         onMessage: (msg) => {
           const parsed = parseExtensionMessage(msg);
@@ -264,6 +291,7 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
         },
         onDisconnect: (reason) => {
           if (cancelled) return;
+          reported = true;
           if (reason === "not-installed") {
             dispatch({ type: "port", status: "not-installed" });
             timer = setTimeout(connect, 30_000); // they may install mid-session
@@ -273,12 +301,15 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
           }
         },
       });
-      if (handle === null) dispatch({ type: "port", status: "unsupported" });
+      if (handle === null && !reported) dispatch({ type: "port", status: "unsupported" });
     };
 
     connect();
     return () => {
       cancelled = true;
+      // Orphan whatever this connection queued: a reconnect's replay re-delivers
+      // it, and a disabled room must post nothing further.
+      genRef.current += 1;
       if (timer) clearTimeout(timer);
       handle?.disconnect();
     };
