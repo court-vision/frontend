@@ -2920,37 +2920,95 @@ export interface components {
              */
             status: string;
         };
-        /** GameLog */
+        /**
+         * GameLog
+         * @description Individual game in a player's game log.
+         */
         GameLog: {
-            /** Ast */
+            /**
+             * Ast
+             * @description Assists
+             */
             ast: number;
-            /** Blk */
+            /**
+             * Blk
+             * @description Blocks
+             */
             blk: number;
-            /** Date */
+            /**
+             * Date
+             * @description Game date (YYYY-MM-DD)
+             */
             date: string;
-            /** Fg3A */
+            /**
+             * Fg3A
+             * @description Three-pointers attempted
+             */
             fg3a: number;
-            /** Fg3M */
+            /**
+             * Fg3M
+             * @description Three-pointers made
+             */
             fg3m: number;
-            /** Fga */
+            /**
+             * Fga
+             * @description Field goals attempted
+             */
             fga: number;
-            /** Fgm */
+            /**
+             * Fgm
+             * @description Field goals made
+             */
             fgm: number;
-            /** Fpts */
+            /**
+             * Fpts
+             * @description Fantasy points scored
+             */
             fpts: number;
-            /** Fta */
+            /**
+             * Fta
+             * @description Free throws attempted
+             */
             fta: number;
-            /** Ftm */
+            /**
+             * Ftm
+             * @description Free throws made
+             */
             ftm: number;
-            /** Min */
+            /**
+             * Home
+             * @description Whether this was a home game
+             */
+            home: boolean | null;
+            /**
+             * Min
+             * @description Minutes played
+             */
             min: number;
-            /** Pts */
+            /**
+             * Opponent
+             * @description Opponent team abbreviation
+             */
+            opponent: string | null;
+            /**
+             * Pts
+             * @description Points
+             */
             pts: number;
-            /** Reb */
+            /**
+             * Reb
+             * @description Rebounds
+             */
             reb: number;
-            /** Stl */
+            /**
+             * Stl
+             * @description Steals
+             */
             stl: number;
-            /** Tov */
+            /**
+             * Tov
+             * @description Turnovers
+             */
             tov: number;
         };
         /**
@@ -4383,7 +4441,7 @@ export interface components {
              * Games
              * @description List of games
              */
-            games: components["schemas"]["schemas__player_games__GameLog"][];
+            games: components["schemas"]["GameLog"][];
             /**
              * Player Id
              * @description NBA player ID
@@ -4638,7 +4696,7 @@ export interface components {
             advanced_stats: components["schemas"]["AdvancedStatsData"] | null;
             avg_stats: components["schemas"]["AvgStats"];
             /** Game Logs */
-            game_logs: components["schemas"]["GameLog"][];
+            game_logs: components["schemas"]["schemas__player__GameLog"][];
             /** Games Played */
             games_played: number;
             /** Id */
@@ -5911,95 +5969,37 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
-        /**
-         * GameLog
-         * @description Individual game in a player's game log.
-         */
-        schemas__player_games__GameLog: {
-            /**
-             * Ast
-             * @description Assists
-             */
+        /** GameLog */
+        schemas__player__GameLog: {
+            /** Ast */
             ast: number;
-            /**
-             * Blk
-             * @description Blocks
-             */
+            /** Blk */
             blk: number;
-            /**
-             * Date
-             * @description Game date (YYYY-MM-DD)
-             */
+            /** Date */
             date: string;
-            /**
-             * Fg3A
-             * @description Three-pointers attempted
-             */
+            /** Fg3A */
             fg3a: number;
-            /**
-             * Fg3M
-             * @description Three-pointers made
-             */
+            /** Fg3M */
             fg3m: number;
-            /**
-             * Fga
-             * @description Field goals attempted
-             */
+            /** Fga */
             fga: number;
-            /**
-             * Fgm
-             * @description Field goals made
-             */
+            /** Fgm */
             fgm: number;
-            /**
-             * Fpts
-             * @description Fantasy points scored
-             */
+            /** Fpts */
             fpts: number;
-            /**
-             * Fta
-             * @description Free throws attempted
-             */
+            /** Fta */
             fta: number;
-            /**
-             * Ftm
-             * @description Free throws made
-             */
+            /** Ftm */
             ftm: number;
-            /**
-             * Home
-             * @description Whether this was a home game
-             */
-            home: boolean | null;
-            /**
-             * Min
-             * @description Minutes played
-             */
+            /** Min */
             min: number;
-            /**
-             * Opponent
-             * @description Opponent team abbreviation
-             */
-            opponent: string | null;
-            /**
-             * Pts
-             * @description Points
-             */
+            /** Pts */
             pts: number;
-            /**
-             * Reb
-             * @description Rebounds
-             */
+            /** Reb */
             reb: number;
-            /**
-             * Stl
-             * @description Steals
-             */
+            /** Stl */
             stl: number;
-            /**
-             * Tov
-             * @description Turnovers
-             */
+            /** Tov */
             tov: number;
         };
     };
