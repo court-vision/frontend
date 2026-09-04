@@ -2154,6 +2154,174 @@
         "title": "DraftBoardRow",
         "type": "object"
       },
+      "DraftInitSyncRequest": {
+        "description": "The base64 body of the ESPN draft room's `INIT <base64>` frame.\n\nThe room posts it on every connect, so this endpoint is idempotent: picks it\nalready holds are skipped, not re-recorded.",
+        "properties": {
+          "payload": {
+            "description": "Base64 of the room's INIT snapshot (a leading `INIT ` prefix and whitespace are tolerated)",
+            "maxLength": 1000000,
+            "minLength": 24,
+            "title": "Payload",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payload"
+        ],
+        "title": "DraftInitSyncRequest",
+        "type": "object"
+      },
+      "DraftInitSyncResp": {
+        "properties": {
+          "conflicts": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DraftSyncConflict"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "draft_state": {
+            "description": "ESPN's draft state code from the snapshot (0 = not started)",
+            "title": "Draft State",
+            "type": "integer"
+          },
+          "draft_type": {
+            "enum": [
+              "snake",
+              "auction"
+            ],
+            "title": "Draft Type",
+            "type": "string"
+          },
+          "espn_front": {
+            "description": "Next pick number to assign \u2014 one past the last made pick; what the live path numbers from",
+            "title": "Espn Front",
+            "type": "integer"
+          },
+          "espn_league_id": {
+            "description": "The ESPN league id decoded from the INIT frame",
+            "title": "Espn League Id",
+            "type": "integer"
+          },
+          "espn_team_id": {
+            "description": "The connecting user's ESPN team id (INIT.teamId) \u2014 what `by_me` is counted against",
+            "title": "Espn Team Id",
+            "type": "integer"
+          },
+          "header_applied": {
+            "description": "Whether pick order / slot / rounds / type were written from INIT (only on an empty session)",
+            "title": "Header Applied",
+            "type": "boolean"
+          },
+          "inserted": {
+            "description": "Picks newly recorded from this INIT",
+            "title": "Inserted",
+            "type": "integer"
+          },
+          "made": {
+            "description": "Picks made in the INIT snapshot",
+            "title": "Made",
+            "type": "integer"
+          },
+          "position_limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "description": "Hard per-position caps decoded from the room (display; the league's own are authoritative)",
+            "title": "Position Limits",
+            "type": "object"
+          },
+          "session": {
+            "$ref": "#/components/schemas/DraftSessionResp"
+          },
+          "skipped": {
+            "description": "Picks the session already held (a normal reconnect)",
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "warnings": {
+            "default": [],
+            "description": "Header disagreements on a session that already has picks (not applied)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "session",
+          "espn_league_id",
+          "espn_team_id",
+          "draft_state",
+          "draft_type",
+          "made",
+          "inserted",
+          "skipped",
+          "conflicts",
+          "warnings",
+          "espn_front",
+          "header_applied",
+          "position_limits"
+        ],
+        "title": "DraftInitSyncResp",
+        "type": "object"
+      },
+      "DraftInitSyncResponse": {
+        "description": "The reconciled session plus a report of what the INIT changed.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftInitSyncResp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DraftInitSyncResponse",
+        "type": "object"
+      },
       "DraftKeeper-Input": {
         "description": "One pre-designated keeper. Identity is whatever the client knows; the\nroom resolves it the same way a pick is resolved.",
         "properties": {
@@ -3308,6 +3476,65 @@
           }
         },
         "title": "DraftSessionUpdate",
+        "type": "object"
+      },
+      "DraftSyncConflict": {
+        "description": "One INIT pick that disagrees with what the session already has \u2014 reported,\nnever applied. The fix is a resync (INIT is authoritative) or a manual undo.",
+        "properties": {
+          "espn_player_id": {
+            "title": "Espn Player Id",
+            "type": "integer"
+          },
+          "held_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the player is already recorded (player_already_drafted)",
+            "title": "Held At"
+          },
+          "held_espn_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who already holds this pick number (pick_number_taken)",
+            "title": "Held Espn Player Id"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "pick_number": {
+            "title": "Pick Number",
+            "type": "integer"
+          },
+          "reason": {
+            "enum": [
+              "pick_number_taken",
+              "player_already_drafted"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pick_number",
+          "espn_player_id",
+          "reason",
+          "held_at",
+          "held_espn_player_id",
+          "message"
+        ],
+        "title": "DraftSyncConflict",
         "type": "object"
       },
       "EnrichedRosterPlayer": {
@@ -12820,6 +13047,73 @@
           }
         ],
         "summary": "Undo a pick",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/drafts/{session_id}/sync/init": {
+      "post": {
+        "description": "Decodes the ESPN draft room's INIT snapshot and folds it into this session. On a session with no picks yet it sets the pick order, slot, rounds and draft type from the room; then it records every pick the room has made, at that pick's ESPN number, skipping the ones already recorded and reporting (never overwriting) any that disagree.\n\nIdempotent by design: the room's tab posts this on every connect, so a reconnect re-posts the whole snapshot and only the newly-made picks are inserted.",
+        "operationId": "sync_draft_init_v1_internal_drafts__session_id__sync_init_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftInitSyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftInitSyncResponse"
+                }
+              }
+            },
+            "description": "Reconciled \u2014 see `inserted`, `skipped`, `conflicts`, `warnings`"
+          },
+          "400": {
+            "description": "The payload is not a decodable INIT frame"
+          },
+          "404": {
+            "description": "No such session, or it does not belong to the caller"
+          },
+          "409": {
+            "description": "The ESPN room belongs to a different league than this session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reconcile a session with the ESPN draft room's INIT frame",
         "tags": [
           "Drafts"
         ]

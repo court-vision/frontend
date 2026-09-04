@@ -298,6 +298,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/drafts/{session_id}/sync/init": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reconcile a session with the ESPN draft room's INIT frame
+         * @description Decodes the ESPN draft room's INIT snapshot and folds it into this session. On a session with no picks yet it sets the pick order, slot, rounds and draft type from the room; then it records every pick the room has made, at that pick's ESPN number, skipping the ones already recorded and reporting (never overwriting) any that disagree.
+         *
+         *     Idempotent by design: the room's tab posts this on every connect, so a reconnect re-posts the whole snapshot and only the newly-made picks are inserted.
+         */
+        post: operations["sync_draft_init_v1_internal_drafts__session_id__sync_init_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/espn/get_freeagent_data": {
         parameters: {
             query?: never;
@@ -2412,6 +2434,102 @@ export interface components {
             value_source: "projection" | "baseline" | "market";
         };
         /**
+         * DraftInitSyncRequest
+         * @description The base64 body of the ESPN draft room's `INIT <base64>` frame.
+         *
+         *     The room posts it on every connect, so this endpoint is idempotent: picks it
+         *     already holds are skipped, not re-recorded.
+         */
+        DraftInitSyncRequest: {
+            /**
+             * Payload
+             * @description Base64 of the room's INIT snapshot (a leading `INIT ` prefix and whitespace are tolerated)
+             */
+            payload: string;
+        };
+        /** DraftInitSyncResp */
+        DraftInitSyncResp: {
+            /**
+             * Conflicts
+             * @default []
+             */
+            conflicts: components["schemas"]["DraftSyncConflict"][];
+            /**
+             * Draft State
+             * @description ESPN's draft state code from the snapshot (0 = not started)
+             */
+            draft_state: number;
+            /**
+             * Draft Type
+             * @enum {string}
+             */
+            draft_type: "snake" | "auction";
+            /**
+             * Espn Front
+             * @description Next pick number to assign — one past the last made pick; what the live path numbers from
+             */
+            espn_front: number;
+            /**
+             * Espn League Id
+             * @description The ESPN league id decoded from the INIT frame
+             */
+            espn_league_id: number;
+            /**
+             * Espn Team Id
+             * @description The connecting user's ESPN team id (INIT.teamId) — what `by_me` is counted against
+             */
+            espn_team_id: number;
+            /**
+             * Header Applied
+             * @description Whether pick order / slot / rounds / type were written from INIT (only on an empty session)
+             */
+            header_applied: boolean;
+            /**
+             * Inserted
+             * @description Picks newly recorded from this INIT
+             */
+            inserted: number;
+            /**
+             * Made
+             * @description Picks made in the INIT snapshot
+             */
+            made: number;
+            /**
+             * Position Limits
+             * @description Hard per-position caps decoded from the room (display; the league's own are authoritative)
+             * @default {}
+             */
+            position_limits: {
+                [key: string]: number;
+            };
+            session: components["schemas"]["DraftSessionResp"];
+            /**
+             * Skipped
+             * @description Picks the session already held (a normal reconnect)
+             */
+            skipped: number;
+            /**
+             * Warnings
+             * @description Header disagreements on a session that already has picks (not applied)
+             * @default []
+             */
+            warnings: string[];
+        };
+        /**
+         * DraftInitSyncResponse
+         * @description The reconciled session plus a report of what the INIT changed.
+         */
+        DraftInitSyncResponse: {
+            data: components["schemas"]["DraftInitSyncResp"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
          * DraftKeeper
          * @description One pre-designated keeper. Identity is whatever the client knows; the
          *     room resolves it the same way a pick is resolved.
@@ -2823,6 +2941,34 @@ export interface components {
             rounds?: number | null;
             /** Status */
             status?: ("active" | "completed" | "abandoned") | null;
+        };
+        /**
+         * DraftSyncConflict
+         * @description One INIT pick that disagrees with what the session already has — reported,
+         *     never applied. The fix is a resync (INIT is authoritative) or a manual undo.
+         */
+        DraftSyncConflict: {
+            /** Espn Player Id */
+            espn_player_id: number;
+            /**
+             * Held At
+             * @description Where the player is already recorded (player_already_drafted)
+             */
+            held_at: number | null;
+            /**
+             * Held Espn Player Id
+             * @description Who already holds this pick number (pick_number_taken)
+             */
+            held_espn_player_id: number | null;
+            /** Message */
+            message: string;
+            /** Pick Number */
+            pick_number: number;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "pick_number_taken" | "player_already_drafted";
         };
         /**
          * EnrichedRosterPlayer
@@ -6615,6 +6761,62 @@ export interface operations {
             };
             /** @description No such session or pick, or the session does not belong to the caller */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_draft_init_v1_internal_drafts__session_id__sync_init_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftInitSyncRequest"];
+            };
+        };
+        responses: {
+            /** @description Reconciled — see `inserted`, `skipped`, `conflicts`, `warnings` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftInitSyncResponse"];
+                };
+            };
+            /** @description The payload is not a decodable INIT frame */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such session, or it does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The ESPN room belongs to a different league than this session */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

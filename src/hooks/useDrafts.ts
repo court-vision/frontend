@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api";
 import type {
   DraftBoardResult,
   DraftBoardRow,
+  DraftInitSync,
   DraftPick,
   DraftPickCreate,
   DraftRosterEntry,
@@ -154,13 +155,17 @@ interface PickContext {
  * deliberately not a `raw: true` mutation: the route answers 409/400/422 for
  * real, so a rejected pick actually reaches `onError` and rolls back.
  */
-export function useDraftPickMutation(sessionId: number) {
+export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean } = {}) {
   const queryClient = useQueryClient();
   const { getToken } = useAuth();
 
   return useMutation<DraftPick, Error, DraftPickCreate, PickContext>({
     mutationKey: ["drafts", "pick", sessionId],
     mutationFn: (body) => apiClient.addDraftPick(getToken, sessionId, body),
+    // The live-sync feeder handles its own errors (a duplicate frame is a 409
+    // it treats as success) and reports them in the sync chip, so it opts out
+    // of the global mutation-error toast.
+    meta: opts.silent ? { toast: false } : undefined,
 
     onMutate: async (pick) => {
       const boardKey = draftKeys.board(sessionId);
@@ -242,18 +247,45 @@ export function useDraftPickMutation(sessionId: number) {
 }
 
 /**
+ * Reconcile a session with an ESPN INIT snapshot. Silent (the sync chip reports
+ * results, not a toast); the reconciled session comes back on the response, so
+ * it is written straight into the cache and the board is invalidated.
+ */
+export function useDraftInitSyncMutation(sessionId: number) {
+  const queryClient = useQueryClient();
+  const { getToken } = useAuth();
+
+  return useMutation<DraftInitSync, Error, string>({
+    mutationKey: ["drafts", "sync-init", sessionId],
+    mutationFn: (payload) => apiClient.syncDraftInit(getToken, sessionId, payload),
+    meta: { toast: false },
+    onSuccess: (result) => {
+      queryClient.setQueryData(draftKeys.detail(sessionId), result.session);
+      queryClient.invalidateQueries({ queryKey: draftKeys.board(sessionId) });
+      queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
+    },
+    onError: (error) => {
+      console.error("Draft INIT sync error:", error);
+    },
+  });
+}
+
+/**
  * Undo a pick. Never `removeQueries` — the board row has to come *back*, so the
  * board is invalidated and refetched.
  */
-export function useUndoDraftPickMutation(sessionId: number) {
+export function useUndoDraftPickMutation(sessionId: number, opts: { silent?: boolean } = {}) {
   const queryClient = useQueryClient();
   const { getToken } = useAuth();
 
   return useMutation<number, Error, number>({
     mutationKey: ["drafts", "undo-pick", sessionId],
     mutationFn: (overallPick) => apiClient.deleteDraftPick(getToken, sessionId, overallPick),
+    // Silent for the live feeder: an ESPN undo it mirrors should not toast, and
+    // a 404 (already gone) is success it swallows.
+    meta: opts.silent ? { toast: false } : undefined,
     onSuccess: (overallPick) => {
-      toast.success(`Pick ${overallPick} undone`);
+      if (!opts.silent) toast.success(`Pick ${overallPick} undone`);
       queryClient.invalidateQueries({ queryKey: draftKeys.board(sessionId) });
       queryClient.invalidateQueries({ queryKey: draftKeys.detail(sessionId) });
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });

@@ -25,6 +25,11 @@ export const DRAFTS_API = `${API_BASE}/v1/internal/drafts`;
 export const RANKINGS_INTERNAL_API = `${API_BASE}/v1/internal/rankings`;
 export const SQLMATE_INTERNAL_API = `${API_BASE}/v1/internal/sqlmate`;
 
+// The Draft Tap extension's id (pinned by its manifest "key"). Live ESPN draft
+// sync connects to this extension; unset means the feature is off and the room
+// stays fully manual.
+export const DRAFT_TAP_EXTENSION_ID = process.env.NEXT_PUBLIC_DRAFT_TAP_EXTENSION_ID || "";
+
 // API v1 Public endpoints
 export const LIVE_API = `${API_BASE}/v1/live`;
 export const RANKINGS_API = `${API_BASE}/v1/rankings`;
