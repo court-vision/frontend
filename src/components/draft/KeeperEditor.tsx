@@ -30,6 +30,8 @@ interface KeeperEditorProps {
   rows: DraftBoardRow[];
   onSave: (keepers: DraftKeeper[]) => void;
   isSaving: boolean;
+  /** Hands off to the slot editor — keepers cannot be priced without a slot. */
+  onEditSlot?: () => void;
 }
 
 function fromSession(session: DraftSession): DraftKeeper[] {
@@ -41,7 +43,15 @@ function fromSession(session: DraftSession): DraftKeeper[] {
   }));
 }
 
-export function KeeperEditor({ open, onOpenChange, session, rows, onSave, isSaving }: KeeperEditorProps) {
+export function KeeperEditor({
+  open,
+  onOpenChange,
+  session,
+  rows,
+  onSave,
+  isSaving,
+  onEditSlot,
+}: KeeperEditorProps) {
   const [keepers, setKeepers] = useState<DraftKeeper[]>(() => fromSession(session));
   const [query, setQuery] = useState("");
 
@@ -166,7 +176,22 @@ export function KeeperEditor({ open, onOpenChange, session, rows, onSave, isSavi
           <p className={cn("font-mono text-[10px]", overAllowance ? "text-amber-500" : "text-muted-foreground")}>
             {keepers.length}
             {allowance != null ? ` of ${allowance} the league allows` : " keepers"}
-            {session.my_slot == null && " · set your slot to price them into picks"}
+            {session.my_slot == null && (
+              <>
+                {" · "}
+                {onEditSlot ? (
+                  <button
+                    onClick={onEditSlot}
+                    className="text-amber-500 underline decoration-dotted underline-offset-2 hover:text-amber-400"
+                  >
+                    set your slot
+                  </button>
+                ) : (
+                  <span className="text-amber-500">set your slot</span>
+                )}
+                {" to price them into picks"}
+              </>
+            )}
           </p>
         </div>
 
