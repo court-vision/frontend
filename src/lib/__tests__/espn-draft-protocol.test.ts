@@ -118,3 +118,43 @@ describe("parseExtensionMessage", () => {
     expect(parseExtensionMessage(null)).toBeNull();
   });
 });
+
+describe("ERROR frames and the write-path messages", () => {
+  test("ERROR decodes + and percent escapes", () => {
+    expect(parseFrame("ERROR 1 Not+your+turn%21")).toEqual({
+      op: "ERROR",
+      severity: 1,
+      text: "Not your turn!",
+      raw: "ERROR 1 Not+your+turn%21",
+    });
+  });
+
+  test("a bare ERROR is still an ERROR, and a bad escape keeps the raw text", () => {
+    expect(parseFrame("ERROR")).toEqual({ op: "ERROR", severity: null, text: "", raw: "ERROR" });
+    expect(parseFrame("ERROR 2 100%+sure")).toMatchObject({ op: "ERROR", severity: 2, text: "100% sure" });
+  });
+
+  test("hello with and without capabilities; the capabilities message", () => {
+    expect(parseExtensionMessage({ type: "hello", version: "0.2.0" })).toEqual({ type: "hello", version: "0.2.0" });
+    expect(parseExtensionMessage({ type: "hello", version: "0.3.0", capabilities: ["read", "write"] })).toEqual({
+      type: "hello",
+      version: "0.3.0",
+      capabilities: ["read", "write"],
+    });
+    expect(parseExtensionMessage({ type: "capabilities", capabilities: ["read"] })).toEqual({
+      type: "capabilities",
+      capabilities: ["read"],
+    });
+  });
+
+  test("a command-result record parses with its fields", () => {
+    const m = parseExtensionMessage({
+      type: "record",
+      record: { ts: 1, kind: "command-result", cmd: "select", requestId: "r", playerId: 5, ok: false, reason: "sse", tab: 2, frameId: 0 },
+    });
+    expect(m?.type).toBe("record");
+    if (m?.type === "record") {
+      expect(m.record).toMatchObject({ kind: "command-result", requestId: "r", playerId: 5, ok: false, reason: "sse", frameId: 0 });
+    }
+  });
+});

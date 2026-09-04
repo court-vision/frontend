@@ -16,7 +16,12 @@
  *   SELECTING <teamId> <msRemaining>                          who is on the clock
  *   AUTODRAFT <teamId> <bool>                                 a team's autodraft flag (arrives before INIT)
  *   CLOCK    <phase> [time [teamId [playerId [amount]]]]      variable arity 1–5
+ *   ERROR    <severity> <text>                                a server refusal; `+` is a space, then percent-decoded
  * Everything else (AUTOSUGGEST, PROJECTED_STANDINGS, TOKEN, JOINED, STATE, PONG…) is ignored.
+ *
+ * Outbound, there is exactly one thing the room may ask the extension to send
+ * on its behalf: `SELECT <playerId>` — the same frame a click in ESPN's room
+ * produces. The extension refuses it unless its popup toggle is on.
  */
 import { z } from "zod";
 
@@ -29,7 +34,7 @@ import { z } from "zod";
  */
 export const TapRecordSchema = z.looseObject({
   ts: z.number(),
-  kind: z.enum(["open", "frame", "close", "error"]),
+  kind: z.enum(["open", "frame", "close", "error", "command-result"]),
   dir: z.enum(["in", "out"]).optional(),
   transport: z.enum(["ws", "sse"]).optional(),
   frame: z.string().optional(),
@@ -39,11 +44,41 @@ export const TapRecordSchema = z.looseObject({
   clean: z.boolean().optional(),
   page: z.string().optional(),
   tab: z.number().optional(),
+  frameId: z.number().optional(),
+  // command-result only: the outcome of a `select` the room asked for.
+  cmd: z.string().optional(),
+  requestId: z.string().optional(),
+  playerId: z.number().optional(),
+  ok: z.boolean().optional(),
 });
 export type TapRecord = z.infer<typeof TapRecordSchema>;
 
+/** The one command the room may send over the port. */
+export interface SelectCommand {
+  type: "select";
+  playerId: number;
+  requestId: string;
+}
+
+/**
+ * Why a `select` did not reach the wire. The worker refuses before the tab
+ * (`bad-request`, `write-disabled`, `no-tab`); the tap refuses at the socket.
+ */
+export type SendFailureReason =
+  | "bad-request"
+  | "write-disabled"
+  | "no-tab"
+  | "unknown-command"
+  | "bad-player"
+  | "no-socket"
+  | "not-open"
+  | "sse"
+  | "send-failed";
+
 export const ExtensionMessageSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("hello"), version: z.string() }),
+  // `capabilities` is absent from a pre-0.3 extension, which can only read.
+  z.object({ type: z.literal("hello"), version: z.string(), capabilities: z.array(z.string()).optional() }),
+  z.object({ type: z.literal("capabilities"), capabilities: z.array(z.string()) }),
   z.object({ type: z.literal("replay"), records: z.array(TapRecordSchema) }),
   z.object({ type: z.literal("record"), record: TapRecordSchema }),
 ]);
@@ -66,6 +101,7 @@ export type DraftFrame =
   | { op: "SELECTING"; teamId: number; msRemaining: number }
   | { op: "AUTODRAFT"; teamId: number; enabled: boolean }
   | { op: "CLOCK"; phase: number; time: number | null; teamId: number | null; playerId: number | null; amount: number | null }
+  | { op: "ERROR"; severity: number | null; text: string; raw: string }
   | { op: "ignored"; opcode: string }
   | { op: "malformed"; opcode: string; raw: string };
 
@@ -140,6 +176,18 @@ export function parseFrame(frame: string): DraftFrame {
         playerId: int(parts[4]),
         amount: int(parts[5]),
       };
+    }
+    case "ERROR": {
+      // ESPN's client shows this text verbatim after `+` → space and a
+      // percent-decode; a bare ERROR is still worth surfacing, not malformed.
+      const encoded = parts.slice(2).join(" ").replace(/\+/g, " ");
+      let text = encoded;
+      try {
+        text = decodeURIComponent(encoded);
+      } catch {
+        // keep the raw text
+      }
+      return { op: "ERROR", severity: int(parts[1]), text, raw: frame };
     }
     default:
       return { op: "ignored", opcode: opcode || "(empty)" };

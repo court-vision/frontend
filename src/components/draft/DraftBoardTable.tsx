@@ -57,6 +57,13 @@ interface DraftBoardTableProps {
   inputRef?: RefObject<HTMLInputElement | null>;
   /** Pending keepers, pre-marked so nobody drafts his own keeper by accident. */
   keeperIds?: ReadonlySet<number>;
+  /**
+   * `d` on the page or ⌥↵ in the input: send the highlighted player to ESPN as
+   * your pick. Absent when the room cannot write to ESPN; nothing then hints at it.
+   */
+  onDraftHighlighted?: () => void;
+  /** The ESPN id of a pick sent to ESPN and not yet answered, for the row badge. */
+  pendingEspnId?: number | null;
 }
 
 export function DraftBoardTable({
@@ -71,6 +78,8 @@ export function DraftBoardTable({
   onUndoLast,
   inputRef,
   keeperIds,
+  onDraftHighlighted,
+  pendingEspnId = null,
 }: DraftBoardTableProps) {
   const {
     sortKey,
@@ -110,7 +119,9 @@ export function DraftBoardTable({
       onMove?.(e.key === "ArrowDown" ? 1 : -1);
     } else if (e.key === "Enter") {
       e.preventDefault();
-      onMark?.(e.shiftKey || e.metaKey || e.ctrlKey);
+      // A plain `d` is a letter in here, so the ESPN send is ⌥↵ in the input.
+      if (e.altKey && onDraftHighlighted) onDraftHighlighted();
+      else onMark?.(e.shiftKey || e.metaKey || e.ctrlKey);
     } else if (e.key === "Escape") {
       e.preventDefault();
       if (search) setSearch("");
@@ -146,7 +157,13 @@ export function DraftBoardTable({
               setHighlight(null);
             }}
             onKeyDown={handleInputKeyDown}
-            placeholder={onMark ? "Type a name, ↵ out, ⇧↵ mine" : "Filter players..."}
+            placeholder={
+              onMark
+                ? onDraftHighlighted
+                  ? "Type a name, ↵ out, ⇧↵ mine, ⌥↵ draft"
+                  : "Type a name, ↵ out, ⇧↵ mine"
+                : "Filter players..."
+            }
             aria-label={onMark ? "Pick input" : "Filter players"}
             className="h-7 pl-7 pr-7 text-xs font-mono bg-background/50 border-border/50 focus:border-primary/50"
           />
@@ -174,7 +191,7 @@ export function DraftBoardTable({
 
         {onMark && (
           <span className="hidden xl:inline font-mono text-[10px] text-muted-foreground/60">
-            j k move · o out · m mine · ⌘Z undo
+            j k move · o out · m mine{onDraftHighlighted ? " · d draft" : ""} · ⌘Z undo
           </span>
         )}
 
@@ -256,6 +273,14 @@ export function DraftBoardTable({
                         className="shrink-0 rounded border border-primary/40 bg-primary/10 px-1 text-[9px] uppercase text-primary"
                       >
                         Keep
+                      </span>
+                    )}
+                    {pendingEspnId !== null && row.espn_id === pendingEspnId && (
+                      <span
+                        title="Sent to ESPN — waiting for its answer"
+                        className="shrink-0 animate-pulse rounded border border-primary/40 bg-primary/10 px-1 text-[9px] uppercase text-primary"
+                      >
+                        Sending
                       </span>
                     )}
                     {row.cap_blocked && (

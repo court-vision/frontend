@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { DRAFT_TAP_EXTENSION_ID } from "@/endpoints";
 import { toApiError, userMessage } from "@/lib/api-error";
-import { parseExtensionMessage } from "@/lib/espn-draft/protocol";
+import { parseExtensionMessage, type SelectCommand } from "@/lib/espn-draft/protocol";
 import {
   backoffDelay,
   chromeRuntimeAvailable,
@@ -14,9 +14,12 @@ import {
   type PortHandle,
 } from "@/lib/espn-draft/extension";
 import {
+  canDraft as canDraftGate,
   frontFromSession,
   initialState,
   reduce,
+  type DraftGate,
+  type DraftGateReason,
   type SyncEffect,
   type SyncEvent,
   type SyncState,
@@ -28,7 +31,19 @@ import {
   useUndoDraftPickMutation,
 } from "@/hooks/useDrafts";
 import { useDraftSyncStore } from "@/stores/useDraftSyncStore";
-import type { DraftBoardResult, DraftSession } from "@/types/draft";
+import type { DraftBoardResult, DraftBoardRow, DraftSession } from "@/types/draft";
+
+/** How long a sent pick waits for ESPN's SELECTED before the room gives up on it. */
+export const SEND_TIMEOUT_MS = 10_000;
+
+/** The toast id for one player's send, so "Sending…" is replaced in place by its outcome. */
+export const sendToastId = (espnPlayerId: number) => `espn-send-${espnPlayerId}`;
+
+export type SendResult =
+  | { outcome: "echoed" }
+  | { outcome: "refused"; reason: DraftGateReason }
+  | { outcome: "failed"; reason: string; detail: string | null }
+  | { outcome: "timeout" };
 
 export interface EspnDraftSyncInput {
   sessionId: number;
@@ -47,6 +62,15 @@ export interface EspnDraftSync {
   resume: () => void;
   /** Whether the feature is switched on at all (an extension id is configured). */
   configured: boolean;
+  /** Whether a pick can be sent to ESPN right now — and if not, the first reason why. */
+  canDraft: DraftGate;
+  pending: SyncState["pending"];
+  /**
+   * Send `SELECT <espn_id>` on the ESPN room's own socket. Settles when ESPN
+   * echoes the pick (which the sync path then records), when something says
+   * it never will, or after `SEND_TIMEOUT_MS`.
+   */
+  draftPlayer: (row: DraftBoardRow) => Promise<SendResult>;
 }
 
 /**
@@ -60,6 +84,9 @@ export interface EspnDraftSync {
  * generation advances when the session changes or the connection is torn down,
  * and a stale effect neither starts nor reports — so work queued for one room
  * can never post into the next, and a resync's replay starts clean.
+ *
+ * A send goes straight onto the port, never through the effect chain: the
+ * chain may be busy reconciling an INIT, and the clock does not wait for it.
  */
 export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
   const { sessionId, expectedLeagueId, enabled } = input;
@@ -83,6 +110,23 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
 
   const chain = useRef<Promise<void>>(Promise.resolve());
   const genRef = useRef(0);
+  const handleRef = useRef<PortHandle | null>(null);
+
+  // The one send that may be in flight: its promise is settled from `dispatch`
+  // the moment the reducer clears `pending`, whatever cleared it.
+  const sendRef = useRef<{
+    requestId: string;
+    resolve: (result: SendResult) => void;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
+
+  const abandonSend = useCallback((reason: string) => {
+    const send = sendRef.current;
+    if (!send) return;
+    clearTimeout(send.timer);
+    sendRef.current = null;
+    send.resolve({ outcome: "failed", reason, detail: null });
+  }, []);
 
   const cachedSession = useCallback(
     () => queryClient.getQueryData<DraftSession>(draftKeys.detail(sessionId)) ?? input.session,
@@ -103,9 +147,25 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
 
   const dispatch = useCallback((event: SyncEvent) => {
     const ctx = { expectedLeagueId: refs.current.expectedLeagueId, paused: refs.current.paused, now: Date.now() };
-    const { state: next, effects } = reduce(stateRef.current, event, ctx);
+    const prev = stateRef.current;
+    const { state: next, effects } = reduce(prev, event, ctx);
     stateRef.current = next;
     setState(next);
+
+    const send = sendRef.current;
+    if (send && prev.pending?.requestId === send.requestId && next.pending === null) {
+      clearTimeout(send.timer);
+      sendRef.current = null;
+      const last = next.lastSend;
+      send.resolve(
+        last?.outcome === "echoed"
+          ? { outcome: "echoed" }
+          : last?.outcome === "timeout"
+            ? { outcome: "timeout" }
+            : { outcome: "failed", reason: last?.reason ?? "unknown", detail: last?.detail ?? null }
+      );
+    }
+
     const gen = genRef.current;
     for (const eff of effects) {
       // A stale effect (queued under an earlier generation) is dropped unrun.
@@ -159,7 +219,12 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
       dispatch({ type: "pick-reserve", overall });
 
       const row = cachedBoard()?.rows.find((r) => r.espn_id === eff.espnPlayerId);
+      const name = row?.name ?? `Player ${eff.espnPlayerId}`;
       const myTeamId = stateRef.current.myTeamId;
+      // Our own send: its "Sending…" toast is resolved in place, whatever happens.
+      const sent = eff.sentRequestId ? { id: sendToastId(eff.espnPlayerId) } : null;
+      const unrecorded = () =>
+        toast.error(`ESPN has ${name} at ${overall}, but the room could not record it — Resync`, sent ?? undefined);
       try {
         await refs.current.syncPick.mutateAsync({
           overall_pick: overall,
@@ -172,18 +237,19 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
         });
         if (gen !== genRef.current) return;
         dispatch({ type: "pick-result", outcome: "inserted" });
-        // Only a pick that just happened earns a toast; a late-join replay of
-        // forty picks is a chip count, not forty notifications.
-        if (eff.live) {
-          toast.message(`${row?.name ?? `Player ${eff.espnPlayerId}`} off the board at ${overall} · ESPN`, {
-            id: `espn-pick-${overall}`,
-          });
+        if (sent) {
+          toast.success(`You drafted ${name} at ${overall} · ESPN`, sent);
+        } else if (eff.live) {
+          // Only a pick that just happened earns a toast; a late-join replay of
+          // forty picks is a chip count, not forty notifications.
+          toast.message(`${name} off the board at ${overall} · ESPN`, { id: `espn-pick-${overall}` });
         }
       } catch (error) {
         if (gen !== genRef.current) return;
         const api = toApiError(error);
         if (api.code === "DRAFT_PLAYER_ALREADY_DRAFTED") {
           dispatch({ type: "pick-result", outcome: "duplicate" });
+          if (sent) toast.success(`You drafted ${name} · ESPN`, sent);
           return;
         }
         if (api.code === "DRAFT_PICK_ALREADY_EXISTS") {
@@ -194,9 +260,14 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
             outcome: sameEspn ? "duplicate" : "conflict",
             error: sameEspn ? undefined : `Pick ${overall} is a different player in ESPN — Resync`,
           });
+          if (sent) {
+            if (sameEspn) toast.success(`You drafted ${name} at ${overall} · ESPN`, sent);
+            else unrecorded();
+          }
           return;
         }
         dispatch({ type: "pick-result", outcome: "failed", error: userMessage(error) });
+        if (sent) unrecorded();
       }
     },
     [cachedSession, cachedBoard, dispatch]
@@ -227,6 +298,36 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     return runUndo(eff, gen);
   };
 
+  // ---- the write path ----
+
+  const draftPlayer = useCallback(
+    (row: DraftBoardRow): Promise<SendResult> => {
+      // Re-validate at send time on the wall clock: the button's gate ran at
+      // render, on the last frame's timestamp.
+      const gate = canDraftGate(stateRef.current, refs.current.paused, Date.now());
+      if (!gate.ok) return Promise.resolve({ outcome: "refused", reason: gate.reason });
+      const playerId = row.espn_id;
+      if (playerId == null) return Promise.resolve({ outcome: "failed", reason: "no-espn-id", detail: null });
+      const handle = handleRef.current;
+      if (!handle) return Promise.resolve({ outcome: "refused", reason: "not-connected" });
+
+      const requestId = crypto.randomUUID();
+      const command: SelectCommand = { type: "select", playerId, requestId };
+      if (!handle.send(command)) return Promise.resolve({ outcome: "failed", reason: "disconnected", detail: null });
+
+      return new Promise<SendResult>((resolve) => {
+        const timer = setTimeout(() => dispatch({ type: "draft-timeout", requestId }), SEND_TIMEOUT_MS);
+        sendRef.current = { requestId, resolve, timer };
+        dispatch({ type: "draft-sent", playerId, requestId });
+      });
+    },
+    [dispatch]
+  );
+
+  // Render-time gate on the last frame's clock (pure); `draftPlayer` re-checks
+  // on the wall clock before anything goes out.
+  const canDraft = useMemo(() => canDraftGate(state, paused, state.lastFrameAt ?? 0), [state, paused]);
+
   // ---- session change: start the reducer clean, orphan any queued work ----
 
   useEffect(() => {
@@ -234,7 +335,8 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     stateRef.current = initialState();
     setState(stateRef.current);
     chain.current = Promise.resolve();
-  }, [sessionId]);
+    abandonSend("disconnected");
+  }, [sessionId, abandonSend]);
 
   // ---- port lifecycle ----
 
@@ -266,7 +368,6 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
       return;
     }
 
-    let handle: PortHandle | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
 
@@ -276,12 +377,16 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
       // `connectToExtension` reports a synchronous connect failure through
       // onDisconnect *and* returns null; only an unreported null is "unsupported".
       let reported = false;
-      handle = connectToExtension(DRAFT_TAP_EXTENSION_ID, {
+      handleRef.current = connectToExtension(DRAFT_TAP_EXTENSION_ID, {
         onMessage: (msg) => {
           const parsed = parseExtensionMessage(msg);
           if (!parsed) return;
           if (parsed.type === "hello") {
             dispatch({ type: "port", status: "connected" });
+            // A pre-0.3 extension advertises nothing: it can read, and that is all.
+            dispatch({ type: "capabilities", capabilities: parsed.capabilities ?? ["read"] });
+          } else if (parsed.type === "capabilities") {
+            dispatch({ type: "capabilities", capabilities: parsed.capabilities });
           } else if (parsed.type === "replay") {
             dispatch({ type: "port", status: "connected" });
             dispatch({ type: "replay", records: parsed.records });
@@ -292,6 +397,7 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
         onDisconnect: (reason) => {
           if (cancelled) return;
           reported = true;
+          handleRef.current = null;
           if (reason === "not-installed") {
             dispatch({ type: "port", status: "not-installed" });
             timer = setTimeout(connect, 30_000); // they may install mid-session
@@ -301,7 +407,7 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
           }
         },
       });
-      if (handle === null && !reported) dispatch({ type: "port", status: "unsupported" });
+      if (handleRef.current === null && !reported) dispatch({ type: "port", status: "unsupported" });
     };
 
     connect();
@@ -311,7 +417,9 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
       // it, and a disabled room must post nothing further.
       genRef.current += 1;
       if (timer) clearTimeout(timer);
-      handle?.disconnect();
+      abandonSend("disconnected");
+      handleRef.current?.disconnect();
+      handleRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, sessionId, nonce]);
@@ -323,5 +431,8 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     reconnect,
     resume,
     configured: Boolean(DRAFT_TAP_EXTENSION_ID),
+    canDraft,
+    pending: state.pending,
+    draftPlayer,
   };
 }
