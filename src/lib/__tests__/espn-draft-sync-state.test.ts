@@ -17,6 +17,7 @@ import type { DraftPick, DraftSession } from "../../types/draft";
 
 const CTX = (over: Partial<SyncContext> = {}): SyncContext => ({
   expectedLeagueId: null,
+  bindable: false,
   paused: false,
   now: 1000,
   ...over,
@@ -292,7 +293,7 @@ describe("canDraft", () => {
 
   test("every reason has a label", () => {
     const reasons = [
-      "no-write", "not-connected", "no-room", "room-closed", "sse", "paused",
+      "no-write", "not-connected", "no-room", "unlinked", "room-closed", "sse", "paused",
       "mismatch", "reset", "pending", "no-team", "not-on-clock", "clock-stale",
     ] as const;
     for (const r of reasons) expect(canDraftLabel(r).length).toBeGreaterThan(0);
@@ -409,5 +410,82 @@ describe("chip + messages for the write path", () => {
     expect(sendFailureMessage("write-disabled")).toContain("popup");
     expect(sendFailureMessage("taken")).toContain("first");
     expect(sendFailureMessage("what-is-this")).toContain("what-is-this");
+  });
+});
+
+// -------------------------------- linking -------------------------------- //
+
+describe("an unlinked mock room", () => {
+  const BIND = CTX({ bindable: true });
+
+  test("holds the first ESPN room it sees: INIT is shelved, nothing is applied", () => {
+    const { state, effects } = run([openRec(), INIT(), frameRec("SELECTED 8 100 2")], BIND);
+    expect(state.unbound).toEqual({ espnLeagueId: 9, dismissed: false });
+    expect(state.room?.leagueId).toBe(9);
+    expect(effects).toHaveLength(0);
+    expect(state.stats.pausedFrames).toBe(2);
+    expect(chipStatus(state, false).label).toBe("ESPN room 9 is open — link it?");
+  });
+
+  test("cannot draft until linked", () => {
+    let s = reduce(initialState(), { type: "port", status: "connected" }, BIND).state;
+    s = reduce(s, { type: "capabilities", capabilities: ["read", "write"] }, BIND).state;
+    s = run([openRec(), frameRec("SELECTING 3 30000")], BIND, s).state;
+    const gate = canDraft(s, false, s.lastFrameAt ?? 0);
+    expect(gate).toEqual({ ok: false, reason: "unlinked" });
+  });
+
+  test("ignoring keeps the frames shelved and says so", () => {
+    let s = run([openRec()], BIND).state;
+    s = reduce(s, { type: "dismiss-room" }, BIND).state;
+    expect(s.unbound?.dismissed).toBe(true);
+    expect(chipStatus(s, false).label).toBe("Ignoring ESPN room 9");
+    const { effects } = run([INIT()], BIND, s);
+    expect(effects).toHaveLength(0);
+  });
+
+  test("once linked, the same room applies normally and any other is a mismatch", () => {
+    const linked = CTX({ expectedLeagueId: 9, bindable: false });
+    const ok = run([openRec(), INIT()], linked);
+    expect(ok.state.unbound).toBeNull();
+    expect(ok.effects.map((e) => e.kind)).toEqual(["sync-init"]);
+
+    const other = run([openRec({ url: "wss://fantasydraft.espn.com/game-3/league-77/JOIN" }), INIT()], linked);
+    expect(other.state.mismatch).toEqual({ espnLeagueId: 77, expected: 9 });
+    expect(other.effects).toHaveLength(0);
+    expect(chipStatus(other.state, false)).toMatchObject({ tone: "warn", label: "Wrong ESPN room" });
+  });
+
+  test("a room that is not bindable and has no expectation accepts any room (manual/legacy)", () => {
+    const { state, effects } = run([openRec(), INIT()], CTX({ bindable: false }));
+    expect(state.unbound).toBeNull();
+    expect(effects.map((e) => e.kind)).toEqual(["sync-init"]);
+  });
+});
+
+describe("ESPN's draft state", () => {
+  test("STATE 2 asks to close the session, once; other states are only remembered", () => {
+    let s = run([openRec(), INIT()], CTX()).state;
+    const during = run([frameRec("STATE 1 30000")], CTX(), s);
+    expect(during.effects).toHaveLength(0);
+    expect(during.state.draftState).toBe(1);
+    const after = run([frameRec("STATE 2")], CTX(), during.state);
+    expect(after.effects).toEqual([{ kind: "complete" }]);
+    expect(after.state.draftState).toBe(2);
+    expect(run([frameRec("STATE 2")], CTX(), after.state).effects).toHaveLength(0);
+    expect(chipStatus({ ...after.state, reconciled: "ok", initSeen: true }, false).label).toBe("ESPN draft complete");
+  });
+
+  test("STATE 2 while paused or unlinked is remembered but not acted on", () => {
+    const paused = run([openRec(), INIT(), frameRec("STATE 2")], CTX({ paused: true }));
+    expect(paused.effects).toHaveLength(0);
+    expect(paused.state.draftState).toBe(2);
+    const unlinked = run([openRec(), frameRec("STATE 2")], CTX({ bindable: true }));
+    expect(unlinked.effects).toHaveLength(0);
+  });
+
+  test("the INIT result carries ESPN's state too", () => {
+    const s = reduce(initialState(), { type: "init-result", ok: true, front: 5, myTeamId: 3, draftState: 1 }, CTX()).state;
+    expect(s.draftState).toBe(1);
   });
 });

@@ -174,7 +174,9 @@ export interface paths {
         put?: never;
         /**
          * Start a draft session
-         * @description Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for a mock draft.
+         * @description Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for generic settings.
+         *
+         *     `kind` says where the picks come from. `live` follows the team's own ESPN draft and is linked to it at once — one active live room per league, so a second is refused with the first's id. `mock` follows an ESPN mock lobby and links to the first one it reconciles with. `manual` follows nothing.
          *
          *     `my_slot` is the one thing the caller must supply: `pick_order` holds ESPN team ids that nothing maps back to our teams, so the room asks which seat is yours.
          */
@@ -220,7 +222,11 @@ export interface paths {
         get: operations["get_draft_session_v1_internal_drafts__session_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete a draft session
+         * @description Removes the room and every pick recorded in it. There is no undo: a finished draft is better closed (`status: completed`) than deleted.
+         */
+        delete: operations["delete_draft_session_v1_internal_drafts__session_id__delete"];
         options?: never;
         head?: never;
         /**
@@ -228,6 +234,8 @@ export interface paths {
          * @description Partial update — only the fields present in the body are written. Used for confirming or correcting `my_slot`, editing pre-designated `keepers`, and closing the room (`status: completed`, which stamps `completed_at` the first time).
          *
          *     Changing `draft_type` or `pick_order` re-derives the round and slot of every recorded pick. A change that would leave the session inconsistent — a slot outside the new pick order, or a draft resized shorter than the picks already recorded — is refused.
+         *
+         *     `name` renames the room. `espn_league_id` links it to one ESPN draft (a real league's id, or a mock lobby's): exclusive — one active room per draft, refused with the other room's id otherwise — and an explicit null unlinks.
          */
         patch: operations["update_draft_session_v1_internal_drafts__session_id__patch"];
         trace?: never;
@@ -2778,6 +2786,7 @@ export interface components {
             keepers?: components["schemas"]["DraftKeeper-Input"][];
             /**
              * Kind
+             * @description Where the picks come from. `live`: this team's own ESPN draft (needs a team in a synced ESPN league; the room is linked to it at once). `mock`: an ESPN mock lobby, linked on the first INIT it reconciles with. `manual`: the caller enters every pick.
              * @default manual
              * @enum {string}
              */
@@ -2787,6 +2796,11 @@ export interface components {
              * @description 1-based slot the caller drafts from
              */
             my_slot?: number | null;
+            /**
+             * Name
+             * @description A label of the caller's choosing
+             */
+            name?: string | null;
             /**
              * Pick Order
              * @description Provider team ids in first-round order; defaults to the league's
@@ -2799,9 +2813,24 @@ export interface components {
             rounds?: number | null;
             /**
              * Team Id
-             * @description Owned team to draft for; omit for a mock draft
+             * @description Owned team whose league settings the room uses; omit for generic settings
              */
             team_id?: number | null;
+        };
+        /**
+         * DraftSessionDeleteResponse
+         * @description The id of the session that was deleted.
+         */
+        DraftSessionDeleteResponse: {
+            /** Data */
+            data: number | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /**
          * DraftSessionListResponse
@@ -2832,6 +2861,11 @@ export interface components {
              * @enum {string}
              */
             draft_type: "snake" | "auction";
+            /**
+             * Espn League Id
+             * @description The ESPN draft this room follows; null until a mock room links to one
+             */
+            espn_league_id: number | null;
             /** Id */
             id: number;
             /**
@@ -2863,6 +2897,8 @@ export interface components {
             my_next_pick: number | null;
             /** My Slot */
             my_slot: number | null;
+            /** Name */
+            name: string | null;
             /**
              * Next Overall Pick
              * @description The number a new pick takes by default: the lowest unused one, so an undo is re-fillable in place. Not necessarily where the draft front is — see my_next_pick.
@@ -2931,10 +2967,20 @@ export interface components {
         DraftSessionUpdate: {
             /** Draft Type */
             draft_type?: ("snake" | "auction") | null;
+            /**
+             * Espn League Id
+             * @description Link the room to one ESPN draft (a real league's id, or a mock lobby's). Exclusive: one active room per ESPN draft, so linking to a draft another active room already follows is refused with that room's id. An explicit null unlinks.
+             */
+            espn_league_id?: number | null;
             /** Keepers */
             keepers?: components["schemas"]["DraftKeeper-Input"][] | null;
             /** My Slot */
             my_slot?: number | null;
+            /**
+             * Name
+             * @description A label of the caller's choosing; empty clears it
+             */
+            name?: string | null;
             /** Pick Order */
             pick_order?: number[] | null;
             /** Rounds */
@@ -6498,7 +6544,7 @@ export interface operations {
                     "application/json": components["schemas"]["DraftSessionResponse"];
                 };
             };
-            /** @description Slot outside the draft */
+            /** @description Slot outside the draft, or a live room without a synced ESPN league */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -6507,6 +6553,13 @@ export interface operations {
             };
             /** @description No such team, or it does not belong to the caller */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An active room already follows that ESPN draft (`existing_session_id`) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6599,6 +6652,44 @@ export interface operations {
             };
         };
     };
+    delete_draft_session_v1_internal_drafts__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftSessionDeleteResponse"];
+                };
+            };
+            /** @description No such session, or it does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_draft_session_v1_internal_drafts__session_id__patch: {
         parameters: {
             query?: never;
@@ -6632,6 +6723,13 @@ export interface operations {
             };
             /** @description No such session, or it does not belong to the caller */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Another active room already follows that ESPN draft (`existing_session_id`) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

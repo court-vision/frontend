@@ -691,6 +691,15 @@ class ApiClient {
    * envelope, so this composes them rather than unwrapping and losing them
    * (the `getRankingsWithMeta` pattern).
    */
+  /** Delete a session and every pick in it; resolves to the deleted id. */
+  async deleteDraftSession(getToken: GetTokenFn, sessionId: number): Promise<number> {
+    const env = await fetchJson<BaseApiResponse<number>>(`${DRAFTS_API}/${sessionId}`, {
+      getToken,
+      method: "DELETE",
+    });
+    return unwrap(env);
+  }
+
   async getDraftBoard(
     getToken: GetTokenFn,
     sessionId: number,

@@ -2965,6 +2965,7 @@
           },
           "kind": {
             "default": "manual",
+            "description": "Where the picks come from. `live`: this team's own ESPN draft (needs a team in a synced ESPN league; the room is linked to it at once). `mock`: an ESPN mock lobby, linked on the first INIT it reconciles with. `manual`: the caller enters every pick.",
             "enum": [
               "live",
               "manual",
@@ -2986,6 +2987,19 @@
             ],
             "description": "1-based slot the caller drafts from",
             "title": "My Slot"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A label of the caller's choosing",
+            "title": "Name"
           },
           "pick_order": {
             "anyOf": [
@@ -3026,11 +3040,65 @@
                 "type": "null"
               }
             ],
-            "description": "Owned team to draft for; omit for a mock draft",
+            "description": "Owned team whose league settings the room uses; omit for generic settings",
             "title": "Team Id"
           }
         },
         "title": "DraftSessionCreate",
+        "type": "object"
+      },
+      "DraftSessionDeleteResponse": {
+        "description": "The id of the session that was deleted.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DraftSessionDeleteResponse",
         "type": "object"
       },
       "DraftSessionListResponse": {
@@ -3118,6 +3186,18 @@
             "title": "Draft Type",
             "type": "string"
           },
+          "espn_league_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The ESPN draft this room follows; null until a mock room links to one",
+            "title": "Espn League Id"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -3197,6 +3277,17 @@
               }
             ],
             "title": "My Slot"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "next_overall_pick": {
             "default": 1,
@@ -3313,6 +3404,8 @@
           "league_id",
           "kind",
           "status",
+          "name",
+          "espn_league_id",
           "draft_type",
           "pick_order",
           "my_slot",
@@ -3405,6 +3498,19 @@
             ],
             "title": "Draft Type"
           },
+          "espn_league_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Link the room to one ESPN draft (a real league's id, or a mock lobby's). Exclusive: one active room per ESPN draft, so linking to a draft another active room already follows is refused with that room's id. An explicit null unlinks.",
+            "title": "Espn League Id"
+          },
           "keepers": {
             "anyOf": [
               {
@@ -3430,6 +3536,19 @@
               }
             ],
             "title": "My Slot"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A label of the caller's choosing; empty clears it",
+            "title": "Name"
           },
           "pick_order": {
             "anyOf": [
@@ -12658,7 +12777,7 @@
         ]
       },
       "post": {
-        "description": "Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for a mock draft.\n\n`my_slot` is the one thing the caller must supply: `pick_order` holds ESPN team ids that nothing maps back to our teams, so the room asks which seat is yours.",
+        "description": "Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for generic settings.\n\n`kind` says where the picks come from. `live` follows the team's own ESPN draft and is linked to it at once \u2014 one active live room per league, so a second is refused with the first's id. `mock` follows an ESPN mock lobby and links to the first one it reconciles with. `manual` follows nothing.\n\n`my_slot` is the one thing the caller must supply: `pick_order` holds ESPN team ids that nothing maps back to our teams, so the room asks which seat is yours.",
         "operationId": "create_draft_session_v1_internal_drafts_post",
         "requestBody": {
           "content": {
@@ -12682,10 +12801,13 @@
             "description": "Session created"
           },
           "400": {
-            "description": "Slot outside the draft"
+            "description": "Slot outside the draft, or a live room without a synced ESPN league"
           },
           "404": {
             "description": "No such team, or it does not belong to the caller"
+          },
+          "409": {
+            "description": "An active room already follows that ESPN draft (`existing_session_id`)"
           },
           "422": {
             "description": "Invalid session fields"
@@ -12777,6 +12899,55 @@
       }
     },
     "/v1/internal/drafts/{session_id}": {
+      "delete": {
+        "description": "Removes the room and every pick recorded in it. There is no undo: a finished draft is better closed (`status: completed`) than deleted.",
+        "operationId": "delete_draft_session_v1_internal_drafts__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftSessionDeleteResponse"
+                }
+              }
+            },
+            "description": "Session deleted"
+          },
+          "404": {
+            "description": "No such session, or it does not belong to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete a draft session",
+        "tags": [
+          "Drafts"
+        ]
+      },
       "get": {
         "operationId": "get_draft_session_v1_internal_drafts__session_id__get",
         "parameters": [
@@ -12826,7 +12997,7 @@
         ]
       },
       "patch": {
-        "description": "Partial update \u2014 only the fields present in the body are written. Used for confirming or correcting `my_slot`, editing pre-designated `keepers`, and closing the room (`status: completed`, which stamps `completed_at` the first time).\n\nChanging `draft_type` or `pick_order` re-derives the round and slot of every recorded pick. A change that would leave the session inconsistent \u2014 a slot outside the new pick order, or a draft resized shorter than the picks already recorded \u2014 is refused.",
+        "description": "Partial update \u2014 only the fields present in the body are written. Used for confirming or correcting `my_slot`, editing pre-designated `keepers`, and closing the room (`status: completed`, which stamps `completed_at` the first time).\n\nChanging `draft_type` or `pick_order` re-derives the round and slot of every recorded pick. A change that would leave the session inconsistent \u2014 a slot outside the new pick order, or a draft resized shorter than the picks already recorded \u2014 is refused.\n\n`name` renames the room. `espn_league_id` links it to one ESPN draft (a real league's id, or a mock lobby's): exclusive \u2014 one active room per draft, refused with the other room's id otherwise \u2014 and an explicit null unlinks.",
         "operationId": "update_draft_session_v1_internal_drafts__session_id__patch",
         "parameters": [
           {
@@ -12865,6 +13036,9 @@
           },
           "404": {
             "description": "No such session, or it does not belong to the caller"
+          },
+          "409": {
+            "description": "Another active room already follows that ESPN draft (`existing_session_id`)"
           },
           "422": {
             "description": "Empty or invalid update"

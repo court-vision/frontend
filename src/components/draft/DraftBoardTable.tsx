@@ -64,6 +64,10 @@ interface DraftBoardTableProps {
   onDraftHighlighted?: () => void;
   /** The ESPN id of a pick sent to ESPN and not yet answered, for the row badge. */
   pendingEspnId?: number | null;
+  /** The row's own "ESPN" button; absent when the room cannot write to ESPN. */
+  onDraftRow?: (row: DraftBoardRow) => void;
+  canDraft?: boolean;
+  draftDisabledReason?: string | null;
 }
 
 export function DraftBoardTable({
@@ -80,6 +84,9 @@ export function DraftBoardTable({
   keeperIds,
   onDraftHighlighted,
   pendingEspnId = null,
+  onDraftRow,
+  canDraft = false,
+  draftDisabledReason = null,
 }: DraftBoardTableProps) {
   const {
     sortKey,
@@ -229,7 +236,7 @@ export function DraftBoardTable({
             />
           </button>
         ))}
-        {onPick && <div className="w-24 py-2 px-1 text-center">Draft</div>}
+        {onPick && <div className={cn("py-2 px-1 text-center", onDraftRow ? "w-36" : "w-24")}>Draft</div>}
       </div>
 
       {/* Rows */}
@@ -350,7 +357,7 @@ export function DraftBoardTable({
                 </div>
 
                 {onPick && (
-                  <div className="w-24 py-1 px-1 flex items-center justify-center gap-1">
+                  <div className={cn("py-1 px-1 flex items-center justify-center gap-1", onDraftRow ? "w-36" : "w-24")}>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -381,6 +388,27 @@ export function DraftBoardTable({
                     >
                       Mine
                     </Button>
+                    {onDraftRow && (
+                      <Button
+                        size="sm"
+                        variant={canDraft && !row.cap_blocked ? "default" : "ghost"}
+                        disabled={!canDraft || row.cap_blocked}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDraftRow(row);
+                        }}
+                        title={
+                          row.cap_blocked
+                            ? "Your position caps leave no room for this player"
+                            : canDraft
+                              ? "Send this pick to ESPN (d)"
+                              : (draftDisabledReason ?? undefined)
+                        }
+                        className="h-6 px-1.5 text-[10px]"
+                      >
+                        ESPN
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

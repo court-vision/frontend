@@ -29,6 +29,7 @@ import {
   useDraftInitSyncMutation,
   useDraftPickMutation,
   useUndoDraftPickMutation,
+  useUpdateDraftSessionMutation,
 } from "@/hooks/useDrafts";
 import { useDraftSyncStore } from "@/stores/useDraftSyncStore";
 import type { DraftBoardResult, DraftBoardRow, DraftSession } from "@/types/draft";
@@ -49,8 +50,10 @@ export interface EspnDraftSyncInput {
   sessionId: number;
   session: DraftSession | undefined;
   board: DraftBoardResult | undefined;
-  /** The ESPN league id this session belongs to, or null for a mock/unsynced session. */
+  /** The ESPN draft this session is linked to, or null until a mock room links to one. */
   expectedLeagueId: number | null;
+  /** True for a mock room with no link yet: the first ESPN room it sees is offered, not adopted. */
+  bindable: boolean;
   enabled: boolean;
 }
 
@@ -65,6 +68,12 @@ export interface EspnDraftSync {
   /** Whether a pick can be sent to ESPN right now — and if not, the first reason why. */
   canDraft: DraftGate;
   pending: SyncState["pending"];
+  /** An ESPN room seen by an unlinked mock session, awaiting the user's say-so. */
+  unbound: SyncState["unbound"];
+  /** Link this session to the room in `unbound` and reconnect; rejects with the API error (409 when another room has it). */
+  linkRoom: () => Promise<void>;
+  /** Keep ignoring the room in `unbound` (its frames stay shelved). */
+  ignoreRoom: () => void;
   /**
    * Send `SELECT <espn_id>` on the ESPN room's own socket. Settles when ESPN
    * echoes the pick (which the sync path then records), when something says
@@ -89,13 +98,14 @@ export interface EspnDraftSync {
  * chain may be busy reconciling an INIT, and the clock does not wait for it.
  */
 export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
-  const { sessionId, expectedLeagueId, enabled } = input;
+  const { sessionId, expectedLeagueId, bindable, enabled } = input;
   const queryClient = useQueryClient();
   const { paused, setPaused: setPausedStore } = useDraftSyncStore();
 
   const syncPick = useDraftPickMutation(sessionId, { silent: true });
   const syncUndo = useUndoDraftPickMutation(sessionId, { silent: true });
   const syncInit = useDraftInitSyncMutation(sessionId);
+  const updateSession = useUpdateDraftSessionMutation(sessionId);
 
   // State via a manual reducer: `reduce` returns effects alongside the next
   // state, which a plain useReducer cannot surface, so `dispatch` is our own.
@@ -105,8 +115,8 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
 
   // Latest render values the async effect runners read, so a queued effect
   // never closes over a stale mutation, board, or context.
-  const refs = useRef({ paused, expectedLeagueId, syncPick, syncUndo, syncInit });
-  refs.current = { paused, expectedLeagueId, syncPick, syncUndo, syncInit };
+  const refs = useRef({ paused, expectedLeagueId, bindable, syncPick, syncUndo, syncInit, updateSession });
+  refs.current = { paused, expectedLeagueId, bindable, syncPick, syncUndo, syncInit, updateSession };
 
   const chain = useRef<Promise<void>>(Promise.resolve());
   const genRef = useRef(0);
@@ -146,7 +156,12 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
   // ---- dispatch: reduce, then serialize effects ----
 
   const dispatch = useCallback((event: SyncEvent) => {
-    const ctx = { expectedLeagueId: refs.current.expectedLeagueId, paused: refs.current.paused, now: Date.now() };
+    const ctx = {
+      expectedLeagueId: refs.current.expectedLeagueId,
+      bindable: refs.current.bindable,
+      paused: refs.current.paused,
+      now: Date.now(),
+    };
     const prev = stateRef.current;
     const { state: next, effects } = reduce(prev, event, ctx);
     stateRef.current = next;
@@ -181,7 +196,13 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
       try {
         const result = await refs.current.syncInit.mutateAsync(eff.payload);
         if (gen !== genRef.current) return;
-        dispatch({ type: "init-result", ok: true, front: result.espn_front, myTeamId: result.espn_team_id });
+        dispatch({
+          type: "init-result",
+          ok: true,
+          front: result.espn_front,
+          myTeamId: result.espn_team_id,
+          draftState: result.draft_state,
+        });
       } catch (error) {
         if (gen !== genRef.current) return;
         // Reconciliation failed (backend down, a league mismatch, a bad frame):
@@ -212,6 +233,16 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
       if (front === null) {
         const session = cachedSession();
         front = session ? frontFromSession(session) : 1;
+      }
+      // A pick the session already holds needs no round trip: a replay after a
+      // reload re-delivers every pick the room synced live, and posting each
+      // one only to be told "already drafted" is what made catching up slow.
+      // The number is still reserved, so the front stays honest.
+      const held = cachedSession()?.picks.find((p) => p.espn_player_id === eff.espnPlayerId);
+      if (held && !eff.sentRequestId) {
+        dispatch({ type: "pick-reserve", overall: Math.max(front, held.overall_pick) });
+        dispatch({ type: "pick-result", outcome: "duplicate" });
+        return;
       }
       const overall = front;
       // Reserve the number synchronously, before the await, so the next queued
@@ -292,9 +323,28 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     [dispatch]
   );
 
+  // ESPN says the draft is over: close the session. The backend also closes a
+  // room whose picks fill it, so this only matters when ESPN ends early (a
+  // commissioner stopping the draft) or when the length was never known.
+  const runComplete = useCallback(
+    async (gen: number) => {
+      const session = cachedSession();
+      if (!session || session.status !== "active") return;
+      try {
+        await refs.current.updateSession.mutateAsync({ status: "completed" });
+        if (gen !== genRef.current) return;
+        toast.success("Draft complete — ESPN says the draft is over", { id: "espn-draft-complete" });
+      } catch {
+        // The chip still shows ESPN's state; the room can be finished from the list.
+      }
+    },
+    [cachedSession]
+  );
+
   runEffectRef.current = (eff: SyncEffect, gen: number) => {
     if (eff.kind === "sync-init") return runSyncInit(eff, gen);
     if (eff.kind === "pick") return runPick(eff, gen);
+    if (eff.kind === "complete") return runComplete(gen);
     return runUndo(eff, gen);
   };
 
@@ -342,6 +392,19 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
 
   const [nonce, setNonce] = useState(0);
   const reconnect = useCallback(() => setNonce((n) => n + 1), []);
+
+  // ---- linking ----
+
+  const linkRoom = useCallback(async () => {
+    const target = stateRef.current.unbound?.espnLeagueId;
+    if (target == null) return;
+    await refs.current.updateSession.mutateAsync({ espn_league_id: target });
+    // The session now carries the link, so the reconnect's replay applies the
+    // room's frames under a matching expectation — INIT and all.
+    reconnect();
+  }, [reconnect]);
+
+  const ignoreRoom = useCallback(() => dispatch({ type: "dismiss-room" }), [dispatch]);
   const setPaused = useCallback(
     (p: boolean) => {
       setPausedStore(p);
@@ -434,5 +497,8 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     canDraft,
     pending: state.pending,
     draftPlayer,
+    unbound: state.unbound,
+    linkRoom,
+    ignoreRoom,
   };
 }

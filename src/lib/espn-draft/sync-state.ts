@@ -21,9 +21,17 @@
  * come: the extension's `command-result` failure, an ERROR frame, a closed
  * socket, a dropped port, or the hook's timeout. Nothing is recorded on send.
  * `canDraft` is the gate the UI and the hook both consult before sending.
+ *
+ * Linking: a room follows exactly one ESPN draft. A live room is linked at
+ * creation; a mock room is `bindable` until it is, and the first ESPN room it
+ * sees goes into `unbound` — nothing from it is applied until the user links
+ * (or ignores) it. Once linked, `expectedLeagueId` is set and any other room is
+ * a `mismatch`. That is what stops a leftover mock in the extension's log from
+ * replaying into a fresh room.
  */
 import type { DraftSession } from "@/types/draft";
 import {
+  ESPN_AFTER_DRAFT,
   espnLeagueIdFromUrl,
   parseFrame,
   peekInitHeader,
@@ -73,6 +81,10 @@ export interface SyncState {
   front: number | null;
   onClock: { teamId: number; msRemaining: number; at: number } | null;
   reset: boolean;
+  /** An ESPN room this (still unlinked) session has seen but not adopted. */
+  unbound: { espnLeagueId: number; dismissed: boolean } | null;
+  /** ESPN's own draft-state code, from INIT or a STATE frame; 2 means the draft is over. */
+  draftState: number | null;
   lastFrameAt: number | null;
   stats: SyncStats;
   lastError: string | null;
@@ -96,7 +108,7 @@ export type SyncEvent =
   | { type: "port"; status: Connection; error?: string }
   | { type: "replay"; records: TapRecord[] }
   | { type: "record"; record: TapRecord }
-  | { type: "init-result"; ok: true; front: number; myTeamId: number }
+  | { type: "init-result"; ok: true; front: number; myTeamId: number; draftState?: number }
   | { type: "init-result"; ok: false; error: string; code?: string; fallbackFront: number | null }
   | { type: "pick-reserve"; overall: number }
   | { type: "pick-result"; outcome: PickOutcome; error?: string }
@@ -104,6 +116,8 @@ export type SyncEvent =
   | { type: "pick-skipped" }
   | { type: "undo-result"; ok: boolean; error?: string }
   | { type: "resume" }
+  /** The user declined to link the room in `unbound`; its frames stay shelved. */
+  | { type: "dismiss-room" }
   | { type: "capabilities"; capabilities: string[] }
   | { type: "draft-sent"; playerId: number; requestId: string }
   /** A send the hook itself gave up on (the port went away before ESPN answered). */
@@ -121,10 +135,14 @@ export type SyncEffect =
       /** Set when this SELECTED is the echo of a pick this room sent. */
       sentRequestId?: string;
     }
-  | { kind: "undo"; pickNumber: number };
+  | { kind: "undo"; pickNumber: number }
+  /** ESPN says the draft is over: close the session. */
+  | { kind: "complete" };
 
 export interface SyncContext {
   expectedLeagueId: number | null;
+  /** True for a mock room that has not been linked to an ESPN draft yet. */
+  bindable: boolean;
   paused: boolean;
   now: number;
 }
@@ -141,6 +159,8 @@ export function initialState(): SyncState {
     front: null,
     onClock: null,
     reset: false,
+    unbound: null,
+    draftState: null,
     lastFrameAt: null,
     stats: {
       picks: 0,
@@ -165,7 +185,7 @@ const bump = (stats: SyncStats, key: keyof SyncStats): SyncStats => ({ ...stats,
 
 /** True when a live frame should be applied rather than shelved. */
 function acting(state: SyncState, ctx: SyncContext): boolean {
-  return !ctx.paused && state.mismatch === null && !state.reset;
+  return !ctx.paused && state.mismatch === null && !state.reset && state.unbound === null;
 }
 
 /** Close out the pending send, whatever closed it. A no-op when nothing is pending. */
@@ -218,6 +238,12 @@ function applyRecord(
       // Wrong room: latch a mismatch and act on nothing until a matching open.
       return { ...base, mismatch: { espnLeagueId: leagueId, expected: ctx.expectedLeagueId } };
     }
+    // An unlinked mock room holds a new ESPN room at arm's length: its frames
+    // are shelved until the user links this session to it.
+    const unbound =
+      ctx.expectedLeagueId == null && ctx.bindable && leagueId != null
+        ? { espnLeagueId: leagueId, dismissed: false }
+        : null;
     return {
       ...base,
       room: {
@@ -228,11 +254,13 @@ function applyRecord(
         closed: false,
       },
       mismatch: null,
+      unbound,
       initSeen: false,
       reconciled: "none",
       reset: false,
       front: null,
       onClock: null,
+      draftState: null,
     };
   }
 
@@ -314,6 +342,17 @@ function applyRecord(
       return { ...withTime, reset: true };
     case "SELECTING":
       return { ...withTime, onClock: { teamId: frame.teamId, msRemaining: frame.msRemaining, at: record.ts } };
+    case "STATE": {
+      // ESPN's word that the draft is over closes the session — once.
+      if (
+        frame.draftState === ESPN_AFTER_DRAFT &&
+        state.draftState !== ESPN_AFTER_DRAFT &&
+        acting(state, ctx)
+      ) {
+        effects.push({ kind: "complete" });
+      }
+      return { ...withTime, draftState: frame.draftState };
+    }
     case "ERROR":
       // ESPN refuses out loud only in answer to something; while nothing is
       // pending it is somebody else's problem (or the room's own chatter).
@@ -353,7 +392,16 @@ export function reduce(state: SyncState, event: SyncEvent, ctx: SyncContext): { 
       return { state: applyRecord(state, event.record, ctx, effects, true), effects };
     case "init-result": {
       if (event.ok) {
-        return { state: { ...state, reconciled: "ok", front: event.front, myTeamId: event.myTeamId }, effects };
+        return {
+          state: {
+            ...state,
+            reconciled: "ok",
+            front: event.front,
+            myTeamId: event.myTeamId,
+            draftState: event.draftState ?? state.draftState,
+          },
+          effects,
+        };
       }
       // A server-side league refusal is terminal, not a degraded mode: latch the
       // mismatch so nothing else is posted into this session from that room.
@@ -395,6 +443,11 @@ export function reduce(state: SyncState, event: SyncEvent, ctx: SyncContext): { 
       // The hook follows this with a reconnect, whose replay re-applies the
       // shelved frames. Here we only lift the reset gate.
       return { state: { ...state, reset: false }, effects };
+    case "dismiss-room":
+      return {
+        state: state.unbound ? { ...state, unbound: { ...state.unbound, dismissed: true } } : state,
+        effects,
+      };
     case "draft-sent":
       return {
         state: {
@@ -429,6 +482,7 @@ export type DraftGateReason =
   | "not-connected"
   | "no-write"
   | "no-room"
+  | "unlinked"
   | "room-closed"
   | "sse"
   | "paused"
@@ -458,6 +512,7 @@ export function canDraft(state: SyncState, paused: boolean, now: number): DraftG
   if (state.connection !== "connected") return no("not-connected");
   if (!state.capabilities.includes("write")) return no("no-write");
   if (!state.room) return no("no-room");
+  if (state.unbound) return no("unlinked");
   if (state.room.closed) return no("room-closed");
   if (state.room.transport === "sse") return no("sse"); // receive-only
   if (paused) return no("paused");
@@ -479,6 +534,8 @@ export function canDraftLabel(reason: DraftGateReason): string {
       return "Not connected to the Draft Tap";
     case "no-room":
       return "Open your ESPN draft room";
+    case "unlinked":
+      return "Link this room to the ESPN draft first";
     case "room-closed":
       return "ESPN room closed — reload the ESPN tab";
     case "sse":
@@ -546,8 +603,8 @@ export function chipStatus(state: SyncState, paused: boolean): { tone: ChipTone;
   if (state.mismatch)
     return {
       tone: "warn",
-      label: `ESPN room is league ${state.mismatch.espnLeagueId}, this session is league ${state.mismatch.expected}`,
-      detail: "Open your league's draft room to sync",
+      label: "Wrong ESPN room",
+      detail: `That tab is league ${state.mismatch.espnLeagueId}; this room follows league ${state.mismatch.expected}. Open your league's draft room.`,
     };
   if (state.connection === "connecting") return { tone: "muted", label: "Connecting to tap…", detail: null };
   if (state.connection === "disconnected")
@@ -560,8 +617,17 @@ export function chipStatus(state: SyncState, paused: boolean): { tone: ChipTone;
       label: state.room?.closed ? "ESPN room closed — reload the ESPN tab" : "Tap ready — open your ESPN draft room",
       detail: null,
     };
+  if (state.unbound)
+    return state.unbound.dismissed
+      ? { tone: "muted", label: `Ignoring ESPN room ${state.unbound.espnLeagueId}`, detail: "Link it to record its picks here" }
+      : {
+          tone: "warn",
+          label: `ESPN room ${state.unbound.espnLeagueId} is open — link it?`,
+          detail: "Its picks are held until this room is linked to it; one room per ESPN draft",
+        };
   if (state.reconciled === "pending") return { tone: "muted", label: "Reconciling with ESPN…", detail: null };
   if (state.pending) return { tone: "ok", label: "Sending pick to ESPN…", detail: null };
+  if (state.draftState === ESPN_AFTER_DRAFT) return { tone: "ok", label: "ESPN draft complete", detail: null };
 
   const next = state.front ?? "?";
   const failing = state.stats.failed || state.stats.conflicts;

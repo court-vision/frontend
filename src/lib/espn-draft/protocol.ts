@@ -17,6 +17,7 @@
  *   AUTODRAFT <teamId> <bool>                                 a team's autodraft flag (arrives before INIT)
  *   CLOCK    <phase> [time [teamId [playerId [amount]]]]      variable arity 1–5
  *   ERROR    <severity> <text>                                a server refusal; `+` is a space, then percent-decoded
+ *   STATE    <draftState> [<durationMs>]                       0 before, 1 during, 2 after the draft, 3 paused
  * Everything else (AUTOSUGGEST, PROJECTED_STANDINGS, TOKEN, JOINED, STATE, PONG…) is ignored.
  *
  * Outbound, there is exactly one thing the room may ask the extension to send
@@ -32,6 +33,9 @@ import { z } from "zod";
  * add fields in a newer version than the page; we read the ones we know and
  * ignore the rest rather than rejecting the whole message.
  */
+/** ESPN's draft-state code (INIT header and STATE frames). */
+export const ESPN_AFTER_DRAFT = 2;
+
 export const TapRecordSchema = z.looseObject({
   ts: z.number(),
   kind: z.enum(["open", "frame", "close", "error", "command-result"]),
@@ -102,6 +106,7 @@ export type DraftFrame =
   | { op: "AUTODRAFT"; teamId: number; enabled: boolean }
   | { op: "CLOCK"; phase: number; time: number | null; teamId: number | null; playerId: number | null; amount: number | null }
   | { op: "ERROR"; severity: number | null; text: string; raw: string }
+  | { op: "STATE"; draftState: number; stateDuration: number | null }
   | { op: "ignored"; opcode: string }
   | { op: "malformed"; opcode: string; raw: string };
 
@@ -176,6 +181,11 @@ export function parseFrame(frame: string): DraftFrame {
         playerId: int(parts[4]),
         amount: int(parts[5]),
       };
+    }
+    case "STATE": {
+      const draftState = int(parts[1]);
+      if (draftState === null) return bad();
+      return { op: "STATE", draftState, stateDuration: int(parts[2]) };
     }
     case "ERROR": {
       // ESPN's client shows this text verbatim after `+` → space and a

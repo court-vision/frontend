@@ -158,3 +158,11 @@ describe("ERROR frames and the write-path messages", () => {
     }
   });
 });
+
+describe("STATE frames", () => {
+  test("carry ESPN's draft state and an optional duration", () => {
+    expect(parseFrame("STATE 2")).toEqual({ op: "STATE", draftState: 2, stateDuration: null });
+    expect(parseFrame("STATE 1 30000")).toEqual({ op: "STATE", draftState: 1, stateDuration: 30000 });
+    expect(parseFrame("STATE").op).toBe("malformed");
+  });
+});
