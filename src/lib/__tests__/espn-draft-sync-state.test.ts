@@ -197,6 +197,7 @@ describe("frontFromSession", () => {
     slot: null,
     player_id: overall,
     espn_player_id: null,
+    espn_team_id: null,
     player_name: null,
     by_me: false,
     source,

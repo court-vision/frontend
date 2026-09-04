@@ -227,6 +227,7 @@ export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean
           slot: null,
           player_id: pick.player_id ?? null,
           espn_player_id: pick.espn_player_id ?? null,
+          espn_team_id: pick.espn_team_id ?? null,
           player_name: pick.player_name ?? null,
           by_me: pick.by_me ?? false,
           source: pick.source ?? "manual",
