@@ -46,8 +46,14 @@ export function SlotEditor({ open, onOpenChange, session, onSave, isSaving }: Sl
     if (open) setSlot(session.my_slot ? String(session.my_slot) : "");
   }, [open, session.my_slot]);
 
+  // A seat is a whole number from 1, whether or not we know the upper bound —
+  // the free-text fallback has no form to enforce its `min`, and the PATCH
+  // schema rejects 0, negatives and fractions anyway. Catching it here turns
+  // an avoidable 422 into a disabled button that says why.
   const parsed = slot === "" ? null : Number(slot);
-  const outOfRange = parsed !== null && leagueSize > 0 && (parsed < 1 || parsed > leagueSize);
+  const isSeatNumber = parsed !== null && Number.isInteger(parsed) && parsed >= 1;
+  const outOfRange = isSeatNumber && leagueSize > 0 && (parsed as number) > leagueSize;
+  const invalid = parsed !== null && (!isSeatNumber || outOfRange);
   const unchanged = parsed === (session.my_slot ?? null);
 
   return (
@@ -122,10 +128,16 @@ export function SlotEditor({ open, onOpenChange, session, onSave, isSaving }: Sl
           <Button
             size="sm"
             className="h-8 text-xs"
-            disabled={isSaving || outOfRange || unchanged || parsed === null}
+            disabled={isSaving || invalid || unchanged || parsed === null}
             onClick={() => onSave(parsed)}
           >
-            {isSaving ? "Saving..." : outOfRange ? `1–${leagueSize} only` : "Set slot"}
+            {isSaving
+              ? "Saving..."
+              : invalid
+                ? leagueSize > 0
+                  ? `Seats 1–${leagueSize}`
+                  : "Whole numbers from 1"
+                : "Set slot"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -65,11 +65,19 @@ export function CreateSessionDialog() {
   // `draft_settings` lives on the league *detail*, not the summary embedded in
   // the team row — so the picked team's league is fetched to size the slot
   // picker. Without a synced league the user types a slot instead.
-  const { data: league } = useTeamLeagueQuery(team?.team_id ?? null);
+  const { data: league, isPending: leagueLoading } = useTeamLeagueQuery(team?.team_id ?? null);
   const leagueSize = useMemo(() => {
     const order = league?.draft_settings?.pick_order;
     return Array.isArray(order) ? order.length : 0;
   }, [league]);
+
+  // A league still loading looks exactly like a league with no pick order —
+  // `league` is undefined either way — so the requirement below cannot be
+  // decided yet. Switching teams re-enters this state, which is where a room
+  // could otherwise be created slot-less in the moment before its seats
+  // arrive. (A *failed* query is not pending: we genuinely cannot offer seats
+  // then, so it falls through to optional and the room can set the slot later.)
+  const leagueUnknown = team !== null && leagueLoading;
 
   // Required once there are seats to choose from. A room opened without a slot
   // cannot say whose turn it is or price a keeper, and the seat list is the
@@ -78,6 +86,7 @@ export function CreateSessionDialog() {
   // yet, so it stays optional there and the room can set it later.
   const slotRequired = leagueSize > 0;
   const slotMissing = slotRequired && mySlot === "";
+  const cannotCreateYet = slotMissing || leagueUnknown;
 
   function reset() {
     setTeamValue(selectedTeamId !== null ? String(selectedTeamId) : MOCK_TEAM);
@@ -177,7 +186,9 @@ export function CreateSessionDialog() {
             <label className="text-xs font-medium text-muted-foreground">
               Your slot{slotRequired && <span className="ml-0.5 text-amber-500">*</span>}
             </label>
-            {leagueSize > 0 ? (
+            {leagueUnknown ? (
+              <Input disabled placeholder="Checking league settings..." className="h-8 text-xs" />
+            ) : leagueSize > 0 ? (
               <Select value={mySlot} onValueChange={setMySlot}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder={`Pick 1–${leagueSize}`} />
@@ -201,11 +212,13 @@ export function CreateSessionDialog() {
               />
             )}
             <p className={cn("text-[10px]", slotMissing ? "text-amber-500" : "text-muted-foreground")}>
-              {slotMissing
-                ? "Pick your seat — the room needs it to say whose turn it is."
-                : slotRequired
-                  ? "ESPN's pick order uses its own team ids, so we cannot tell which seat is yours."
-                  : "Optional until this draft has a pick order; you can set it in the room."}
+              {leagueUnknown
+                ? "Reading this league's draft settings to find its seats..."
+                : slotMissing
+                  ? "Pick your seat — the room needs it to say whose turn it is."
+                  : slotRequired
+                    ? "ESPN's pick order uses its own team ids, so we cannot tell which seat is yours."
+                    : "Optional until this draft has a pick order; you can set it in the room."}
             </p>
           </div>
 
@@ -272,8 +285,14 @@ export function CreateSessionDialog() {
             size="sm"
             className="h-8 text-xs"
             onClick={handleCreate}
-            disabled={createSession.isPending || slotMissing}
-            title={slotMissing ? "Pick your slot first" : undefined}
+            disabled={createSession.isPending || cannotCreateYet}
+            title={
+              leagueUnknown
+                ? "Waiting for this league's draft settings"
+                : slotMissing
+                  ? "Pick your slot first"
+                  : undefined
+            }
           >
             {createSession.isPending ? "Creating..." : "Start drafting"}
           </Button>
