@@ -14,11 +14,13 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-error";
 import { DraftBoardTable } from "@/components/draft/DraftBoardTable";
+import { DraftSyncChip } from "@/components/draft/DraftSyncChip";
 import { KeeperEditor } from "@/components/draft/KeeperEditor";
 import { SlotEditor } from "@/components/draft/SlotEditor";
 import { RecommendationStrip } from "@/components/draft/RecommendationStrip";
 import { RosterZone } from "@/components/draft/RosterZone";
 import { useDraftRoomHotkeys } from "@/hooks/useDraftRoomHotkeys";
+import { useEspnDraftSync } from "@/hooks/useEspnDraftSync";
 import {
   useDraftBoardQuery,
   useDraftPickMutation,
@@ -26,6 +28,7 @@ import {
   useUndoDraftPickMutation,
   useUpdateDraftSessionMutation,
 } from "@/hooks/useDrafts";
+import { useTeamsQuery } from "@/hooks/useTeams";
 import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
 import type { DraftBoardRow, DraftKeeper } from "@/types/draft";
 
@@ -54,6 +57,28 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   const addPick = useDraftPickMutation(sessionId);
   const undoPick = useUndoDraftPickMutation(sessionId);
   const updateSession = useUpdateDraftSessionMutation(sessionId);
+
+  // Live ESPN sync (via the Draft Tap extension). The ESPN league id a frame
+  // belongs to is matched against this session's team; a mock or unsynced
+  // session has none and accepts any room.
+  const { data: teams } = useTeamsQuery();
+  const sessionTeam = useMemo(
+    () => (session?.team_id == null ? null : (teams?.find((t) => t.team_id === session.team_id) ?? null)),
+    [teams, session?.team_id]
+  );
+  const isEspnTeam = sessionTeam?.league_info.provider === "espn";
+  const expectedLeagueId = isEspnTeam ? sessionTeam.league_info.league_id : null;
+  const sync = useEspnDraftSync({
+    sessionId,
+    session,
+    board,
+    expectedLeagueId,
+    // A mock session (no team) accepts any room. A team session syncs only once
+    // its team has resolved to an ESPN team: a Yahoo team, or a team missing
+    // from the list, must not quietly accept picks from whatever ESPN room the
+    // extension happens to be watching.
+    enabled: Boolean(session && session.status === "active" && (session.team_id == null || isEspnTeam)),
+  });
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [keepersOpen, setKeepersOpen] = useState(false);
@@ -308,12 +333,15 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
           )}
         </p>
       </div>
-      <Link href="/draft">
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back
-        </Button>
-      </Link>
+      <div className="flex items-center gap-2">
+        <DraftSyncChip sync={sync} />
+        <Link href="/draft">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back
+          </Button>
+        </Link>
+      </div>
     </section>
   );
 
@@ -359,6 +387,23 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   return (
     <div className="space-y-3 animate-slide-up-fade">
       {header}
+
+      {sync.state.reset && (
+        <Card variant="panel" className="border-status-loss/60 bg-status-loss/5 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-foreground">
+              <span className="font-medium">ESPN reset this draft.</span>{" "}
+              <span className="text-muted-foreground">
+                Sync is paused so nothing is deleted automatically — undo picks by hand or start a new
+                session, then resume.
+              </span>
+            </p>
+            <Button variant="outline" size="sm" className="shrink-0 text-xs" onClick={sync.resume}>
+              Resume sync
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Recommendation strip */}
       <Card

@@ -25,6 +25,11 @@ export type DraftRosterEntry = S["DraftRosterEntry"];
 export type DraftKeeperOut = S["DraftKeeper-Output"];
 export type PickSource = DraftPick["source"];
 
+/** The result of reconciling a session with an ESPN INIT snapshot. */
+export type DraftInitSync = S["DraftInitSyncResp"];
+export type DraftInitSyncRequest = S["DraftInitSyncRequest"];
+export type DraftSyncConflict = S["DraftSyncConflict"];
+
 /** Request bodies. The `-Input` variant is the one a client sends. */
 export type DraftSessionCreate = S["DraftSessionCreate"];
 export type DraftSessionUpdate = S["DraftSessionUpdate"];

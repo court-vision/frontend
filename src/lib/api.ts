@@ -99,6 +99,7 @@ import type {
   DraftBoardMeta,
   DraftBoardResult,
   DraftBoardRow,
+  DraftInitSync,
   DraftPick,
   DraftPickCreate,
   DraftRecommendation,
@@ -772,6 +773,21 @@ class ApiClient {
       `${DRAFTS_API}/${sessionId}/picks/${overallPick}`,
       { getToken, method: "DELETE" }
     );
+    return unwrap(env);
+  }
+
+  /**
+   * Reconcile a session with the ESPN draft room's INIT snapshot. A large
+   * payload (a 30-team late join) and a per-pick round trip inside one request
+   * both argue for a longer timeout than the default 15 s.
+   */
+  async syncDraftInit(getToken: GetTokenFn, sessionId: number, payload: string): Promise<DraftInitSync> {
+    const env = await fetchJson<BaseApiResponse<DraftInitSync>>(`${DRAFTS_API}/${sessionId}/sync/init`, {
+      getToken,
+      method: "POST",
+      body: { payload },
+      timeoutMs: 30_000,
+    });
     return unwrap(env);
   }
 }
