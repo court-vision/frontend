@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, type KeyboardEvent, type RefObject } from "react";
+import { useEffect, useMemo, useRef, type KeyboardEvent, type RefObject } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, Table } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -115,10 +115,25 @@ export function DraftBoardTable({
     ? highlightId
     : (visible[0]?.player_id ?? null);
 
+  // Keep the active row visible inside the board's own scroller, and only in
+  // response to the user's own moves (a highlight step, a search). Never
+  // `scrollIntoView`: it scrolls every ancestor, the page included, so a pick
+  // streaming in while the user reads the roster below would yank the window
+  // back up here. Data refreshes change `activeId` too, hence the ref.
+  const listRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef(activeId);
+  activeRef.current = activeId;
+  const interactive = onMark !== undefined;
   useEffect(() => {
-    if (activeId === null || !onMark) return;
-    document.getElementById(`draft-row-${activeId}`)?.scrollIntoView({ block: "nearest" });
-  }, [activeId, onMark]);
+    if (!interactive || activeRef.current === null) return;
+    const list = listRef.current;
+    const row = document.getElementById(`draft-row-${activeRef.current}`);
+    if (!list || !row) return;
+    const bounds = list.getBoundingClientRect();
+    const target = row.getBoundingClientRect();
+    if (target.top < bounds.top) list.scrollTop -= bounds.top - target.top;
+    else if (target.bottom > bounds.bottom) list.scrollTop += target.bottom - bounds.bottom;
+  }, [interactive, highlightId, search]);
 
   const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -240,7 +255,7 @@ export function DraftBoardTable({
       </div>
 
       {/* Rows */}
-      <div className="flex-1 overflow-auto">
+      <div ref={listRef} className="flex-1 overflow-auto">
         {visible.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-4 text-center">
             <Table className="h-8 w-8 text-muted-foreground/30 mb-2" />
