@@ -5,7 +5,8 @@ import { useEffect } from "react";
 /**
  * Draft-room keys, terminal-style: `/` to the pick input, `j`/`k` (or the
  * arrows) over the board, `o` and `m` to mark the highlighted player out or
- * mine, ⌘Z to undo the last pick. Typing contexts are left alone — the pick
+ * mine, `f` to sort by roster fit, `s` to run a mock up to your next pick,
+ * ⌘Z to undo the last pick. Typing contexts are left alone — the pick
  * input has its own handler — and an open dialog owns the keyboard.
  */
 export interface DraftRoomHotkeys {
@@ -14,6 +15,14 @@ export interface DraftRoomHotkeys {
   moveHighlight: (delta: 1 | -1) => void;
   markHighlighted: (byMe: boolean) => void;
   undoLast: () => void;
+  /** Absent in a points league, where there is no fit to sort by. */
+  sortByFit?: () => void;
+  /**
+   * Absent unless this room is a mock the autopicker will play. Bound to "sim
+   * to my pick" only — "sim to end" hands the autopicker your own seat, and a
+   * key that can do that should not be one character away.
+   */
+  simulateToMyPick?: () => void;
 }
 
 function isTyping(target: EventTarget | null): boolean {
@@ -31,6 +40,8 @@ export function useDraftRoomHotkeys({
   moveHighlight,
   markHighlighted,
   undoLast,
+  sortByFit,
+  simulateToMyPick,
 }: DraftRoomHotkeys) {
   useEffect(() => {
     if (!enabled) return;
@@ -70,10 +81,20 @@ export function useDraftRoomHotkeys({
           e.preventDefault();
           markHighlighted(true);
           break;
+        case "f":
+          if (!sortByFit) break;
+          e.preventDefault();
+          sortByFit();
+          break;
+        case "s":
+          if (!simulateToMyPick) break;
+          e.preventDefault();
+          simulateToMyPick();
+          break;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [enabled, focusInput, moveHighlight, markHighlighted, undoLast]);
+  }, [enabled, focusInput, moveHighlight, markHighlighted, undoLast, sortByFit, simulateToMyPick]);
 }

@@ -7,6 +7,8 @@ import type {
   DraftBoardResult,
   DraftBoardRow,
   DraftInitSync,
+  MockAdvance,
+  MockUntil,
   DraftPick,
   DraftPickCreate,
   DraftRosterEntry,
@@ -269,6 +271,37 @@ export function useDraftInitSyncMutation(sessionId: number) {
     },
     onError: (error) => {
       console.error("Draft INIT sync error:", error);
+    },
+  });
+}
+
+/**
+ * Run the mock autopicker forward.
+ *
+ * The response carries the whole session, so it goes straight into the cache
+ * and the board is invalidated beside it — "board and session invalidate as
+ * one", because a board scored against a roster the session has already moved
+ * past is worse than a blank one.
+ *
+ * Unlike the INIT sync this keeps the global error toast: the refusals (not a
+ * mock, already following an ESPN draft, no pick order) answer something the
+ * user just asked for, and the backend's own copy says it better than anything
+ * written here would.
+ */
+export function useMockAdvanceMutation(sessionId: number) {
+  const queryClient = useQueryClient();
+  const { getToken } = useAuth();
+
+  return useMutation<MockAdvance, Error, MockUntil>({
+    mutationKey: ["drafts", "mock-advance", sessionId],
+    mutationFn: (until) => apiClient.advanceMockDraft(getToken, sessionId, until),
+    onSuccess: (result) => {
+      queryClient.setQueryData(draftKeys.detail(sessionId), result.session);
+      queryClient.invalidateQueries({ queryKey: draftKeys.board(sessionId) });
+      queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
+    },
+    onError: (error) => {
+      console.error("Mock advance error:", error);
     },
   });
 }

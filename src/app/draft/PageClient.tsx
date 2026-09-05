@@ -77,6 +77,20 @@ function SessionCard({ session }: { session: DraftSession }) {
               </>
             )}
           </div>
+
+          {/* A mock advances fifty picks at a time, so how far it has got is
+              worth reading at a glance rather than doing arithmetic on. */}
+          {progress !== null && session.status === "active" && (
+            <div
+              title={`${session.pick_count} of ${session.total_picks} picks made`}
+              className="mt-1 h-0.5 w-full overflow-hidden rounded bg-muted"
+            >
+              <div
+                className="h-full bg-primary/60 transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          )}
         </div>
 
         <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />

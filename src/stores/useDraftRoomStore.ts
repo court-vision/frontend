@@ -19,6 +19,7 @@ interface DraftRoomStore {
   sortDirection: SortDirection;
   positionFilter: PositionFilter;
   hideCapped: boolean;
+  onlyLikelyGone: boolean;
   search: string;
   /** The row keyboard actions apply to; null means "the first visible row". */
   highlightId: number | null;
@@ -27,6 +28,7 @@ interface DraftRoomStore {
   toggleSort: (key: BoardSortKey) => void;
   setPositionFilter: (position: PositionFilter) => void;
   setHideCapped: (hide: boolean) => void;
+  setOnlyLikelyGone: (only: boolean) => void;
   setSearch: (search: string) => void;
   setHighlight: (highlightId: number | null) => void;
   resetView: () => void;
@@ -37,6 +39,7 @@ const DEFAULT_VIEW = {
   sortDirection: "asc" as SortDirection,
   positionFilter: "all" as PositionFilter,
   hideCapped: false,
+  onlyLikelyGone: false,
   search: "",
   highlightId: null as number | null,
 };
@@ -54,15 +57,19 @@ export const useDraftRoomStore = create<DraftRoomStore>()(
         ),
       setPositionFilter: (positionFilter) => set({ positionFilter }),
       setHideCapped: (hideCapped) => set({ hideCapped }),
+      setOnlyLikelyGone: (onlyLikelyGone) => set({ onlyLikelyGone }),
       setSearch: (search) => set({ search }),
       setHighlight: (highlightId) => set({ highlightId }),
       resetView: () => set({ ...DEFAULT_VIEW }),
     }),
     {
       name: "draft-room-store",
-      // `search` and `highlightId` are deliberately not persisted: a stale
-      // filter on reload would look like an empty board, and a stale highlight
-      // would aim a keystroke at a player who may have left it.
+      // `search`, `highlightId` and `onlyLikelyGone` are deliberately not
+      // persisted: a stale filter on reload would look like an empty board,
+      // and a stale highlight would aim a keystroke at a player who may have
+      // left it. "Likely gone" is the sharpest case of the first — a board
+      // with no market data has no `gone` rows at all, so a remembered filter
+      // would open an empty room.
       partialize: (state) => ({
         sortKey: state.sortKey,
         sortDirection: state.sortDirection,

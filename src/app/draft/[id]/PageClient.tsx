@@ -3,11 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FastForward } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
-import { stepHighlight, targetRow, visibleRows } from "@/lib/draft-board";
+import { stepHighlight, targetRow } from "@/lib/draft-board";
+import {
+  mockAdvanceToast,
+  mockBlocker,
+  mockMyTurnBlocker,
+  needsSeatConfirm,
+} from "@/lib/draft-mock";
+import { SimulateToEndDialog } from "@/components/draft/SimulateToEndDialog";
+import { useVisibleRows } from "@/hooks/useBoardView";
 import { keeperStatuses, lastPick, samePlayer, type KeeperStatus } from "@/lib/draft-roster";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,11 +34,12 @@ import {
   useDraftPickMutation,
   useDraftSessionQuery,
   useUndoDraftPickMutation,
+  useMockAdvanceMutation,
   useUpdateDraftSessionMutation,
 } from "@/hooks/useDrafts";
 import { useTeamsQuery } from "@/hooks/useTeams";
 import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
-import type { DraftBoardRow, DraftKeeper } from "@/types/draft";
+import type { DraftBoardRow, DraftKeeper, MockUntil } from "@/types/draft";
 
 /**
  * The draft room: recommendation strip on top, board in the centre, roster on
@@ -57,6 +66,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   const addPick = useDraftPickMutation(sessionId);
   const undoPick = useUndoDraftPickMutation(sessionId);
   const updateSession = useUpdateDraftSessionMutation(sessionId);
+  const advanceMock = useMockAdvanceMutation(sessionId);
 
   // Live ESPN sync (via the Draft Tap extension). The ESPN league id a frame
   // belongs to is matched against this session's team; a mock or unsynced
@@ -84,14 +94,13 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   const [keepersOpen, setKeepersOpen] = useState(false);
   const [slotOpen, setSlotOpen] = useState(false);
   const [recordingKeepers, setRecordingKeepers] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
 
-  const { sortKey, sortDirection, positionFilter, hideCapped, search, highlightId, setSearch, setHighlight } =
-    useDraftRoomStore();
+  const { highlightId, setSearch, setHighlight, toggleSort } = useDraftRoomStore();
   const rows = useMemo(() => board?.rows ?? [], [board]);
-  const visible = useMemo(
-    () => visibleRows(rows, { sortKey, sortDirection, positionFilter, hideCapped, search }),
-    [rows, sortKey, sortDirection, positionFilter, hideCapped, search]
-  );
+  // Shared with the table, so a keystroke can never act on a row the user is
+  // not looking at — see `useBoardView`.
+  const visible = useVisibleRows(rows, board?.meta ?? null);
 
   const keepers = useMemo(
     () => keeperStatuses(session?.keepers ?? [], session?.picks ?? []),
@@ -219,12 +228,78 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
     setHighlight(null);
   }, [sessionId, setHighlight]);
 
+  // ---- mock mode ----
+  // The blockers mirror the server's own refusals, so a button that cannot run
+  // says why instead of round-tripping to a 409.
+  const mockRoom = session?.kind === "mock";
+  const simBlocker = session ? mockBlocker(session) : "not loaded";
+  const myTurnBlocker = session ? mockMyTurnBlocker(session) : "not loaded";
+  const canSimulate = simBlocker === null;
+
+  const runAdvance = useCallback(
+    (until: MockUntil) => {
+      advanceMock.mutate(until, {
+        onSuccess: (result) => {
+          const { title, description } = mockAdvanceToast(result);
+          const notify =
+            result.stopped_reason === "cap_blocked" || result.stopped_reason === "pool_exhausted"
+              ? toast.message
+              : toast.success;
+          notify(title, { description });
+        },
+      });
+    },
+    [advanceMock]
+  );
+
+  const simulateToMyPick = useCallback(() => {
+    if (advanceMock.isPending || myTurnBlocker !== null) return;
+    runAdvance("my_turn");
+  }, [advanceMock.isPending, myTurnBlocker, runAdvance]);
+
+  const simulateToEnd = useCallback(() => {
+    // Running to the end hands the autopicker a seat of yours, which is worth
+    // asking about once. With no turn of yours left it is just the tail of
+    // someone else's draft.
+    if (session && needsSeatConfirm(session)) {
+      setConfirmEnd(true);
+      return;
+    }
+    runAdvance("end");
+  }, [session, runAdvance]);
+
+  // A points league has no fit column, so `f` is not registered and the
+  // board's legend does not advertise it.
+  const fitAvailable = (board?.meta?.categories.length ?? 0) > 0;
+  const sortByFit = useCallback(() => toggleSort("fit_rank"), [toggleSort]);
+
+  // Punts live on the session, not in the store: recommendations are computed
+  // server-side, a reload mid-draft must not forget the build, and the recap
+  // should know what the draft was *for*. The update mutation already writes
+  // the session into the cache and invalidates the board, which is exactly
+  // what a punt needs — the chip flips off the response and the fit column
+  // catches up on the refetch.
+  const togglePunt = useCallback(
+    (key: string) => {
+      const current = session?.punts ?? [];
+      const next = current.includes(key)
+        ? current.filter((k) => k !== key)
+        : [...current, key];
+      updateSession.mutate({ punts: next });
+    },
+    [session, updateSession]
+  );
+
   useDraftRoomHotkeys({
     enabled: Boolean(session && board && !keepersOpen),
     focusInput,
     moveHighlight,
     markHighlighted,
     undoLast,
+    sortByFit: fitAvailable ? sortByFit : undefined,
+    // `s` runs to my pick only. "Sim to end" hands the autopicker my own seat,
+    // and a key that can do that should not be one character away.
+    simulateToMyPick: mockRoom && myTurnBlocker === null ? simulateToMyPick : undefined,
   });
 
   // ---- keepers ----
@@ -298,7 +373,6 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
 
   const onTheClock =
     session?.picks_until_my_turn === 0 && session.status === "active";
-
   const header = (
     <section className="flex items-center justify-between">
       <div className="min-w-0">
@@ -334,6 +408,40 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
         </p>
       </div>
       <div className="flex items-center gap-2">
+        {mockRoom && canSimulate && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              disabled={advanceMock.isPending || myTurnBlocker !== null}
+              title={myTurnBlocker ?? "Run the other seats up to your next pick (s)"}
+              onClick={simulateToMyPick}
+            >
+              <FastForward className="h-3.5 w-3.5" />
+              {advanceMock.isPending ? "Simulating…" : "Sim to my pick"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              disabled={advanceMock.isPending}
+              title="Run every remaining pick, yours included"
+              onClick={simulateToEnd}
+            >
+              Sim to end
+            </Button>
+          </>
+        )}
+        {/* A mock room whose buttons are simply absent is a bug report. */}
+        {mockRoom && !canSimulate && session && (
+          <span
+            title={simBlocker ?? undefined}
+            className="font-mono text-[10px] text-muted-foreground/60"
+          >
+            not simulatable
+          </span>
+        )}
         <DraftSyncChip sync={sync} />
         <Link href="/draft">
           <Button variant="outline" size="sm" className="gap-1.5 text-xs">
@@ -450,6 +558,8 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
               onMark={markHighlighted}
               onMove={moveHighlight}
               onUndoLast={undoLast}
+              onSortByFit={fitAvailable ? sortByFit : undefined}
+              onSimulate={mockRoom && myTurnBlocker === null ? simulateToMyPick : undefined}
               inputRef={inputRef}
               keeperIds={pendingKeeperIds}
             />
@@ -466,6 +576,8 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
             onEditKeepers={() => setKeepersOpen(true)}
             onRecordKeepers={recordKeepers}
             isRecordingKeepers={recordingKeepers || addPick.isPending}
+            onTogglePunt={fitAvailable ? togglePunt : undefined}
+            isSavingPunts={updateSession.isPending}
           />
         </Card>
       </div>
@@ -491,6 +603,16 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
             session={session}
             onSave={saveSlot}
             isSaving={updateSession.isPending}
+          />
+          <SimulateToEndDialog
+            open={confirmEnd}
+            onOpenChange={setConfirmEnd}
+            session={session}
+            onConfirm={() => {
+              setConfirmEnd(false);
+              runAdvance("end");
+            }}
+            isRunning={advanceMock.isPending}
           />
         </>
       )}

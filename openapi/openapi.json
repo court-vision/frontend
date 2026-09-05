@@ -760,6 +760,18 @@
             "title": "Mine",
             "type": "number"
           },
+          "my_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where this roster stands in the category among the teams in the draft, 1 = most. Counted on what the rosters hold right now, unscaled. None until the other seats can be read (no confirmed slot, or nobody else has drafted).",
+            "title": "My Rank"
+          },
           "need": {
             "description": "(pace - mine) / spread, clamped to +/-2; positive means behind",
             "title": "Need",
@@ -774,6 +786,18 @@
             "title": "Punted",
             "type": "boolean"
           },
+          "seats": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Teams `my_rank` is out of, the caller included",
+            "title": "Seats"
+          },
           "weight": {
             "description": "What fit multiplies this category by; 0 when punted",
             "title": "Weight",
@@ -787,7 +811,9 @@
           "pace",
           "need",
           "weight",
-          "punted"
+          "punted",
+          "my_rank",
+          "seats"
         ],
         "title": "CategoryNeedResp",
         "type": "object"
@@ -1692,7 +1718,7 @@
           },
           "category_need": {
             "default": [],
-            "description": "Category leagues only: where the caller's roster stands against an average team after the same number of picks, and the weight fit gives each category",
+            "description": "Category leagues only: where the caller's roster stands after the same number of picks, and the weight fit gives each category",
             "items": {
               "$ref": "#/components/schemas/CategoryNeedResp"
             },
@@ -1730,6 +1756,22 @@
             "default": 0,
             "title": "Market Only Count",
             "type": "integer"
+          },
+          "pace_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "seats",
+                  "tier"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What `category_need` was measured against: `seats` reads the opposing rosters in this room, `tier` estimates an average team from the draftable pool (a room with no confirmed slot, or before enough seats have drafted). None for points leagues.",
+            "title": "Pace Source"
           },
           "pool_size": {
             "title": "Pool Size",
@@ -1791,6 +1833,12 @@
             "title": "Season",
             "type": "string"
           },
+          "seats_drafted": {
+            "default": 0,
+            "description": "Opposing seats holding at least one player the pool can score. The pace reads them once there are three, so this is how far a `tier` room is from switching \u2014 not a claim that it did. Read `pace_source` for that.",
+            "title": "Seats Drafted",
+            "type": "integer"
+          },
           "session_id": {
             "anyOf": [
               {
@@ -1850,6 +1898,8 @@
           "categories",
           "punts",
           "category_need",
+          "pace_source",
+          "seats_drafted",
           "settings_synced",
           "unsupported"
         ],
@@ -6590,6 +6640,162 @@
           "categories"
         ],
         "title": "MatchupTeamResp",
+        "type": "object"
+      },
+      "MockAdvanceRequest": {
+        "description": "How far to play the draft forward.",
+        "properties": {
+          "until": {
+            "default": "my_turn",
+            "description": "`my_turn`: run the other seats up to \u2014 not including \u2014 your next pick, so the room lands on the clock with the board already scored. When you have no turn left, it runs to the end, which is how a mock finishes on this button alone.\n\n`end`: run every remaining pick, yours included \u2014 the autopicker plays your seat exactly as it plays the others, and those picks are recorded as yours.",
+            "enum": [
+              "my_turn",
+              "end"
+            ],
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "title": "MockAdvanceRequest",
+        "type": "object"
+      },
+      "MockAdvanceResp": {
+        "description": "What the autopicker did, and the room it left behind.",
+        "properties": {
+          "completed": {
+            "description": "The session auto-completed on this advance",
+            "title": "Completed",
+            "type": "boolean"
+          },
+          "fallback": {
+            "description": "The seats drafted by CV value because the season has no market snapshot yet, not by ADP. True exactly when `market_as_of` is null.",
+            "title": "Fallback",
+            "type": "boolean"
+          },
+          "from_pick": {
+            "description": "The pick the autopicker started at \u2014 the draft front when it was called",
+            "title": "From Pick",
+            "type": "integer"
+          },
+          "market_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Snapshot date of the ADP the seats drafted from",
+            "title": "Market As Of"
+          },
+          "picks_made": {
+            "description": "Picks the autopicker recorded on this call",
+            "title": "Picks Made",
+            "type": "integer"
+          },
+          "session": {
+            "$ref": "#/components/schemas/DraftSessionResp",
+            "description": "The room after the advance, with every pick \u2014 the newly simulated ones are those with `from_pick <= overall_pick` (and `< stopped_at`, when the run stopped short)"
+          },
+          "stopped_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first pick the autopicker did not make: your next pick under `my_turn`, or the pick it could not fill when the pool or a cap stopped it. Null when it ran the draft out.",
+            "title": "Stopped At"
+          },
+          "stopped_reason": {
+            "description": "`my_turn`/`end`: it reached where it was going. `pool_exhausted`: nothing draftable was left. `cap_blocked`: players were left, but every one would break the seat on the clock's hard position caps \u2014 the autopicker stops rather than breach one.",
+            "enum": [
+              "my_turn",
+              "end",
+              "pool_exhausted",
+              "cap_blocked"
+            ],
+            "title": "Stopped Reason",
+            "type": "string"
+          },
+          "until": {
+            "enum": [
+              "my_turn",
+              "end"
+            ],
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session",
+          "picks_made",
+          "until",
+          "from_pick",
+          "stopped_at",
+          "stopped_reason",
+          "completed",
+          "fallback",
+          "market_as_of"
+        ],
+        "title": "MockAdvanceResp",
+        "type": "object"
+      },
+      "MockAdvanceResponse": {
+        "description": "The advanced room.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MockAdvanceResp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "MockAdvanceResponse",
         "type": "object"
       },
       "NBATeamLiveGameData": {
@@ -13239,7 +13445,7 @@
     },
     "/v1/internal/drafts/{session_id}/board": {
       "get": {
-        "description": "The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick \u2014 every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`).\n\nPlayers the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.\n\n`roster` lists the caller's drafted players with primary position, eligible slots and NBA team \u2014 what the roster zone needs to fill lineup slots, count caps and flag stacking.\n\nCategory leagues additionally carry `fit_value`/`fit_rank` \u2014 the board re-scored for this roster, with the session's `punts` at zero weight \u2014 a `category_fit` component on every recommendation, and `meta.category_need`, which says how far the roster trails an average team in each category.\n\nRows with market data carry `availability` (`likely`/`tossup`/`gone`) for the caller's next pick \u2014 the pick after that while the caller is on the clock.",
+        "description": "The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick \u2014 every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`, `category_fit`).\n\nPlayers the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.\n\n`roster` lists the caller's drafted players with primary position, eligible slots and NBA team \u2014 what the roster zone needs to fill lineup slots, count caps and flag stacking.\n\nCategory leagues additionally carry `fit_value`/`fit_rank` \u2014 the board re-scored for this roster, with the session's `punts` at zero weight \u2014 a `category_fit` component on every recommendation, and `meta.category_need`, which says how far the roster trails an average team in each category.\n\nRows with market data carry `availability` (`likely`/`tossup`/`gone`) for the caller's next pick \u2014 the pick after that while the caller is on the clock.",
         "operationId": "get_draft_session_board_v1_internal_drafts__session_id__board_get",
         "parameters": [
           {
@@ -13283,6 +13489,66 @@
           }
         ],
         "summary": "Get the draft board for a session",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/drafts/{session_id}/mock/advance": {
+      "post": {
+        "description": "Plays the draft forward from where it stands. `until: my_turn` runs the other seats up to \u2014 not including \u2014 your next pick, so the room lands on the clock with the board already scored; with no turn of yours left it runs to the end, which is how a mock finishes on that button alone. `until: end` runs every remaining pick, yours included, and completes the session.\n\nEach seat takes the best available by ADP (ESPN's editorial rank where there is no ADP), with a small preference for reaching a few names down the board, and never past a hard position cap \u2014 if every remaining player would break the caps of the seat on the clock, the run stops and says so rather than breaching one. There is no roster-need modelling: the other seats are a clock, not opponents, and neither is your own seat under `end`. Stop at your turn and read the board if you want the pick made well.\n\nDeterministic: every pick is seeded from `(session_id, overall_pick)`, so advancing a room turn by turn produces exactly the draft advancing it in one call would, and a mock replays identically. A different room drafts differently, on purpose.\n\nMock rooms only, and only ones following nothing. A manual or live room is tracking a real draft, and a mock room already linked to an ESPN lobby takes its picks from there \u2014 simulating over either would be fiction. Picks are recorded `source: mock` and undo one by one like any other.\n\nBefore ESPN publishes a market snapshot for the season the seats fall back to CV value and the response says so (`fallback`).",
+        "operationId": "advance_mock_draft_v1_internal_drafts__session_id__mock_advance_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MockAdvanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MockAdvanceResponse"
+                }
+              }
+            },
+            "description": "Advanced \u2014 see `picks_made`, `stopped_at`, `stopped_reason`, `fallback`"
+          },
+          "400": {
+            "description": "No pick order or round count, an auction room, or no slot to stop at"
+          },
+          "404": {
+            "description": "No such session, or it does not belong to the caller"
+          },
+          "409": {
+            "description": "Not a mock room, a mock room already following an ESPN draft, or a draft that is not active"
+          },
+          "422": {
+            "description": "`until` is neither `my_turn` nor `end`"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Run the mock autopicker",
         "tags": [
           "Drafts"
         ]

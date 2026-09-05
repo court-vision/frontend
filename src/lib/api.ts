@@ -100,6 +100,8 @@ import type {
   DraftBoardResult,
   DraftBoardRow,
   DraftInitSync,
+  MockAdvance,
+  MockUntil,
   DraftPick,
   DraftPickCreate,
   DraftRecommendation,
@@ -788,6 +790,25 @@ class ApiClient {
       body: { payload },
       timeoutMs: 30_000,
     });
+    return unwrap(env);
+  }
+
+  /**
+   * Run the mock autopicker forward. Deliberately not `raw`: the route refuses
+   * for real (not a mock, already following an ESPN draft, not active, no
+   * pick order, no slot) and the room turns those into the reason the button
+   * could not run. The longer timeout is for `until: "end"`, which writes
+   * every remaining pick inside the one request.
+   */
+  async advanceMockDraft(
+    getToken: GetTokenFn,
+    sessionId: number,
+    until: MockUntil
+  ): Promise<MockAdvance> {
+    const env = await fetchJson<BaseApiResponse<MockAdvance>>(
+      `${DRAFTS_API}/${sessionId}/mock/advance`,
+      { getToken, method: "POST", body: { until }, timeoutMs: 30_000 }
+    );
     return unwrap(env);
   }
 }
