@@ -223,6 +223,23 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   const fitAvailable = (board?.meta?.categories.length ?? 0) > 0;
   const sortByFit = useCallback(() => toggleSort("fit_rank"), [toggleSort]);
 
+  // Punts live on the session, not in the store: recommendations are computed
+  // server-side, a reload mid-draft must not forget the build, and the recap
+  // should know what the draft was *for*. The update mutation already writes
+  // the session into the cache and invalidates the board, which is exactly
+  // what a punt needs — the chip flips off the response and the fit column
+  // catches up on the refetch.
+  const togglePunt = useCallback(
+    (key: string) => {
+      const current = session?.punts ?? [];
+      const next = current.includes(key)
+        ? current.filter((k) => k !== key)
+        : [...current, key];
+      updateSession.mutate({ punts: next });
+    },
+    [session, updateSession]
+  );
+
   useDraftRoomHotkeys({
     enabled: Boolean(session && board && !keepersOpen),
     focusInput,
@@ -472,6 +489,8 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
             onEditKeepers={() => setKeepersOpen(true)}
             onRecordKeepers={recordKeepers}
             isRecordingKeepers={recordingKeepers || addPick.isPending}
+            onTogglePunt={fitAvailable ? togglePunt : undefined}
+            isSavingPunts={updateSession.isPending}
           />
         </Card>
       </div>
