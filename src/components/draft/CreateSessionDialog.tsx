@@ -52,6 +52,10 @@ export function CreateSessionDialog() {
   const [draftType, setDraftType] = useState<DraftType | "">("");
   const [mySlot, setMySlot] = useState("");
   const [rounds, setRounds] = useState("");
+  // A team-less mock has no league to prefill a pick order from, so the room
+  // would open with no seats — and the autopicker, which needs a length to run
+  // to, would refuse every advance. The user says how many teams instead.
+  const [teams_, setTeams] = useState("12");
 
   useEffect(() => {
     setTeamValue(selectedTeamId !== null ? String(selectedTeamId) : MOCK_TEAM);
@@ -84,9 +88,19 @@ export function CreateSessionDialog() {
   // one thing the provider cannot tell us — so this is the moment to ask.
   // With no pick order there are no seats and the answer would mean nothing
   // yet, so it stays optional there and the room can set it later.
+  // A team-less mock's seats come from the Teams field; the room is otherwise
+  // created with no pick order, and nothing that counts seats — whose turn it
+  // is, keeper pricing, the autopicker — can work.
+  const mockSeats = useMemo(() => {
+    if (teamValue !== MOCK_TEAM) return null;
+    const parsed = Number(teams_);
+    return Number.isInteger(parsed) && parsed >= 2 && parsed <= 30 ? parsed : null;
+  }, [teamValue, teams_]);
+
   const slotRequired = leagueSize > 0;
   const slotMissing = slotRequired && mySlot === "";
-  const cannotCreateYet = slotMissing || leagueUnknown;
+  const cannotCreateYet =
+    slotMissing || leagueUnknown || (teamValue === MOCK_TEAM && mockSeats === null);
 
   function reset() {
     setTeamValue(selectedTeamId !== null ? String(selectedTeamId) : MOCK_TEAM);
@@ -94,6 +108,7 @@ export function CreateSessionDialog() {
     setDraftType("");
     setMySlot("");
     setRounds("");
+    setTeams("12");
   }
 
   function handleCreate() {
@@ -104,7 +119,10 @@ export function CreateSessionDialog() {
         draft_type: draftType === "" ? null : draftType,
         my_slot: mySlot === "" ? null : Number(mySlot),
         rounds: rounds === "" ? null : Number(rounds),
-        pick_order: null,
+        // Seats for a team-less mock. The ids are positional and stand for
+        // nothing — every reader of `pick_order` in a mock room cares only how
+        // many there are. A room with a team takes its league's real order.
+        pick_order: mockSeats === null ? null : Array.from({ length: mockSeats }, (_, i) => i + 1),
         keepers: [],
       },
       {
@@ -245,6 +263,20 @@ export function CreateSessionDialog() {
                 </SelectContent>
               </Select>
             </div>
+
+            {teamValue === MOCK_TEAM && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Teams</label>
+                <Input
+                  type="number"
+                  min={2}
+                  max={30}
+                  value={teams_}
+                  onChange={(e) => setTeams(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Rounds</label>
