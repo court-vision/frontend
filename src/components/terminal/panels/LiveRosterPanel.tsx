@@ -297,7 +297,7 @@ export function LiveRosterPanel() {
               key={player.player_id}
               player={player}
               isActive={false}
-              onFocus={() => focusPlayer(player.live?.nba_player_id ?? player.player_id)}
+              onFocus={() => focusPlayer(player.nba_player_id ?? player.live?.nba_player_id ?? player.player_id)}
               showShooting={isCategories}
             />
           ))

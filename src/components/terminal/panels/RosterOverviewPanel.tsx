@@ -264,7 +264,7 @@ export function RosterOverviewPanel() {
               player={player}
               statWindow={statWindow}
               isActive={false}
-              onFocus={() => focusPlayer(player.player_id)}
+              onFocus={() => focusPlayer(player.nba_player_id ?? player.player_id)}
             />
           ))
         )}
