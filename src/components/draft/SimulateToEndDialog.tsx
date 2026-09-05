@@ -51,9 +51,9 @@ export function SimulateToEndDialog({
             <div className="space-y-2 text-sm">
               <p>
                 The autopicker plays{" "}
-                {remaining !== null ? `all ${remaining} remaining picks` : "every remaining pick"} —
-                including your seat at slot {session.my_slot}, starting with pick{" "}
-                {session.my_next_pick}. Those are recorded as your picks and the room closes as
+                {remaining !== null ? `all ${remaining} remaining picks` : "every remaining pick"},
+                your own seat included — slot {session.my_slot}, whose next turn is pick{" "}
+                {session.my_next_pick}. Those picks are recorded as yours and the room closes as
                 completed.
               </p>
               <p className="text-muted-foreground">

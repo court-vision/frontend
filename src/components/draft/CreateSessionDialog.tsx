@@ -61,6 +61,7 @@ export function CreateSessionDialog() {
     setTeamValue(selectedTeamId !== null ? String(selectedTeamId) : MOCK_TEAM);
   }, [selectedTeamId]);
 
+
   const team = useMemo(
     () => teams.find((t) => String(t.team_id) === teamValue) ?? null,
     [teams, teamValue]
@@ -97,7 +98,18 @@ export function CreateSessionDialog() {
     return Number.isInteger(parsed) && parsed >= 2 && parsed <= 30 ? parsed : null;
   }, [teamValue, teams_]);
 
+  // Seats the slot picker offers: a synced league's own, or the ones a
+  // team-less mock just declared. Either way the picker is a list of real
+  // seats, so a slot outside the pick order cannot be typed — the backend
+  // range-checks it now that a mock has an order, and a 400 at create time is
+  // a worse way to learn that than not being able to choose it.
+  const seatCount = leagueSize > 0 ? leagueSize : (mockSeats ?? 0);
+
   const slotRequired = leagueSize > 0;
+  // Shrinking the draft can strand a seat that no longer exists.
+  useEffect(() => {
+    setMySlot((slot) => (slot !== "" && seatCount > 0 && Number(slot) > seatCount ? "" : slot));
+  }, [seatCount]);
   const slotMissing = slotRequired && mySlot === "";
   const cannotCreateYet =
     slotMissing || leagueUnknown || (teamValue === MOCK_TEAM && mockSeats === null);
@@ -206,13 +218,13 @@ export function CreateSessionDialog() {
             </label>
             {leagueUnknown ? (
               <Input disabled placeholder="Checking league settings..." className="h-8 text-xs" />
-            ) : leagueSize > 0 ? (
+            ) : seatCount > 0 ? (
               <Select value={mySlot} onValueChange={setMySlot}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder={`Pick 1–${leagueSize}`} />
+                  <SelectValue placeholder={`Pick 1–${seatCount}`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: leagueSize }, (_, i) => i + 1).map((slot) => (
+                  {Array.from({ length: seatCount }, (_, i) => i + 1).map((slot) => (
                     <SelectItem key={slot} value={String(slot)} className="text-xs">
                       Slot {slot}
                     </SelectItem>
