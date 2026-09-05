@@ -7,7 +7,8 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
-import { stepHighlight, targetRow, visibleRows } from "@/lib/draft-board";
+import { stepHighlight, targetRow } from "@/lib/draft-board";
+import { useVisibleRows } from "@/hooks/useBoardView";
 import { keeperStatuses, lastPick, samePlayer, type KeeperStatus } from "@/lib/draft-roster";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -85,13 +86,11 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   const [slotOpen, setSlotOpen] = useState(false);
   const [recordingKeepers, setRecordingKeepers] = useState(false);
 
-  const { sortKey, sortDirection, positionFilter, hideCapped, search, highlightId, setSearch, setHighlight } =
-    useDraftRoomStore();
+  const { highlightId, setSearch, setHighlight, toggleSort } = useDraftRoomStore();
   const rows = useMemo(() => board?.rows ?? [], [board]);
-  const visible = useMemo(
-    () => visibleRows(rows, { sortKey, sortDirection, positionFilter, hideCapped, search }),
-    [rows, sortKey, sortDirection, positionFilter, hideCapped, search]
-  );
+  // Shared with the table, so a keystroke can never act on a row the user is
+  // not looking at — see `useBoardView`.
+  const visible = useVisibleRows(rows);
 
   const keepers = useMemo(
     () => keeperStatuses(session?.keepers ?? [], session?.picks ?? []),

@@ -4,7 +4,8 @@ import { useEffect, useMemo, type KeyboardEvent, type RefObject } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, Table } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { countCapped, visibleRows } from "@/lib/draft-board";
+import { countCapped } from "@/lib/draft-board";
+import { useVisibleRows } from "@/hooks/useBoardView";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -86,10 +87,7 @@ export function DraftBoardTable({
     setHighlight,
   } = useDraftRoomStore();
 
-  const visible = useMemo(
-    () => visibleRows(rows, { sortKey, sortDirection, positionFilter, hideCapped, search }),
-    [rows, search, hideCapped, positionFilter, sortKey, sortDirection]
-  );
+  const visible = useVisibleRows(rows);
 
   const cappedCount = useMemo(() => countCapped(rows), [rows]);
 
