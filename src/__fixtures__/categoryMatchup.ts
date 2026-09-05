@@ -71,6 +71,8 @@ const player = (
   extra: Partial<MatchupPlayer> = {}
 ): MatchupPlayer => ({
   player_id: id,
+  // Fixtures use ESPN-shaped ids; nothing here exercises NBA-id navigation.
+  nba_player_id: null,
   name,
   team,
   position,

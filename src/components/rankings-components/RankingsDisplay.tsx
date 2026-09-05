@@ -52,6 +52,7 @@ import {
 } from "../ui/pagination";
 import { Input } from "../ui/input";
 import PlayerStatDisplay from "./PlayerStatDisplay";
+import { PlayerHeadshot } from "@/components/terminal/shared";
 import { cn } from "@/lib/utils";
 import { DEFAULT_9CAT, formatCategoryValue, polarityGlyph } from "@/lib/category-format";
 import { RANKINGS_WINDOWS, isStandard9Cat } from "@/lib/rankings-params";
@@ -130,8 +131,11 @@ const PLAYER_COLUMN: ColumnDef = {
   headClassName: STICKY_LEAD_HEAD,
   cellClassName: STICKY_LEAD_CELL,
   render: (p) => (
-    <span className="font-medium text-sm max-md:block max-md:max-w-[150px] max-md:truncate">
-      {p.player_name}
+    <span className="flex items-center gap-2 min-w-0">
+      <PlayerHeadshot playerId={p.id} name={p.player_name} size="xs" />
+      <span className="font-medium text-sm truncate max-md:max-w-[150px]">
+        {p.player_name}
+      </span>
     </span>
   ),
 };
@@ -207,6 +211,7 @@ function buildColumns(format: ScoringFormat, meta: RankingsMeta | null, window: 
       ...PLAYER_COLUMN,
       render: (p) => (
         <div className="flex items-center gap-1.5 min-w-0 max-md:max-w-[150px]">
+          <PlayerHeadshot playerId={p.id} name={p.player_name} size="xs" />
           <span className="font-medium text-sm truncate">{p.player_name}</span>
           <span className="text-[10px] font-mono text-muted-foreground/60 uppercase shrink-0">{p.team}</span>
         </div>
@@ -742,8 +747,8 @@ export default function RankingsDisplay() {
         onOpenChange={() => setSelectedPlayerId(null)}
       >
         <DialogContent className="max-w-[900px]">
-          <DialogHeader>
-            <DialogTitle>Player Details</DialogTitle>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Player details</DialogTitle>
             <DialogDescription>
               Detailed stats and performance history.
             </DialogDescription>

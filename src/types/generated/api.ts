@@ -253,7 +253,7 @@ export interface paths {
         };
         /**
          * Get the draft board for a session
-         * @description The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick — every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`).
+         * @description The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick — every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`, `category_fit`).
          *
          *     Players the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.
          *
@@ -266,6 +266,34 @@ export interface paths {
         get: operations["get_draft_session_board_v1_internal_drafts__session_id__board_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/drafts/{session_id}/mock/advance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run the mock autopicker
+         * @description Plays the draft forward from where it stands. `until: my_turn` runs the other seats up to — not including — your next pick, so the room lands on the clock with the board already scored; with no turn of yours left it runs to the end, which is how a mock finishes on that button alone. `until: end` runs every remaining pick, yours included, and completes the session.
+         *
+         *     Each seat takes the best available by ADP (ESPN's editorial rank where there is no ADP), with a small preference for reaching a few names down the board, and never past a hard position cap — if every remaining player would break the caps of the seat on the clock, the run stops and says so rather than breaching one. There is no roster-need modelling: the other seats are a clock, not opponents, and neither is your own seat under `end`. Stop at your turn and read the board if you want the pick made well.
+         *
+         *     Deterministic: every pick is seeded from `(session_id, overall_pick)`, so advancing a room turn by turn produces exactly the draft advancing it in one call would, and a mock replays identically. A different room drafts differently, on purpose.
+         *
+         *     Mock rooms only, and only ones following nothing. A manual or live room is tracking a real draft, and a mock room already linked to an ESPN lobby takes its picks from there — simulating over either would be fiction. Picks are recorded `source: mock` and undo one by one like any other.
+         *
+         *     Before ESPN publishes a market snapshot for the season the seats fall back to CV value and the response says so (`fallback`).
+         */
+        post: operations["advance_mock_draft_v1_internal_drafts__session_id__mock_advance_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1952,6 +1980,11 @@ export interface components {
              */
             mine: number;
             /**
+             * My Rank
+             * @description Where this roster stands in the category among the teams in the draft, 1 = most. Counted on what the rosters hold right now, unscaled. None until the other seats can be read (no confirmed slot, or nobody else has drafted).
+             */
+            my_rank: number | null;
+            /**
              * Need
              * @description (pace - mine) / spread, clamped to +/-2; positive means behind
              */
@@ -1963,6 +1996,11 @@ export interface components {
             pace: number;
             /** Punted */
             punted: boolean;
+            /**
+             * Seats
+             * @description Teams `my_rank` is out of, the caller included
+             */
+            seats: number | null;
             /**
              * Weight
              * @description What fit multiplies this category by; 0 when punted
@@ -2154,6 +2192,8 @@ export interface components {
             injury_status: string | null;
             /** Name */
             name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
             /** Opponent */
             opponent: string | null;
             /** Player Id */
@@ -2293,7 +2333,7 @@ export interface components {
             categories: components["schemas"]["CategoryDefResp"][];
             /**
              * Category Need
-             * @description Category leagues only: where the caller's roster stands against an average team after the same number of picks, and the weight fit gives each category
+             * @description Category leagues only: where the caller's roster stands after the same number of picks, and the weight fit gives each category
              * @default []
              */
             category_need: components["schemas"]["CategoryNeedResp"][];
@@ -2308,6 +2348,11 @@ export interface components {
              * @default 0
              */
             market_only_count: number;
+            /**
+             * Pace Source
+             * @description What `category_need` was measured against: `seats` reads the opposing rosters in this room, `tier` estimates an average team from the draftable pool (a room with no confirmed slot, or before enough seats have drafted). None for points leagues.
+             */
+            pace_source: ("seats" | "tier") | null;
             /** Pool Size */
             pool_size: number;
             /**
@@ -2343,6 +2388,12 @@ export interface components {
             };
             /** Season */
             season: string;
+            /**
+             * Seats Drafted
+             * @description Opposing seats holding at least one player the pool can score. The pace reads them once there are three, so this is how far a `tier` room is from switching — not a claim that it did. Read `pace_source` for that.
+             * @default 0
+             */
+            seats_drafted: number;
             /** Session Id */
             session_id: number | null;
             /** Settings Synced */
@@ -3129,6 +3180,8 @@ export interface components {
             injury_status: string | null;
             /** Name */
             name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
             /** Player Id */
             player_id: number;
             schedule: components["schemas"]["PlayerScheduleInfo"] | null;
@@ -3206,95 +3259,37 @@ export interface components {
              */
             status: string;
         };
-        /**
-         * GameLog
-         * @description Individual game in a player's game log.
-         */
+        /** GameLog */
         GameLog: {
-            /**
-             * Ast
-             * @description Assists
-             */
+            /** Ast */
             ast: number;
-            /**
-             * Blk
-             * @description Blocks
-             */
+            /** Blk */
             blk: number;
-            /**
-             * Date
-             * @description Game date (YYYY-MM-DD)
-             */
+            /** Date */
             date: string;
-            /**
-             * Fg3A
-             * @description Three-pointers attempted
-             */
+            /** Fg3A */
             fg3a: number;
-            /**
-             * Fg3M
-             * @description Three-pointers made
-             */
+            /** Fg3M */
             fg3m: number;
-            /**
-             * Fga
-             * @description Field goals attempted
-             */
+            /** Fga */
             fga: number;
-            /**
-             * Fgm
-             * @description Field goals made
-             */
+            /** Fgm */
             fgm: number;
-            /**
-             * Fpts
-             * @description Fantasy points scored
-             */
+            /** Fpts */
             fpts: number;
-            /**
-             * Fta
-             * @description Free throws attempted
-             */
+            /** Fta */
             fta: number;
-            /**
-             * Ftm
-             * @description Free throws made
-             */
+            /** Ftm */
             ftm: number;
-            /**
-             * Home
-             * @description Whether this was a home game
-             */
-            home: boolean | null;
-            /**
-             * Min
-             * @description Minutes played
-             */
+            /** Min */
             min: number;
-            /**
-             * Opponent
-             * @description Opponent team abbreviation
-             */
-            opponent: string | null;
-            /**
-             * Pts
-             * @description Points
-             */
+            /** Pts */
             pts: number;
-            /**
-             * Reb
-             * @description Rebounds
-             */
+            /** Reb */
             reb: number;
-            /**
-             * Stl
-             * @description Steals
-             */
+            /** Stl */
             stl: number;
-            /**
-             * Tov
-             * @description Turnovers
-             */
+            /** Tov */
             tov: number;
         };
         /**
@@ -3922,6 +3917,8 @@ export interface components {
             live: components["schemas"]["PlayerLiveStats"] | null;
             /** Name */
             name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
             /** Player Id */
             player_id: number;
             /** Position */
@@ -4120,6 +4117,8 @@ export interface components {
             lineup_slot: string;
             /** Name */
             name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
             /** Player Id */
             player_id: number;
             /** Position */
@@ -4208,6 +4207,84 @@ export interface components {
             team_id: number;
             /** Team Name */
             team_name: string;
+        };
+        /**
+         * MockAdvanceRequest
+         * @description How far to play the draft forward.
+         */
+        MockAdvanceRequest: {
+            /**
+             * Until
+             * @description `my_turn`: run the other seats up to — not including — your next pick, so the room lands on the clock with the board already scored. When you have no turn left, it runs to the end, which is how a mock finishes on this button alone.
+             *
+             *     `end`: run every remaining pick, yours included — the autopicker plays your seat exactly as it plays the others, and those picks are recorded as yours.
+             * @default my_turn
+             * @enum {string}
+             */
+            until?: "my_turn" | "end";
+        };
+        /**
+         * MockAdvanceResp
+         * @description What the autopicker did, and the room it left behind.
+         */
+        MockAdvanceResp: {
+            /**
+             * Completed
+             * @description The session auto-completed on this advance
+             */
+            completed: boolean;
+            /**
+             * Fallback
+             * @description The seats drafted by CV value because the season has no market snapshot yet, not by ADP. True exactly when `market_as_of` is null.
+             */
+            fallback: boolean;
+            /**
+             * From Pick
+             * @description The pick the autopicker started at — the draft front when it was called
+             */
+            from_pick: number;
+            /**
+             * Market As Of
+             * @description Snapshot date of the ADP the seats drafted from
+             */
+            market_as_of: string | null;
+            /**
+             * Picks Made
+             * @description Picks the autopicker recorded on this call
+             */
+            picks_made: number;
+            /** @description The room after the advance, with every pick — the newly simulated ones are those with `from_pick <= overall_pick` (and `< stopped_at`, when the run stopped short) */
+            session: components["schemas"]["DraftSessionResp"];
+            /**
+             * Stopped At
+             * @description The first pick the autopicker did not make: your next pick under `my_turn`, or the pick it could not fill when the pool or a cap stopped it. Null when it ran the draft out.
+             */
+            stopped_at: number | null;
+            /**
+             * Stopped Reason
+             * @description `my_turn`/`end`: it reached where it was going. `pool_exhausted`: nothing draftable was left. `cap_blocked`: players were left, but every one would break the seat on the clock's hard position caps — the autopicker stops rather than breach one.
+             * @enum {string}
+             */
+            stopped_reason: "my_turn" | "end" | "pool_exhausted" | "cap_blocked";
+            /**
+             * Until
+             * @enum {string}
+             */
+            until: "my_turn" | "end";
+        };
+        /**
+         * MockAdvanceResponse
+         * @description The advanced room.
+         */
+        MockAdvanceResponse: {
+            data: components["schemas"]["MockAdvanceResp"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /**
          * NBATeamLiveGameData
@@ -4727,7 +4804,7 @@ export interface components {
              * Games
              * @description List of games
              */
-            games: components["schemas"]["GameLog"][];
+            games: components["schemas"]["schemas__player_games__GameLog"][];
             /**
              * Player Id
              * @description NBA player ID
@@ -4982,7 +5059,7 @@ export interface components {
             advanced_stats: components["schemas"]["AdvancedStatsData"] | null;
             avg_stats: components["schemas"]["AvgStats"];
             /** Game Logs */
-            game_logs: components["schemas"]["schemas__player__GameLog"][];
+            game_logs: components["schemas"]["GameLog"][];
             /** Games Played */
             games_played: number;
             /** Id */
@@ -6255,37 +6332,95 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
-        /** GameLog */
-        schemas__player__GameLog: {
-            /** Ast */
+        /**
+         * GameLog
+         * @description Individual game in a player's game log.
+         */
+        schemas__player_games__GameLog: {
+            /**
+             * Ast
+             * @description Assists
+             */
             ast: number;
-            /** Blk */
+            /**
+             * Blk
+             * @description Blocks
+             */
             blk: number;
-            /** Date */
+            /**
+             * Date
+             * @description Game date (YYYY-MM-DD)
+             */
             date: string;
-            /** Fg3A */
+            /**
+             * Fg3A
+             * @description Three-pointers attempted
+             */
             fg3a: number;
-            /** Fg3M */
+            /**
+             * Fg3M
+             * @description Three-pointers made
+             */
             fg3m: number;
-            /** Fga */
+            /**
+             * Fga
+             * @description Field goals attempted
+             */
             fga: number;
-            /** Fgm */
+            /**
+             * Fgm
+             * @description Field goals made
+             */
             fgm: number;
-            /** Fpts */
+            /**
+             * Fpts
+             * @description Fantasy points scored
+             */
             fpts: number;
-            /** Fta */
+            /**
+             * Fta
+             * @description Free throws attempted
+             */
             fta: number;
-            /** Ftm */
+            /**
+             * Ftm
+             * @description Free throws made
+             */
             ftm: number;
-            /** Min */
+            /**
+             * Home
+             * @description Whether this was a home game
+             */
+            home: boolean | null;
+            /**
+             * Min
+             * @description Minutes played
+             */
             min: number;
-            /** Pts */
+            /**
+             * Opponent
+             * @description Opponent team abbreviation
+             */
+            opponent: string | null;
+            /**
+             * Pts
+             * @description Points
+             */
             pts: number;
-            /** Reb */
+            /**
+             * Reb
+             * @description Rebounds
+             */
             reb: number;
-            /** Stl */
+            /**
+             * Stl
+             * @description Steals
+             */
             stl: number;
-            /** Tov */
+            /**
+             * Tov
+             * @description Turnovers
+             */
             tov: number;
         };
     };
@@ -6875,6 +7010,60 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    advance_mock_draft_v1_internal_drafts__session_id__mock_advance_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MockAdvanceRequest"];
+            };
+        };
+        responses: {
+            /** @description Advanced — see `picks_made`, `stopped_at`, `stopped_reason`, `fallback` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MockAdvanceResponse"];
+                };
+            };
+            /** @description No pick order or round count, an auction room, or no slot to stop at */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such session, or it does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a mock room, a mock room already following an ESPN draft, or a draft that is not active */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `until` is neither `my_turn` nor `end` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -8,7 +8,10 @@ export interface PlayerScheduleInfo {
 }
 
 export interface EnrichedRosterPlayer {
+  /** Provider ID (ESPN or Yahoo) — not an NBA player ID. */
   player_id: number;
+  /** NBA (nba_api) player ID; null when the roster player could not be resolved. */
+  nba_player_id: number | null;
   name: string;
   avg_points: number;
   team: string;
