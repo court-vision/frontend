@@ -281,3 +281,8 @@ export function needsByUrgency(meta: DraftBoardMeta | null): CategoryNeed[] {
     return b.need - a.need;
   });
 }
+
+/** How many rows the market says will not last until the caller's next pick. */
+export function countAtRisk(rows: DraftBoardRow[]): number {
+  return rows.filter((row) => row.availability === "gone").length;
+}

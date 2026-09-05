@@ -2,9 +2,9 @@
 
 import { useMemo } from "react";
 
-import { visibleRows, type BoardView } from "@/lib/draft-board";
+import { columnsFor, sortableKey, visibleRows, type BoardView } from "@/lib/draft-board";
 import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
-import type { DraftBoardRow } from "@/types/draft";
+import type { DraftBoardMeta, DraftBoardRow } from "@/types/draft";
 
 /**
  * The one place a `BoardView` is assembled.
@@ -15,17 +15,24 @@ import type { DraftBoardRow } from "@/types/draft";
  * `o`/`m` at a row the user cannot see, and picks the wrong player without
  * saying anything. One hook, one object, no way to diverge.
  */
-export function useBoardView(): BoardView {
+export function useBoardView(meta: DraftBoardMeta | null = null): BoardView {
   const { sortKey, sortDirection, positionFilter, hideCapped, onlyLikelyGone, search } =
     useDraftRoomStore();
+  // The store remembers the last sort across reloads *and* across rooms, so a
+  // fit or category column chosen in a category league has to be sent back to
+  // the big board when the next room is scored by points.
+  const key = useMemo(() => sortableKey(sortKey, columnsFor(meta)), [sortKey, meta]);
   return useMemo(
-    () => ({ sortKey, sortDirection, positionFilter, hideCapped, onlyLikelyGone, search }),
-    [sortKey, sortDirection, positionFilter, hideCapped, onlyLikelyGone, search]
+    () => ({ sortKey: key, sortDirection, positionFilter, hideCapped, onlyLikelyGone, search }),
+    [key, sortDirection, positionFilter, hideCapped, onlyLikelyGone, search]
   );
 }
 
 /** The rows the board shows, filtered and sorted by the shared view. */
-export function useVisibleRows(rows: DraftBoardRow[]): DraftBoardRow[] {
-  const view = useBoardView();
+export function useVisibleRows(
+  rows: DraftBoardRow[],
+  meta: DraftBoardMeta | null = null
+): DraftBoardRow[] {
+  const view = useBoardView(meta);
   return useMemo(() => visibleRows(rows, view), [rows, view]);
 }

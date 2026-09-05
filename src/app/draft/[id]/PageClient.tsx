@@ -90,7 +90,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   const rows = useMemo(() => board?.rows ?? [], [board]);
   // Shared with the table, so a keystroke can never act on a row the user is
   // not looking at — see `useBoardView`.
-  const visible = useVisibleRows(rows);
+  const visible = useVisibleRows(rows, board?.meta ?? null);
 
   const keepers = useMemo(
     () => keeperStatuses(session?.keepers ?? [], session?.picks ?? []),
@@ -218,12 +218,18 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
     setHighlight(null);
   }, [sessionId, setHighlight]);
 
+  // A points league has no fit column, so `f` is not registered and the
+  // board's legend does not advertise it.
+  const fitAvailable = (board?.meta?.categories.length ?? 0) > 0;
+  const sortByFit = useCallback(() => toggleSort("fit_rank"), [toggleSort]);
+
   useDraftRoomHotkeys({
     enabled: Boolean(session && board && !keepersOpen),
     focusInput,
     moveHighlight,
     markHighlighted,
     undoLast,
+    sortByFit: fitAvailable ? sortByFit : undefined,
   });
 
   // ---- keepers ----
@@ -449,6 +455,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
               onMark={markHighlighted}
               onMove={moveHighlight}
               onUndoLast={undoLast}
+              onSortByFit={fitAvailable ? sortByFit : undefined}
               inputRef={inputRef}
               keeperIds={pendingKeeperIds}
             />
