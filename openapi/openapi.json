@@ -744,6 +744,54 @@
         "title": "CategoryDefResp",
         "type": "object"
       },
+      "CategoryNeedResp": {
+        "description": "One category's standing on the caller's roster, and what fit does about it.\n\n`need` is in standard deviations of a k-pick sum: positive means the roster\nis *behind* an average team after the same number of picks. It is not a\nprobability and does not claim to be one.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "mine": {
+            "description": "Summed per-category z the caller's drafted players hold",
+            "title": "Mine",
+            "type": "number"
+          },
+          "need": {
+            "description": "(pace - mine) / spread, clamped to +/-2; positive means behind",
+            "title": "Need",
+            "type": "number"
+          },
+          "pace": {
+            "description": "What an average team holds after the same number of picks",
+            "title": "Pace",
+            "type": "number"
+          },
+          "punted": {
+            "title": "Punted",
+            "type": "boolean"
+          },
+          "weight": {
+            "description": "What fit multiplies this category by; 0 when punted",
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "mine",
+          "pace",
+          "need",
+          "weight",
+          "punted"
+        ],
+        "title": "CategoryNeedResp",
+        "type": "object"
+      },
       "CategoryScoreItem": {
         "description": "One category in a head-to-head comparison.",
         "properties": {
@@ -1642,6 +1690,15 @@
             "title": "Categories",
             "type": "array"
           },
+          "category_need": {
+            "default": [],
+            "description": "Category leagues only: where the caller's roster stands against an average team after the same number of picks, and the weight fit gives each category",
+            "items": {
+              "$ref": "#/components/schemas/CategoryNeedResp"
+            },
+            "title": "Category Need",
+            "type": "array"
+          },
           "format": {
             "title": "Format",
             "type": "string"
@@ -1713,6 +1770,15 @@
             ],
             "title": "Projections As Of"
           },
+          "punts": {
+            "default": [],
+            "description": "Category keys this room concedes, as stored on the session",
+            "items": {
+              "type": "string"
+            },
+            "title": "Punts",
+            "type": "array"
+          },
           "roster_slots": {
             "additionalProperties": {
               "type": "integer"
@@ -1782,6 +1848,8 @@
           "position_source",
           "position_limits",
           "categories",
+          "punts",
+          "category_need",
           "settings_synced",
           "unsupported"
         ],
@@ -1894,6 +1962,23 @@
             "description": "ESPN editorial auction value",
             "title": "Auction Value"
           },
+          "availability": {
+            "anyOf": [
+              {
+                "enum": [
+                  "likely",
+                  "tossup",
+                  "gone"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether the player is likely to survive to the caller's next pick (the pick after that, when the caller is on the clock): `likely`, `tossup` or `gone`, from the gap between ADP (or market rank) and that pick. None without a confirmed slot or market data. Deliberately a bucket, not a probability \u2014 ESPN publishes a point estimate, and a percentage would imply a calibration we do not have.",
+            "title": "Availability"
+          },
           "cap_blocked": {
             "default": false,
             "description": "Drafting this player would exceed a hard per-position roster cap (league position_limits vs the caller's current roster). Shown greyed with a CAP badge, never hidden.",
@@ -1959,6 +2044,30 @@
               }
             ],
             "title": "Espn Id"
+          },
+          "fit_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rank by `fit_value` among the players still available. Unlike `cv_rank` this moves with every pick \u2014 it is a statement about the roster, not about the player.",
+            "title": "Fit Rank"
+          },
+          "fit_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Category leagues only: `value` re-scored for *this* roster \u2014 the same per-category z's weighted by how far the roster trails an average team, with punted categories at zero. None for points leagues and for rows with no stat line to score.",
+            "title": "Fit Value"
           },
           "fpts_avg": {
             "anyOf": [
@@ -2146,6 +2255,9 @@
           "adp",
           "auction_value",
           "market_delta",
+          "fit_value",
+          "fit_rank",
+          "availability",
           "cap_blocked",
           "categories",
           "category_z",
@@ -2494,6 +2606,19 @@
             ],
             "title": "Espn Player Id"
           },
+          "espn_team_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The ESPN team that made the pick (an id from `pick_order`), when the pick came from ESPN. Sets `slot` by lookup rather than by the snake geometry \u2014 a traded pick or an auction pick lands in the seat that actually made it.",
+            "title": "Espn Team Id"
+          },
           "overall_pick": {
             "anyOf": [
               {
@@ -2533,7 +2658,7 @@
           },
           "source": {
             "default": "manual",
-            "description": "`keeper` records a pick spent before the draft started (at the pick its round costs): it leaves the board like any pick but never counts as the draft front",
+            "description": "`keeper` records a pick spent before the draft started (at the pick its round costs): it leaves the board like any pick but never counts as the draft front \u2014 and it is checked against the session's designated keepers before it is written.\n\n`mock` is not accepted here: it means the autopicker made the pick, and only the server may say that.",
             "enum": [
               "manual",
               "espn_sync",
@@ -2642,6 +2767,18 @@
             ],
             "title": "Espn Player Id"
           },
+          "espn_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The ESPN team that made the pick, when ESPN said",
+            "title": "Espn Team Id"
+          },
           "overall_pick": {
             "title": "Overall Pick",
             "type": "integer"
@@ -2690,7 +2827,7 @@
                 "type": "null"
               }
             ],
-            "description": "1-based slot in pick_order that made the pick",
+            "description": "1-based seat in pick_order that made the pick: the ESPN team's seat when the pick's team is known, else derived from the pick number (snake drafts only)",
             "title": "Slot"
           },
           "source": {
@@ -2699,7 +2836,8 @@
               "manual",
               "espn_sync",
               "import",
-              "keeper"
+              "keeper",
+              "mock"
             ],
             "title": "Source",
             "type": "string"
@@ -2711,6 +2849,7 @@
           "slot",
           "player_id",
           "espn_player_id",
+          "espn_team_id",
           "player_name",
           "by_me",
           "source",
@@ -2809,7 +2948,7 @@
             "type": "string"
           },
           "score": {
-            "description": "vorp + scarcity + flexibility + injury \u2014 the ranking number",
+            "description": "vorp + scarcity + flexibility + injury + category_fit \u2014 the ranking number",
             "title": "Score",
             "type": "number"
           },
@@ -2965,6 +3104,7 @@
           },
           "kind": {
             "default": "manual",
+            "description": "Where the picks come from. `live`: this team's own ESPN draft (needs a team in a synced ESPN league; the room is linked to it at once). `mock`: an ESPN mock lobby, linked on the first INIT it reconciles with. `manual`: the caller enters every pick.",
             "enum": [
               "live",
               "manual",
@@ -2986,6 +3126,19 @@
             ],
             "description": "1-based slot the caller drafts from",
             "title": "My Slot"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A label of the caller's choosing",
+            "title": "Name"
           },
           "pick_order": {
             "anyOf": [
@@ -3026,11 +3179,65 @@
                 "type": "null"
               }
             ],
-            "description": "Owned team to draft for; omit for a mock draft",
+            "description": "Owned team whose league settings the room uses; omit for generic settings",
             "title": "Team Id"
           }
         },
         "title": "DraftSessionCreate",
+        "type": "object"
+      },
+      "DraftSessionDeleteResponse": {
+        "description": "The id of the session that was deleted.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DraftSessionDeleteResponse",
         "type": "object"
       },
       "DraftSessionListResponse": {
@@ -3118,6 +3325,18 @@
             "title": "Draft Type",
             "type": "string"
           },
+          "espn_league_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The ESPN draft this room follows; null until a mock room links to one",
+            "title": "Espn League Id"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -3198,6 +3417,17 @@
             ],
             "title": "My Slot"
           },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
           "next_overall_pick": {
             "default": 1,
             "description": "The number a new pick takes by default: the lowest unused one, so an undo is re-fillable in place. Not necessarily where the draft front is \u2014 see my_next_pick.",
@@ -3238,6 +3468,15 @@
             ],
             "description": "Picks between the draft front and my turn; 0 means I am on the clock",
             "title": "Picks Until My Turn"
+          },
+          "punts": {
+            "default": [],
+            "description": "Category keys this room concedes; they weigh 0 in the board's fit column",
+            "items": {
+              "type": "string"
+            },
+            "title": "Punts",
+            "type": "array"
           },
           "rounds": {
             "anyOf": [
@@ -3313,11 +3552,14 @@
           "league_id",
           "kind",
           "status",
+          "name",
+          "espn_league_id",
           "draft_type",
           "pick_order",
           "my_slot",
           "rounds",
           "keepers",
+          "punts",
           "league_size",
           "keeper_count",
           "total_picks",
@@ -3405,6 +3647,19 @@
             ],
             "title": "Draft Type"
           },
+          "espn_league_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Link the room to one ESPN draft (a real league's id, or a mock lobby's). Exclusive: one active room per ESPN draft, so linking to a draft another active room already follows is refused with that room's id. An explicit null unlinks.",
+            "title": "Espn League Id"
+          },
           "keepers": {
             "anyOf": [
               {
@@ -3431,6 +3686,19 @@
             ],
             "title": "My Slot"
           },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A label of the caller's choosing; empty clears it",
+            "title": "Name"
+          },
           "pick_order": {
             "anyOf": [
               {
@@ -3444,6 +3712,22 @@
               }
             ],
             "title": "Pick Order"
+          },
+          "punts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 12,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Category keys this room concedes (e.g. `[\"ft_pct\", \"tov\"]`). Every key must be one of the league's own rankable categories; a points-scored room has none to punt.",
+            "title": "Punts"
           },
           "rounds": {
             "anyOf": [
@@ -9491,7 +9775,9 @@
               "vorp",
               "scarcity",
               "flexibility",
-              "injury"
+              "injury",
+              "category_fit",
+              "congestion"
             ],
             "title": "Key",
             "type": "string"
@@ -12658,7 +12944,7 @@
         ]
       },
       "post": {
-        "description": "Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for a mock draft.\n\n`my_slot` is the one thing the caller must supply: `pick_order` holds ESPN team ids that nothing maps back to our teams, so the room asks which seat is yours.",
+        "description": "Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for generic settings.\n\n`kind` says where the picks come from. `live` follows the team's own ESPN draft and is linked to it at once \u2014 one active live room per league, so a second is refused with the first's id. `mock` follows an ESPN mock lobby and links to the first one it reconciles with. `manual` follows nothing.\n\n`my_slot` is the one thing the caller must supply: `pick_order` holds ESPN team ids that nothing maps back to our teams, so the room asks which seat is yours.",
         "operationId": "create_draft_session_v1_internal_drafts_post",
         "requestBody": {
           "content": {
@@ -12682,10 +12968,13 @@
             "description": "Session created"
           },
           "400": {
-            "description": "Slot outside the draft"
+            "description": "Slot outside the draft, or a live room without a synced ESPN league"
           },
           "404": {
             "description": "No such team, or it does not belong to the caller"
+          },
+          "409": {
+            "description": "An active room already follows that ESPN draft (`existing_session_id`)"
           },
           "422": {
             "description": "Invalid session fields"
@@ -12704,7 +12993,7 @@
     },
     "/v1/internal/drafts/board": {
       "get": {
-        "description": "Every draftable player, valued by the scoring settings of the league this team belongs to (point weights, or the fpts-scale category value for a category league), from ESPN's published projections where available and last season's per-game baseline otherwise. Rows carry the latest ESPN market rank/ADP and a `market_rank \u2212 cv_rank` delta, and are flagged `cap_blocked` when the league's hard position caps leave no room for them on the caller's roster.\n\n`cv_rank` is computed over the full pool before `picked`/`mine` are removed, so it stays stable and market-comparable throughout a draft.\n\nStateless: pick state rides in the query params. Use the session board once a draft room is open.",
+        "description": "Every draftable player, valued by the scoring settings of the league this team belongs to (point weights, or the fpts-scale category value for a category league), from ESPN's published projections where available and last season's per-game baseline otherwise. Rows carry the latest ESPN market rank/ADP and a `market_rank \u2212 cv_rank` delta, and are flagged `cap_blocked` when the league's hard position caps leave no room for them on the caller's roster.\n\n`cv_rank` is computed over the full pool before `picked`/`mine` are removed, so it stays stable and market-comparable throughout a draft.\n\nCategory leagues also carry `fit_value`/`fit_rank`: the same board re-scored for the caller's own roster, with any `punt` categories weighing zero.\n\nStateless: pick state rides in the query params, so there is no slot to count from and rows carry no availability. Use the session board once a draft room is open.",
         "operationId": "get_draft_board_v1_internal_drafts_board_get",
         "parameters": [
           {
@@ -12734,6 +13023,21 @@
                 "type": "integer"
               },
               "title": "Mine",
+              "type": "array"
+            }
+          },
+          {
+            "description": "Category keys to concede, e.g. `punt=ft_pct&punt=tov`. They weigh zero in `fit_value`; unknown keys are ignored here (the room stores validated punts on the session instead). No effect on a points league.",
+            "in": "query",
+            "name": "punt",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "Category keys to concede, e.g. `punt=ft_pct&punt=tov`. They weigh zero in `fit_value`; unknown keys are ignored here (the room stores validated punts on the session instead). No effect on a points league.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Punt",
               "type": "array"
             }
           },
@@ -12777,6 +13081,55 @@
       }
     },
     "/v1/internal/drafts/{session_id}": {
+      "delete": {
+        "description": "Removes the room and every pick recorded in it. There is no undo: a finished draft is better closed (`status: completed`) than deleted.",
+        "operationId": "delete_draft_session_v1_internal_drafts__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftSessionDeleteResponse"
+                }
+              }
+            },
+            "description": "Session deleted"
+          },
+          "404": {
+            "description": "No such session, or it does not belong to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete a draft session",
+        "tags": [
+          "Drafts"
+        ]
+      },
       "get": {
         "operationId": "get_draft_session_v1_internal_drafts__session_id__get",
         "parameters": [
@@ -12826,7 +13179,7 @@
         ]
       },
       "patch": {
-        "description": "Partial update \u2014 only the fields present in the body are written. Used for confirming or correcting `my_slot`, editing pre-designated `keepers`, and closing the room (`status: completed`, which stamps `completed_at` the first time).\n\nChanging `draft_type` or `pick_order` re-derives the round and slot of every recorded pick. A change that would leave the session inconsistent \u2014 a slot outside the new pick order, or a draft resized shorter than the picks already recorded \u2014 is refused.",
+        "description": "Partial update \u2014 only the fields present in the body are written. Used for confirming or correcting `my_slot`, editing pre-designated `keepers`, setting the `punts` this room is drafting around, and closing the room (`status: completed`, which stamps `completed_at` the first time).\n\n`punts` must be categories this league actually scores; a points-scored room has none, and an empty list clears the build.\n\nChanging `draft_type` or `pick_order` re-derives the round and slot of every recorded pick. A change that would leave the session inconsistent \u2014 a slot outside the new pick order, or a draft resized shorter than the picks already recorded \u2014 is refused.\n\n`name` renames the room. `espn_league_id` links it to one ESPN draft (a real league's id, or a mock lobby's): exclusive \u2014 one active room per draft, refused with the other room's id otherwise \u2014 and an explicit null unlinks.",
         "operationId": "update_draft_session_v1_internal_drafts__session_id__patch",
         "parameters": [
           {
@@ -12861,10 +13214,13 @@
             "description": "Session updated"
           },
           "400": {
-            "description": "Slot outside the draft, or a draft resized shorter than its recorded picks"
+            "description": "Slot outside the draft, a draft resized shorter than its recorded picks, or punts this league cannot score"
           },
           "404": {
             "description": "No such session, or it does not belong to the caller"
+          },
+          "409": {
+            "description": "Another active room already follows that ESPN draft (`existing_session_id`)"
           },
           "422": {
             "description": "Empty or invalid update"
@@ -12883,7 +13239,7 @@
     },
     "/v1/internal/drafts/{session_id}/board": {
       "get": {
-        "description": "The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick \u2014 every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`).\n\nPlayers the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.\n\n`roster` lists the caller's drafted players with primary position, eligible slots and NBA team \u2014 what the roster zone needs to fill lineup slots, count caps and flag stacking.",
+        "description": "The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick \u2014 every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`).\n\nPlayers the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.\n\n`roster` lists the caller's drafted players with primary position, eligible slots and NBA team \u2014 what the roster zone needs to fill lineup slots, count caps and flag stacking.\n\nCategory leagues additionally carry `fit_value`/`fit_rank` \u2014 the board re-scored for this roster, with the session's `punts` at zero weight \u2014 a `category_fit` component on every recommendation, and `meta.category_need`, which says how far the roster trails an average team in each category.\n\nRows with market data carry `availability` (`likely`/`tossup`/`gone`) for the caller's next pick \u2014 the pick after that while the caller is on the clock.",
         "operationId": "get_draft_session_board_v1_internal_drafts__session_id__board_get",
         "parameters": [
           {
@@ -12934,7 +13290,7 @@
     },
     "/v1/internal/drafts/{session_id}/picks": {
       "post": {
-        "description": "Appends a pick. `overall_pick` defaults to the session's lowest unused number, so the normal path is to post the player alone; passing it explicitly is how a correction lands in a hole an undo left. The player is resolved NBA id \u2192 ESPN id \u2192 normalized name, and a pick whose player is not in `nba.players` yet is still recorded with the provider identity. A player already in the session cannot be recorded a second time \u2014 undo the earlier pick to correct it.\n\n`source: keeper` records a keeper at the pick its round costs (the session's `keepers` carry that number as `overall_pick`). A keeper pick leaves the board like any other but never counts as the draft front: whose-turn arithmetic steps over it.",
+        "description": "Appends a pick. `overall_pick` defaults to the session's lowest unused number, so the normal path is to post the player alone; passing it explicitly is how a correction lands in a hole an undo left. The player is resolved NBA id \u2192 ESPN id \u2192 normalized name, and a pick whose player is not in `nba.players` yet is still recorded with the provider identity. A player already in the session cannot be recorded a second time \u2014 undo the earlier pick to correct it.\n\n`source: keeper` records a keeper at the pick its round costs (the session's `keepers` carry that number as `overall_pick`). A keeper pick leaves the board like any other but never counts as the draft front: whose-turn arithmetic steps over it, so it is checked against the session's designated keepers rather than taken on trust. `source: mock` is rejected here \u2014 it claims the autopicker made the pick, which only the server may say.",
         "operationId": "add_draft_pick_v1_internal_drafts__session_id__picks_post",
         "parameters": [
           {

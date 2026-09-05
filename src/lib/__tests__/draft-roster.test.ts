@@ -33,6 +33,7 @@ function pick(overrides: Partial<DraftPick> & { overall_pick: number }): DraftPi
     slot: null,
     player_id: null,
     espn_player_id: null,
+    espn_team_id: null,
     player_name: null,
     by_me: false,
     source: "manual",
