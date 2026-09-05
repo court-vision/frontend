@@ -55,6 +55,7 @@ interface SelectedPlayer {
   playerId: number;
   playerName: string;
   playerTeam: string;
+  position: string | null;
 }
 
 // Order for lineup slots (starters first, then bench/IR)
@@ -756,6 +757,7 @@ export function MatchupDisplay({
       playerId: player.player_id,
       playerName: player.name,
       playerTeam: player.team,
+      position: player.position ?? null,
     });
   };
 
@@ -974,8 +976,8 @@ export function MatchupDisplay({
       {/* Player Stats Dialog */}
       <Dialog open={!!selectedPlayer} onOpenChange={() => setSelectedPlayer(null)}>
         <DialogContent className="max-w-[900px]">
-          <DialogHeader>
-            <DialogTitle>Player Details</DialogTitle>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{selectedPlayer?.playerName ?? "Player"} details</DialogTitle>
             <DialogDescription>
               Detailed stats and performance history.
             </DialogDescription>
@@ -987,6 +989,7 @@ export function MatchupDisplay({
               playerName={selectedPlayer.playerName}
               playerTeam={selectedPlayer.playerTeam}
               provider={provider}
+              position={selectedPlayer.position}
             />
           )}
 

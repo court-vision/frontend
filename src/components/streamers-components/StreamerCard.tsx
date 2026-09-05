@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { StreamerPlayer } from "@/types/streamer";
 
 import { OppBadge, PositionBadges, PriorSeasonBadge } from "./StreamerBadges";
+import { PlayerHeadshot } from "@/components/terminal/shared";
 import { WeekSchedule } from "./WeekSchedule";
 
 interface StreamerCardProps {
@@ -59,6 +60,11 @@ export function StreamerCard({
           <span className="w-6 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
             {index + 1}
           </span>
+          <PlayerHeadshot
+            playerId={player.nba_player_id}
+            name={player.name}
+            size="xs"
+          />
           <span className="truncate text-sm font-medium">{player.name}</span>
           {showB2bBadge && (
             <Badge variant="secondary" className="shrink-0 text-[11px]">

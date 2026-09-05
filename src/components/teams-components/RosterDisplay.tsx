@@ -35,6 +35,7 @@ import type { ValueKind } from "@/types/scoring";
 import { CAT_VALUE_TITLE } from "@/lib/category-format";
 import { HintPopover } from "@/components/ui/hint";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
+import { formatPositions } from "@/lib/positions";
 
 type StatWindow = "season" | "l7" | "l14" | "l30";
 
@@ -90,6 +91,7 @@ interface SelectedPlayer {
   playerId: number;
   playerName: string;
   playerTeam: string;
+  position: string | null;
 }
 
 interface RosterDisplayProps {
@@ -129,6 +131,7 @@ export function RosterDisplay({ roster, provider = "espn", valueKind = "fpts" }:
       playerId: player.player_id,
       playerName: player.name,
       playerTeam: player.team,
+      position: formatPositions(player.valid_positions),
     });
   };
 
@@ -247,8 +250,8 @@ export function RosterDisplay({ roster, provider = "espn", valueKind = "fpts" }:
         onOpenChange={() => setSelectedPlayer(null)}
       >
         <DialogContent className="max-w-[900px]">
-          <DialogHeader>
-            <DialogTitle>Player Details</DialogTitle>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{selectedPlayer?.playerName ?? "Player"} details</DialogTitle>
             <DialogDescription>
               Detailed stats and performance history.
             </DialogDescription>
@@ -260,6 +263,7 @@ export function RosterDisplay({ roster, provider = "espn", valueKind = "fpts" }:
               playerName={selectedPlayer.playerName}
               playerTeam={selectedPlayer.playerTeam}
               provider={provider}
+              position={selectedPlayer.position}
             />
           )}
 

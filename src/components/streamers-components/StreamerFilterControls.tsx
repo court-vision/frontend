@@ -15,8 +15,10 @@ import {
 import { cn } from "@/lib/utils";
 import type { StreamerMode } from "@/types/streamer";
 
-export const POSITIONS = ["PG", "SG", "SF", "PF", "C", "G", "F"] as const;
-export type Position = (typeof POSITIONS)[number];
+// Canonical list now lives in lib; imported for local use here and
+// re-exported so existing importers of this module keep working.
+import { POSITIONS, type Position } from "@/lib/positions";
+export { POSITIONS, type Position };
 
 export const DEFAULT_AVG_DAYS = 7;
 
