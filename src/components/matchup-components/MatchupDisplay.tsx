@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
+import { PlayerHeadshot } from "@/components/terminal/shared";
 import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreChart";
 import { DayNavigationBar } from "@/components/matchup-components/DayNavigationBar";
 import { DailyMatchupView } from "@/components/matchup-components/DailyMatchupView";
@@ -224,6 +225,11 @@ function TeamRosterTable({ team, onPlayerClick }: TeamRosterTableProps) {
             </TableCell>
             <TableCell>
               <div className="flex items-center gap-2">
+                <PlayerHeadshot
+                  playerId={player.nba_player_id}
+                  name={player.name}
+                  size="xs"
+                />
                 <span className={`text-sm ${player.injured ? "text-muted-foreground" : ""}`}>
                   {player.name}
                 </span>
@@ -420,6 +426,11 @@ function LiveTeamRosterTable({ team, games, onPlayerClick, format, categories }:
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5 min-w-0">
+                  <PlayerHeadshot
+                    playerId={player.nba_player_id}
+                    name={player.name}
+                    size="xs"
+                  />
                   <span className={cn(
                     "text-sm truncate",
                     player.injured && "text-muted-foreground"
