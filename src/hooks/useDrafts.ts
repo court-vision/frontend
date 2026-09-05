@@ -208,6 +208,9 @@ export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean
           player_id: pick.player_id ?? null,
           espn_player_id: pick.espn_player_id ?? null,
           player_name: pick.player_name ?? null,
+          // Only ESPN can say which team made a pick; an optimistic row has no
+          // answer until the server replies with one.
+          espn_team_id: pick.espn_team_id ?? null,
           by_me: pick.by_me ?? false,
           source: pick.source ?? "manual",
           bid: pick.bid ?? null,

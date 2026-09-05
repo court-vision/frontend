@@ -174,7 +174,9 @@ export interface paths {
         put?: never;
         /**
          * Start a draft session
-         * @description Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for a mock draft.
+         * @description Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for generic settings.
+         *
+         *     `kind` says where the picks come from. `live` follows the team's own ESPN draft and is linked to it at once — one active live room per league, so a second is refused with the first's id. `mock` follows an ESPN mock lobby and links to the first one it reconciles with. `manual` follows nothing.
          *
          *     `my_slot` is the one thing the caller must supply: `pick_order` holds ESPN team ids that nothing maps back to our teams, so the room asks which seat is yours.
          */
@@ -198,7 +200,9 @@ export interface paths {
          *
          *     `cv_rank` is computed over the full pool before `picked`/`mine` are removed, so it stays stable and market-comparable throughout a draft.
          *
-         *     Stateless: pick state rides in the query params. Use the session board once a draft room is open.
+         *     Category leagues also carry `fit_value`/`fit_rank`: the same board re-scored for the caller's own roster, with any `punt` categories weighing zero.
+         *
+         *     Stateless: pick state rides in the query params, so there is no slot to count from and rows carry no availability. Use the session board once a draft room is open.
          */
         get: operations["get_draft_board_v1_internal_drafts_board_get"];
         put?: never;
@@ -220,14 +224,22 @@ export interface paths {
         get: operations["get_draft_session_v1_internal_drafts__session_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete a draft session
+         * @description Removes the room and every pick recorded in it. There is no undo: a finished draft is better closed (`status: completed`) than deleted.
+         */
+        delete: operations["delete_draft_session_v1_internal_drafts__session_id__delete"];
         options?: never;
         head?: never;
         /**
          * Update a draft session
-         * @description Partial update — only the fields present in the body are written. Used for confirming or correcting `my_slot`, editing pre-designated `keepers`, and closing the room (`status: completed`, which stamps `completed_at` the first time).
+         * @description Partial update — only the fields present in the body are written. Used for confirming or correcting `my_slot`, editing pre-designated `keepers`, setting the `punts` this room is drafting around, and closing the room (`status: completed`, which stamps `completed_at` the first time).
+         *
+         *     `punts` must be categories this league actually scores; a points-scored room has none, and an empty list clears the build.
          *
          *     Changing `draft_type` or `pick_order` re-derives the round and slot of every recorded pick. A change that would leave the session inconsistent — a slot outside the new pick order, or a draft resized shorter than the picks already recorded — is refused.
+         *
+         *     `name` renames the room. `espn_league_id` links it to one ESPN draft (a real league's id, or a mock lobby's): exclusive — one active room per draft, refused with the other room's id otherwise — and an explicit null unlinks.
          */
         patch: operations["update_draft_session_v1_internal_drafts__session_id__patch"];
         trace?: never;
@@ -246,6 +258,10 @@ export interface paths {
          *     Players the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.
          *
          *     `roster` lists the caller's drafted players with primary position, eligible slots and NBA team — what the roster zone needs to fill lineup slots, count caps and flag stacking.
+         *
+         *     Category leagues additionally carry `fit_value`/`fit_rank` — the board re-scored for this roster, with the session's `punts` at zero weight — a `category_fit` component on every recommendation, and `meta.category_need`, which says how far the roster trails an average team in each category.
+         *
+         *     Rows with market data carry `availability` (`likely`/`tossup`/`gone`) for the caller's next pick — the pick after that while the caller is on the clock.
          */
         get: operations["get_draft_session_board_v1_internal_drafts__session_id__board_get"];
         put?: never;
@@ -269,7 +285,7 @@ export interface paths {
          * Record a pick
          * @description Appends a pick. `overall_pick` defaults to the session's lowest unused number, so the normal path is to post the player alone; passing it explicitly is how a correction lands in a hole an undo left. The player is resolved NBA id → ESPN id → normalized name, and a pick whose player is not in `nba.players` yet is still recorded with the provider identity. A player already in the session cannot be recorded a second time — undo the earlier pick to correct it.
          *
-         *     `source: keeper` records a keeper at the pick its round costs (the session's `keepers` carry that number as `overall_pick`). A keeper pick leaves the board like any other but never counts as the draft front: whose-turn arithmetic steps over it.
+         *     `source: keeper` records a keeper at the pick its round costs (the session's `keepers` carry that number as `overall_pick`). A keeper pick leaves the board like any other but never counts as the draft front: whose-turn arithmetic steps over it, so it is checked against the session's designated keepers rather than taken on trust. `source: mock` is rejected here — it claims the autopicker made the pick, which only the server may say.
          */
         post: operations["add_draft_pick_v1_internal_drafts__session_id__picks_post"];
         delete?: never;
@@ -1918,6 +1934,42 @@ export interface components {
             label: string;
         };
         /**
+         * CategoryNeedResp
+         * @description One category's standing on the caller's roster, and what fit does about it.
+         *
+         *     `need` is in standard deviations of a k-pick sum: positive means the roster
+         *     is *behind* an average team after the same number of picks. It is not a
+         *     probability and does not claim to be one.
+         */
+        CategoryNeedResp: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Mine
+             * @description Summed per-category z the caller's drafted players hold
+             */
+            mine: number;
+            /**
+             * Need
+             * @description (pace - mine) / spread, clamped to +/-2; positive means behind
+             */
+            need: number;
+            /**
+             * Pace
+             * @description What an average team holds after the same number of picks
+             */
+            pace: number;
+            /** Punted */
+            punted: boolean;
+            /**
+             * Weight
+             * @description What fit multiplies this category by; 0 when punted
+             */
+            weight: number;
+        };
+        /**
          * CategoryScoreItem
          * @description One category in a head-to-head comparison.
          */
@@ -2239,6 +2291,12 @@ export interface components {
              * @default []
              */
             categories: components["schemas"]["CategoryDefResp"][];
+            /**
+             * Category Need
+             * @description Category leagues only: where the caller's roster stands against an average team after the same number of picks, and the weight fit gives each category
+             * @default []
+             */
+            category_need: components["schemas"]["CategoryNeedResp"][];
             /** Format */
             format: string;
             /** League Size */
@@ -2270,6 +2328,12 @@ export interface components {
             projection_count: number;
             /** Projections As Of */
             projections_as_of: string | null;
+            /**
+             * Punts
+             * @description Category keys this room concedes, as stored on the session
+             * @default []
+             */
+            punts: string[];
             /**
              * Roster Slots
              * @default {}
@@ -2333,6 +2397,11 @@ export interface components {
              */
             auction_value: number | null;
             /**
+             * Availability
+             * @description Whether the player is likely to survive to the caller's next pick (the pick after that, when the caller is on the clock): `likely`, `tossup` or `gone`, from the gap between ADP (or market rank) and that pick. None without a confirmed slot or market data. Deliberately a bucket, not a probability — ESPN publishes a point estimate, and a percentage would imply a calibration we do not have.
+             */
+            availability: ("likely" | "tossup" | "gone") | null;
+            /**
              * Cap Blocked
              * @description Drafting this player would exceed a hard per-position roster cap (league position_limits vs the caller's current roster). Shown greyed with a CAP badge, never hidden.
              * @default false
@@ -2359,6 +2428,16 @@ export interface components {
             cv_rank: number | null;
             /** Espn Id */
             espn_id: number | null;
+            /**
+             * Fit Rank
+             * @description Rank by `fit_value` among the players still available. Unlike `cv_rank` this moves with every pick — it is a statement about the roster, not about the player.
+             */
+            fit_rank: number | null;
+            /**
+             * Fit Value
+             * @description Category leagues only: `value` re-scored for *this* roster — the same per-category z's weighted by how far the roster trails an average team, with punted categories at zero. None for points leagues and for rows with no stat line to score.
+             */
+            fit_value: number | null;
             /**
              * Fpts Avg
              * @description Per-game fantasy points under the platform default formula (familiar scale, tiebreak); None for market-only rows
@@ -2601,6 +2680,11 @@ export interface components {
             /** Espn Player Id */
             espn_player_id?: number | null;
             /**
+             * Espn Team Id
+             * @description The ESPN team that made the pick (an id from `pick_order`), when the pick came from ESPN. Sets `slot` by lookup rather than by the snake geometry — a traded pick or an auction pick lands in the seat that actually made it.
+             */
+            espn_team_id?: number | null;
+            /**
              * Overall Pick
              * @description Defaults to the session's next unused pick
              */
@@ -2614,7 +2698,9 @@ export interface components {
             player_name?: string | null;
             /**
              * Source
-             * @description `keeper` records a pick spent before the draft started (at the pick its round costs): it leaves the board like any pick but never counts as the draft front
+             * @description `keeper` records a pick spent before the draft started (at the pick its round costs): it leaves the board like any pick but never counts as the draft front — and it is checked against the session's designated keepers before it is written.
+             *
+             *     `mock` is not accepted here: it means the autopicker made the pick, and only the server may say that.
              * @default manual
              * @enum {string}
              */
@@ -2648,6 +2734,11 @@ export interface components {
             created_at: string | null;
             /** Espn Player Id */
             espn_player_id: number | null;
+            /**
+             * Espn Team Id
+             * @description The ESPN team that made the pick, when ESPN said
+             */
+            espn_team_id: number | null;
             /** Overall Pick */
             overall_pick: number;
             /**
@@ -2664,7 +2755,7 @@ export interface components {
             round: number | null;
             /**
              * Slot
-             * @description 1-based slot in pick_order that made the pick
+             * @description 1-based seat in pick_order that made the pick: the ESPN team's seat when the pick's team is known, else derived from the pick number (snake drafts only)
              */
             slot: number | null;
             /**
@@ -2672,7 +2763,7 @@ export interface components {
              * @default manual
              * @enum {string}
              */
-            source: "manual" | "espn_sync" | "import" | "keeper";
+            source: "manual" | "espn_sync" | "import" | "keeper" | "mock";
         };
         /**
          * DraftPickResponse
@@ -2711,7 +2802,7 @@ export interface components {
             reason: string;
             /**
              * Score
-             * @description vorp + scarcity + flexibility + injury — the ranking number
+             * @description vorp + scarcity + flexibility + injury + category_fit — the ranking number
              */
             score: number;
             /**
@@ -2778,6 +2869,7 @@ export interface components {
             keepers?: components["schemas"]["DraftKeeper-Input"][];
             /**
              * Kind
+             * @description Where the picks come from. `live`: this team's own ESPN draft (needs a team in a synced ESPN league; the room is linked to it at once). `mock`: an ESPN mock lobby, linked on the first INIT it reconciles with. `manual`: the caller enters every pick.
              * @default manual
              * @enum {string}
              */
@@ -2787,6 +2879,11 @@ export interface components {
              * @description 1-based slot the caller drafts from
              */
             my_slot?: number | null;
+            /**
+             * Name
+             * @description A label of the caller's choosing
+             */
+            name?: string | null;
             /**
              * Pick Order
              * @description Provider team ids in first-round order; defaults to the league's
@@ -2799,9 +2896,24 @@ export interface components {
             rounds?: number | null;
             /**
              * Team Id
-             * @description Owned team to draft for; omit for a mock draft
+             * @description Owned team whose league settings the room uses; omit for generic settings
              */
             team_id?: number | null;
+        };
+        /**
+         * DraftSessionDeleteResponse
+         * @description The id of the session that was deleted.
+         */
+        DraftSessionDeleteResponse: {
+            /** Data */
+            data: number | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /**
          * DraftSessionListResponse
@@ -2832,6 +2944,11 @@ export interface components {
              * @enum {string}
              */
             draft_type: "snake" | "auction";
+            /**
+             * Espn League Id
+             * @description The ESPN draft this room follows; null until a mock room links to one
+             */
+            espn_league_id: number | null;
             /** Id */
             id: number;
             /**
@@ -2863,6 +2980,8 @@ export interface components {
             my_next_pick: number | null;
             /** My Slot */
             my_slot: number | null;
+            /** Name */
+            name: string | null;
             /**
              * Next Overall Pick
              * @description The number a new pick takes by default: the lowest unused one, so an undo is re-fillable in place. Not necessarily where the draft front is — see my_next_pick.
@@ -2891,6 +3010,12 @@ export interface components {
              * @description Picks between the draft front and my turn; 0 means I am on the clock
              */
             picks_until_my_turn: number | null;
+            /**
+             * Punts
+             * @description Category keys this room concedes; they weigh 0 in the board's fit column
+             * @default []
+             */
+            punts: string[];
             /** Rounds */
             rounds: number | null;
             /** Started At */
@@ -2931,12 +3056,27 @@ export interface components {
         DraftSessionUpdate: {
             /** Draft Type */
             draft_type?: ("snake" | "auction") | null;
+            /**
+             * Espn League Id
+             * @description Link the room to one ESPN draft (a real league's id, or a mock lobby's). Exclusive: one active room per ESPN draft, so linking to a draft another active room already follows is refused with that room's id. An explicit null unlinks.
+             */
+            espn_league_id?: number | null;
             /** Keepers */
             keepers?: components["schemas"]["DraftKeeper-Input"][] | null;
             /** My Slot */
             my_slot?: number | null;
+            /**
+             * Name
+             * @description A label of the caller's choosing; empty clears it
+             */
+            name?: string | null;
             /** Pick Order */
             pick_order?: number[] | null;
+            /**
+             * Punts
+             * @description Category keys this room concedes (e.g. `["ft_pct", "tov"]`). Every key must be one of the league's own rankable categories; a points-scored room has none to punt.
+             */
+            punts?: string[] | null;
             /** Rounds */
             rounds?: number | null;
             /** Status */
@@ -5175,7 +5315,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "season_value" | "vorp" | "scarcity" | "flexibility" | "injury";
+            key: "season_value" | "vorp" | "scarcity" | "flexibility" | "injury" | "category_fit" | "congestion";
             /** Label */
             label: string;
             /** Value */
@@ -6498,7 +6638,7 @@ export interface operations {
                     "application/json": components["schemas"]["DraftSessionResponse"];
                 };
             };
-            /** @description Slot outside the draft */
+            /** @description Slot outside the draft, or a live room without a synced ESPN league */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -6507,6 +6647,13 @@ export interface operations {
             };
             /** @description No such team, or it does not belong to the caller */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An active room already follows that ESPN draft (`existing_session_id`) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6528,6 +6675,8 @@ export interface operations {
                 picked?: number[];
                 /** @description NBA player ids drafted by the caller (no need to repeat them in `picked`); also removed, and counted against the league's position caps */
                 mine?: number[];
+                /** @description Category keys to concede, e.g. `punt=ft_pct&punt=tov`. They weigh zero in `fit_value`; unknown keys are ignored here (the room stores validated punts on the session instead). No effect on a points league. */
+                punt?: string[];
                 team_id: number;
             };
             header?: never;
@@ -6599,6 +6748,44 @@ export interface operations {
             };
         };
     };
+    delete_draft_session_v1_internal_drafts__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftSessionDeleteResponse"];
+                };
+            };
+            /** @description No such session, or it does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_draft_session_v1_internal_drafts__session_id__patch: {
         parameters: {
             query?: never;
@@ -6623,7 +6810,7 @@ export interface operations {
                     "application/json": components["schemas"]["DraftSessionResponse"];
                 };
             };
-            /** @description Slot outside the draft, or a draft resized shorter than its recorded picks */
+            /** @description Slot outside the draft, a draft resized shorter than its recorded picks, or punts this league cannot score */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -6632,6 +6819,13 @@ export interface operations {
             };
             /** @description No such session, or it does not belong to the caller */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Another active room already follows that ESPN draft (`existing_session_id`) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
