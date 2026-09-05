@@ -18,6 +18,12 @@ export function chromeRuntimeAvailable(): boolean {
 
 export interface PortHandle {
   disconnect(): void;
+  /**
+   * Post one message to the extension. False when the port has settled
+   * (disconnected either side) or the post throws — the caller treats both as
+   * "not sent", never as "maybe sent".
+   */
+  send(message: unknown): boolean;
 }
 
 export interface ConnectHandlers {
@@ -77,6 +83,15 @@ export function connectToExtension(extensionId: string, handlers: ConnectHandler
         port.disconnect();
       } catch {
         // already gone
+      }
+    },
+    send(msg) {
+      if (settled) return false;
+      try {
+        port.postMessage(msg);
+        return true;
+      } catch {
+        return false;
       }
     },
   };

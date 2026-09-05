@@ -126,6 +126,26 @@ export function useUpdateDraftSessionMutation(sessionId: number) {
   });
 }
 
+export function useDeleteDraftSessionMutation() {
+  const queryClient = useQueryClient();
+  const { getToken } = useAuth();
+
+  return useMutation<number, Error, number>({
+    mutationKey: ["drafts", "delete"],
+    mutationFn: (sessionId) => apiClient.deleteDraftSession(getToken, sessionId),
+    onSuccess: (sessionId) => {
+      toast.success("Draft room deleted");
+      // Gone for good: drop its caches rather than refetching a 404.
+      queryClient.removeQueries({ queryKey: draftKeys.detail(sessionId) });
+      queryClient.removeQueries({ queryKey: draftKeys.board(sessionId) });
+      queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
+    },
+    onError: (error) => {
+      console.error("Delete draft session error:", error);
+    },
+  });
+}
+
 /** The roster entry a board row becomes once drafted by the caller. */
 function rosterEntryOf(row: DraftBoardRow): DraftRosterEntry {
   return {
@@ -207,6 +227,7 @@ export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean
           slot: null,
           player_id: pick.player_id ?? null,
           espn_player_id: pick.espn_player_id ?? null,
+          espn_team_id: pick.espn_team_id ?? null,
           player_name: pick.player_name ?? null,
           // Only ESPN can say which team made a pick; an optimistic row has no
           // answer until the server replies with one.

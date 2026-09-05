@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { toApiError } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,14 +30,33 @@ import { useTeamLeagueQuery } from "@/hooks/useTeams";
 import { useCreateDraftSessionMutation } from "@/hooks/useDrafts";
 import type { DraftKind, DraftType } from "@/types/draft";
 
-const MOCK_TEAM = "mock";
+const NO_TEAM = "none";
+
+/** Where the picks come from — the one choice that shapes everything else about a room. */
+const SOURCES: { value: DraftKind; label: string; help: string }[] = [
+  {
+    value: "live",
+    label: "This league's ESPN draft",
+    help: "Picks arrive from your league's ESPN draft room through the Draft Tap. The room is linked to that league from the start.",
+  },
+  {
+    value: "mock",
+    label: "An ESPN mock lobby",
+    help: "Join any ESPN mock draft with these settings. The room links to the lobby when it opens, and follows only that one.",
+  },
+  {
+    value: "manual",
+    label: "I enter every pick",
+    help: "Nothing connects to ESPN; you record picks as they happen.",
+  },
+];
 
 /**
- * Start a draft room.
- *
- * Everything the provider told us is prefilled server-side from the team's
- * synced league — draft type, pick order, rounds, keeper allowance — so the
- * form asks for the one thing nothing can infer: which seat is yours.
+ * Start a draft room. Two questions decide its shape: whose settings it uses
+ * (a team's league, or generic ones) and where its picks come from (this
+ * league's own ESPN draft, an ESPN mock lobby, or you). Everything the provider
+ * told us is prefilled from the league — draft type, pick order, rounds, keeper
+ * allowance — so the one thing the form must ask is which seat is yours:
  * `pick_order` holds ESPN team ids that do not map back to our teams.
  */
 export function CreateSessionDialog() {
@@ -45,22 +65,40 @@ export function CreateSessionDialog() {
   const createSession = useCreateDraftSessionMutation();
 
   const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
   const [teamValue, setTeamValue] = useState<string>(
-    selectedTeamId !== null ? String(selectedTeamId) : MOCK_TEAM
+    selectedTeamId !== null ? String(selectedTeamId) : NO_TEAM
   );
-  const [kind, setKind] = useState<DraftKind>("manual");
+  const [source, setSource] = useState<DraftKind>("mock");
   const [draftType, setDraftType] = useState<DraftType | "">("");
   const [mySlot, setMySlot] = useState("");
   const [rounds, setRounds] = useState("");
+  const [existingRoom, setExistingRoom] = useState<number | null>(null);
 
   useEffect(() => {
-    setTeamValue(selectedTeamId !== null ? String(selectedTeamId) : MOCK_TEAM);
+    setTeamValue(selectedTeamId !== null ? String(selectedTeamId) : NO_TEAM);
   }, [selectedTeamId]);
 
   const team = useMemo(
     () => teams.find((t) => String(t.team_id) === teamValue) ?? null,
     [teams, teamValue]
   );
+  const isEspnTeam = team?.league_info?.provider === "espn";
+
+  // A live room can only follow an ESPN league's own draft; every other
+  // combination practises in a mock lobby or is entered by hand.
+  const sources = useMemo(
+    () => SOURCES.filter((s) => s.value !== "live" || isEspnTeam),
+    [isEspnTeam]
+  );
+  useEffect(() => {
+    if (!sources.some((s) => s.value === source)) setSource(isEspnTeam ? "live" : "mock");
+  }, [sources, source, isEspnTeam]);
+  useEffect(() => {
+    // The team just changed: the sensible default follows it.
+    setSource(isEspnTeam ? "live" : "mock");
+    setExistingRoom(null);
+  }, [teamValue, isEspnTeam]);
 
   // `draft_settings` lives on the league *detail*, not the summary embedded in
   // the team row — so the picked team's league is fetched to size the slot
@@ -89,18 +127,21 @@ export function CreateSessionDialog() {
   const cannotCreateYet = slotMissing || leagueUnknown;
 
   function reset() {
-    setTeamValue(selectedTeamId !== null ? String(selectedTeamId) : MOCK_TEAM);
-    setKind("manual");
+    setName("");
+    setTeamValue(selectedTeamId !== null ? String(selectedTeamId) : NO_TEAM);
     setDraftType("");
     setMySlot("");
     setRounds("");
+    setExistingRoom(null);
   }
 
   function handleCreate() {
+    setExistingRoom(null);
     createSession.mutate(
       {
-        team_id: teamValue === MOCK_TEAM ? null : Number(teamValue),
-        kind: teamValue === MOCK_TEAM ? "mock" : kind,
+        name: name.trim() || null,
+        team_id: teamValue === NO_TEAM ? null : Number(teamValue),
+        kind: source,
         draft_type: draftType === "" ? null : draftType,
         my_slot: mySlot === "" ? null : Number(mySlot),
         rounds: rounds === "" ? null : Number(rounds),
@@ -113,9 +154,17 @@ export function CreateSessionDialog() {
           reset();
           router.push(`/draft/${session.id}`);
         },
+        onError: (error) => {
+          // One live room per league: point at the one that exists.
+          const api = toApiError(error);
+          const existing = (api.data as { existing_session_id?: number } | null)?.existing_session_id;
+          if (api.code === "DRAFT_ROOM_ALREADY_LINKED" && existing) setExistingRoom(existing);
+        },
       }
     );
   }
+
+  const sourceHelp = sources.find((s) => s.value === source)?.help;
 
   return (
     <Dialog
@@ -136,14 +185,14 @@ export function CreateSessionDialog() {
         <DialogHeader>
           <DialogTitle className="text-base">Start a draft room</DialogTitle>
           <DialogDescription className="text-xs">
-            Pick the team you are drafting for and we will prefill the draft type, pick order and
-            rounds from its league.
+            Whose settings the room uses, and where its picks come from. Draft type, pick order and
+            rounds are prefilled from the league.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Team</label>
+            <label className="text-xs font-medium text-muted-foreground">Settings from</label>
             <Select value={teamValue} onValueChange={setTeamValue}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
@@ -169,8 +218,8 @@ export function CreateSessionDialog() {
                     </span>
                   </SelectItem>
                 ))}
-                <SelectItem value={MOCK_TEAM} className="text-xs">
-                  Mock draft (no league)
+                <SelectItem value={NO_TEAM} className="text-xs">
+                  No league — generic settings
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -180,6 +229,50 @@ export function CreateSessionDialog() {
                 Manage Teams for pick order and rounds.
               </p>
             )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Picks from</label>
+            <Select value={source} onValueChange={(v) => setSource(v as DraftKind)}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {sources.map((s) => (
+                  <SelectItem key={s.value} value={s.value} className="text-xs">
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {sourceHelp && <p className="text-[10px] text-muted-foreground">{sourceHelp}</p>}
+            {existingRoom !== null && (
+              <p className="flex items-center gap-2 text-[10px] text-amber-500">
+                You already have a live room for this league.
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    reset();
+                    router.push(`/draft/${existingRoom}`);
+                  }}
+                  className="underline decoration-dotted underline-offset-2 hover:text-amber-400"
+                >
+                  Open Draft #{existingRoom}
+                </button>
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Name</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={80}
+              placeholder={source === "mock" ? "e.g. Tuesday practice" : "Optional"}
+              className="h-8 text-xs"
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -218,7 +311,9 @@ export function CreateSessionDialog() {
                   ? "Pick your seat — the room needs it to say whose turn it is."
                   : slotRequired
                     ? "ESPN's pick order uses its own team ids, so we cannot tell which seat is yours."
-                    : "Optional until this draft has a pick order; you can set it in the room."}
+                    : source === "manual"
+                      ? "Optional until this draft has a pick order; you can set it in the room."
+                      : "Optional: the ESPN room fills the pick order and your seat in when it opens."}
             </p>
           </div>
 
@@ -259,25 +354,6 @@ export function CreateSessionDialog() {
               />
             </div>
           </div>
-
-          {teamValue !== MOCK_TEAM && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Room type</label>
-              <Select value={kind} onValueChange={(v) => setKind(v as DraftKind)}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual" className="text-xs">
-                    Manual — I enter every pick
-                  </SelectItem>
-                  <SelectItem value="mock" className="text-xs">
-                    Mock — practice run
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
 
         <DialogFooter>

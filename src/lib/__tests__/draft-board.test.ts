@@ -37,6 +37,9 @@ function row(overrides: Partial<DraftBoardRow> & { player_id: number }): DraftBo
     categories: null,
     category_z: null,
     score: null,
+    fit_value: null,
+    fit_rank: null,
+    availability: null,
     ...overrides,
   };
 }
