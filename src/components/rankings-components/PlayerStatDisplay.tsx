@@ -10,7 +10,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   ChartConfig,
   ChartContainer,
@@ -37,6 +37,7 @@ import {
   type MovingAverageWindow,
 } from "@/lib/chart-utils";
 import { cn } from "@/lib/utils";
+import { PlayerHeadshot } from "@/components/terminal/shared";
 
 interface PlayerStatDisplayProps {
   // For ESPN leagues: use playerId
@@ -47,6 +48,11 @@ interface PlayerStatDisplayProps {
   playerTeam?: string;
   // Provider determines which lookup method to use
   provider?: FantasyProvider;
+  /**
+   * Display position for the header (e.g. "PG" or "SG/SF"). Not part of the
+   * stats payload, so callers that have it on the row pass it down.
+   */
+  position?: string | null;
 }
 
 export default function PlayerStatDisplay({
@@ -55,6 +61,7 @@ export default function PlayerStatDisplay({
   playerName,
   playerTeam,
   provider = "espn",
+  position,
 }: PlayerStatDisplayProps) {
   // Use name-based lookup for Yahoo, ID-based for ESPN
   const useNameLookup = provider === "yahoo" && playerName && playerTeam;
@@ -80,6 +87,7 @@ export default function PlayerStatDisplay({
 
   return (
     <div className="space-y-4">
+      <PlayerIdentityHeader playerStats={playerStats} position={position} />
       <PrimaryStatsGrid avgStats={playerStats.avg_stats} gameLogs={playerStats.game_logs} />
       <SecondaryStatsRow avgStats={playerStats.avg_stats} />
       <PlayerStatChart playerStats={playerStats} />
@@ -88,6 +96,38 @@ export default function PlayerStatDisplay({
 }
 
 // Primary stats displayed prominently
+/**
+ * Identity header for the player detail dialog. `playerStats.id` is the NBA
+ * player ID on every lookup path — the service resolves ESPN id, NBA id and
+ * Yahoo name+team all to `nba.players.id` — so the headshot needs no extra
+ * plumbing from the caller.
+ */
+function PlayerIdentityHeader({
+  playerStats,
+  position,
+}: {
+  playerStats: PlayerStats;
+  position?: string | null;
+}) {
+  return (
+    <div className="flex items-center gap-4">
+      <PlayerHeadshot playerId={playerStats.id} name={playerStats.name} size="xl" />
+      <div className="min-w-0">
+        <h2 className="text-xl font-semibold truncate">{playerStats.name}</h2>
+        <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground font-mono">
+          <span>{playerStats.team}</span>
+          {position && (
+            <>
+              <span className="text-border">·</span>
+              <span>{position}</span>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PrimaryStatsGrid({ avgStats, gameLogs }: { avgStats: AvgStats; gameLogs: PlayerStats["game_logs"] }) {
   const recentForm = calculateRecentFormTrend(gameLogs, avgStats.avg_fpts);
 
@@ -194,9 +234,6 @@ function PlayerStatChart({ playerStats }: { playerStats: PlayerStats }) {
 
   return (
     <Card className="border-none">
-      <CardHeader>
-        <CardTitle>{playerStats.name}&apos;s Fantasy Scores</CardTitle>
-      </CardHeader>
       <CardContent>
         {/* Chart Controls */}
         <div className="flex flex-wrap items-center gap-4 mb-4">
