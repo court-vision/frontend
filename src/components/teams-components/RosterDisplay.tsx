@@ -36,6 +36,7 @@ import { CAT_VALUE_TITLE } from "@/lib/category-format";
 import { HintPopover } from "@/components/ui/hint";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { formatPositions } from "@/lib/positions";
+import { PlayerHeadshot } from "@/components/terminal/shared";
 
 type StatWindow = "season" | "l7" | "l14" | "l30";
 
@@ -192,6 +193,11 @@ export function RosterDisplay({ roster, provider = "espn", valueKind = "fpts" }:
                   </TableCell>
                   <TableCell className="font-medium text-sm">
                     <span className="flex items-center gap-1.5">
+                      <PlayerHeadshot
+                        playerId={player.nba_player_id}
+                        name={player.name}
+                        size="xs"
+                      />
                       {player.name}
                       {getInjuryBadge(player.injury_status)}
                     </span>

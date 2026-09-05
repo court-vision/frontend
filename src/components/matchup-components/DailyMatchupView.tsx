@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { PlayerHeadshot } from "@/components/terminal/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -82,6 +83,11 @@ function PastRosterTable({ roster }: PastRosterTableProps) {
               >
                 <TableCell className="pl-3">
                   <div className="flex items-center gap-1.5 min-w-0">
+                    <PlayerHeadshot
+                      playerId={player.nba_player_id}
+                      name={player.name}
+                      size="xs"
+                    />
                     <span className="text-sm truncate">{player.name}</span>
                     <span className="text-[11px] text-muted-foreground">{player.position}</span>
                   </div>
@@ -176,6 +182,11 @@ function FutureRosterTable({ roster }: FutureRosterTableProps) {
           >
             <TableCell className="pl-3">
               <div className="flex items-center gap-1.5 min-w-0">
+                <PlayerHeadshot
+                  playerId={player.nba_player_id}
+                  name={player.name}
+                  size="xs"
+                />
                 <span className={cn("text-sm truncate", player.injured && "text-muted-foreground")}>
                   {player.name}
                 </span>
