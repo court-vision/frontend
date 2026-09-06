@@ -2377,6 +2377,8 @@ export interface components {
              * @default []
              */
             category_need: components["schemas"]["CategoryNeedResp"][];
+            /** @description Lineup congestion for the roster zone: what the roster benches on its real game nights and which NBA teams it stacks. Set on every board. */
+            congestion: components["schemas"]["DraftCongestionResp"] | null;
             /** Format */
             format: string;
             /** League Size */
@@ -2588,7 +2590,7 @@ export interface components {
             score: number | null;
             /**
              * Team
-             * @description NBA team abbreviation from last season's stats; None for rookies (and anyone without a baseline row)
+             * @description Current NBA team abbreviation (nba.player_profiles), falling back to last season's stats team; None when neither knows him (a rookie before his profile syncs)
              */
             team: string | null;
             /**
@@ -2602,6 +2604,60 @@ export interface components {
              * @enum {string}
              */
             value_source: "projection" | "baseline" | "market";
+        };
+        /**
+         * DraftCongestionResp
+         * @description Lineup congestion on the caller's roster: starter value that would sit on
+         *     nights more rostered players play than the league can start, measured on a
+         *     sample of the season's calendar. A friction estimate, not a projection.
+         */
+        DraftCongestionResp: {
+            /**
+             * Benched Per Week
+             * @description Starter value the roster benches per sampled fantasy week
+             */
+            benched_per_week: number;
+            /**
+             * Benched Season
+             * @description `benched_per_week` scaled to `season_weeks`
+             */
+            benched_season: number;
+            /**
+             * Evaluated
+             * @description Candidates the congestion term was measured for (the top 25 by pre-congestion score); the rest carry 0
+             * @default 0
+             */
+            evaluated: number;
+            /**
+             * No Team
+             * @description Roster players with no team on file: never benched, never penalized
+             * @default []
+             */
+            no_team: number[];
+            /**
+             * Sample Weeks
+             * @description Fantasy week numbers sampled; empty when no calendar could be read
+             * @default []
+             */
+            sample_weeks: number[];
+            /**
+             * Season Weeks
+             * @description Weeks the sample is scaled to; 0 when no calendar could be read
+             * @default 0
+             */
+            season_weeks: number;
+            /**
+             * Slots
+             * @description Active lineup slots the matching fills; 0 when the league's slots are unknown, which zeroes every penalty
+             * @default 0
+             */
+            slots: number;
+            /**
+             * Stacks
+             * @description NBA teams with two or more roster players, largest first
+             * @default []
+             */
+            stacks: components["schemas"]["DraftStackResp"][];
         };
         /**
          * DraftInitSyncRequest
@@ -2893,7 +2949,7 @@ export interface components {
             reason: string;
             /**
              * Score
-             * @description vorp + scarcity + flexibility + injury + category_fit — the ranking number
+             * @description vorp + scarcity + flexibility + injury + category_fit + congestion — the ranking number
              */
             score: number;
             /**
@@ -3172,6 +3228,21 @@ export interface components {
             rounds?: number | null;
             /** Status */
             status?: ("active" | "completed" | "abandoned") | null;
+        };
+        /**
+         * DraftStackResp
+         * @description Roster players sharing one NBA team's schedule.
+         */
+        DraftStackResp: {
+            /** Count */
+            count: number;
+            /**
+             * Player Ids
+             * @description The players on that team, best first
+             */
+            player_ids: number[];
+            /** Team */
+            team: string;
         };
         /**
          * DraftSyncConflict

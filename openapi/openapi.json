@@ -1737,6 +1737,17 @@
             "title": "Category Need",
             "type": "array"
           },
+          "congestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftCongestionResp"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lineup congestion for the roster zone: what the roster benches on its real game nights and which NBA teams it stacks. Set on every board."
+          },
           "format": {
             "title": "Format",
             "type": "string"
@@ -1913,7 +1924,8 @@
           "pace_source",
           "seats_drafted",
           "settings_synced",
-          "unsupported"
+          "unsupported",
+          "congestion"
         ],
         "title": "DraftBoardMeta",
         "type": "object"
@@ -2272,7 +2284,7 @@
                 "type": "null"
               }
             ],
-            "description": "NBA team abbreviation from last season's stats; None for rookies (and anyone without a baseline row)",
+            "description": "Current NBA team abbreviation (nba.player_profiles), falling back to last season's stats team; None when neither knows him (a rookie before his profile syncs)",
             "title": "Team"
           },
           "value": {
@@ -2326,6 +2338,78 @@
           "score"
         ],
         "title": "DraftBoardRow",
+        "type": "object"
+      },
+      "DraftCongestionResp": {
+        "description": "Lineup congestion on the caller's roster: starter value that would sit on\nnights more rostered players play than the league can start, measured on a\nsample of the season's calendar. A friction estimate, not a projection.",
+        "properties": {
+          "benched_per_week": {
+            "description": "Starter value the roster benches per sampled fantasy week",
+            "title": "Benched Per Week",
+            "type": "number"
+          },
+          "benched_season": {
+            "description": "`benched_per_week` scaled to `season_weeks`",
+            "title": "Benched Season",
+            "type": "number"
+          },
+          "evaluated": {
+            "default": 0,
+            "description": "Candidates the congestion term was measured for (the top 25 by pre-congestion score); the rest carry 0",
+            "title": "Evaluated",
+            "type": "integer"
+          },
+          "no_team": {
+            "default": [],
+            "description": "Roster players with no team on file: never benched, never penalized",
+            "items": {
+              "type": "integer"
+            },
+            "title": "No Team",
+            "type": "array"
+          },
+          "sample_weeks": {
+            "default": [],
+            "description": "Fantasy week numbers sampled; empty when no calendar could be read",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Sample Weeks",
+            "type": "array"
+          },
+          "season_weeks": {
+            "default": 0,
+            "description": "Weeks the sample is scaled to; 0 when no calendar could be read",
+            "title": "Season Weeks",
+            "type": "integer"
+          },
+          "slots": {
+            "default": 0,
+            "description": "Active lineup slots the matching fills; 0 when the league's slots are unknown, which zeroes every penalty",
+            "title": "Slots",
+            "type": "integer"
+          },
+          "stacks": {
+            "default": [],
+            "description": "NBA teams with two or more roster players, largest first",
+            "items": {
+              "$ref": "#/components/schemas/DraftStackResp"
+            },
+            "title": "Stacks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "benched_per_week",
+          "benched_season",
+          "sample_weeks",
+          "season_weeks",
+          "slots",
+          "stacks",
+          "no_team",
+          "evaluated"
+        ],
+        "title": "DraftCongestionResp",
         "type": "object"
       },
       "DraftInitSyncRequest": {
@@ -3010,7 +3094,7 @@
             "type": "string"
           },
           "score": {
-            "description": "vorp + scarcity + flexibility + injury + category_fit \u2014 the ranking number",
+            "description": "vorp + scarcity + flexibility + injury + category_fit + congestion \u2014 the ranking number",
             "title": "Score",
             "type": "number"
           },
@@ -3822,6 +3906,34 @@
           }
         },
         "title": "DraftSessionUpdate",
+        "type": "object"
+      },
+      "DraftStackResp": {
+        "description": "Roster players sharing one NBA team's schedule.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "player_ids": {
+            "description": "The players on that team, best first",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Player Ids",
+            "type": "array"
+          },
+          "team": {
+            "title": "Team",
+            "type": "string"
+          }
+        },
+        "required": [
+          "team",
+          "count",
+          "player_ids"
+        ],
+        "title": "DraftStackResp",
         "type": "object"
       },
       "DraftSyncConflict": {
