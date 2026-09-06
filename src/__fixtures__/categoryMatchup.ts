@@ -71,6 +71,10 @@ const player = (
   extra: Partial<MatchupPlayer> = {}
 ): MatchupPlayer => ({
   player_id: id,
+  // The provider's id is what a roster carries; the NBA id is resolved
+  // separately and is null whenever that resolution found nothing. Fixtures
+  // default to null so a test opts into an id only when it is testing one.
+  nba_player_id: null,
   name,
   team,
   position,
