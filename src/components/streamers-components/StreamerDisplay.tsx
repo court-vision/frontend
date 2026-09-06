@@ -46,6 +46,8 @@ import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import { CAT_VALUE_TITLE } from "@/lib/category-format";
+import { formatPositions } from "@/lib/positions";
+import { PlayerHeadshot } from "@/components/terminal/shared";
 import { userMessage } from "@/lib/api-error";
 import type { StreamerPlayer, StreamerMode } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
@@ -54,6 +56,7 @@ interface SelectedPlayer {
   playerId: number;
   playerName: string;
   playerTeam: string;
+  position: string | null;
   breakoutContext?: BreakoutCandidateResp;
 }
 
@@ -213,6 +216,7 @@ export default function StreamerDisplay() {
       playerId: player.player_id,
       playerName: player.name,
       playerTeam: player.team,
+      position: formatPositions(player.valid_positions),
       breakoutContext: player.breakout_context,
     });
 
@@ -489,6 +493,11 @@ export default function StreamerDisplay() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
+                              <PlayerHeadshot
+                                playerId={player.nba_player_id}
+                                name={player.name}
+                                size="xs"
+                              />
                               <span className="font-medium text-sm">{player.name}</span>
                               {showB2bBadge && (
                                 <Badge
@@ -546,8 +555,8 @@ export default function StreamerDisplay() {
         onOpenChange={() => setSelectedPlayer(null)}
       >
         <DialogContent className="max-w-[900px]">
-          <DialogHeader>
-            <DialogTitle>Player Details</DialogTitle>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{selectedPlayer?.playerName ?? "Player"} details</DialogTitle>
             <DialogDescription>
               Detailed stats and performance history.
             </DialogDescription>
@@ -562,6 +571,7 @@ export default function StreamerDisplay() {
                 playerName={selectedPlayer.playerName}
                 playerTeam={selectedPlayer.playerTeam}
                 provider={provider}
+                position={selectedPlayer.position}
               />
             </div>
           )}

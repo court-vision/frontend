@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
+import { PlayerHeadshot } from "@/components/terminal/shared";
 import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreChart";
 import { DayNavigationBar } from "@/components/matchup-components/DayNavigationBar";
 import { DailyMatchupView } from "@/components/matchup-components/DailyMatchupView";
@@ -55,6 +56,7 @@ interface SelectedPlayer {
   playerId: number;
   playerName: string;
   playerTeam: string;
+  position: string | null;
 }
 
 // Order for lineup slots (starters first, then bench/IR)
@@ -223,6 +225,11 @@ function TeamRosterTable({ team, onPlayerClick }: TeamRosterTableProps) {
             </TableCell>
             <TableCell>
               <div className="flex items-center gap-2">
+                <PlayerHeadshot
+                  playerId={player.nba_player_id}
+                  name={player.name}
+                  size="xs"
+                />
                 <span className={`text-sm ${player.injured ? "text-muted-foreground" : ""}`}>
                   {player.name}
                 </span>
@@ -419,6 +426,11 @@ function LiveTeamRosterTable({ team, games, onPlayerClick, format, categories }:
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5 min-w-0">
+                  <PlayerHeadshot
+                    playerId={player.nba_player_id}
+                    name={player.name}
+                    size="xs"
+                  />
                   <span className={cn(
                     "text-sm truncate",
                     player.injured && "text-muted-foreground"
@@ -756,6 +768,7 @@ export function MatchupDisplay({
       playerId: player.player_id,
       playerName: player.name,
       playerTeam: player.team,
+      position: player.position ?? null,
     });
   };
 
@@ -974,8 +987,8 @@ export function MatchupDisplay({
       {/* Player Stats Dialog */}
       <Dialog open={!!selectedPlayer} onOpenChange={() => setSelectedPlayer(null)}>
         <DialogContent className="max-w-[900px]">
-          <DialogHeader>
-            <DialogTitle>Player Details</DialogTitle>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{selectedPlayer?.playerName ?? "Player"} details</DialogTitle>
             <DialogDescription>
               Detailed stats and performance history.
             </DialogDescription>
@@ -987,6 +1000,7 @@ export function MatchupDisplay({
               playerName={selectedPlayer.playerName}
               playerTeam={selectedPlayer.playerTeam}
               provider={provider}
+              position={selectedPlayer.position}
             />
           )}
 

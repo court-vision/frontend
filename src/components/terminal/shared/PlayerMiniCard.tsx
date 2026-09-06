@@ -1,9 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { User } from "lucide-react";
+import { PlayerHeadshot } from "./PlayerHeadshot";
 
 interface PlayerMiniCardProps {
+  /** NBA player ID (`nba.players.id`); omit to show the placeholder. */
+  playerId?: number | null;
   name: string;
   team: string;
   position?: string;
@@ -13,6 +15,7 @@ interface PlayerMiniCardProps {
 }
 
 export function PlayerMiniCard({
+  playerId,
   name,
   team,
   position,
@@ -31,9 +34,7 @@ export function PlayerMiniCard({
         className
       )}
     >
-      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-        <User className="h-4 w-4 text-muted-foreground" />
-      </div>
+      <PlayerHeadshot playerId={playerId} name={name} size="sm" />
       <div className="flex-1 min-w-0">
         <div className="font-medium text-sm truncate">{name}</div>
         <div className="text-xs text-muted-foreground font-mono">
@@ -46,6 +47,8 @@ export function PlayerMiniCard({
 }
 
 interface PlayerHeaderProps {
+  /** NBA player ID (`nba.players.id`); omit to show the placeholder. */
+  playerId?: number | null;
   name: string;
   team: string;
   gamesPlayed?: number;
@@ -53,6 +56,7 @@ interface PlayerHeaderProps {
 }
 
 export function PlayerHeader({
+  playerId,
   name,
   team,
   gamesPlayed,
@@ -60,9 +64,7 @@ export function PlayerHeader({
 }: PlayerHeaderProps) {
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center shrink-0">
-        <User className="h-6 w-6 text-muted-foreground" />
-      </div>
+      <PlayerHeadshot playerId={playerId} name={name} size="md" />
       <div className="flex-1 min-w-0">
         <h3 className="font-semibold text-base truncate">{name}</h3>
         <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
