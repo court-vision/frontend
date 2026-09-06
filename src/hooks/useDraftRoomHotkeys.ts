@@ -5,9 +5,11 @@ import { useEffect } from "react";
 /**
  * Draft-room keys, terminal-style: `/` to the pick input, `j`/`k` (or the
  * arrows) over the board, `o` and `m` to mark the highlighted player out or
- * mine, `f` to sort by roster fit, `s` to run a mock up to your next pick,
- * ⌘Z to undo the last pick. Typing contexts are left alone — the pick
- * input has its own handler — and an open dialog owns the keyboard.
+ * mine, `d` to send the highlighted player to ESPN as your pick (only wired
+ * when the Draft Tap can write), `f` to sort by roster fit, `s` to run a mock
+ * up to your next pick, ⌘Z to undo the last pick. Typing contexts are left
+ * alone — the pick input has its own handler — and an open dialog owns the
+ * keyboard.
  */
 export interface DraftRoomHotkeys {
   enabled: boolean;
@@ -15,6 +17,8 @@ export interface DraftRoomHotkeys {
   moveHighlight: (delta: 1 | -1) => void;
   markHighlighted: (byMe: boolean) => void;
   undoLast: () => void;
+  /** Absent when the room cannot draft on ESPN; `d` then does nothing. */
+  draftHighlighted?: () => void;
   /** Absent in a points league, where there is no fit to sort by. */
   sortByFit?: () => void;
   /**
@@ -40,6 +44,7 @@ export function useDraftRoomHotkeys({
   moveHighlight,
   markHighlighted,
   undoLast,
+  draftHighlighted,
   sortByFit,
   simulateToMyPick,
 }: DraftRoomHotkeys) {
@@ -81,6 +86,11 @@ export function useDraftRoomHotkeys({
           e.preventDefault();
           markHighlighted(true);
           break;
+        case "d":
+          if (!draftHighlighted) break;
+          e.preventDefault();
+          draftHighlighted();
+          break;
         case "f":
           if (!sortByFit) break;
           e.preventDefault();
@@ -96,5 +106,14 @@ export function useDraftRoomHotkeys({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [enabled, focusInput, moveHighlight, markHighlighted, undoLast, sortByFit, simulateToMyPick]);
+  }, [
+    enabled,
+    focusInput,
+    moveHighlight,
+    markHighlighted,
+    undoLast,
+    draftHighlighted,
+    sortByFit,
+    simulateToMyPick,
+  ]);
 }

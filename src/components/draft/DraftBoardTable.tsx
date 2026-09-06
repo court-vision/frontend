@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, type KeyboardEvent, type RefObject } from "react";
+import { useEffect, useMemo, useRef, type KeyboardEvent, type RefObject } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, Table } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -184,6 +184,17 @@ interface DraftBoardTableProps {
   inputRef?: RefObject<HTMLInputElement | null>;
   /** Pending keepers, pre-marked so nobody drafts his own keeper by accident. */
   keeperIds?: ReadonlySet<number>;
+  /**
+   * `d` on the page or ⌥↵ in the input: send the highlighted player to ESPN as
+   * your pick. Absent when the room cannot write to ESPN; nothing then hints at it.
+   */
+  onDraftHighlighted?: () => void;
+  /** The ESPN id of a pick sent to ESPN and not yet answered, for the row badge. */
+  pendingEspnId?: number | null;
+  /** The row's own "ESPN" button; absent when the room cannot write to ESPN. */
+  onDraftRow?: (row: DraftBoardRow) => void;
+  canDraft?: boolean;
+  draftDisabledReason?: string | null;
 }
 
 export function DraftBoardTable({
@@ -200,6 +211,11 @@ export function DraftBoardTable({
   onUndoLast,
   inputRef,
   keeperIds,
+  onDraftHighlighted,
+  pendingEspnId = null,
+  onDraftRow,
+  canDraft = false,
+  draftDisabledReason = null,
 }: DraftBoardTableProps) {
   const {
     sortKey,
@@ -234,6 +250,7 @@ export function DraftBoardTable({
     "j k move",
     "o out",
     "m mine",
+    onDraftHighlighted ? "d draft" : null,
     onSortByFit ? "f fit" : null,
     onSimulate ? "s sim" : null,
     "⌘Z undo",
@@ -247,10 +264,39 @@ export function DraftBoardTable({
     ? highlightId
     : (visible[0]?.player_id ?? null);
 
+  // Keep the active row visible inside the board's own scroller, and only in
+  // response to the user's own moves (a highlight step, a search). Never
+  // `scrollIntoView`: it scrolls every ancestor, the page included, so a pick
+  // streaming in while the user reads the roster below would yank the window
+  // back up here. Data refreshes change `activeId` too, hence the ref.
+  const listRef = useRef<HTMLDivElement>(null);
+  const headRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef(activeId);
+  activeRef.current = activeId;
+  const interactive = onMark !== undefined;
   useEffect(() => {
-    if (activeId === null || !onMark) return;
-    document.getElementById(`draft-row-${activeId}`)?.scrollIntoView({ block: "nearest" });
-  }, [activeId, onMark]);
+    if (!interactive || activeRef.current === null) return;
+    const list = listRef.current;
+    const row = document.getElementById(`draft-row-${activeRef.current}`);
+    if (!list || !row) return;
+    const bounds = list.getBoundingClientRect();
+    const target = row.getBoundingClientRect();
+    // The column header is sticky, so the top of the scroller is not the top
+    // of what can be seen: without this, scrolling up lands the active row
+    // underneath the header and reads as the keypress doing nothing.
+    const top = bounds.top + (headRef.current?.offsetHeight ?? 0);
+    if (target.top < top) list.scrollTop -= top - target.top;
+    else if (target.bottom > bounds.bottom) list.scrollTop += target.bottom - bounds.bottom;
+  }, [
+    interactive,
+    highlightId,
+    search,
+    sortKey,
+    sortDirection,
+    positionFilter,
+    hideCapped,
+    onlyLikelyGone,
+  ]);
 
   const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -258,7 +304,9 @@ export function DraftBoardTable({
       onMove?.(e.key === "ArrowDown" ? 1 : -1);
     } else if (e.key === "Enter") {
       e.preventDefault();
-      onMark?.(e.shiftKey || e.metaKey || e.ctrlKey);
+      // A plain `d` is a letter in here, so the ESPN send is ⌥↵ in the input.
+      if (e.altKey && onDraftHighlighted) onDraftHighlighted();
+      else onMark?.(e.shiftKey || e.metaKey || e.ctrlKey);
     } else if (e.key === "Escape") {
       e.preventDefault();
       if (search) setSearch("");
@@ -294,7 +342,13 @@ export function DraftBoardTable({
               setHighlight(null);
             }}
             onKeyDown={handleInputKeyDown}
-            placeholder={onMark ? "Type a name, ↵ out, ⇧↵ mine" : "Filter players..."}
+            placeholder={
+              onMark
+                ? onDraftHighlighted
+                  ? "Type a name, ↵ out, ⇧↵ mine, ⌥↵ draft"
+                  : "Type a name, ↵ out, ⇧↵ mine"
+                : "Filter players..."
+            }
             aria-label={onMark ? "Pick input" : "Filter players"}
             className="h-7 pl-7 pr-7 text-xs font-mono bg-background/50 border-border/50 focus:border-primary/50"
           />
@@ -362,9 +416,11 @@ export function DraftBoardTable({
       {/* Header. A category league is wider than the pane, so the header and
           the rows share one horizontal scroller and the first two columns stay
           pinned — a board you cannot read the names on is not a board. */}
-      <div className="flex-1 overflow-auto">
+      <div ref={listRef} className="flex-1 overflow-auto">
         <div className="min-w-max">
-      <div className="sticky top-0 z-20 flex items-center border-b border-border/50 bg-muted/30 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+      <div
+        ref={headRef}
+        className="sticky top-0 z-20 flex items-center border-b border-border/50 bg-muted/30 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
         {columns.map((col) => (
           <button
             key={col.key}
@@ -386,7 +442,11 @@ export function DraftBoardTable({
             />
           </button>
         ))}
-        {onPick && <div className="w-24 shrink-0 py-2 px-1 text-center">Draft</div>}
+        {onPick && (
+          <div className={cn("shrink-0 py-2 px-1 text-center", onDraftRow ? "w-36" : "w-24")}>
+            Draft
+          </div>
+        )}
       </div>
 
       {/* Rows */}
@@ -440,6 +500,14 @@ export function DraftBoardTable({
                         Keep
                       </span>
                     )}
+                    {pendingEspnId !== null && row.espn_id === pendingEspnId && (
+                      <span
+                        title="Sent to ESPN — waiting for its answer"
+                        className="shrink-0 animate-pulse rounded border border-primary/40 bg-primary/10 px-1 text-[9px] uppercase text-primary"
+                      >
+                        Sending
+                      </span>
+                    )}
                     {row.cap_blocked && (
                       <span
                         title="Your league's position cap leaves no room for this player"
@@ -477,7 +545,12 @@ export function DraftBoardTable({
                   ))}
 
                 {onPick && (
-                  <div className="w-24 py-1 px-1 flex items-center justify-center gap-1">
+                  <div
+                    className={cn(
+                      "flex shrink-0 items-center justify-center gap-1 py-1 px-1",
+                      onDraftRow ? "w-36" : "w-24"
+                    )}
+                  >
                     <Button
                       size="sm"
                       variant="ghost"
@@ -508,6 +581,27 @@ export function DraftBoardTable({
                     >
                       Mine
                     </Button>
+                    {onDraftRow && (
+                      <Button
+                        size="sm"
+                        variant={canDraft && !row.cap_blocked ? "default" : "ghost"}
+                        disabled={!canDraft || row.cap_blocked}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDraftRow(row);
+                        }}
+                        title={
+                          row.cap_blocked
+                            ? "Your position caps leave no room for this player"
+                            : canDraft
+                              ? "Send this pick to ESPN (d)"
+                              : (draftDisabledReason ?? undefined)
+                        }
+                        className="h-6 px-1.5 text-[10px]"
+                      >
+                        ESPN
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
