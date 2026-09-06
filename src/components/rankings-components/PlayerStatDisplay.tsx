@@ -235,46 +235,50 @@ function PlayerStatChart({ playerStats }: { playerStats: PlayerStats }) {
   return (
     <Card className="border-none">
       <CardContent>
-        {/* Chart Controls */}
-        <div className="flex flex-wrap items-center gap-4 mb-4">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="moving-avg"
-              checked={showMovingAverage}
-              onCheckedChange={setShowMovingAverage}
-            />
-            <Label htmlFor="moving-avg" className="text-sm cursor-pointer">
-              Moving Average
-            </Label>
-          </div>
+        {/* Chart header: title left, controls right */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6">
+          <h4 className="text-sm font-medium">Fantasy Scores</h4>
 
-          {showMovingAverage && (
-            <Select
-              value={movingAverageWindow.toString()}
-              onValueChange={(v) =>
-                setMovingAverageWindow(parseInt(v) as MovingAverageWindow)
-              }
-            >
-              <SelectTrigger className="w-[110px] h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="3">3-game</SelectItem>
-                <SelectItem value="5">5-game</SelectItem>
-                <SelectItem value="10">10-game</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
+          <div className="flex flex-wrap items-center gap-4 ml-auto">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="moving-avg"
+                checked={showMovingAverage}
+                onCheckedChange={setShowMovingAverage}
+              />
+              <Label htmlFor="moving-avg" className="text-sm cursor-pointer">
+                Moving Average
+              </Label>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <Switch
-              id="season-avg"
-              checked={showSeasonAverage}
-              onCheckedChange={setShowSeasonAverage}
-            />
-            <Label htmlFor="season-avg" className="text-sm cursor-pointer">
-              Season Average
-            </Label>
+            {showMovingAverage && (
+              <Select
+                value={movingAverageWindow.toString()}
+                onValueChange={(v) =>
+                  setMovingAverageWindow(parseInt(v) as MovingAverageWindow)
+                }
+              >
+                <SelectTrigger className="w-[110px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3">3-game</SelectItem>
+                  <SelectItem value="5">5-game</SelectItem>
+                  <SelectItem value="10">10-game</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
+            <div className="flex items-center gap-2">
+              <Switch
+                id="season-avg"
+                checked={showSeasonAverage}
+                onCheckedChange={setShowSeasonAverage}
+              />
+              <Label htmlFor="season-avg" className="text-sm cursor-pointer">
+                Season Average
+              </Label>
+            </div>
           </div>
         </div>
 
@@ -283,6 +287,7 @@ function PlayerStatChart({ playerStats }: { playerStats: PlayerStats }) {
             accessibilityLayer
             data={chartData}
             margin={{
+              top: 8,
               left: 0,
               right: 12,
             }}
