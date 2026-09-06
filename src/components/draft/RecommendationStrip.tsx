@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -107,28 +108,38 @@ export function RecommendationStrip({
 
             <div className="mt-1.5 space-y-0.5">
               {rec.components.map((component) => (
-                <div
-                  key={component.key}
-                  title={component.detail ?? undefined}
-                  className="flex items-center justify-between gap-2 font-mono text-[10px]"
-                >
-                  <span
-                    className={cn(
-                      "truncate",
-                      component.in_score ? "text-muted-foreground" : "text-muted-foreground/50"
-                    )}
+                <Fragment key={component.key}>
+                  <div
+                    title={component.detail ?? undefined}
+                    className="flex items-center justify-between gap-2 font-mono text-[10px]"
                   >
-                    {component.label}
-                  </span>
-                  <span
-                    className={cn(
-                      "tabular-nums shrink-0",
-                      component.in_score ? componentTone(component.value) : "text-muted-foreground/50"
-                    )}
-                  >
-                    {component.in_score ? signed(component.value) : component.value.toFixed(1)}
-                  </span>
-                </div>
+                    <span
+                      className={cn(
+                        "truncate",
+                        component.in_score ? "text-muted-foreground" : "text-muted-foreground/50"
+                      )}
+                    >
+                      {component.label}
+                    </span>
+                    <span
+                      className={cn(
+                        "tabular-nums shrink-0",
+                        component.in_score ? componentTone(component.value) : "text-muted-foreground/50"
+                      )}
+                    >
+                      {component.in_score ? signed(component.value) : component.value.toFixed(1)}
+                    </span>
+                  </div>
+                  {/* Every other component's detail is a sentence and stays on
+                      hover; five of them would bury the numbers. Fit's names the
+                      categories that moved the pick — the thing actually being
+                      decided — so it reads without hovering. */}
+                  {component.key === "category_fit" && component.detail && (
+                    <div className="pl-1 text-[9px] leading-snug text-muted-foreground/60">
+                      {component.detail}
+                    </div>
+                  )}
+                </Fragment>
               ))}
             </div>
 

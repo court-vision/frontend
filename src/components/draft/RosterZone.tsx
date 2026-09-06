@@ -15,7 +15,8 @@ import {
   type KeeperStatus,
   type RosterPlayer,
 } from "@/lib/draft-roster";
-import type { DraftBoardResult, DraftPick, DraftSession } from "@/types/draft";
+import { needBar, needsByUrgency, paceLabel } from "@/lib/draft-board";
+import type { CategoryNeed, DraftBoardResult, DraftPick, DraftSession } from "@/types/draft";
 
 /**
  * The room's right rail: the caller's roster laid into the league's lineup
@@ -35,6 +36,10 @@ interface RosterZoneProps {
   onEditKeepers?: () => void;
   onRecordKeepers?: (pending: KeeperStatus[]) => void;
   isRecordingKeepers?: boolean;
+  /** Absent in a points league, which has no categories to concede. */
+  onTogglePunt?: (key: string) => void;
+  /** A punt PATCH is in flight; the chips wait for the server rather than guessing. */
+  isSavingPunts?: boolean;
 }
 
 function SectionHeader({ title, right }: { title: string; right?: React.ReactNode }) {
@@ -156,6 +161,75 @@ function PickRow({
   );
 }
 
+/**
+ * One category: what it is called, how far the roster is from pace, and where
+ * it stands. The label *is* the punt toggle — the decision to concede a
+ * category is made while looking at how far behind it you are, so the control
+ * belongs on that row rather than in a chip strip that repeats the same nine
+ * names somewhere else.
+ */
+function NeedRow({
+  need,
+  onToggle,
+  disabled,
+}: {
+  need: CategoryNeed;
+  onToggle?: (key: string) => void;
+  disabled: boolean;
+}) {
+  const bar = needBar(need.need);
+  const rank = need.my_rank !== null && need.seats !== null ? `${need.my_rank}/${need.seats}` : "";
+  const title = [
+    `${need.label}: ${Math.abs(need.need).toFixed(1)}σ ${bar.side === "behind" ? "behind" : "ahead of"} pace`,
+    `you ${need.mine.toFixed(1)}, pace ${need.pace.toFixed(1)}`,
+    need.punted ? "punted — weighs nothing" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div
+      title={title}
+      className="flex items-center gap-1.5 border-b border-border/20 px-2 py-0.5 font-mono text-[10px]"
+    >
+      <button
+        type="button"
+        onClick={() => onToggle?.(need.key)}
+        disabled={!onToggle || disabled}
+        aria-pressed={need.punted}
+        className={cn(
+          "w-11 shrink-0 rounded border px-1 text-left text-[9px] uppercase transition-colors",
+          onToggle && !disabled && "hover:border-border hover:text-foreground",
+          need.punted
+            ? "border-amber-500/40 bg-amber-500/10 text-amber-500 line-through"
+            : "border-transparent text-muted-foreground"
+        )}
+      >
+        {need.label}
+      </button>
+
+      {/* Diverging bar around a centre rule: behind pace grows left, ahead grows right. */}
+      <div className={cn("flex h-1.5 flex-1 items-center", need.punted && "opacity-30")}>
+        <div className="flex flex-1 justify-end">
+          <div
+            className="h-1.5 rounded-l-full bg-amber-500 transition-all"
+            style={{ width: bar.side === "behind" ? `${(bar.share * 100).toFixed(1)}%` : "0%" }}
+          />
+        </div>
+        <div className="h-2.5 w-px shrink-0 bg-border" />
+        <div className="flex-1">
+          <div
+            className="h-1.5 rounded-r-full bg-green-500 transition-all"
+            style={{ width: bar.side === "ahead" ? `${(bar.share * 100).toFixed(1)}%` : "0%" }}
+          />
+        </div>
+      </div>
+
+      <span className="w-8 shrink-0 text-right text-[9px] text-muted-foreground/60">{rank}</span>
+    </div>
+  );
+}
+
 export function RosterZone({
   session,
   board,
@@ -165,6 +239,8 @@ export function RosterZone({
   onEditKeepers,
   onRecordKeepers,
   isRecordingKeepers = false,
+  onTogglePunt,
+  isSavingPunts = false,
 }: RosterZoneProps) {
   const picks = useMemo(() => session?.picks ?? [], [session]);
   const roster = useMemo(() => myRoster(board?.roster ?? [], picks), [board, picks]);
@@ -182,6 +258,10 @@ export function RosterZone({
     () => [...picks].sort((a, b) => b.overall_pick - a.overall_pick).slice(0, 12),
     [picks]
   );
+  // Biggest hole first, punted categories last — the order the next pick is
+  // actually chosen in.
+  const needs = useMemo(() => needsByUrgency(board?.meta ?? null), [board]);
+  const pace = paceLabel(board?.meta ?? null);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -304,6 +384,38 @@ export function RosterZone({
               </div>
             )}
           </div>
+        )}
+
+        {/* Category profile. Every row is both a reading and a control: how far
+            this roster is from pace, and the toggle that concedes the category. */}
+        {needs.length > 0 && (
+          <>
+            <SectionHeader
+              title="Category profile"
+              right={
+                pace && (
+                  <span
+                    title={
+                      pace.startsWith("vs ")
+                        ? "Measured against the rosters actually in this room"
+                        : "Estimated from the draftable pool — the pace reads the other seats once three of them have drafted"
+                    }
+                    className="text-muted-foreground/60"
+                  >
+                    {pace}
+                  </span>
+                )
+              }
+            />
+            {needs.map((need) => (
+              <NeedRow
+                key={need.key}
+                need={need}
+                onToggle={onTogglePunt}
+                disabled={isSavingPunts}
+              />
+            ))}
+          </>
         )}
 
         {/* Keepers */}

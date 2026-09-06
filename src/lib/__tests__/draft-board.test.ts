@@ -1,15 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import {
+  columnsFor,
   countCapped,
   matchesView,
   naturalDirection,
+  needBar,
+  needsByUrgency,
+  paceLabel,
+  sortableKey,
   sortValue,
   stepHighlight,
   targetRow,
   visibleRows,
   type BoardView,
 } from "../draft-board";
-import type { DraftBoardRow } from "../../types/draft";
+import type { CategoryNeed, DraftBoardMeta, DraftBoardRow } from "../../types/draft";
+import { DEFAULT_9CAT } from "../category-format";
 
 function row(overrides: Partial<DraftBoardRow> & { player_id: number }): DraftBoardRow {
   return {
@@ -60,8 +66,53 @@ const VIEW: BoardView = {
   sortDirection: "asc",
   positionFilter: "all",
   hideCapped: false,
+  onlyLikelyGone: false,
   search: "",
 };
+
+/** A category league's board meta, with only what the column set reads. */
+function meta(overrides: Partial<DraftBoardMeta> = {}): DraftBoardMeta {
+  return {
+    season: "2026-27",
+    format: "categories",
+    value_kind: "cat_value",
+    pool_size: 100,
+    available: 100,
+    projection_count: 0,
+    baseline_count: 100,
+    market_only_count: 0,
+    projections_as_of: null,
+    market_as_of: null,
+    session_id: 1,
+    league_size: 12,
+    roster_slots: {},
+    position_source: "espn",
+    position_limits: {},
+    categories: DEFAULT_9CAT,
+    punts: [],
+    category_need: [],
+    pace_source: null,
+    seats_drafted: 0,
+    settings_synced: true,
+    unsupported: [],
+    ...overrides,
+  };
+}
+
+/** One category's standing, as the roster zone reads it. */
+function need(overrides: Partial<CategoryNeed> & { key: string }): CategoryNeed {
+  return {
+    label: overrides.key.toUpperCase(),
+    mine: 0,
+    pace: 0,
+    need: 0,
+    weight: 1,
+    punted: false,
+    my_rank: null,
+    seats: null,
+    ...overrides,
+  };
+}
 
 describe("naturalDirection", () => {
   test("rank-like columns open ascending, value-like descending", () => {
@@ -216,5 +267,160 @@ describe("keyboard highlight", () => {
     expect(targetRow(rows, 2)?.player_id).toBe(2);
     expect(targetRow(rows, 99)?.player_id).toBe(1);
     expect(targetRow([], 1)).toBeNull();
+  });
+});
+
+describe("fit and availability columns", () => {
+  test("fit sorts by rank, so a points league's all-null fit column lands last either way", () => {
+    const rows = [
+      row({ player_id: 1, fit_rank: 3 }),
+      row({ player_id: 2, fit_rank: null }),
+      row({ player_id: 3, fit_rank: 1 }),
+    ];
+    const view = { ...VIEW, sortKey: "fit_rank" as const };
+    expect(visibleRows(rows, view).map((r) => r.player_id)).toEqual([3, 1, 2]);
+    expect(
+      visibleRows(rows, { ...view, sortDirection: "desc" }).map((r) => r.player_id)
+    ).toEqual([1, 3, 2]);
+  });
+
+  test("availability orders likely before tossup before gone, with an unknown bucket last either way", () => {
+    const rows = [
+      row({ player_id: 1, availability: "gone" }),
+      row({ player_id: 2, availability: null }),
+      row({ player_id: 3, availability: "likely" }),
+      row({ player_id: 4, availability: "tossup" }),
+    ];
+    const view = { ...VIEW, sortKey: "availability" as const };
+    expect(visibleRows(rows, { ...view, sortDirection: "asc" }).map((r) => r.player_id))
+      .toEqual([3, 4, 1, 2]);
+    expect(visibleRows(rows, { ...view, sortDirection: "desc" }).map((r) => r.player_id))
+      .toEqual([1, 4, 3, 2]);
+  });
+
+  test("the first click on availability shows who is going, not who will keep", () => {
+    expect(naturalDirection("availability")).toBe("desc");
+    expect(naturalDirection("fit_rank")).toBe("asc");
+  });
+
+  test("the likely-gone filter drops rows with no availability, not just the safe ones", () => {
+    const rows = [
+      row({ player_id: 1, availability: "gone" }),
+      row({ player_id: 2, availability: "tossup" }),
+      row({ player_id: 3, availability: null }),
+    ];
+    // "Gone" is a claim about the market; a row with no market data supports
+    // no claim, so it is excluded rather than kept on the benefit of the doubt.
+    expect(visibleRows(rows, { ...VIEW, onlyLikelyGone: true }).map((r) => r.player_id))
+      .toEqual([1]);
+  });
+
+  test("a category column reads that category, and a player without one sorts last", () => {
+    const rows = [
+      row({ player_id: 1, categories: { reb: 8.5 } }),
+      row({ player_id: 2, categories: null }),
+      row({ player_id: 3, categories: { reb: 11.2 } }),
+    ];
+    const view = { ...VIEW, sortKey: "cat:reb" as const, sortDirection: "desc" as const };
+    expect(visibleRows(rows, view).map((r) => r.player_id)).toEqual([3, 1, 2]);
+  });
+});
+
+describe("columnsFor", () => {
+  test("a points league gets no fit column and no categories", () => {
+    const keys = columnsFor(meta({ value_kind: "fpts", categories: [] })).map((c) => c.key);
+    expect(keys).not.toContain("fit_rank");
+    expect(keys.some((k) => k.startsWith("cat:"))).toBe(false);
+  });
+
+  test("a category league gets fit beside value, then one column per category", () => {
+    const columns = columnsFor(meta());
+    const keys = columns.map((c) => c.key);
+    expect(keys.indexOf("fit_rank")).toBe(keys.indexOf("value") + 1);
+    expect(keys.filter((k) => k.startsWith("cat:"))).toHaveLength(DEFAULT_9CAT.length);
+    expect(keys.at(-1)).toBe("cat:tov");
+  });
+
+  test("a punted category is flagged so the renderer can dim it, and nothing else is", () => {
+    const columns = columnsFor(meta({ punts: ["ft_pct", "tov"] }));
+    const punted = columns.filter((c) => c.punted).map((c) => c.key);
+    expect(punted).toEqual(["cat:ft_pct", "cat:tov"]);
+  });
+
+  test("a lower-is-better category carries its polarity in the label", () => {
+    const tov = columnsFor(meta()).find((c) => c.key === "cat:tov");
+    expect(tov?.label).toBe("TO↓");
+  });
+
+  test("no meta at all still yields a usable board", () => {
+    expect(columnsFor(null).map((c) => c.key)).toContain("cv_rank");
+  });
+});
+
+describe("sortableKey", () => {
+  test("a sort the current league has no column for falls back to the big board", () => {
+    // The store persists the last column across reloads *and* across rooms, so
+    // a fit sort chosen in a category league must not strand a points league
+    // sorting every row by a null.
+    const points = columnsFor(meta({ value_kind: "fpts", categories: [] }));
+    expect(sortableKey("fit_rank", points)).toBe("cv_rank");
+    expect(sortableKey("cat:reb", points)).toBe("cv_rank");
+    expect(sortableKey("adp", points)).toBe("adp");
+  });
+
+  test("a category sort survives in a league that still scores that category", () => {
+    expect(sortableKey("cat:reb", columnsFor(meta()))).toBe("cat:reb");
+  });
+});
+
+describe("needBar", () => {
+  test("on pace draws nothing on either side of the centre", () => {
+    expect(needBar(0)).toEqual({ side: "behind", share: 0 });
+  });
+
+  test("behind and ahead fill opposite sides in proportion", () => {
+    expect(needBar(1)).toEqual({ side: "behind", share: 0.5 });
+    expect(needBar(-1)).toEqual({ side: "ahead", share: 0.5 });
+  });
+
+  test("a need past two sigma is clamped, so the bar cannot leave the rail", () => {
+    expect(needBar(7).share).toBe(1);
+    expect(needBar(-7)).toEqual({ side: "ahead", share: 1 });
+  });
+});
+
+describe("paceLabel", () => {
+  test("reading the real seats says how many teams it read", () => {
+    expect(
+      paceLabel(meta({ pace_source: "seats", category_need: [need({ key: "reb", seats: 12 })] }))
+    ).toBe("vs 11 teams");
+  });
+
+  test("an estimate says so, and says why rather than showing a bare zero", () => {
+    expect(
+      paceLabel(meta({ pace_source: "tier", seats_drafted: 2, category_need: [need({ key: "reb" })] }))
+    ).toBe("estimated · 2 teams have picked");
+    expect(
+      paceLabel(meta({ pace_source: "tier", seats_drafted: 0, category_need: [need({ key: "reb" })] }))
+    ).toBe("estimated · nobody has picked yet");
+  });
+
+  test("a points league has no pace to report", () => {
+    expect(paceLabel(meta({ value_kind: "fpts", category_need: [] }))).toBeNull();
+  });
+});
+
+describe("needsByUrgency", () => {
+  test("the biggest hole comes first, and punted categories sink to the bottom", () => {
+    const ordered = needsByUrgency(
+      meta({
+        category_need: [
+          need({ key: "reb", need: 0.2 }),
+          need({ key: "tov", need: 1.9, punted: true }),
+          need({ key: "blk", need: 1.4 }),
+        ],
+      })
+    );
+    expect(ordered.map((n) => n.key)).toEqual(["blk", "reb", "tov"]);
   });
 });

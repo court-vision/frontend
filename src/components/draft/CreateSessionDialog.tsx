@@ -42,7 +42,7 @@ const SOURCES: { value: DraftKind; label: string; help: string }[] = [
   {
     value: "mock",
     label: "An ESPN mock lobby",
-    help: "Join any ESPN mock draft with these settings. The room links to the lobby when it opens, and follows only that one.",
+    help: "Join any ESPN mock draft with these settings. The room links to the lobby when it opens, and follows only that one — or leave it unlinked and let CV play the other seats for you.",
   },
   {
     value: "manual",
@@ -73,11 +73,17 @@ export function CreateSessionDialog() {
   const [draftType, setDraftType] = useState<DraftType | "">("");
   const [mySlot, setMySlot] = useState("");
   const [rounds, setRounds] = useState("");
+  // A room with no team has no league to prefill a pick order from, so it
+  // opens with no seats: nothing can say whose turn it is, and the autopicker,
+  // which needs a length to run to, refuses every advance. The user says how
+  // many teams instead.
+  const [teams_, setTeams] = useState("12");
   const [existingRoom, setExistingRoom] = useState<number | null>(null);
 
   useEffect(() => {
     setTeamValue(selectedTeamId !== null ? String(selectedTeamId) : NO_TEAM);
   }, [selectedTeamId]);
+
 
   const team = useMemo(
     () => teams.find((t) => String(t.team_id) === teamValue) ?? null,
@@ -122,9 +128,30 @@ export function CreateSessionDialog() {
   // one thing the provider cannot tell us — so this is the moment to ask.
   // With no pick order there are no seats and the answer would mean nothing
   // yet, so it stays optional there and the room can set it later.
+  // A team-less room's seats come from the Teams field; it is otherwise
+  // created with no pick order, and nothing that counts seats — whose turn it
+  // is, keeper pricing, the autopicker — can work.
+  const mockSeats = useMemo(() => {
+    if (teamValue !== NO_TEAM) return null;
+    const parsed = Number(teams_);
+    return Number.isInteger(parsed) && parsed >= 2 && parsed <= 30 ? parsed : null;
+  }, [teamValue, teams_]);
+
+  // Seats the slot picker offers: a synced league's own, or the ones a
+  // team-less room just declared. Either way the picker is a list of real
+  // seats, so a slot outside the pick order cannot be typed — the backend
+  // range-checks it now that a mock has an order, and a 400 at create time is
+  // a worse way to learn that than not being able to choose it.
+  const seatCount = leagueSize > 0 ? leagueSize : (mockSeats ?? 0);
+
   const slotRequired = leagueSize > 0;
+  // Shrinking the draft can strand a seat that no longer exists.
+  useEffect(() => {
+    setMySlot((slot) => (slot !== "" && seatCount > 0 && Number(slot) > seatCount ? "" : slot));
+  }, [seatCount]);
   const slotMissing = slotRequired && mySlot === "";
-  const cannotCreateYet = slotMissing || leagueUnknown;
+  const cannotCreateYet =
+    slotMissing || leagueUnknown || (teamValue === NO_TEAM && mockSeats === null);
 
   function reset() {
     setName("");
@@ -134,6 +161,7 @@ export function CreateSessionDialog() {
     setDraftType("");
     setMySlot("");
     setRounds("");
+    setTeams("12");
     setExistingRoom(null);
   }
 
@@ -147,7 +175,10 @@ export function CreateSessionDialog() {
         draft_type: draftType === "" ? null : draftType,
         my_slot: mySlot === "" ? null : Number(mySlot),
         rounds: rounds === "" ? null : Number(rounds),
-        pick_order: null,
+        // Seats for a team-less mock. The ids are positional and stand for
+        // nothing — every reader of `pick_order` in a mock room cares only how
+        // many there are. A room with a team takes its league's real order.
+        pick_order: mockSeats === null ? null : Array.from({ length: mockSeats }, (_, i) => i + 1),
         keepers: [],
       },
       {
@@ -283,13 +314,13 @@ export function CreateSessionDialog() {
             </label>
             {leagueUnknown ? (
               <Input disabled placeholder="Checking league settings..." className="h-8 text-xs" />
-            ) : leagueSize > 0 ? (
+            ) : seatCount > 0 ? (
               <Select value={mySlot} onValueChange={setMySlot}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder={`Pick 1–${leagueSize}`} />
+                  <SelectValue placeholder={`Pick 1–${seatCount}`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: leagueSize }, (_, i) => i + 1).map((slot) => (
+                  {Array.from({ length: seatCount }, (_, i) => i + 1).map((slot) => (
                     <SelectItem key={slot} value={String(slot)} className="text-xs">
                       Slot {slot}
                     </SelectItem>
@@ -342,6 +373,20 @@ export function CreateSessionDialog() {
                 </SelectContent>
               </Select>
             </div>
+
+            {teamValue === NO_TEAM && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Teams</label>
+                <Input
+                  type="number"
+                  min={2}
+                  max={30}
+                  value={teams_}
+                  onChange={(e) => setTeams(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Rounds</label>

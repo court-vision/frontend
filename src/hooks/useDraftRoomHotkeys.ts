@@ -6,9 +6,10 @@ import { useEffect } from "react";
  * Draft-room keys, terminal-style: `/` to the pick input, `j`/`k` (or the
  * arrows) over the board, `o` and `m` to mark the highlighted player out or
  * mine, `d` to send the highlighted player to ESPN as your pick (only wired
- * when the Draft Tap can write), ⌘Z to undo the last pick. Typing contexts are
- * left alone — the pick input has its own handler — and an open dialog owns
- * the keyboard.
+ * when the Draft Tap can write), `f` to sort by roster fit, `s` to run a mock
+ * up to your next pick, ⌘Z to undo the last pick. Typing contexts are left
+ * alone — the pick input has its own handler — and an open dialog owns the
+ * keyboard.
  */
 export interface DraftRoomHotkeys {
   enabled: boolean;
@@ -18,6 +19,14 @@ export interface DraftRoomHotkeys {
   undoLast: () => void;
   /** Absent when the room cannot draft on ESPN; `d` then does nothing. */
   draftHighlighted?: () => void;
+  /** Absent in a points league, where there is no fit to sort by. */
+  sortByFit?: () => void;
+  /**
+   * Absent unless this room is a mock the autopicker will play. Bound to "sim
+   * to my pick" only — "sim to end" hands the autopicker your own seat, and a
+   * key that can do that should not be one character away.
+   */
+  simulateToMyPick?: () => void;
 }
 
 function isTyping(target: EventTarget | null): boolean {
@@ -36,6 +45,8 @@ export function useDraftRoomHotkeys({
   markHighlighted,
   undoLast,
   draftHighlighted,
+  sortByFit,
+  simulateToMyPick,
 }: DraftRoomHotkeys) {
   useEffect(() => {
     if (!enabled) return;
@@ -80,10 +91,29 @@ export function useDraftRoomHotkeys({
           e.preventDefault();
           draftHighlighted();
           break;
+        case "f":
+          if (!sortByFit) break;
+          e.preventDefault();
+          sortByFit();
+          break;
+        case "s":
+          if (!simulateToMyPick) break;
+          e.preventDefault();
+          simulateToMyPick();
+          break;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [enabled, focusInput, moveHighlight, markHighlighted, undoLast, draftHighlighted]);
+  }, [
+    enabled,
+    focusInput,
+    moveHighlight,
+    markHighlighted,
+    undoLast,
+    draftHighlighted,
+    sortByFit,
+    simulateToMyPick,
+  ]);
 }

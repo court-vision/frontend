@@ -25,10 +25,21 @@ export type DraftRosterEntry = S["DraftRosterEntry"];
 export type DraftKeeperOut = S["DraftKeeper-Output"];
 export type PickSource = DraftPick["source"];
 
+/** Where the caller's roster stands in one category, and what fit does about it. */
+export type CategoryNeed = S["CategoryNeedResp"];
+/** Whether a player is likely to survive to the caller's next pick. */
+export type Availability = NonNullable<DraftBoardRow["availability"]>;
+
 /** The result of reconciling a session with an ESPN INIT snapshot. */
 export type DraftInitSync = S["DraftInitSyncResp"];
 export type DraftInitSyncRequest = S["DraftInitSyncRequest"];
 export type DraftSyncConflict = S["DraftSyncConflict"];
+
+/** What the mock autopicker did, and the room it left behind. */
+export type MockAdvance = S["MockAdvanceResp"];
+/** How far to play a mock forward. `end` drafts your own seat too. */
+export type MockUntil = S["MockAdvanceRequest"]["until"];
+export type MockStopReason = MockAdvance["stopped_reason"];
 
 /** Request bodies. The `-Input` variant is the one a client sends. */
 export type DraftSessionCreate = S["DraftSessionCreate"];
@@ -55,15 +66,26 @@ export interface DraftBoardResult {
   message: string;
 }
 
-/** Board sort columns. `cv_rank` is the default: the big board's own order. */
+/**
+ * Board sort columns. `cv_rank` is the default: the big board's own order.
+ *
+ * `cat:<key>` sorts by one of the league's own categories, so the set is only
+ * known once `meta.categories` arrives — hence the template literal rather
+ * than an enumeration. `fit_rank` and the category keys exist only in a
+ * category league; `columnsFor` is what decides, and `sortableKey` sends a
+ * persisted key that this league has no column for back to `cv_rank`.
+ */
 export type BoardSortKey =
   | "cv_rank"
   | "name"
   | "value"
+  | "fit_rank"
   | "market_rank"
   | "adp"
   | "market_delta"
-  | "projected_gp";
+  | "availability"
+  | "projected_gp"
+  | `cat:${string}`;
 
 export type SortDirection = "asc" | "desc";
 
