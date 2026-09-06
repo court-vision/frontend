@@ -5290,7 +5290,7 @@ export interface components {
             advanced_stats: components["schemas"]["AdvancedStatsData"] | null;
             avg_stats: components["schemas"]["AvgStats"];
             /** Game Logs */
-            game_logs: components["schemas"]["PlayerStatsGameLog"][];
+            game_logs: components["schemas"]["GameLog"][];
             /** Games Played */
             games_played: number;
             /** Id */
@@ -5303,42 +5303,6 @@ export interface components {
             window: string;
             /** Window Games */
             window_games: number;
-        };
-        /**
-         * PlayerStatsGameLog
-         * @description One game in the log on a player's stats response.
-         */
-        PlayerStatsGameLog: {
-            /** Ast */
-            ast: number;
-            /** Blk */
-            blk: number;
-            /** Date */
-            date: string;
-            /** Fg3A */
-            fg3a: number;
-            /** Fg3M */
-            fg3m: number;
-            /** Fga */
-            fga: number;
-            /** Fgm */
-            fgm: number;
-            /** Fpts */
-            fpts: number;
-            /** Fta */
-            fta: number;
-            /** Ftm */
-            ftm: number;
-            /** Min */
-            min: number;
-            /** Pts */
-            pts: number;
-            /** Reb */
-            reb: number;
-            /** Stl */
-            stl: number;
-            /** Tov */
-            tov: number;
         };
         /** PlayerStatsResp */
         PlayerStatsResp: {
