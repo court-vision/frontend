@@ -269,6 +269,11 @@ export default function RankingsDisplay() {
   const tableRef = useRef<HTMLTableSectionElement>(null);
 
   const players = useMemo(() => data?.players ?? [], [data]);
+  // The dialog carries only an id; its header wants the row's position too.
+  const selectedPlayer = useMemo(
+    () => players.find((p) => p.id === selectedPlayerId) ?? null,
+    [players, selectedPlayerId]
+  );
   const meta = data?.meta ?? null;
   const isCategories = params.format === "categories";
   const columns = useMemo(
@@ -755,7 +760,11 @@ export default function RankingsDisplay() {
           </DialogHeader>
 
           {selectedPlayerId && (
-            <PlayerStatDisplay playerId={selectedPlayerId} idType="nba" />
+            <PlayerStatDisplay
+              playerId={selectedPlayerId}
+              idType="nba"
+              position={selectedPlayer?.position ?? null}
+            />
           )}
 
           <DialogFooter>

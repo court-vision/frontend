@@ -5398,6 +5398,11 @@ export interface components {
             id: number;
             /** Player Name */
             player_name: string;
+            /**
+             * Position
+             * @description Primary position (e.g. 'G', 'F-C'); null when nba.players has none for the player
+             */
+            position: string | null;
             /** Rank */
             rank: number;
             /**
