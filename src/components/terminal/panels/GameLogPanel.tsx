@@ -23,6 +23,7 @@ interface ColumnDef {
 
 const columns: ColumnDef[] = [
   { key: "date", label: "Date", width: "w-20" },
+  { key: "opponent", label: "Opp", width: "w-16" },
   { key: "fpts", label: "FPTS", format: (v) => v.toFixed(1) },
   { key: "pts", label: "PTS" },
   { key: "reb", label: "REB" },
@@ -253,6 +254,8 @@ export function GameLogPanel() {
               const displayValue =
                 col.key === "date"
                   ? formatDate(value as string)
+                  : col.key === "opponent"
+                  ? formatOpponent(log)
                   : col.format
                   ? col.format(value as number)
                   : value;
@@ -301,6 +304,16 @@ function SortIcon({
   ) : (
     <ArrowDown className="h-3 w-3" />
   );
+}
+
+/**
+ * "@ BOS" away, "vs BOS" at home, and an em dash when the schedule could not
+ * identify the fixture — the backend answers null rather than guessing, and a
+ * blank here would read as a game against nobody.
+ */
+function formatOpponent(log: GameLog): string {
+  if (!log.opponent) return "—";
+  return `${log.home === false ? "@" : log.home ? "vs" : ""} ${log.opponent}`.trim();
 }
 
 function formatDate(dateStr: string): string {

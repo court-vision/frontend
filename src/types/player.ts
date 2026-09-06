@@ -1,5 +1,11 @@
 export interface GameLog {
   date: string;
+  /** NBA game id, when the stored schedule identifies a unique fixture. */
+  game_id: string | null;
+  /** Opponent team abbreviation; null when the fixture is unknown. */
+  opponent: string | null;
+  /** True when the player's team hosted; null when the fixture is unknown. */
+  home: boolean | null;
   fpts: number;
   pts: number;
   reb: number;
