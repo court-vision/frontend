@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
+import { toApiError, userMessage } from "@/lib/api-error";
 import { stepHighlight, targetRow, visibleRows } from "@/lib/draft-board";
 import { keeperStatuses, lastPick, samePlayer, type KeeperStatus } from "@/lib/draft-roster";
+import { canDraftLabel, sendFailureMessage } from "@/lib/espn-draft/sync-state";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,7 +23,7 @@ import { SlotEditor } from "@/components/draft/SlotEditor";
 import { RecommendationStrip } from "@/components/draft/RecommendationStrip";
 import { RosterZone } from "@/components/draft/RosterZone";
 import { useDraftRoomHotkeys } from "@/hooks/useDraftRoomHotkeys";
-import { useEspnDraftSync } from "@/hooks/useEspnDraftSync";
+import { sendToastId, useEspnDraftSync } from "@/hooks/useEspnDraftSync";
 import {
   useDraftBoardQuery,
   useDraftPickMutation,
@@ -28,7 +31,6 @@ import {
   useUndoDraftPickMutation,
   useUpdateDraftSessionMutation,
 } from "@/hooks/useDrafts";
-import { useTeamsQuery } from "@/hooks/useTeams";
 import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
 import type { DraftBoardRow, DraftKeeper } from "@/types/draft";
 
@@ -39,8 +41,11 @@ import type { DraftBoardRow, DraftKeeper } from "@/types/draft";
  * The keyboard is the primary input on draft day. `/` lands in the pick
  * input; typing filters the board; ↵ marks the top match drafted by someone
  * else and ⇧↵ drafted by me; `j`/`k`, `o`/`m` do the same from anywhere on
- * the page; ⌘Z undoes the last pick. Keepers are pre-designated in the
- * editor and recorded as picks from the roster zone.
+ * the page; ⌘Z undoes the last pick. With the Draft Tap allowed to write, `d`
+ * (or ⌥↵ in the input) sends the highlighted player to ESPN as your pick, and
+ * each recommendation card gets a "Draft on ESPN" button; the pick is recorded
+ * here only once ESPN echoes it. Keepers are pre-designated in the editor and
+ * recorded as picks from the roster zone.
  */
 export default function DraftRoom({ sessionId }: { sessionId: number }) {
   const { isSignedIn, isLoaded } = useUser();
@@ -58,27 +63,19 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   const undoPick = useUndoDraftPickMutation(sessionId);
   const updateSession = useUpdateDraftSessionMutation(sessionId);
 
-  // Live ESPN sync (via the Draft Tap extension). The ESPN league id a frame
-  // belongs to is matched against this session's team; a mock or unsynced
-  // session has none and accepts any room.
-  const { data: teams } = useTeamsQuery();
-  const sessionTeam = useMemo(
-    () => (session?.team_id == null ? null : (teams?.find((t) => t.team_id === session.team_id) ?? null)),
-    [teams, session?.team_id]
-  );
-  const isEspnTeam = sessionTeam?.league_info.provider === "espn";
-  const expectedLeagueId = isEspnTeam ? sessionTeam.league_info.league_id : null;
+  // Live ESPN sync (via the Draft Tap extension). A room follows exactly one
+  // ESPN draft: a live room is linked to its league's at creation, a mock room
+  // links to the first ESPN room the user accepts, a manual room follows none.
+  const expectedLeagueId = session?.espn_league_id ?? null;
   const sync = useEspnDraftSync({
     sessionId,
     session,
     board,
     expectedLeagueId,
-    // A mock session (no team) accepts any room. A team session syncs only once
-    // its team has resolved to an ESPN team: a Yahoo team, or a team missing
-    // from the list, must not quietly accept picks from whatever ESPN room the
-    // extension happens to be watching.
-    enabled: Boolean(session && session.status === "active" && (session.team_id == null || isEspnTeam)),
+    bindable: session?.kind === "mock" && session.espn_league_id == null,
+    enabled: Boolean(session && session.status === "active" && session.kind !== "manual"),
   });
+  const router = useRouter();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [keepersOpen, setKeepersOpen] = useState(false);
@@ -111,18 +108,21 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
     [keepers]
   );
 
+  // A pending keeper is not an ordinary pick. Marked as one it would be
+  // recorded at the draft front instead of the pick its round costs, and
+  // `keeperStatuses` would then count it as recorded — retiring the keeper
+  // flow and, if marked `out`, handing your own keeper to another team.
+  const isPendingKeeper = useCallback(
+    (row: DraftBoardRow) =>
+      pendingKeepers.some((k) =>
+        samePlayer(k.keeper, { player_id: row.player_id, espn_player_id: row.espn_id, player_name: row.name })
+      ),
+    [pendingKeepers]
+  );
+
   const handlePick = useCallback(
     (row: DraftBoardRow, byMe: boolean) => {
-      // A pending keeper is not an ordinary pick. Marked as one it would be
-      // recorded at the draft front instead of the pick its round costs, and
-      // `keeperStatuses` would then count it as recorded — retiring the keeper
-      // flow and, if marked `out`, handing your own keeper to another team.
-      const identity = {
-        player_id: row.player_id,
-        espn_player_id: row.espn_id,
-        player_name: row.name,
-      };
-      if (pendingKeepers.some((k) => samePlayer(k.keeper, identity))) {
+      if (isPendingKeeper(row)) {
         toast.error(`${row.name} is one of your keepers — record it from the roster zone`);
         return;
       }
@@ -147,7 +147,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
         }
       );
     },
-    [addPick, pendingKeepers]
+    [addPick, isPendingKeeper]
   );
 
   const handleRecommendationPick = useCallback(
@@ -161,6 +161,87 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
     },
     [board, handlePick]
   );
+
+  // ---- drafting on ESPN (the tap's write path) ----
+
+  // The write UI exists only where the tap could be talking to us; everywhere
+  // else the room looks exactly as it did before.
+  const writeUiVisible =
+    sync.configured && sync.state.connection !== "unconfigured" && sync.state.connection !== "unsupported";
+
+  const { canDraft, draftPlayer } = sync;
+  const draftOnEspn = useCallback(
+    async (row: DraftBoardRow) => {
+      // The same guards as a local "mine", plus the gate. A refused send costs
+      // a toast; a sent one costs a pick.
+      if (!canDraft.ok) {
+        toast.error(canDraftLabel(canDraft.reason));
+        return;
+      }
+      if (row.espn_id == null) {
+        toast.error(`${row.name} has no ESPN id here — draft him in the ESPN tab`);
+        return;
+      }
+      if (isPendingKeeper(row)) {
+        toast.error(`${row.name} is one of your keepers — record it from the roster zone`);
+        return;
+      }
+      if (row.cap_blocked) {
+        toast.error(`${row.name} would break your ${row.primary_position ?? "position"} cap`);
+        return;
+      }
+      const id = sendToastId(row.espn_id);
+      toast.loading(`Sending ${row.name} to ESPN…`, { id });
+      const result = await draftPlayer(row);
+      // An echo lands the pick through the sync path, which then replaces this
+      // toast with the numbered one; everything else is terminal here.
+      if (result.outcome === "echoed") toast.success(`ESPN has ${row.name}`, { id });
+      else if (result.outcome === "refused") toast.error(canDraftLabel(result.reason), { id });
+      else if (result.outcome === "timeout")
+        toast.error(`No answer from ESPN for ${row.name} — check the ESPN tab`, { id });
+      else toast.error(sendFailureMessage(result.reason, result.detail), { id });
+    },
+    [canDraft, draftPlayer, isPendingKeeper]
+  );
+
+  const handleRecommendationDraft = useCallback(
+    (playerId: number, name: string) => {
+      const row = board?.rows.find((r) => r.player_id === playerId);
+      if (row) {
+        void draftOnEspn(row);
+        return;
+      }
+      toast.error(`${name} is no longer on the board`);
+    },
+    [board, draftOnEspn]
+  );
+
+  const { unbound, linkRoom: linkRoomRaw } = sync;
+  const linkRoom = useCallback(async () => {
+    const espnLeagueId = unbound?.espnLeagueId;
+    if (espnLeagueId == null) return;
+    try {
+      await linkRoomRaw();
+      toast.success(`Linked to ESPN room ${espnLeagueId}`);
+    } catch (error) {
+      const api = toApiError(error);
+      const existing = (api.data as { existing_session_id?: number } | null)?.existing_session_id;
+      if (api.code === "DRAFT_ROOM_ALREADY_LINKED" && existing) {
+        toast.error(`ESPN room ${espnLeagueId} is already linked to Draft #${existing}`, {
+          action: { label: "Open it", onClick: () => router.push(`/draft/${existing}`) },
+        });
+      } else {
+        toast.error(userMessage(error));
+      }
+    }
+  }, [unbound, linkRoomRaw, router]);
+
+  // The board row of a pick in flight: recommendations carry NBA ids, the
+  // pending entry an ESPN id.
+  const pendingRow = useMemo(() => {
+    const pending = sync.state.pending;
+    return pending ? (rows.find((r) => r.espn_id === pending.playerId) ?? null) : null;
+  }, [rows, sync.state.pending]);
 
   // ---- keyboard: highlight, mark, undo ----
 
@@ -201,6 +282,13 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
     [visible, highlightId, handlePick, setSearch, setHighlight, addPick.isPending]
   );
 
+  const draftHighlighted = useCallback(() => {
+    const row = targetRow(visible, highlightId);
+    if (!row) return;
+    // Search and highlight stay put: ESPN's echo is the pick, not the keystroke.
+    void draftOnEspn(row);
+  }, [visible, highlightId, draftOnEspn]);
+
   const undoLast = useCallback(() => {
     const last = lastPick(session?.picks ?? []);
     if (!last) {
@@ -225,6 +313,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
     moveHighlight,
     markHighlighted,
     undoLast,
+    draftHighlighted: writeUiVisible ? draftHighlighted : undefined,
   });
 
   // ---- keepers ----
@@ -296,14 +385,20 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
     [addPick]
   );
 
-  const onTheClock =
-    session?.picks_until_my_turn === 0 && session.status === "active";
+  // ESPN's own on-the-clock signal wins once the room has sent one; until
+  // then the backend's count from the recorded picks stands in.
+  const espnOnClock =
+    sync.state.onClock !== null && sync.state.myTeamId !== null && sync.state.onClock.teamId === sync.state.myTeamId;
+  const onTheClock = sync.state.onClock
+    ? espnOnClock
+    : session?.picks_until_my_turn === 0 && session.status === "active";
 
   const header = (
     <section className="flex items-center justify-between">
       <div className="min-w-0">
         <h1 className="font-display text-2xl font-bold tracking-tight">
-          {session?.kind === "mock" ? "Mock draft" : `Draft #${sessionId}`}
+          {session?.name ??
+            (session?.kind === "mock" ? "Mock draft" : session?.kind === "live" ? "Live draft" : `Draft #${sessionId}`)}
         </h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
           {session ? (
@@ -321,12 +416,17 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
               >
                 {session.my_slot ? `slot ${session.my_slot}` : "no slot set"}
               </button>
-              {` · pick ${session.next_overall_pick}`}
-              {session.picks_until_my_turn !== null && session.picks_until_my_turn !== undefined
+              {session.status === "completed"
+                ? ` · draft complete · ${session.pick_count} picks`
+                : ` · pick ${session.next_overall_pick}`}
+              {session.status === "active" &&
+              session.picks_until_my_turn !== null &&
+              session.picks_until_my_turn !== undefined
                 ? session.picks_until_my_turn === 0
                   ? " · you are on the clock"
                   : ` · ${session.picks_until_my_turn} until your turn`
                 : ""}
+              {session.espn_league_id != null && ` · ESPN ${session.espn_league_id}`}
             </span>
           ) : (
             "Loading the room..."
@@ -334,7 +434,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <DraftSyncChip sync={sync} />
+        <DraftSyncChip sync={sync} onLink={linkRoom} />
         <Link href="/draft">
           <Button variant="outline" size="sm" className="gap-1.5 text-xs">
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -431,6 +531,11 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
           isLoading={boardLoading}
           onPick={handleRecommendationPick}
           isPicking={addPick.isPending}
+          onDraft={writeUiVisible ? handleRecommendationDraft : undefined}
+          canDraft={sync.canDraft.ok}
+          draftDisabledReason={sync.canDraft.ok ? null : canDraftLabel(sync.canDraft.reason)}
+          isDrafting={sync.state.pending !== null}
+          pendingPlayerId={pendingRow?.player_id ?? null}
         />
       </Card>
 
@@ -452,6 +557,11 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
               onUndoLast={undoLast}
               inputRef={inputRef}
               keeperIds={pendingKeeperIds}
+              onDraftHighlighted={writeUiVisible ? draftHighlighted : undefined}
+              pendingEspnId={sync.state.pending?.playerId ?? null}
+              onDraftRow={writeUiVisible ? (row) => void draftOnEspn(row) : undefined}
+              canDraft={sync.canDraft.ok}
+              draftDisabledReason={sync.canDraft.ok ? null : canDraftLabel(sync.canDraft.reason)}
             />
           )}
         </Card>

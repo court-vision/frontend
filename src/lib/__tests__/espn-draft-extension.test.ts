@@ -5,9 +5,14 @@ import { backoffDelay, chromeRuntimeAvailable, connectToExtension } from "../esp
 function stubChrome() {
   const listeners = { message: [] as ((m: unknown) => void)[], disconnect: [] as (() => void)[] };
   let lastError: { message?: string } | undefined;
+  let throwOnPost = false;
+  const posted: unknown[] = [];
   const port = {
     name: "",
-    postMessage() {},
+    postMessage(m: unknown) {
+      if (throwOnPost) throw new Error("Attempting to use a disconnected port object");
+      posted.push(m);
+    },
     disconnect() {},
     onMessage: {
       addListener: (cb: (m: unknown) => void) => listeners.message.push(cb),
@@ -40,6 +45,10 @@ function stubChrome() {
     },
     setError: (err: string) => {
       lastError = { message: err };
+    },
+    posted,
+    setThrowOnPost: (v: boolean) => {
+      throwOnPost = v;
     },
   };
 }
@@ -91,5 +100,32 @@ describe("connectToExtension", () => {
 describe("backoffDelay", () => {
   test("1s,2s,4s,8s,16s then a 30s ceiling", () => {
     expect([1, 2, 3, 4, 5, 6, 7].map(backoffDelay)).toEqual([1000, 2000, 4000, 8000, 16000, 30000, 30000]);
+  });
+});
+
+describe("PortHandle.send", () => {
+  test("posts while connected; false after our disconnect", () => {
+    const chrome = stubChrome();
+    const h = connectToExtension("abc", { onMessage() {}, onDisconnect() {} })!;
+    expect(h.send({ type: "select", playerId: 1, requestId: "r" })).toBe(true);
+    expect(chrome.posted).toEqual([{ type: "select", playerId: 1, requestId: "r" }]);
+    h.disconnect();
+    expect(h.send({ type: "select", playerId: 2, requestId: "r2" })).toBe(false);
+    expect(chrome.posted).toHaveLength(1);
+  });
+
+  test("false after the extension side dropped the port", () => {
+    const chrome = stubChrome();
+    const h = connectToExtension("abc", { onMessage() {}, onDisconnect() {} })!;
+    chrome.fireDisconnect();
+    expect(h.send({ type: "select", playerId: 1, requestId: "r" })).toBe(false);
+    expect(chrome.posted).toHaveLength(0);
+  });
+
+  test("false when the port throws (service worker gone) — never 'maybe sent'", () => {
+    const chrome = stubChrome();
+    const h = connectToExtension("abc", { onMessage() {}, onDisconnect() {} })!;
+    chrome.setThrowOnPost(true);
+    expect(h.send({ type: "select", playerId: 1, requestId: "r" })).toBe(false);
   });
 });
