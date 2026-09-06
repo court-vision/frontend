@@ -188,7 +188,7 @@ export function ApiKeyManager() {
                     />
                     <label htmlFor="scope-read" className="text-xs">
                       <span className="font-medium">read</span>
-                      <span className="text-muted-foreground ml-1.5">-- Access player stats, rankings, games, and schedules</span>
+                      <span className="text-muted-foreground ml-1.5">-- Reserved; public data is available without a key</span>
                     </label>
                   </div>
                   <div className="flex items-center gap-2">
@@ -211,7 +211,7 @@ export function ApiKeyManager() {
                     />
                     <label htmlFor="scope-live" className="text-xs">
                       <span className="font-medium">live</span>
-                      <span className="text-muted-foreground ml-1.5">-- Access live game data and real-time statistics</span>
+                      <span className="text-muted-foreground ml-1.5">-- Reserved; live data is currently public</span>
                       <span className="text-muted-foreground/60 ml-1.5 italic">Coming soon</span>
                     </label>
                   </div>

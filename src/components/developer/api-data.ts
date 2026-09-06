@@ -34,6 +34,26 @@ export interface EndpointCategory {
 
 export const API_BASE = `${BACKEND_API_BASE}/v1`;
 
+// Keep new read examples executable without credentials. Values are illustrative.
+function publicGet(path: string, description: string, params: Param[], examplePath: string, data: unknown): Endpoint {
+  const url = `${API_BASE}${examplePath}`;
+  return {
+    method: "GET", path, description, params,
+    code: {
+      curl: `curl --fail-with-body "${url}"`,
+      python: `import requests\n\nr = requests.get("${url}", timeout=30)\nr.raise_for_status()\ndata = r.json()`,
+      typescript: `const res = await fetch('${url}')\nif (!res.ok) throw new Error("HTTP " + res.status)\nconst data = await res.json()`,
+    },
+    response: JSON.stringify({ status: "success", message: "Example response", data }, null, 2),
+  };
+}
+
+const nbaPlayerParam: Param = { name: "id", type: "integer", required: true, description: "NBA player ID (path parameter)" };
+const snapshotParams: Param[] = [
+  { name: "season", type: "string", required: false, description: "Consecutive NBA season key, e.g. 2026-27; defaults to the active season" },
+  { name: "as_of", type: "string", required: false, description: "Latest available snapshot on or before YYYY-MM-DD; omit for latest. Response reports the actual date." },
+];
+
 // ─── Endpoint Data ───────────────────────────────────────
 
 export const categories: EndpointCategory[] = [
@@ -41,6 +61,16 @@ export const categories: EndpointCategory[] = [
     id: "players",
     label: "Players",
     endpoints: [
+      publicGet("/players/{id}/projection",
+        "ESPN preseason per-game projections and projected games. Includes mapped rookies without game stats. Rates are fractions (0–1); missing values stay null. A known player without a projection returns data=null; unknown IDs return 404.",
+        [nbaPlayerParam, ...snapshotParams], "/players/203999/projection",
+        { player_id: 203999, espn_id: 3112335, name: "Nikola Jokić", season: "2026-27", source: "espn", as_of_date: "2026-09-01", projected_gp: 70,
+          stats: { min: 34, pts: 27, reb: 12, ast: 10, stl: 1.3, blk: 0.7, tov: 3.5, fgm: 10, fga: 18, fg3m: 2, fg3a: 5, ftm: 5, fta: 6, fg_pct: 0.5556, fg3_pct: 0.4, ft_pct: 0.8333 } }),
+      publicGet("/players/{id}/status", "Most recent injury/availability record. data=null means no injury record.",
+        [nbaPlayerParam], "/players/2544/status", null),
+      publicGet("/players/{id}/ownership", "Latest ESPN ownership snapshot and change over the requested lookback.",
+        [nbaPlayerParam, { name: "days", type: "integer", required: false, description: "Lookback in days (1–30, default 14)" }],
+        "/players/2544/ownership", { current_ownership: 99.1, prev_ownership: 98.9, change: 0.2, snapshot_date: "2026-03-01" }),
       {
         method: "GET",
         path: "/players/",
@@ -54,18 +84,13 @@ export const categories: EndpointCategory[] = [
           { name: "offset", type: "integer", required: false, description: "Pagination offset (default 0)" },
         ],
         code: {
-          curl: `curl -H "X-API-Key: cv_your_key" \\
-  "${API_BASE}/players/?team=LAL"`,
+          curl: `curl "${API_BASE}/players/?team=LAL"`,
           python: `import requests
 
-headers = {"X-API-Key": "cv_your_key"}
 r = requests.get("${API_BASE}/players/",
-                 params={"team": "LAL"},
-                 headers=headers)
+                 params={"team": "LAL"})
 data = r.json()`,
-          typescript: `const res = await fetch('${API_BASE}/players/?team=LAL', {
-  headers: { 'X-API-Key': 'cv_your_key' }
-})
+          typescript: `const res = await fetch('${API_BASE}/players/?team=LAL')
 const data = await res.json()`,
         },
         response: `{
@@ -95,25 +120,20 @@ const data = await res.json()`,
         path: "/players/stats",
         description: "Get detailed statistics for a player. Use espn_id or player_id for reliable lookups, or name + team for public queries. Use window to get averages over a specific game window.",
         params: [
-          { name: "espn_id", type: "integer", required: false, description: "ESPN player ID (preferred for internal lookups)" },
-          { name: "player_id", type: "integer", required: false, description: "Player ID (alias for espn_id)" },
+          { name: "espn_id", type: "integer", required: false, description: "ESPN player ID; takes precedence over player_id" },
+          { name: "player_id", type: "integer", required: false, description: "NBA player ID (distinct from espn_id)" },
           { name: "name", type: "string", required: false, description: "Player name (used with team for public queries)" },
           { name: "team", type: "string", required: false, description: "Team abbreviation (used with name)" },
           { name: "window", type: "string", required: false, description: "Stat window: 'season' (default) or 'lN' for last N games (e.g. l5, l10)" },
         ],
         code: {
-          curl: `curl -H "X-API-Key: cv_your_key" \\
-  "${API_BASE}/players/stats?name=LeBron+James"`,
+          curl: `curl "${API_BASE}/players/stats?name=LeBron+James"`,
           python: `import requests
 
-headers = {"X-API-Key": "cv_your_key"}
 r = requests.get("${API_BASE}/players/stats",
-                 params={"name": "LeBron James"},
-                 headers=headers)
+                 params={"name": "LeBron James"})
 data = r.json()`,
-          typescript: `const res = await fetch('${API_BASE}/players/stats?name=LeBron+James', {
-  headers: { 'X-API-Key': 'cv_your_key' }
-})
+          typescript: `const res = await fetch('${API_BASE}/players/stats?name=LeBron+James')
 const data = await res.json()`,
         },
         response: `{
@@ -134,17 +154,17 @@ const data = await res.json()`,
       "avg_blocks": 0.6,
       "avg_turnovers": 3.4,
       "avg_minutes": 35.1,
-      "avg_fg_pct": 0.521,
-      "avg_fg3_pct": 0.408,
-      "avg_ft_pct": 0.752
+      "avg_fg_pct": 52.1,
+      "avg_fg3_pct": 40.8,
+      "avg_ft_pct": 75.2
     },
     "advanced_stats": {
       "off_rating": 118.4,
       "def_rating": 112.1,
       "net_rating": 6.3,
-      "usg_pct": 0.298,
-      "ast_pct": 0.412,
-      "pie": 0.182
+      "usg_pct": 29.8,
+      "ast_pct": 41.2,
+      "pie": 18.2
     },
     "game_logs": [
       {
@@ -173,21 +193,16 @@ const data = await res.json()`,
         path: "/players/{id}/games",
         description: "Get game-by-game log for a player showing full box scores.",
         params: [
-          { name: "id", type: "integer", required: true, description: "Player ID (path parameter)" },
+          { name: "id", type: "integer", required: true, description: "NBA player ID (path parameter)" },
           { name: "limit", type: "integer", required: false, description: "Number of games to return (1–50, default 10)" },
         ],
         code: {
-          curl: `curl -H "X-API-Key: cv_your_key" \\
-  "${API_BASE}/players/2544/games?limit=10"`,
+          curl: `curl "${API_BASE}/players/2544/games?limit=10"`,
           python: `import requests
 
-headers = {"X-API-Key": "cv_your_key"}
 r = requests.get("${API_BASE}/players/2544/games",
-                 params={"limit": 10},
-                 headers=headers)`,
-          typescript: `const res = await fetch('${API_BASE}/players/2544/games?limit=10', {
-  headers: { 'X-API-Key': 'cv_your_key' }
-})`,
+                 params={"limit": 10})`,
+          typescript: `const res = await fetch('${API_BASE}/players/2544/games?limit=10')`,
         },
         response: `{
   "status": "success",
@@ -225,19 +240,14 @@ r = requests.get("${API_BASE}/players/2544/games",
         path: "/players/{id}/trends",
         description: "Get rolling average trends for a player over fixed periods (last 7, 14, and 30 days) and ownership changes.",
         params: [
-          { name: "id", type: "integer", required: true, description: "Player ID (path parameter)" },
+          { name: "id", type: "integer", required: true, description: "NBA player ID (path parameter)" },
         ],
         code: {
-          curl: `curl -H "X-API-Key: cv_your_key" \\
-  "${API_BASE}/players/2544/trends"`,
+          curl: `curl "${API_BASE}/players/2544/trends"`,
           python: `import requests
 
-headers = {"X-API-Key": "cv_your_key"}
-r = requests.get("${API_BASE}/players/2544/trends",
-                 headers=headers)`,
-          typescript: `const res = await fetch('${API_BASE}/players/2544/trends', {
-  headers: { 'X-API-Key': 'cv_your_key' }
-})`,
+r = requests.get("${API_BASE}/players/2544/trends")`,
+          typescript: `const res = await fetch('${API_BASE}/players/2544/trends')`,
         },
         response: `{
   "status": "success",
@@ -263,21 +273,16 @@ r = requests.get("${API_BASE}/players/2544/trends",
         path: "/players/{id}/percentiles",
         description: "Get a player's statistical percentile ranks compared to all qualifying players. All values are integers 0–100.",
         params: [
-          { name: "id", type: "integer", required: true, description: "Player ID (path parameter)" },
+          { name: "id", type: "integer", required: true, description: "NBA player ID (path parameter)" },
           { name: "min_games", type: "integer", required: false, description: "Minimum games played to qualify (default 20)" },
         ],
         code: {
-          curl: `curl -H "X-API-Key: cv_your_key" \\
-  "${API_BASE}/players/2544/percentiles?min_games=20"`,
+          curl: `curl "${API_BASE}/players/2544/percentiles?min_games=20"`,
           python: `import requests
 
-headers = {"X-API-Key": "cv_your_key"}
 r = requests.get("${API_BASE}/players/2544/percentiles",
-                 params={"min_games": 20},
-                 headers=headers)`,
-          typescript: `const res = await fetch('${API_BASE}/players/2544/percentiles?min_games=20', {
-  headers: { 'X-API-Key': 'cv_your_key' }
-})`,
+                 params={"min_games": 20})`,
+          typescript: `const res = await fetch('${API_BASE}/players/2544/percentiles?min_games=20')`,
         },
         response: `{
   "status": "success",
@@ -302,6 +307,16 @@ r = requests.get("${API_BASE}/players/2544/percentiles",
     id: "rankings",
     label: "Rankings",
     endpoints: [
+      publicGet("/rankings/espn",
+        "ESPN editorial draft rankings, ADP, auction values, primary positions, lineup eligibility, and injury snapshots. Separate from Court Vision performance rankings. Snapshot dates never mix; no cross-season fallback. Null measurements sort last; ties sort by NBA player ID.",
+        [...snapshotParams,
+          { name: "name", type: "string", required: false, description: "Case- and accent-insensitive name search" },
+          { name: "sort_by", type: "string", required: false, description: "rank (default) or adp ascending; auction_value or auction_value_avg descending" },
+          { name: "limit", type: "integer", required: false, description: "Page size (1–100, default 50)" },
+          { name: "offset", type: "integer", required: false, description: "Pagination offset (default 0)" }],
+        "/rankings/espn?sort_by=adp&limit=10",
+        { season: "2026-27", source: "espn", as_of_date: "2026-09-01", total: 1, limit: 10, offset: 0, sort_by: "adp",
+          players: [{ player_id: 203999, espn_id: 3112335, name: "Nikola Jokić", overall_rank: 1, adp: 1.4, auction_value: 70, auction_value_avg: 68.5, default_position_id: 5, eligible_slot_ids: [4, 11], injury_status: "ACTIVE" }] }),
       {
         method: "GET",
         path: "/rankings/",
@@ -458,7 +473,7 @@ const data = await res.json()`,
         params: [
           { name: "abbrev", type: "string", required: true, description: "Team abbreviation (path parameter, e.g. LAL, BOS, GSW)" },
           { name: "upcoming", type: "boolean", required: false, description: "Only return future games (default false)" },
-          { name: "limit", type: "integer", required: false, description: "Maximum games to return (1–100, default 20)" },
+          { name: "limit", type: "integer", required: false, description: "Maximum games to return (1–200, default 20)" },
         ],
         code: {
           curl: `curl "${API_BASE}/teams/LAL/schedule?upcoming=true"`,
@@ -486,7 +501,7 @@ const data = await res.json()`,
         "opponent_score": null
       }
     ],
-    "remaining_games": 24,
+    "remaining_games": 1,
     "total_games": 1
   }
 }`,
@@ -559,7 +574,7 @@ const data = await res.json()`,
       {
         method: "GET",
         path: "/live/players/today",
-        description: "Get live player stats for all games in progress today. Updated every ~60 seconds during game time. Note: will require 'live' scope in a future update.",
+        description: "Get live player stats for all games in progress today. Updated every ~60 seconds during game time.",
         params: [],
         code: {
           curl: `curl "${API_BASE}/live/players/today"`,
@@ -608,7 +623,7 @@ const data = await res.json()`,
       {
         method: "GET",
         path: "/live/scoreboard",
-        description: "Get the current NBA scoreboard with live game statuses. Reflects near-real-time state from NBA's live CDN. Does not include team names or scores — use GET /games/{date} for full game details. Note: will require 'live' scope in a future update.",
+        description: "Get the current NBA scoreboard with live game statuses. Reflects near-real-time state from NBA's live CDN. Does not include team names or scores — use GET /games/{date} for full game details.",
         params: [],
         code: {
           curl: `curl "${API_BASE}/live/scoreboard"`,
