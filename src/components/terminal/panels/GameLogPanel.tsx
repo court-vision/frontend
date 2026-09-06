@@ -23,6 +23,7 @@ interface ColumnDef {
 
 const columns: ColumnDef[] = [
   { key: "date", label: "Date", width: "w-20" },
+  { key: "opponent", label: "Opp", width: "w-16" },
   { key: "fpts", label: "FPTS", format: (v) => v.toFixed(1) },
   { key: "pts", label: "PTS" },
   { key: "reb", label: "REB" },
@@ -218,6 +219,11 @@ export function GameLogPanel() {
               )}
             </div>
 
+            {/* Opponent cell: the live payload carries no opponent, so this is
+                an alignment placeholder — but it has to exist, or every stat
+                below shifts a column left of its header. */}
+            <div className="w-16 py-1.5 px-1 text-center text-muted-foreground/50">—</div>
+
             {/* FPTS cell: current + projected */}
             <div className="flex-1 flex flex-col items-center justify-center py-1.5 px-1">
               <span>{livePlayer.fpts.toFixed(1)}</span>
@@ -253,6 +259,8 @@ export function GameLogPanel() {
               const displayValue =
                 col.key === "date"
                   ? formatDate(value as string)
+                  : col.key === "opponent"
+                  ? formatOpponent(log)
                   : col.format
                   ? col.format(value as number)
                   : value;
@@ -301,6 +309,21 @@ function SortIcon({
   ) : (
     <ArrowDown className="h-3 w-3" />
   );
+}
+
+/**
+ * "@ BOS" away, "vs BOS" at home, and an em dash when the schedule could not
+ * identify the fixture — the backend answers null rather than guessing, and a
+ * blank here would read as a game against nobody.
+ *
+ * `opponent` and `home` arrive together or not at all, but the type allows one
+ * without the other; a known opponent with an unknown side renders as a bare
+ * "BOS" rather than an em dash. Who he played is the useful half, and throwing
+ * it away to punish a shape the backend does not produce would be worse.
+ */
+function formatOpponent(log: GameLog): string {
+  if (!log.opponent) return "—";
+  return `${log.home === false ? "@" : log.home ? "vs" : ""} ${log.opponent}`.trim();
 }
 
 function formatDate(dateStr: string): string {
