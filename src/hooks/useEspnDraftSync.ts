@@ -100,7 +100,9 @@ export interface EspnDraftSync {
 export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
   const { sessionId, expectedLeagueId, bindable, enabled } = input;
   const queryClient = useQueryClient();
-  const { paused, setPaused: setPausedStore } = useDraftSyncStore();
+  const pausedMap = useDraftSyncStore((store) => store.paused);
+  const setPausedStore = useDraftSyncStore((store) => store.setPaused);
+  const paused = pausedMap[String(sessionId)] ?? false;
 
   const syncPick = useDraftPickMutation(sessionId, { silent: true });
   const syncUndo = useUndoDraftPickMutation(sessionId, { silent: true });
@@ -410,10 +412,10 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
   const ignoreRoom = useCallback(() => dispatch({ type: "dismiss-room" }), [dispatch]);
   const setPaused = useCallback(
     (p: boolean) => {
-      setPausedStore(p);
+      setPausedStore(sessionId, p);
       if (!p) reconnect(); // resume replays the shelved frames on reconnect
     },
-    [setPausedStore, reconnect]
+    [setPausedStore, sessionId, reconnect]
   );
   const resume = useCallback(() => {
     dispatch({ type: "resume" });

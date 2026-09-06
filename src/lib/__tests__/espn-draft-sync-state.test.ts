@@ -490,3 +490,21 @@ describe("ESPN's draft state", () => {
     expect(s.draftState).toBe(1);
   });
 });
+
+describe("ESPN's observed refusals reach the user verbatim", () => {
+  test("out of turn, as ESPN worded it", () => {
+    const { state } = run(
+      [frameRec("ERROR 1 Invalid+selection+team+%281%29%3B+team+3+is+currently+on+the+clock.")],
+      CTX(),
+      sent(onClock(liveState()))
+    );
+    expect(state.lastSend).toMatchObject({ outcome: "failed", reason: "espn-error" });
+    expect(sendFailureMessage("espn-error", state.lastSend?.detail)).toBe(
+      "ESPN refused the pick: Invalid selection team (1); team 3 is currently on the clock."
+    );
+  });
+  test("a capped player", () => {
+    const { state } = run([frameRec("ERROR 1 Invalid+Selection.")], CTX(), sent(onClock(liveState())));
+    expect(sendFailureMessage("espn-error", state.lastSend?.detail)).toBe("ESPN refused the pick: Invalid Selection.");
+  });
+});

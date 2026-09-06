@@ -166,3 +166,13 @@ describe("STATE frames", () => {
     expect(parseFrame("STATE").op).toBe("malformed");
   });
 });
+
+describe("ESPN's observed refusals (throwaway league, 2026-09-05)", () => {
+  test("out of turn", () => {
+    const f = parseFrame("ERROR 1 Invalid+selection+team+%281%29%3B+team+3+is+currently+on+the+clock.");
+    expect(f).toMatchObject({ op: "ERROR", severity: 1, text: "Invalid selection team (1); team 3 is currently on the clock." });
+  });
+  test("a capped player", () => {
+    expect(parseFrame("ERROR 1 Invalid+Selection.")).toMatchObject({ op: "ERROR", severity: 1, text: "Invalid Selection." });
+  });
+});
