@@ -234,7 +234,10 @@ function PlayerStatChart({ playerStats }: { playerStats: PlayerStats }) {
 
   return (
     <Card className="border-none">
-      <CardContent>
+      {/* pt-5 restores what CardContent's `pt-0` leaves out: it assumes a
+          CardHeader above it, and the player identity now lives in the
+          dialog header instead. */}
+      <CardContent className="pt-5">
         {/* Chart header: title left, controls right */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6">
           <h4 className="text-sm font-medium">Fantasy Scores</h4>
