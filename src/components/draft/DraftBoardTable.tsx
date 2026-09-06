@@ -272,7 +272,14 @@ export function DraftBoardTable({
   const listRef = useRef<HTMLDivElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef(activeId);
-  activeRef.current = activeId;
+  // Synced in an effect, not during render: React can discard a render, and a
+  // ref written in one that never commits would leave the scroller aiming at a
+  // row the user never saw. **This effect must stay declared above the scroll
+  // effect below** — both fire on a highlight change, and effects run in
+  // declaration order, so reversing them would scroll to the previous row.
+  useEffect(() => {
+    activeRef.current = activeId;
+  }, [activeId]);
   const interactive = onMark !== undefined;
   useEffect(() => {
     if (!interactive || activeRef.current === null) return;
