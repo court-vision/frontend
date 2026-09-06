@@ -1478,6 +1478,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/players/{player_id}/projection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a player's ESPN preseason projection
+         * @description Projected games and per-game statistics from the latest ESPN projection snapshot in the requested season. Shooting rates are recomputed from makes/attempts on a 0–1 scale. Missing measurements remain null. A known player without a projection returns success with data=null; an unknown NBA player ID returns 404.
+         */
+        get: operations["get_player_projection_v1_players__player_id__projection_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/players/{player_id}/stats": {
         parameters: {
             query?: never;
@@ -1583,6 +1603,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/rankings/espn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get ESPN draft rankings and market values
+         * @description ESPN editorial draft ranks, ADP, auction values, position eligibility, and injury status. These are preseason market snapshots, separate from Court Vision performance rankings. Includes mapped players without game stats. Missing values are null and sort last; ties sort by NBA player ID. `as_of` selects the newest snapshot on or before that date. An unavailable snapshot returns an empty success response; there is no cross-season fallback.
+         */
+        get: operations["get_espn_rankings_v1_rankings_espn_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/schedule/weeks": {
         parameters: {
             query?: never;
@@ -1666,7 +1706,7 @@ export interface paths {
         };
         /**
          * Get team roster
-         * @description Returns the active roster for an NBA team with per-game averages and injury status.
+         * @description Returns players with last known season-stat team assignments, per-game averages, and injury status. Each player's latest row is used, including inactive players. The response reports the season served; before opening night this may be the previous season. This is not an authoritative current roster feed.
          */
         get: operations["get_team_roster_v1_teams__team_abbrev__roster_get"];
         put?: never;
@@ -3161,6 +3201,90 @@ export interface components {
              */
             reason: "pick_number_taken" | "player_already_drafted";
         };
+        /** ESPNMarketData */
+        ESPNMarketData: {
+            /** As Of Date */
+            as_of_date: string | null;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Players */
+            players: components["schemas"]["ESPNMarketPlayer"][];
+            /** Season */
+            season: string;
+            /**
+             * Sort By
+             * @enum {string}
+             */
+            sort_by: "rank" | "adp" | "auction_value" | "auction_value_avg";
+            /**
+             * Source
+             * @default espn
+             * @constant
+             */
+            source: "espn";
+            /** Total */
+            total: number;
+        };
+        /** ESPNMarketPlayer */
+        ESPNMarketPlayer: {
+            /**
+             * Adp
+             * @description Average pick in real ESPN drafts; lower is earlier
+             */
+            adp: number | null;
+            /**
+             * Auction Value
+             * @description ESPN editorial auction value
+             */
+            auction_value: number | null;
+            /**
+             * Auction Value Avg
+             * @description Average auction price in real ESPN drafts
+             */
+            auction_value_avg: number | null;
+            /**
+             * Default Position Id
+             * @description ESPN primary position: 1=PG, 2=SG, 3=SF, 4=PF, 5=C
+             */
+            default_position_id: number | null;
+            /**
+             * Eligible Slot Ids
+             * @description ESPN lineup slot IDs: 0=PG, 1=SG, 2=SF, 3=PF, 4=C, 5=G, 6=F, 11=UT; distinct from primary position IDs
+             */
+            eligible_slot_ids: number[] | null;
+            /** Espn Id */
+            espn_id: number | null;
+            /**
+             * Injury Status
+             * @description ESPN status at snapshot time (ACTIVE, OUT, DAY_TO_DAY, etc.)
+             */
+            injury_status: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Overall Rank
+             * @description ESPN STANDARD editorial draft rank; lower is better
+             */
+            overall_rank: number | null;
+            /**
+             * Player Id
+             * @description NBA player ID
+             */
+            player_id: number;
+        };
+        /** ESPNMarketResp */
+        ESPNMarketResp: {
+            data: components["schemas"]["ESPNMarketData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /**
          * EnrichedRosterPlayer
          * @description Roster player with schedule and multi-window stat data.
@@ -3314,6 +3438,11 @@ export interface components {
              * @description Free throws made
              */
             ftm: number;
+            /**
+             * Game Id
+             * @description NBA game ID when the stored schedule identifies a unique matchup
+             */
+            game_id: string | null;
             /**
              * Home
              * @description Whether this was a home game
@@ -4417,6 +4546,11 @@ export interface components {
             as_of_date: string;
             /** Players */
             players: components["schemas"]["NBATeamRosterPlayer"][];
+            /**
+             * Season
+             * @description Season supplying the roster's last known team assignments and statistics
+             */
+            season: string | null;
             /** Team */
             team: string;
             /** Team Name */
@@ -5075,6 +5209,45 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** PlayerProjectionData */
+        PlayerProjectionData: {
+            /**
+             * As Of Date
+             * Format: date
+             */
+            as_of_date: string;
+            /** Espn Id */
+            espn_id: number | null;
+            /** Name */
+            name: string;
+            /**
+             * Player Id
+             * @description NBA player ID
+             */
+            player_id: number;
+            /** Projected Gp */
+            projected_gp: number | null;
+            /** Season */
+            season: string;
+            /**
+             * Source
+             * @default espn
+             * @constant
+             */
+            source: "espn";
+            stats: components["schemas"]["ProjectionStats"];
+        };
+        /** PlayerProjectionResp */
+        PlayerProjectionResp: {
+            data: components["schemas"]["PlayerProjectionData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /** PlayerResp */
         PlayerResp: {
             /** Avg Points */
@@ -5257,6 +5430,11 @@ export interface components {
          */
         PlayersListData: {
             /**
+             * As Of Date
+             * @description Newest snapshot date in the selected season
+             */
+            as_of_date: string | null;
+            /**
              * Limit
              * @description Number of results returned
              */
@@ -5271,6 +5449,11 @@ export interface components {
              * @description List of players
              */
             players: components["schemas"]["PlayerListItem"][];
+            /**
+             * Season
+             * @description Season actually served (may be the previous season before opening night)
+             */
+            season: string | null;
             /**
              * Total
              * @description Total number of players matching filters
@@ -5348,6 +5531,53 @@ export interface components {
             top_seed_wins: number;
             /** Updated At */
             updated_at: string | null;
+        };
+        /**
+         * ProjectionStats
+         * @description Per-game projections. Shooting rates use a 0–1 scale.
+         */
+        ProjectionStats: {
+            /** Ast */
+            ast: number | null;
+            /** Blk */
+            blk: number | null;
+            /**
+             * Fg3 Pct
+             * @description Projected 3PM / 3PA (0–1); null without positive attempts
+             */
+            fg3_pct: number | null;
+            /** Fg3A */
+            fg3a: number | null;
+            /** Fg3M */
+            fg3m: number | null;
+            /**
+             * Fg Pct
+             * @description Projected FGM / FGA (0–1); null without positive attempts
+             */
+            fg_pct: number | null;
+            /** Fga */
+            fga: number | null;
+            /** Fgm */
+            fgm: number | null;
+            /**
+             * Ft Pct
+             * @description Projected FTM / FTA (0–1); null without positive attempts
+             */
+            ft_pct: number | null;
+            /** Fta */
+            fta: number | null;
+            /** Ftm */
+            ftm: number | null;
+            /** Min */
+            min: number | null;
+            /** Pts */
+            pts: number | null;
+            /** Reb */
+            reb: number | null;
+            /** Stl */
+            stl: number | null;
+            /** Tov */
+            tov: number | null;
         };
         /** RankingsMeta */
         RankingsMeta: {
@@ -6166,6 +6396,11 @@ export interface components {
          * @description Stats for a trend period.
          */
         TrendPeriod: {
+            /**
+             * As Of Date
+             * @description Date the rolling snapshot runs through
+             */
+            as_of_date: string | null;
             /**
              * Avg Fpts
              * @description Average fantasy points per game
@@ -8883,9 +9118,9 @@ export interface operations {
     get_player_stats_by_query_v1_players_stats_get: {
         parameters: {
             query?: {
-                /** @description ESPN player ID (preferred for internal lookups) */
+                /** @description ESPN player ID; takes precedence over player_id */
                 espn_id?: number | null;
-                /** @description Player ID (alias for espn_id, for backwards compatibility) */
+                /** @description NBA player ID (distinct from espn_id) */
                 player_id?: number | null;
                 /** @description Player name (used for public/roster lookup) */
                 name?: string | null;
@@ -9081,11 +9316,66 @@ export interface operations {
             };
         };
     };
-    get_player_stats_v1_players__player_id__stats_get: {
+    get_player_projection_v1_players__player_id__projection_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description NBA season; defaults to the configured active season */
+                season?: string | null;
+                /** @description Latest snapshot on or before this date; omit for latest */
+                as_of?: string | null;
+            };
             header?: never;
             path: {
+                /** @description NBA player ID */
+                player_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerProjectionResp"];
+                };
+            };
+            /** @description Player not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_player_stats_v1_players__player_id__stats_get: {
+        parameters: {
+            query?: {
+                /** @description Full season or last N games (l5, l10, etc.) */
+                window?: string;
+            };
+            header?: never;
+            path: {
+                /** @description NBA player ID */
                 player_id: number;
             };
             cookie?: never;
@@ -9232,6 +9522,13 @@ export interface operations {
                     "application/json": components["schemas"]["PlayoffBracketResp"];
                 };
             };
+            /** @description No bracket data for the requested season */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -9240,6 +9537,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -9290,6 +9594,53 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_espn_rankings_v1_rankings_espn_get: {
+        parameters: {
+            query?: {
+                /** @description NBA season, e.g. 2026-27; defaults to the configured active season */
+                season?: string | null;
+                /** @description Latest snapshot on or before this date; omit for latest */
+                as_of?: string | null;
+                /** @description Case- and accent-insensitive name search */
+                name?: string | null;
+                /** @description rank/adp ascend; auction values descend; nulls last */
+                sort_by?: "rank" | "adp" | "auction_value" | "auction_value_avg";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ESPNMarketResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
             /** @description Rate limit exceeded */
             429: {

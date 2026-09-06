@@ -358,22 +358,28 @@ export function ApiDocs({
             <div className="flex items-center gap-3">
               <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider w-20 shrink-0">Auth</span>
               <code className="font-mono text-xs text-foreground">X-API-Key: cv_xxxxxx</code>
-              <span className="text-[10px] text-muted-foreground">header (optional for public endpoints)</span>
+              <span className="text-[10px] text-muted-foreground">required for analytics; public data needs no key</span>
             </div>
             <div className="flex items-start gap-3">
               <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider w-20 shrink-0">Rate Limits</span>
               <div className="text-xs space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <Badge variant="neutral" className="text-[9px] px-1 py-0">No key</Badge>
-                  <span className="font-mono text-muted-foreground">100 req/min</span>
+                  <Badge variant="neutral" className="text-[9px] px-1 py-0">Public data</Badge>
+                  <span className="font-mono text-muted-foreground">100 req/min per IP per endpoint</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="default" className="text-[9px] px-1 py-0">With key</Badge>
-                  <span className="font-mono text-foreground">1,000 req/min</span>
+                  <Badge variant="default" className="text-[9px] px-1 py-0">Analytics key</Badge>
+                  <span className="font-mono text-foreground">1,000 req/min per verified key per endpoint</span>
                 </div>
               </div>
             </div>
           </div>
+
+          <p className="text-xs text-muted-foreground">
+            Player path IDs and player_id query parameters are NBA IDs; espn_id is a separate ESPN identifier.
+            Player stats use percentages from 0–100; category rankings, team stats, and projections use fractions from 0–1.
+            Read each response’s season and snapshot date before comparing values. Public headers do not raise the IP quota.
+          </p>
 
           {/* Response format */}
           <div className="space-y-1.5">
@@ -390,7 +396,7 @@ export function ApiDocs({
               </pre>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              All responses follow the <code className="font-mono text-[10px] text-foreground bg-muted/50 px-1 rounded">BaseApiResponse</code> schema. Errors return <code className="font-mono text-[10px] text-foreground bg-muted/50 px-1 rounded">status: &quot;error&quot;</code> with a descriptive message.
+              All responses follow the <code className="font-mono text-[10px] text-foreground bg-muted/50 px-1 rounded">BaseApiResponse</code> schema. Failures use HTTP 4xx/5xx and include an error_code. Empty datasets return 200 with an empty list or null. On 429, wait for the Retry-After interval before retrying.
             </p>
           </div>
         </section>

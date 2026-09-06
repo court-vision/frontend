@@ -3883,6 +3883,250 @@
         "title": "DraftSyncConflict",
         "type": "object"
       },
+      "ESPNMarketData": {
+        "properties": {
+          "as_of_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of Date"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/ESPNMarketPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "season": {
+            "title": "Season",
+            "type": "string"
+          },
+          "sort_by": {
+            "enum": [
+              "rank",
+              "adp",
+              "auction_value",
+              "auction_value_avg"
+            ],
+            "title": "Sort By",
+            "type": "string"
+          },
+          "source": {
+            "const": "espn",
+            "default": "espn",
+            "title": "Source",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "season",
+          "source",
+          "as_of_date",
+          "players",
+          "total",
+          "limit",
+          "offset",
+          "sort_by"
+        ],
+        "title": "ESPNMarketData",
+        "type": "object"
+      },
+      "ESPNMarketPlayer": {
+        "properties": {
+          "adp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Average pick in real ESPN drafts; lower is earlier",
+            "title": "Adp"
+          },
+          "auction_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN editorial auction value",
+            "title": "Auction Value"
+          },
+          "auction_value_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Average auction price in real ESPN drafts",
+            "title": "Auction Value Avg"
+          },
+          "default_position_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN primary position: 1=PG, 2=SG, 3=SF, 4=PF, 5=C",
+            "title": "Default Position Id"
+          },
+          "eligible_slot_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN lineup slot IDs: 0=PG, 1=SG, 2=SF, 3=PF, 4=C, 5=G, 6=F, 11=UT; distinct from primary position IDs",
+            "title": "Eligible Slot Ids"
+          },
+          "espn_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Id"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN status at snapshot time (ACTIVE, OUT, DAY_TO_DAY, etc.)",
+            "title": "Injury Status"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "overall_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN STANDARD editorial draft rank; lower is better",
+            "title": "Overall Rank"
+          },
+          "player_id": {
+            "description": "NBA player ID",
+            "title": "Player Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "espn_id",
+          "name",
+          "overall_rank",
+          "adp",
+          "auction_value",
+          "auction_value_avg",
+          "default_position_id",
+          "eligible_slot_ids",
+          "injury_status"
+        ],
+        "title": "ESPNMarketPlayer",
+        "type": "object"
+      },
+      "ESPNMarketResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ESPNMarketData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "ESPNMarketResp",
+        "type": "object"
+      },
       "EnrichedRosterPlayer": {
         "description": "Roster player with schedule and multi-window stat data.",
         "properties": {
@@ -4194,6 +4438,18 @@
             "title": "Ftm",
             "type": "integer"
           },
+          "game_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA game ID when the stored schedule identifies a unique matchup",
+            "title": "Game Id"
+          },
           "home": {
             "anyOf": [
               {
@@ -4246,6 +4502,7 @@
         },
         "required": [
           "date",
+          "game_id",
           "opponent",
           "home",
           "fpts",
@@ -7086,6 +7343,18 @@
             "title": "Players",
             "type": "array"
           },
+          "season": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Season supplying the roster's last known team assignments and statistics",
+            "title": "Season"
+          },
           "team": {
             "title": "Team",
             "type": "string"
@@ -7099,7 +7368,8 @@
           "team",
           "team_name",
           "players",
-          "as_of_date"
+          "as_of_date",
+          "season"
         ],
         "title": "NBATeamRosterData",
         "type": "object"
@@ -8876,6 +9146,123 @@
         "title": "PlayerPercentilesResp",
         "type": "object"
       },
+      "PlayerProjectionData": {
+        "properties": {
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "espn_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Id"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "description": "NBA player ID",
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "projected_gp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projected Gp"
+          },
+          "season": {
+            "title": "Season",
+            "type": "string"
+          },
+          "source": {
+            "const": "espn",
+            "default": "espn",
+            "title": "Source",
+            "type": "string"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/ProjectionStats"
+          }
+        },
+        "required": [
+          "player_id",
+          "espn_id",
+          "name",
+          "season",
+          "source",
+          "as_of_date",
+          "projected_gp",
+          "stats"
+        ],
+        "title": "PlayerProjectionData",
+        "type": "object"
+      },
+      "PlayerProjectionResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlayerProjectionData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "PlayerProjectionResp",
+        "type": "object"
+      },
       "PlayerResp": {
         "properties": {
           "avg_points": {
@@ -9419,6 +9806,18 @@
       "PlayersListData": {
         "description": "Response data for player list.",
         "properties": {
+          "as_of_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Newest snapshot date in the selected season",
+            "title": "As Of Date"
+          },
           "limit": {
             "description": "Number of results returned",
             "title": "Limit",
@@ -9437,6 +9836,18 @@
             "title": "Players",
             "type": "array"
           },
+          "season": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Season actually served (may be the previous season before opening night)",
+            "title": "Season"
+          },
           "total": {
             "description": "Total number of players matching filters",
             "title": "Total",
@@ -9447,7 +9858,9 @@
           "players",
           "total",
           "limit",
-          "offset"
+          "offset",
+          "season",
+          "as_of_date"
         ],
         "title": "PlayersListData",
         "type": "object"
@@ -9722,6 +10135,210 @@
           "updated_at"
         ],
         "title": "PlayoffSeriesResp",
+        "type": "object"
+      },
+      "ProjectionStats": {
+        "description": "Per-game projections. Shooting rates use a 0\u20131 scale.",
+        "properties": {
+          "ast": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ast"
+          },
+          "blk": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blk"
+          },
+          "fg3_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Projected 3PM / 3PA (0\u20131); null without positive attempts",
+            "title": "Fg3 Pct"
+          },
+          "fg3a": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fg3A"
+          },
+          "fg3m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fg3M"
+          },
+          "fg_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Projected FGM / FGA (0\u20131); null without positive attempts",
+            "title": "Fg Pct"
+          },
+          "fga": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fga"
+          },
+          "fgm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fgm"
+          },
+          "ft_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Projected FTM / FTA (0\u20131); null without positive attempts",
+            "title": "Ft Pct"
+          },
+          "fta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fta"
+          },
+          "ftm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ftm"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "pts": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pts"
+          },
+          "reb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reb"
+          },
+          "stl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stl"
+          },
+          "tov": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tov"
+          }
+        },
+        "required": [
+          "min",
+          "pts",
+          "reb",
+          "ast",
+          "stl",
+          "blk",
+          "tov",
+          "fgm",
+          "fga",
+          "fg3m",
+          "fg3a",
+          "ftm",
+          "fta",
+          "fg_pct",
+          "fg3_pct",
+          "ft_pct"
+        ],
+        "title": "ProjectionStats",
         "type": "object"
       },
       "RankingsMeta": {
@@ -12027,6 +12644,18 @@
       "TrendPeriod": {
         "description": "Stats for a trend period.",
         "properties": {
+          "as_of_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date the rolling snapshot runs through",
+            "title": "As Of Date"
+          },
           "avg_fpts": {
             "description": "Average fantasy points per game",
             "title": "Avg Fpts",
@@ -12040,7 +12669,8 @@
         },
         "required": [
           "avg_fpts",
-          "games"
+          "games",
+          "as_of_date"
         ],
         "title": "TrendPeriod",
         "type": "object"
@@ -16438,7 +17068,7 @@
         "operationId": "get_player_stats_by_query_v1_players_stats_get",
         "parameters": [
           {
-            "description": "ESPN player ID (preferred for internal lookups)",
+            "description": "ESPN player ID; takes precedence over player_id",
             "in": "query",
             "name": "espn_id",
             "required": false,
@@ -16451,12 +17081,12 @@
                   "type": "null"
                 }
               ],
-              "description": "ESPN player ID (preferred for internal lookups)",
+              "description": "ESPN player ID; takes precedence over player_id",
               "title": "Espn Id"
             }
           },
           {
-            "description": "Player ID (alias for espn_id, for backwards compatibility)",
+            "description": "NBA player ID (distinct from espn_id)",
             "in": "query",
             "name": "player_id",
             "required": false,
@@ -16469,7 +17099,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Player ID (alias for espn_id, for backwards compatibility)",
+              "description": "NBA player ID (distinct from espn_id)",
               "title": "Player Id"
             }
           },
@@ -16751,18 +17381,123 @@
         ]
       }
     },
+    "/v1/players/{player_id}/projection": {
+      "get": {
+        "description": "Projected games and per-game statistics from the latest ESPN projection snapshot in the requested season. Shooting rates are recomputed from makes/attempts on a 0\u20131 scale. Missing measurements remain null. A known player without a projection returns success with data=null; an unknown NBA player ID returns 404.",
+        "operationId": "get_player_projection_v1_players__player_id__projection_get",
+        "parameters": [
+          {
+            "description": "NBA player ID",
+            "in": "path",
+            "name": "player_id",
+            "required": true,
+            "schema": {
+              "description": "NBA player ID",
+              "exclusiveMinimum": 0,
+              "title": "Player Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "NBA season; defaults to the configured active season",
+            "in": "query",
+            "name": "season",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "NBA season; defaults to the configured active season",
+              "title": "Season"
+            }
+          },
+          {
+            "description": "Latest snapshot on or before this date; omit for latest",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest snapshot on or before this date; omit for latest",
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerProjectionResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Player not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "Get a player's ESPN preseason projection",
+        "tags": [
+          "Players"
+        ]
+      }
+    },
     "/v1/players/{player_id}/stats": {
       "get": {
         "description": "Retrieve detailed statistics for a player by their ID.",
         "operationId": "get_player_stats_v1_players__player_id__stats_get",
         "parameters": [
           {
+            "description": "NBA player ID",
             "in": "path",
             "name": "player_id",
             "required": true,
             "schema": {
+              "description": "NBA player ID",
               "title": "Player Id",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Full season or last N games (l5, l10, etc.)",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "season",
+              "description": "Full season or last N games (l5, l10, etc.)",
+              "pattern": "^(season|l[1-9][0-9]?)$",
+              "title": "Window",
+              "type": "string"
             }
           }
         ],
@@ -16935,6 +17670,9 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "description": "No bracket data for the requested season"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -16944,6 +17682,9 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
           }
         },
         "summary": "Get Playoff Bracket",
@@ -17060,6 +17801,142 @@
           }
         },
         "summary": "Get player rankings",
+        "tags": [
+          "Rankings"
+        ]
+      }
+    },
+    "/v1/rankings/espn": {
+      "get": {
+        "description": "ESPN editorial draft ranks, ADP, auction values, position eligibility, and injury status. These are preseason market snapshots, separate from Court Vision performance rankings. Includes mapped players without game stats. Missing values are null and sort last; ties sort by NBA player ID. `as_of` selects the newest snapshot on or before that date. An unavailable snapshot returns an empty success response; there is no cross-season fallback.",
+        "operationId": "get_espn_rankings_v1_rankings_espn_get",
+        "parameters": [
+          {
+            "description": "NBA season, e.g. 2026-27; defaults to the configured active season",
+            "in": "query",
+            "name": "season",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "NBA season, e.g. 2026-27; defaults to the configured active season",
+              "title": "Season"
+            }
+          },
+          {
+            "description": "Latest snapshot on or before this date; omit for latest",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest snapshot on or before this date; omit for latest",
+              "title": "As Of"
+            }
+          },
+          {
+            "description": "Case- and accent-insensitive name search",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Case- and accent-insensitive name search",
+              "title": "Name"
+            }
+          },
+          {
+            "description": "rank/adp ascend; auction values descend; nulls last",
+            "in": "query",
+            "name": "sort_by",
+            "required": false,
+            "schema": {
+              "default": "rank",
+              "description": "rank/adp ascend; auction values descend; nulls last",
+              "enum": [
+                "rank",
+                "adp",
+                "auction_value",
+                "auction_value_avg"
+              ],
+              "title": "Sort By",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ESPNMarketResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "Get ESPN draft rankings and market values",
         "tags": [
           "Rankings"
         ]
@@ -17203,7 +18080,7 @@
     },
     "/v1/teams/{team_abbrev}/roster": {
       "get": {
-        "description": "Returns the active roster for an NBA team with per-game averages and injury status.",
+        "description": "Returns players with last known season-stat team assignments, per-game averages, and injury status. Each player's latest row is used, including inactive players. The response reports the season served; before opening night this may be the previous season. This is not an authoritative current roster feed.",
         "operationId": "get_team_roster_v1_teams__team_abbrev__roster_get",
         "parameters": [
           {
