@@ -8,7 +8,15 @@ export interface PlayerScheduleInfo {
 }
 
 export interface EnrichedRosterPlayer {
+  /** The fantasy provider's id (ESPN or Yahoo) — not an NBA player id. */
   player_id: number;
+  /**
+   * The resolved `nba.players.id`, which is what terminal panels address
+   * players by. Null when the resolution found nothing — for Yahoo that is a
+   * name shared by more than one player, which resolves to nothing rather
+   * than to a guess.
+   */
+  nba_player_id: number | null;
   name: string;
   avg_points: number;
   team: string;

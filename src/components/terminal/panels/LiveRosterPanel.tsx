@@ -297,7 +297,15 @@ export function LiveRosterPanel() {
               key={player.player_id}
               player={player}
               isActive={false}
-              onFocus={() => focusPlayer(player.live?.nba_player_id ?? player.player_id)}
+              // The roster now resolves an NBA id for every player, not only
+              // the ones with a live line — `player.live` carried one just
+              // mid-game. Provider id last, so the click still works where
+              // nothing resolved.
+              onFocus={() =>
+                focusPlayer(
+                  player.nba_player_id ?? player.live?.nba_player_id ?? player.player_id
+                )
+              }
               showShooting={isCategories}
             />
           ))

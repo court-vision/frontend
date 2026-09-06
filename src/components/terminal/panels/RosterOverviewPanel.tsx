@@ -264,7 +264,11 @@ export function RosterOverviewPanel() {
               player={player}
               statWindow={statWindow}
               isActive={false}
-              onFocus={() => focusPlayer(player.player_id)}
+              // Terminal panels address players by nba.players.id; a roster
+              // carries the fantasy provider's. Falling back to the provider
+              // id keeps the click working where the resolution found nothing,
+              // which is the behaviour this had for every player before.
+              onFocus={() => focusPlayer(player.nba_player_id ?? player.player_id)}
             />
           ))
         )}

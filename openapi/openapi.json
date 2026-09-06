@@ -1215,6 +1215,17 @@
             "title": "Name",
             "type": "string"
           },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
           "opponent": {
             "anyOf": [
               {
@@ -1241,6 +1252,7 @@
         },
         "required": [
           "player_id",
+          "nba_player_id",
           "name",
           "team",
           "position",
@@ -3930,6 +3942,17 @@
             "title": "Name",
             "type": "string"
           },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
           "player_id": {
             "title": "Player Id",
             "type": "integer"
@@ -3969,6 +3992,7 @@
         },
         "required": [
           "player_id",
+          "nba_player_id",
           "name",
           "avg_points",
           "team",
@@ -4118,112 +4142,70 @@
         "type": "object"
       },
       "GameLog": {
-        "description": "Individual game in a player's game log.",
         "properties": {
           "ast": {
-            "description": "Assists",
             "title": "Ast",
             "type": "integer"
           },
           "blk": {
-            "description": "Blocks",
             "title": "Blk",
             "type": "integer"
           },
           "date": {
-            "description": "Game date (YYYY-MM-DD)",
             "title": "Date",
             "type": "string"
           },
           "fg3a": {
-            "description": "Three-pointers attempted",
             "title": "Fg3A",
             "type": "integer"
           },
           "fg3m": {
-            "description": "Three-pointers made",
             "title": "Fg3M",
             "type": "integer"
           },
           "fga": {
-            "description": "Field goals attempted",
             "title": "Fga",
             "type": "integer"
           },
           "fgm": {
-            "description": "Field goals made",
             "title": "Fgm",
             "type": "integer"
           },
           "fpts": {
-            "description": "Fantasy points scored",
             "title": "Fpts",
             "type": "integer"
           },
           "fta": {
-            "description": "Free throws attempted",
             "title": "Fta",
             "type": "integer"
           },
           "ftm": {
-            "description": "Free throws made",
             "title": "Ftm",
             "type": "integer"
           },
-          "home": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Whether this was a home game",
-            "title": "Home"
-          },
           "min": {
-            "description": "Minutes played",
             "title": "Min",
             "type": "integer"
           },
-          "opponent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Opponent team abbreviation",
-            "title": "Opponent"
-          },
           "pts": {
-            "description": "Points",
             "title": "Pts",
             "type": "integer"
           },
           "reb": {
-            "description": "Rebounds",
             "title": "Reb",
             "type": "integer"
           },
           "stl": {
-            "description": "Steals",
             "title": "Stl",
             "type": "integer"
           },
           "tov": {
-            "description": "Turnovers",
             "title": "Tov",
             "type": "integer"
           }
         },
         "required": [
           "date",
-          "opponent",
-          "home",
           "fpts",
           "pts",
           "reb",
@@ -5781,6 +5763,17 @@
             "title": "Name",
             "type": "string"
           },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
           "player_id": {
             "title": "Player Id",
             "type": "integer"
@@ -5800,6 +5793,7 @@
         },
         "required": [
           "player_id",
+          "nba_player_id",
           "name",
           "team",
           "position",
@@ -6389,6 +6383,17 @@
             "title": "Name",
             "type": "string"
           },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
           "player_id": {
             "title": "Player Id",
             "type": "integer"
@@ -6408,6 +6413,7 @@
         },
         "required": [
           "player_id",
+          "nba_player_id",
           "name",
           "team",
           "position",
@@ -8318,7 +8324,7 @@
           "games": {
             "description": "List of games",
             "items": {
-              "$ref": "#/components/schemas/GameLog"
+              "$ref": "#/components/schemas/schemas__player_games__GameLog"
             },
             "title": "Games",
             "type": "array"
@@ -8947,7 +8953,7 @@
           },
           "game_logs": {
             "items": {
-              "$ref": "#/components/schemas/schemas__player__GameLog"
+              "$ref": "#/components/schemas/GameLog"
             },
             "title": "Game Logs",
             "type": "array"
@@ -12664,71 +12670,113 @@
         "title": "YahooTeamsResponse",
         "type": "object"
       },
-      "schemas__player__GameLog": {
+      "schemas__player_games__GameLog": {
+        "description": "Individual game in a player's game log.",
         "properties": {
           "ast": {
+            "description": "Assists",
             "title": "Ast",
             "type": "integer"
           },
           "blk": {
+            "description": "Blocks",
             "title": "Blk",
             "type": "integer"
           },
           "date": {
+            "description": "Game date (YYYY-MM-DD)",
             "title": "Date",
             "type": "string"
           },
           "fg3a": {
+            "description": "Three-pointers attempted",
             "title": "Fg3A",
             "type": "integer"
           },
           "fg3m": {
+            "description": "Three-pointers made",
             "title": "Fg3M",
             "type": "integer"
           },
           "fga": {
+            "description": "Field goals attempted",
             "title": "Fga",
             "type": "integer"
           },
           "fgm": {
+            "description": "Field goals made",
             "title": "Fgm",
             "type": "integer"
           },
           "fpts": {
+            "description": "Fantasy points scored",
             "title": "Fpts",
             "type": "integer"
           },
           "fta": {
+            "description": "Free throws attempted",
             "title": "Fta",
             "type": "integer"
           },
           "ftm": {
+            "description": "Free throws made",
             "title": "Ftm",
             "type": "integer"
           },
+          "home": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether this was a home game",
+            "title": "Home"
+          },
           "min": {
+            "description": "Minutes played",
             "title": "Min",
             "type": "integer"
           },
+          "opponent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opponent team abbreviation",
+            "title": "Opponent"
+          },
           "pts": {
+            "description": "Points",
             "title": "Pts",
             "type": "integer"
           },
           "reb": {
+            "description": "Rebounds",
             "title": "Reb",
             "type": "integer"
           },
           "stl": {
+            "description": "Steals",
             "title": "Stl",
             "type": "integer"
           },
           "tov": {
+            "description": "Turnovers",
             "title": "Tov",
             "type": "integer"
           }
         },
         "required": [
           "date",
+          "opponent",
+          "home",
           "fpts",
           "pts",
           "reb",
