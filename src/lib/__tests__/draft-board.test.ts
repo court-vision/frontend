@@ -93,6 +93,7 @@ function meta(overrides: Partial<DraftBoardMeta> = {}): DraftBoardMeta {
     category_need: [],
     pace_source: null,
     seats_drafted: 0,
+    congestion: null,
     settings_synced: true,
     unsupported: [],
     ...overrides,
