@@ -8,13 +8,15 @@ name: OpenAPI Drift
 #   (in backend)   .venv/bin/python scripts/export_openapi.py > ../frontend/openapi/openapi.json
 #   (in frontend)  bun run generate:api    # then fix whatever the typecheck surfaces
 #
-# Transient drift is expected in the window between a backend schema change
-# merging and its nightly deploy reaching production — re-run the next day
-# before treating it as real. No secrets: /openapi.json is public.
+# Since 2026-09-06 Railway deploys production on any push/merge to main, so a
+# backend schema change reaches production within minutes of merging and the
+# frontend regen should follow it straight away. There is no longer a nightly
+# window to wait out, so a failure here is a real mismatch rather than a deploy
+# lag. No secrets: /openapi.json is public.
 
 on:
   schedule:
-    - cron: "30 8 * * *" # daily, after the nightly deploy window (08:00 UTC)
+    - cron: "30 8 * * *" # daily; the hour is historical — deploys are no longer batched
   workflow_dispatch:
 
 jobs:
