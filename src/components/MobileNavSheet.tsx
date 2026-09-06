@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
 import { cn } from "@/lib/utils";
-import { MOBILE_NAV, altShortcutLabel } from "@/lib/navigation";
+import { MOBILE_NAV } from "@/lib/navigation";
 import { TeamDropdown } from "@/components/teams-components/TeamDropdown";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
@@ -37,7 +37,6 @@ export function MobileNavSheet({ open, onOpenChange }: MobileNavSheetProps) {
           {MOBILE_NAV.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
-            const shortcut = altShortcutLabel(item);
             return (
               <SheetClose key={item.href} asChild>
                 <Link
@@ -50,9 +49,6 @@ export function MobileNavSheet({ open, onOpenChange }: MobileNavSheetProps) {
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0" />
                   <span className="flex-1">{item.mobileLabel ?? item.label}</span>
-                  {shortcut && (
-                    <span className="text-[9px] font-mono text-muted-foreground/50">{shortcut}</span>
-                  )}
                 </Link>
               </SheetClose>
             );

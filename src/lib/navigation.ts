@@ -2,10 +2,9 @@
  * Single source of truth for app navigation: nav bar tabs, phone tab bar,
  * mobile sheet, command-palette entries, keyboard shortcuts, and page slide order.
  *
- * ⌥1–7 mirror the desktop tab order (Draft sits between Rankings and
- * Playoffs on ⌘D alone — every ⌥ digit is taken); ⌥8/⌥9 reach
- * Lineups/Streamers, which have no desktop tab. ⌘-letter shortcuts are
- * letters only (⌘1-9 collides with browser tab switching).
+ * ⌥1–⌥8 mirror the desktop tab order; ⌥9/⌥0 reach Lineups/Streamers,
+ * which have no desktop tab. ⌘-letter shortcuts are letters only (⌘1-9
+ * collides with browser tab switching).
  */
 
 import type { LucideIcon } from "lucide-react";
@@ -109,6 +108,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: ClipboardList,
     description: "Draft-day board, recommendations and pick tracking",
     keywords: ["draft", "draft lab", "board", "adp", "picks", "draft day"],
+    altDigit: 5,
     cmdKey: "d",
     desktop: true,
     mobile: true,
@@ -120,7 +120,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Medal,
     description: "NBA playoff bracket and series",
     keywords: ["playoffs", "bracket", "series", "postseason"],
-    altDigit: 5,
+    altDigit: 6,
     desktop: true,
     mobile: true,
     palette: true,
@@ -131,7 +131,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Terminal,
     description: "Open the analytics terminal",
     keywords: ["terminal", "command bar", "search", "analytics"],
-    altDigit: 6,
+    altDigit: 7,
     desktop: true,
     mobile: true,
     palette: true,
@@ -144,7 +144,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Database,
     description: "Open the SQL query builder",
     keywords: ["query", "sql", "database", "builder", "sqlmate"],
-    altDigit: 7,
+    altDigit: 8,
     desktop: true,
     mobile: true,
     palette: true,
@@ -157,7 +157,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Zap,
     description: "Generate optimized lineups",
     keywords: ["generate", "lineup", "optimize", "auto"],
-    altDigit: 8,
+    altDigit: 9,
     cmdKey: "g",
     mobile: true,
     palette: true,
@@ -168,7 +168,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: UserPlus,
     description: "View the streamers for the week",
     keywords: ["streamers", "stream", "week", "free agents", "pickups"],
-    altDigit: 9,
+    altDigit: 0,
     cmdKey: "s",
     mobile: true,
     palette: true,
