@@ -129,6 +129,8 @@ export function CreateSessionDialog() {
   function reset() {
     setName("");
     setTeamValue(selectedTeamId !== null ? String(selectedTeamId) : NO_TEAM);
+    const selected = teams.find((t) => t.team_id === selectedTeamId);
+    setSource(selected?.league_info?.provider === "espn" ? "live" : "mock");
     setDraftType("");
     setMySlot("");
     setRounds("");

@@ -295,7 +295,7 @@ describe("canDraft", () => {
   test("every reason has a label", () => {
     const reasons = [
       "no-write", "not-connected", "no-room", "unlinked", "room-closed", "sse", "paused",
-      "mismatch", "reset", "pending", "no-team", "not-on-clock", "clock-stale",
+      "mismatch", "reset", "draft-over", "pending", "no-team", "not-on-clock", "clock-stale",
     ] as const;
     for (const r of reasons) expect(canDraftLabel(r).length).toBeGreaterThan(0);
   });
@@ -506,5 +506,17 @@ describe("ESPN's observed refusals reach the user verbatim", () => {
   test("a capped player", () => {
     const { state } = run([frameRec("ERROR 1 Invalid+Selection.")], CTX(), sent(onClock(liveState())));
     expect(sendFailureMessage("espn-error", state.lastSend?.detail)).toBe("ESPN refused the pick: Invalid Selection.");
+  });
+});
+
+describe("once ESPN says the draft is over", () => {
+  test("nothing can be sent, even if the session is still active and a SELECTING was seen", () => {
+    let s = onClock(liveState());
+    s = run([frameRec("STATE 2")], CTX(), s).state;
+    expect(s.onClock).toBeNull();
+    expect(reasonOf(s)).toBe("draft-over");
+    // A late SELECTING does not reopen the gate: the state code wins.
+    s = run([frameRec("SELECTING 3 30000")], CTX(), s).state;
+    expect(reasonOf(s)).toBe("draft-over");
   });
 });

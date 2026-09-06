@@ -351,7 +351,12 @@ function applyRecord(
       ) {
         effects.push({ kind: "complete" });
       }
-      return { ...withTime, draftState: frame.draftState };
+      // Over means nobody is on the clock, whatever the last SELECTING said.
+      return {
+        ...withTime,
+        draftState: frame.draftState,
+        onClock: frame.draftState === ESPN_AFTER_DRAFT ? null : withTime.onClock,
+      };
     }
     case "ERROR":
       // ESPN refuses out loud only in answer to something; while nothing is
@@ -488,6 +493,7 @@ export type DraftGateReason =
   | "paused"
   | "mismatch"
   | "reset"
+  | "draft-over"
   | "pending"
   | "no-team"
   | "not-on-clock"
@@ -518,6 +524,7 @@ export function canDraft(state: SyncState, paused: boolean, now: number): DraftG
   if (paused) return no("paused");
   if (state.mismatch) return no("mismatch");
   if (state.reset) return no("reset");
+  if (state.draftState === ESPN_AFTER_DRAFT) return no("draft-over");
   if (state.pending) return no("pending");
   if (state.myTeamId == null) return no("no-team");
   if (!state.onClock || state.onClock.teamId !== state.myTeamId) return no("not-on-clock");
@@ -546,6 +553,8 @@ export function canDraftLabel(reason: DraftGateReason): string {
       return "The ESPN room is a different league";
     case "reset":
       return "ESPN reset the draft";
+    case "draft-over":
+      return "The draft is over";
     case "pending":
       return "A pick is already on its way to ESPN";
     case "no-team":

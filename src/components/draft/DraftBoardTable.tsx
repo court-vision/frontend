@@ -133,7 +133,7 @@ export function DraftBoardTable({
     const target = row.getBoundingClientRect();
     if (target.top < bounds.top) list.scrollTop -= bounds.top - target.top;
     else if (target.bottom > bounds.bottom) list.scrollTop += target.bottom - bounds.bottom;
-  }, [interactive, highlightId, search]);
+  }, [interactive, highlightId, search, sortKey, sortDirection, positionFilter, hideCapped]);
 
   const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
