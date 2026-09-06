@@ -8995,7 +8995,7 @@
           },
           "game_logs": {
             "items": {
-              "$ref": "#/components/schemas/schemas__player__GameLog"
+              "$ref": "#/components/schemas/PlayerStatsGameLog"
             },
             "title": "Game Logs",
             "type": "array"
@@ -9037,6 +9037,90 @@
           "game_logs"
         ],
         "title": "PlayerStats",
+        "type": "object"
+      },
+      "PlayerStatsGameLog": {
+        "description": "One game in the log on a player's stats response.",
+        "properties": {
+          "ast": {
+            "title": "Ast",
+            "type": "integer"
+          },
+          "blk": {
+            "title": "Blk",
+            "type": "integer"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "fg3a": {
+            "title": "Fg3A",
+            "type": "integer"
+          },
+          "fg3m": {
+            "title": "Fg3M",
+            "type": "integer"
+          },
+          "fga": {
+            "title": "Fga",
+            "type": "integer"
+          },
+          "fgm": {
+            "title": "Fgm",
+            "type": "integer"
+          },
+          "fpts": {
+            "title": "Fpts",
+            "type": "integer"
+          },
+          "fta": {
+            "title": "Fta",
+            "type": "integer"
+          },
+          "ftm": {
+            "title": "Ftm",
+            "type": "integer"
+          },
+          "min": {
+            "title": "Min",
+            "type": "integer"
+          },
+          "pts": {
+            "title": "Pts",
+            "type": "integer"
+          },
+          "reb": {
+            "title": "Reb",
+            "type": "integer"
+          },
+          "stl": {
+            "title": "Stl",
+            "type": "integer"
+          },
+          "tov": {
+            "title": "Tov",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "fpts",
+          "pts",
+          "reb",
+          "ast",
+          "stl",
+          "blk",
+          "tov",
+          "min",
+          "fgm",
+          "fga",
+          "fg3m",
+          "fg3a",
+          "ftm",
+          "fta"
+        ],
+        "title": "PlayerStatsGameLog",
         "type": "object"
       },
       "PlayerStatsResp": {
@@ -12710,89 +12794,6 @@
           "teams"
         ],
         "title": "YahooTeamsResponse",
-        "type": "object"
-      },
-      "schemas__player__GameLog": {
-        "properties": {
-          "ast": {
-            "title": "Ast",
-            "type": "integer"
-          },
-          "blk": {
-            "title": "Blk",
-            "type": "integer"
-          },
-          "date": {
-            "title": "Date",
-            "type": "string"
-          },
-          "fg3a": {
-            "title": "Fg3A",
-            "type": "integer"
-          },
-          "fg3m": {
-            "title": "Fg3M",
-            "type": "integer"
-          },
-          "fga": {
-            "title": "Fga",
-            "type": "integer"
-          },
-          "fgm": {
-            "title": "Fgm",
-            "type": "integer"
-          },
-          "fpts": {
-            "title": "Fpts",
-            "type": "integer"
-          },
-          "fta": {
-            "title": "Fta",
-            "type": "integer"
-          },
-          "ftm": {
-            "title": "Ftm",
-            "type": "integer"
-          },
-          "min": {
-            "title": "Min",
-            "type": "integer"
-          },
-          "pts": {
-            "title": "Pts",
-            "type": "integer"
-          },
-          "reb": {
-            "title": "Reb",
-            "type": "integer"
-          },
-          "stl": {
-            "title": "Stl",
-            "type": "integer"
-          },
-          "tov": {
-            "title": "Tov",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "date",
-          "fpts",
-          "pts",
-          "reb",
-          "ast",
-          "stl",
-          "blk",
-          "tov",
-          "min",
-          "fgm",
-          "fga",
-          "fg3m",
-          "fg3a",
-          "ftm",
-          "fta"
-        ],
-        "title": "GameLog",
         "type": "object"
       }
     },
