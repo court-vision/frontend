@@ -2412,6 +2412,134 @@
         "title": "DraftCongestionResp",
         "type": "object"
       },
+      "DraftImportResp": {
+        "properties": {
+          "conflicts": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DraftSyncConflict"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "draft_type": {
+            "enum": [
+              "snake",
+              "auction"
+            ],
+            "title": "Draft Type",
+            "type": "string"
+          },
+          "espn_league_id": {
+            "title": "Espn League Id",
+            "type": "integer"
+          },
+          "espn_team_id": {
+            "description": "The session team's ESPN team id \u2014 what `by_me` is counted against",
+            "title": "Espn Team Id",
+            "type": "integer"
+          },
+          "header_applied": {
+            "description": "Whether pick order / slot / rounds / type were written from ESPN (only on an empty session)",
+            "title": "Header Applied",
+            "type": "boolean"
+          },
+          "inserted": {
+            "description": "Picks newly recorded from this import",
+            "title": "Inserted",
+            "type": "integer"
+          },
+          "made": {
+            "description": "Picks in the completed ESPN draft",
+            "title": "Made",
+            "type": "integer"
+          },
+          "session": {
+            "$ref": "#/components/schemas/DraftSessionResp"
+          },
+          "skipped": {
+            "description": "Picks the session already held (a re-import)",
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "warnings": {
+            "default": [],
+            "description": "Header disagreements on a session that already has picks (not applied)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "session",
+          "espn_league_id",
+          "espn_team_id",
+          "draft_type",
+          "made",
+          "inserted",
+          "skipped",
+          "conflicts",
+          "warnings",
+          "header_applied"
+        ],
+        "title": "DraftImportResp",
+        "type": "object"
+      },
+      "DraftImportResponse": {
+        "description": "What the import recorded, in the shape `sync/init` reports.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftImportResp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DraftImportResponse",
+        "type": "object"
+      },
       "DraftInitSyncRequest": {
         "description": "The base64 body of the ESPN draft room's `INIT <base64>` frame.\n\nThe room posts it on every connect, so this endpoint is idempotent: picks it\nalready holds are skipped, not re-recorded.",
         "properties": {
@@ -3056,6 +3184,86 @@
           "timestamp"
         ],
         "title": "DraftPickResponse",
+        "type": "object"
+      },
+      "DraftRecapResp": {
+        "description": "The finished draft: every pick priced, every seat graded, standings projected.",
+        "properties": {
+          "data": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecapPickResp"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecapMeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seats": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecapSeatResp"
+            },
+            "title": "Seats",
+            "type": "array"
+          },
+          "standings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecapStandingResp"
+            },
+            "title": "Standings",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp",
+          "seats",
+          "standings",
+          "meta"
+        ],
+        "title": "DraftRecapResp",
         "type": "object"
       },
       "DraftRecommendation": {
@@ -10745,6 +10953,650 @@
         "title": "RankingsScoring",
         "type": "object"
       },
+      "RecapCategoryLine": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "number"
+          },
+          "roto_points": {
+            "title": "Roto Points",
+            "type": "number"
+          },
+          "z_sum": {
+            "description": "Summed per-category z of everyone the seat drafted",
+            "title": "Z Sum",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "z_sum",
+          "rank",
+          "roto_points"
+        ],
+        "title": "RecapCategoryLine",
+        "type": "object"
+      },
+      "RecapH2HCell": {
+        "properties": {
+          "lost": {
+            "title": "Lost",
+            "type": "number"
+          },
+          "opponent_slot": {
+            "title": "Opponent Slot",
+            "type": "integer"
+          },
+          "tied": {
+            "title": "Tied",
+            "type": "number"
+          },
+          "won": {
+            "title": "Won",
+            "type": "number"
+          }
+        },
+        "required": [
+          "opponent_slot",
+          "won",
+          "lost",
+          "tied"
+        ],
+        "title": "RecapH2HCell",
+        "type": "object"
+      },
+      "RecapMeta": {
+        "properties": {
+          "categories": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CategoryDefResp"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "complete": {
+            "description": "Whether every pick in the draft has been recorded",
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "draft_type": {
+            "enum": [
+              "snake",
+              "auction"
+            ],
+            "title": "Draft Type",
+            "type": "string"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "graded_by": {
+            "description": "What the seat grades rank on. An auction has no value ladder to price picks against.",
+            "enum": [
+              "value_over_slot",
+              "value"
+            ],
+            "title": "Graded By",
+            "type": "string"
+          },
+          "league_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Size"
+          },
+          "market_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market As Of"
+          },
+          "my_slot": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Slot"
+          },
+          "picks_made": {
+            "title": "Picks Made",
+            "type": "integer"
+          },
+          "projections_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projections As Of"
+          },
+          "rounds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rounds"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "standings_basis": {
+            "description": "Category standings sum per-player z; they approximate a roto finish, they do not simulate a season.",
+            "enum": [
+              "z_sum",
+              "season_value"
+            ],
+            "title": "Standings Basis",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "completed",
+              "abandoned"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "total_picks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Picks"
+          },
+          "unattributed": {
+            "description": "Picks with no seat \u2014 a room that never learned its pick order",
+            "title": "Unattributed",
+            "type": "integer"
+          },
+          "unscored": {
+            "description": "Picks nothing could value",
+            "title": "Unscored",
+            "type": "integer"
+          },
+          "value_kind": {
+            "enum": [
+              "fpts",
+              "cat_value"
+            ],
+            "title": "Value Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "value_kind",
+          "graded_by",
+          "standings_basis",
+          "session_id",
+          "status",
+          "complete",
+          "picks_made",
+          "total_picks",
+          "unscored",
+          "unattributed",
+          "league_size",
+          "rounds",
+          "my_slot",
+          "draft_type",
+          "categories",
+          "projections_as_of",
+          "market_as_of"
+        ],
+        "title": "RecapMeta",
+        "type": "object"
+      },
+      "RecapPickResp": {
+        "description": "One pick, priced against the board CV would have drafted from.",
+        "properties": {
+          "adp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adp"
+          },
+          "bid": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bid"
+          },
+          "by_me": {
+            "default": false,
+            "title": "By Me",
+            "type": "boolean"
+          },
+          "cv_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cv Rank"
+          },
+          "espn_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Player Id"
+          },
+          "market_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Rank"
+          },
+          "overall_pick": {
+            "title": "Overall Pick",
+            "type": "integer"
+          },
+          "player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Id"
+          },
+          "player_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Name"
+          },
+          "round": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round"
+          },
+          "slot": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Seat that made the pick (index into `pick_order`)",
+            "title": "Slot"
+          },
+          "source": {
+            "enum": [
+              "manual",
+              "espn_sync",
+              "import",
+              "keeper",
+              "mock"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "surplus_cv": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "cv_rank \u2212 overall_pick; positive = taken later than his rank",
+            "title": "Surplus Cv"
+          },
+          "surplus_market": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "adp \u2212 overall_pick; positive = later than ESPN's crowd",
+            "title": "Surplus Market"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "League-scored value; null for a pick nothing can score",
+            "title": "Value"
+          },
+          "value_over_slot": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "value(player) \u2212 value(the cv-ranked player at this pick number); null in an auction",
+            "title": "Value Over Slot"
+          }
+        },
+        "required": [
+          "overall_pick",
+          "round",
+          "slot",
+          "by_me",
+          "source",
+          "player_id",
+          "espn_player_id",
+          "player_name",
+          "team",
+          "value",
+          "cv_rank",
+          "market_rank",
+          "adp",
+          "surplus_cv",
+          "surplus_market",
+          "value_over_slot",
+          "bid"
+        ],
+        "title": "RecapPickResp",
+        "type": "object"
+      },
+      "RecapSeatResp": {
+        "description": "One seat's draft, graded against the other seats in the same room.",
+        "properties": {
+          "best_pick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Pick"
+          },
+          "espn_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Team Id"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Relative letter A\u2013F; a four-seat league tops out at D",
+            "title": "Grade"
+          },
+          "is_me": {
+            "default": false,
+            "title": "Is Me",
+            "type": "boolean"
+          },
+          "picks": {
+            "title": "Picks",
+            "type": "integer"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rank among the seats, ties sharing the average position",
+            "title": "Position"
+          },
+          "slot": {
+            "title": "Slot",
+            "type": "integer"
+          },
+          "total_value": {
+            "title": "Total Value",
+            "type": "number"
+          },
+          "unscored": {
+            "description": "Picks with no value to price \u2014 listed in `picks`, left out of the sums",
+            "title": "Unscored",
+            "type": "integer"
+          },
+          "value_over_slot": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\u03a3 over the seat's priced picks; null in an auction",
+            "title": "Value Over Slot"
+          },
+          "worst_pick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worst Pick"
+          }
+        },
+        "required": [
+          "slot",
+          "espn_team_id",
+          "is_me",
+          "picks",
+          "unscored",
+          "total_value",
+          "value_over_slot",
+          "grade",
+          "position",
+          "best_pick",
+          "worst_pick"
+        ],
+        "title": "RecapSeatResp",
+        "type": "object"
+      },
+      "RecapStandingResp": {
+        "description": "Where a seat's drafted roster projects to finish.",
+        "properties": {
+          "categories": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecapCategoryLine"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "expected_wins": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Categories won in an average matchup; a tie counts half",
+            "title": "Expected Wins"
+          },
+          "h2h": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecapH2HCell"
+            },
+            "title": "H2H",
+            "type": "array"
+          },
+          "roto_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roto Points"
+          },
+          "roto_rank": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roto Rank"
+          },
+          "season_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Points leagues: \u03a3 value \u00d7 projected games",
+            "title": "Season Value"
+          },
+          "slot": {
+            "title": "Slot",
+            "type": "integer"
+          },
+          "value_rank": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Rank"
+          }
+        },
+        "required": [
+          "slot",
+          "categories",
+          "roto_points",
+          "roto_rank",
+          "season_value",
+          "value_rank",
+          "expected_wins",
+          "h2h"
+        ],
+        "title": "RecapStandingResp",
+        "type": "object"
+      },
       "RecommendationComponent": {
         "description": "One visible term of a recommendation score, in season-value points.",
         "properties": {
@@ -14214,6 +15066,66 @@
         ]
       }
     },
+    "/v1/internal/drafts/{session_id}/import": {
+      "post": {
+        "description": "Records a completed ESPN draft into this session, so a draft run without the room still gets a recap.\n\nOnly after the fact: ESPN writes the picks into `mDraftDetail` when the draft completes, atomically with its `drafted` flag, and shows every slot empty until then \u2014 an unfinished draft answers 409 `DRAFT_NOT_COMPLETE` rather than importing a skeleton. While a draft is running, the tap (`/sync/init` plus live picks) is what tracks it.\n\nAn empty session takes its pick order, slot, length and type from the draft; one that already holds picks keeps its own and reports the disagreements as `warnings`. Picks are recorded `source: import` (ESPN's keepers as `keeper`), and `by_me` is the team whose name matches the session team's.\n\nIdempotent: re-importing skips every pick already held and reports any that disagree instead of overwriting them. The session is marked completed either way.",
+        "operationId": "import_draft_v1_internal_drafts__session_id__import_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftImportResponse"
+                }
+              }
+            },
+            "description": "Imported \u2014 see `inserted`, `skipped`, `conflicts`, `header_applied`"
+          },
+          "400": {
+            "description": "The room has no team, the provider is not ESPN, or the team is not in the league"
+          },
+          "401": {
+            "description": "The stored ESPN credentials were rejected"
+          },
+          "404": {
+            "description": "No such session, or it does not belong to the caller"
+          },
+          "409": {
+            "description": "The draft has not finished, the room is simulated, or it follows a different ESPN draft"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import a finished ESPN draft",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
     "/v1/internal/drafts/{session_id}/mock/advance": {
       "post": {
         "description": "Plays the draft forward from where it stands. `until: my_turn` runs the other seats up to \u2014 not including \u2014 your next pick, so the room lands on the clock with the board already scored; with no turn of yours left it runs to the end, which is how a mock finishes on that button alone. `until: end` runs every remaining pick, yours included, and completes the session.\n\nEach seat takes the best available by ADP (ESPN's editorial rank where there is no ADP), with a small preference for reaching a few names down the board, and never past a hard position cap \u2014 if every remaining player would break the caps of the seat on the clock, the run stops and says so rather than breaching one. There is no roster-need modelling: the other seats are a clock, not opponents, and neither is your own seat under `end`. Stop at your turn and read the board if you want the pick made well.\n\nDeterministic: every pick is seeded from `(session_id, overall_pick)`, so advancing a room turn by turn produces exactly the draft advancing it in one call would, and a mock replays identically. A different room drafts differently, on purpose.\n\nMock rooms only, and only ones following nothing. A manual or live room is tracking a real draft, and a mock room already linked to an ESPN lobby takes its picks from there \u2014 simulating over either would be fiction. Picks are recorded `source: mock` and undo one by one like any other.\n\nBefore ESPN publishes a market snapshot for the season the seats fall back to CV value and the response says so (`fallback`).",
@@ -14389,6 +15301,57 @@
           }
         ],
         "summary": "Undo a pick",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/drafts/{session_id}/recap": {
+      "get": {
+        "description": "The session's own picks, priced against the board they were drafted from \u2014 however they were recorded (by hand, from a live ESPN room, from an import, or by the autopicker).\n\nEach pick carries `value_over_slot`: what the player was worth against the player CV ranked at that pick number. `surplus_cv` and `surplus_market` say the same in rank terms, against our board and against ESPN's ADP.\n\nSeats are graded A\u2013F on the sum of their picks' `value_over_slot`, **ranked against the other seats in this room only** \u2014 a grade says who drafted best here, not how the room compares to any other league. An auction has no value ladder to price a pick number against, so those rooms grade on total value instead (`meta.graded_by`).\n\nCategory leagues also project the standings: each seat's per-category z-sum ranked into roto points, plus the categories it would win against every other seat. That is an approximation from the draft, not a season simulation (`meta.standings_basis`). Points leagues get projected season value per seat.\n\nA pick whose player never resolved, or who has no line to value, is listed with a null `value` and left out of its seat's sums \u2014 never dropped, and never charged to the seat.\n\nAvailable before a draft finishes as well: `meta.complete` and `picks_made` say how far it got.",
+        "operationId": "get_draft_recap_v1_internal_drafts__session_id__recap_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftRecapResp"
+                }
+              }
+            },
+            "description": "Recap built (empty data with a message when the room has no picks)"
+          },
+          "404": {
+            "description": "No such session, or it does not belong to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Grade a finished draft",
         "tags": [
           "Drafts"
         ]
