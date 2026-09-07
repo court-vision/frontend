@@ -96,6 +96,15 @@ import type {
 } from "@/types/notifications";
 import type { TeamInsightsData, TeamInsightsResponse } from "@/types/team-insights";
 import type {
+  ApplyLineupMovesData,
+  ApplyLineupMovesRequest,
+  ApplyLineupMovesResponse,
+  LineupPlanData,
+  LineupPlanResponse,
+  LineupState,
+  LineupStateResponse,
+} from "@/types/lineup-editor";
+import type {
   DraftBoardMeta,
   DraftBoardResult,
   DraftBoardRow,
@@ -115,6 +124,8 @@ import type {
 const LINEUP_GENERATION_TIMEOUT_MS = 100_000;
 /** Streamer search fans out to the league provider for the free-agent pool. */
 const STREAMERS_TIMEOUT_MS = 30_000;
+/** A lineup write goes to ESPN and re-reads the roster before answering. */
+const LINEUP_WRITE_TIMEOUT_MS = 45_000;
 
 /**
  * Every method is one of three shapes:
@@ -220,6 +231,50 @@ class ApiClient {
       method: "POST",
       raw: true,
     });
+  }
+
+  // Today's ESPN lineup (manual editor). Yahoo teams answer 200 with `data: null`.
+  async getTeamLineup(
+    getToken: GetTokenFn,
+    teamId: number,
+    opts?: RequestOptions
+  ): Promise<LineupState | null> {
+    const env = await fetchJson<LineupStateResponse>(`${TEAMS_API}/${teamId}/lineup`, {
+      ...opts,
+      getToken,
+    });
+    return unwrap(env, null);
+  }
+
+  /** The fill-only moves Court Vision would make today. Never writes. */
+  async getTeamLineupPlan(
+    getToken: GetTokenFn,
+    teamId: number,
+    opts?: RequestOptions
+  ): Promise<LineupPlanData> {
+    const env = await fetchJson<LineupPlanResponse>(`${TEAMS_API}/${teamId}/lineup/plan`, {
+      ...opts,
+      getToken,
+    });
+    return unwrap(env);
+  }
+
+  /**
+   * Send slot moves to ESPN as one transaction. Deliberately NOT `raw`: the
+   * route answers 403/409/422/503 for real (ROSTER_STALE hands back the fresh
+   * board in `data.lineup`) and the mutation reads those as rejections. The
+   * write proxies to ESPN and re-reads the roster, hence the long timeout.
+   */
+  async applyLineupMoves(
+    getToken: GetTokenFn,
+    teamId: number,
+    body: ApplyLineupMovesRequest
+  ): Promise<ApplyLineupMovesData> {
+    const env = await fetchJson<ApplyLineupMovesResponse>(
+      `${TEAMS_API}/${teamId}/lineup/moves`,
+      { getToken, method: "POST", body, timeoutMs: LINEUP_WRITE_TIMEOUT_MS }
+    );
+    return unwrap(env);
   }
 
   // Lineups API - calls backend directly

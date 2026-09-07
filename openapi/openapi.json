@@ -315,6 +315,126 @@
         "title": "ApiStatus",
         "type": "string"
       },
+      "ApplyLineupMovesData": {
+        "properties": {
+          "applied_moves": {
+            "items": {
+              "$ref": "#/components/schemas/LineupMoveResult"
+            },
+            "title": "Applied Moves",
+            "type": "array"
+          },
+          "audit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Id"
+          },
+          "lineup": {
+            "$ref": "#/components/schemas/LineupState"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lineup",
+          "applied_moves",
+          "verified",
+          "audit_id"
+        ],
+        "title": "ApplyLineupMovesData",
+        "type": "object"
+      },
+      "ApplyLineupMovesReq": {
+        "properties": {
+          "expected_scoring_period_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Expected Scoring Period Id",
+            "type": "integer"
+          },
+          "moves": {
+            "items": {
+              "$ref": "#/components/schemas/LineupMoveReq"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Moves",
+            "type": "array"
+          },
+          "roster_version": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Roster Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "moves",
+          "expected_scoring_period_id",
+          "roster_version"
+        ],
+        "title": "ApplyLineupMovesReq",
+        "type": "object"
+      },
+      "ApplyLineupMovesResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApplyLineupMovesData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "ApplyLineupMovesResp",
+        "type": "object"
+      },
       "AvgStats": {
         "properties": {
           "avg_assists": {
@@ -5141,6 +5261,17 @@
             "default": "",
             "title": "Espn S2"
           },
+          "espn_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Team Id"
+          },
           "league_id": {
             "description": "League ID must be positive",
             "minimum": 1.0,
@@ -5271,6 +5402,17 @@
       "LeagueInfoPublic": {
         "description": "What a client is allowed to see about a stored team.\n\nDeliberately a separate model rather than `LeagueInfo` with fields excluded:\na model that cannot *represent* a credential cannot leak one, however it is\nconstructed. `LeagueInfo` stays the internal working object that carries\nsecrets to the provider services.\n\n`yahoo_team_key` is here because it identifies a team, not because it grants\nanything \u2014 it is useless without a token.",
         "properties": {
+          "espn_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Team Id"
+          },
           "has_espn_credentials": {
             "default": false,
             "title": "Has Espn Credentials",
@@ -5343,6 +5485,7 @@
           "league_name",
           "year",
           "yahoo_team_key",
+          "espn_team_id",
           "scoring_preview",
           "has_espn_credentials",
           "has_yahoo_credentials"
@@ -5724,6 +5867,206 @@
         "title": "LineupCheckResponse",
         "type": "object"
       },
+      "LineupEvaluateReq": {
+        "properties": {
+          "apply": {
+            "default": false,
+            "title": "Apply",
+            "type": "boolean"
+          },
+          "nba_date": {
+            "format": "date",
+            "title": "Nba Date",
+            "type": "string"
+          },
+          "team_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "user_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "team_id",
+          "user_id",
+          "nba_date"
+        ],
+        "title": "LineupEvaluateReq",
+        "type": "object"
+      },
+      "LineupEvaluationData": {
+        "properties": {
+          "audit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Id"
+          },
+          "first_game_time_et": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Game Time Et"
+          },
+          "moves": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineupMoveResult"
+            },
+            "title": "Moves",
+            "type": "array"
+          },
+          "nba_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Date"
+          },
+          "outcome": {
+            "enum": [
+              "planned",
+              "applied",
+              "noop",
+              "rejected",
+              "failed",
+              "skipped"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "scoring_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Period Id"
+          },
+          "team_name": {
+            "default": "",
+            "title": "Team Name",
+            "type": "string"
+          },
+          "unfilled": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineupUnfilled"
+            },
+            "title": "Unfilled",
+            "type": "array"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified"
+          }
+        },
+        "required": [
+          "outcome",
+          "reason",
+          "moves",
+          "unfilled",
+          "verified",
+          "scoring_period_id",
+          "nba_date",
+          "first_game_time_et",
+          "team_name",
+          "audit_id"
+        ],
+        "title": "LineupEvaluationData",
+        "type": "object"
+      },
+      "LineupEvaluationResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LineupEvaluationData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "LineupEvaluationResp",
+        "type": "object"
+      },
       "LineupInfo-Input": {
         "properties": {
           "Id": {
@@ -5883,6 +6226,368 @@
         "title": "LineupIssueResp",
         "type": "object"
       },
+      "LineupMoveReq": {
+        "properties": {
+          "from_slot_id": {
+            "maximum": 15.0,
+            "minimum": 0.0,
+            "title": "From Slot Id",
+            "type": "integer"
+          },
+          "player_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "to_slot_id": {
+            "maximum": 15.0,
+            "minimum": 0.0,
+            "title": "To Slot Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "from_slot_id",
+          "to_slot_id"
+        ],
+        "title": "LineupMoveReq",
+        "type": "object"
+      },
+      "LineupMoveResult": {
+        "properties": {
+          "from_slot": {
+            "title": "From Slot",
+            "type": "string"
+          },
+          "from_slot_id": {
+            "title": "From Slot Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "role": {
+            "default": "shift",
+            "enum": [
+              "start",
+              "bench",
+              "shift"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "to_slot": {
+            "title": "To Slot",
+            "type": "string"
+          },
+          "to_slot_id": {
+            "title": "To Slot Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "from_slot_id",
+          "from_slot",
+          "to_slot_id",
+          "to_slot",
+          "role",
+          "note"
+        ],
+        "title": "LineupMoveResult",
+        "type": "object"
+      },
+      "LineupPlanData": {
+        "properties": {
+          "moves": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineupMoveResult"
+            },
+            "title": "Moves",
+            "type": "array"
+          },
+          "nba_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Date"
+          },
+          "roster_version": {
+            "title": "Roster Version",
+            "type": "string"
+          },
+          "scoring_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Period Id"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "unfilled": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineupUnfilled"
+            },
+            "title": "Unfilled",
+            "type": "array"
+          }
+        },
+        "required": [
+          "moves",
+          "unfilled",
+          "summary",
+          "scoring_period_id",
+          "nba_date",
+          "roster_version"
+        ],
+        "title": "LineupPlanData",
+        "type": "object"
+      },
+      "LineupPlanResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LineupPlanData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "LineupPlanResp",
+        "type": "object"
+      },
+      "LineupPlayer": {
+        "properties": {
+          "avg_points": {
+            "default": 0.0,
+            "title": "Avg Points",
+            "type": "number"
+          },
+          "eligible_slot_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Eligible Slot Ids",
+            "type": "array"
+          },
+          "eligible_slots": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Eligible Slots",
+            "type": "array"
+          },
+          "game_started": {
+            "default": false,
+            "title": "Game Started",
+            "type": "boolean"
+          },
+          "game_time_et": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Game Time Et"
+          },
+          "has_game_today": {
+            "default": false,
+            "title": "Has Game Today",
+            "type": "boolean"
+          },
+          "injured": {
+            "default": false,
+            "title": "Injured",
+            "type": "boolean"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injury Status"
+          },
+          "lineup_locked": {
+            "default": false,
+            "title": "Lineup Locked",
+            "type": "boolean"
+          },
+          "lineup_slot": {
+            "title": "Lineup Slot",
+            "type": "string"
+          },
+          "lineup_slot_id": {
+            "title": "Lineup Slot Id",
+            "type": "integer"
+          },
+          "locked": {
+            "default": false,
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
+          "opponent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opponent"
+          },
+          "playable": {
+            "default": false,
+            "title": "Playable",
+            "type": "boolean"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "team": {
+            "title": "Team",
+            "type": "string"
+          },
+          "value_kind": {
+            "default": "fpts",
+            "enum": [
+              "fpts",
+              "cat_value"
+            ],
+            "title": "Value Kind",
+            "type": "string"
+          },
+          "value_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Source"
+          }
+        },
+        "required": [
+          "player_id",
+          "nba_player_id",
+          "name",
+          "team",
+          "lineup_slot_id",
+          "lineup_slot",
+          "eligible_slot_ids",
+          "eligible_slots",
+          "injured",
+          "injury_status",
+          "lineup_locked",
+          "has_game_today",
+          "opponent",
+          "game_time_et",
+          "game_started",
+          "locked",
+          "playable",
+          "avg_points",
+          "value_kind",
+          "value_source"
+        ],
+        "title": "LineupPlayer",
+        "type": "object"
+      },
       "LineupResponse": {
         "description": "Lineup data response model",
         "properties": {
@@ -5937,6 +6642,261 @@
           "threshold"
         ],
         "title": "LineupResponse",
+        "type": "object"
+      },
+      "LineupSlotDef": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "slot": {
+            "title": "Slot",
+            "type": "string"
+          },
+          "slot_id": {
+            "title": "Slot Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slot_id",
+          "slot",
+          "count"
+        ],
+        "title": "LineupSlotDef",
+        "type": "object"
+      },
+      "LineupState": {
+        "properties": {
+          "can_write": {
+            "default": false,
+            "title": "Can Write",
+            "type": "boolean"
+          },
+          "espn_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Team Id"
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "first_game_time_et": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Game Time Et"
+          },
+          "lock_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lock Type"
+          },
+          "nba_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Date"
+          },
+          "players": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineupPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/FantasyProvider"
+          },
+          "roster_version": {
+            "title": "Roster Version",
+            "type": "string"
+          },
+          "scoring_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Period Id"
+          },
+          "scoring_period_source": {
+            "default": "none",
+            "enum": [
+              "provider",
+              "calendar",
+              "none"
+            ],
+            "title": "Scoring Period Source",
+            "type": "string"
+          },
+          "slot_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "title": "Slot Counts",
+            "type": "object"
+          },
+          "slots": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineupSlotDef"
+            },
+            "title": "Slots",
+            "type": "array"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          },
+          "write_blocked_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "provider_not_supported",
+                  "no_credentials",
+                  "writes_disabled",
+                  "no_scoring_period",
+                  "not_team_owner",
+                  "team_id_unresolved"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Write Blocked Reason"
+          }
+        },
+        "required": [
+          "provider",
+          "team_name",
+          "espn_team_id",
+          "nba_date",
+          "scoring_period_id",
+          "scoring_period_source",
+          "first_game_time_et",
+          "slot_counts",
+          "slots",
+          "lock_type",
+          "players",
+          "can_write",
+          "write_blocked_reason",
+          "roster_version",
+          "fetched_at"
+        ],
+        "title": "LineupState",
+        "type": "object"
+      },
+      "LineupStateResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LineupState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "LineupStateResp",
+        "type": "object"
+      },
+      "LineupUnfilled": {
+        "description": "A bench player with a game today the planner could not start.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "slot": {
+            "title": "Slot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "slot",
+          "reason"
+        ],
+        "title": "LineupUnfilled",
         "type": "object"
       },
       "LiveMatchupData": {
@@ -7903,6 +8863,11 @@
             "title": "Alert Minutes Before",
             "type": "integer"
           },
+          "auto_lineup_enabled": {
+            "default": false,
+            "title": "Auto Lineup Enabled",
+            "type": "boolean"
+          },
           "email": {
             "anyOf": [
               {
@@ -7948,6 +8913,11 @@
             "title": "Alert Minutes Before",
             "type": "integer"
           },
+          "auto_lineup_enabled": {
+            "default": false,
+            "title": "Auto Lineup Enabled",
+            "type": "boolean"
+          },
           "email": {
             "anyOf": [
               {
@@ -7971,6 +8941,7 @@
           "alert_active_non_playing",
           "alert_injured_active",
           "alert_minutes_before",
+          "auto_lineup_enabled",
           "email"
         ],
         "title": "NotificationPreferenceResp",
@@ -8135,6 +9106,17 @@
             ],
             "title": "Alert Minutes Before"
           },
+          "auto_lineup_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Lineup Enabled"
+          },
           "email": {
             "anyOf": [
               {
@@ -8208,6 +9190,17 @@
             ],
             "title": "Alert Minutes Before"
           },
+          "auto_lineup_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Lineup Enabled"
+          },
           "email": {
             "anyOf": [
               {
@@ -8247,6 +9240,7 @@
           "alert_active_non_playing",
           "alert_injured_active",
           "alert_minutes_before",
+          "auto_lineup_enabled",
           "email"
         ],
         "title": "NotificationTeamPreferenceResp",
@@ -14487,6 +15481,53 @@
         ]
       }
     },
+    "/v1/internal/jobs/lineup/evaluate": {
+      "post": {
+        "description": "Plan today's fill-only moves for one team; apply them when `apply` is set.\n\nCalled by data-platform's lineup-alerts pipeline for every opted-in team.\nBusiness outcomes are reported in `data.outcome`, never raised.",
+        "operationId": "evaluate_lineup_v1_internal_jobs_lineup_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LineupEvaluateReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineupEvaluationResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Evaluate Lineup",
+        "tags": [
+          "internal jobs"
+        ]
+      }
+    },
     "/v1/internal/lineups": {
       "get": {
         "operationId": "get_lineups_v1_internal_lineups_get",
@@ -15222,7 +16263,7 @@
     },
     "/v1/internal/notifications/send-test/{team_id}": {
       "post": {
-        "description": "Force-send a lineup alert for a team, bypassing the time window check.\n\nUseful for testing Resend integration and verifying lineup issue detection.\nThe notification log dedup is also bypassed so you can re-send freely.",
+        "description": "Force-send today's lineup alert for a team to an address of your choice.\n\nBypasses the pipeline's tip-off window and daily dedup. The content is the\nsame fill plan the pipeline would mail (services.lineup_planner): the\nsuggested moves, or a \"nothing to fill\" confirmation when the lineup is set.",
         "operationId": "send_test_alert_v1_internal_notifications_send_test__team_id__post",
         "parameters": [
           {
@@ -16176,6 +17217,160 @@
         "summary": "Sync Team League",
         "tags": [
           "team management"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/lineup": {
+      "get": {
+        "description": "Slots, eligibility, locks and game times for the team's current ESPN day.",
+        "operationId": "get_lineup_v1_internal_teams__team_id__lineup_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineupStateResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Lineup",
+        "tags": [
+          "lineup editor"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/lineup/moves": {
+      "post": {
+        "description": "Send slot moves to ESPN as one transaction, then return the re-read board.",
+        "operationId": "apply_lineup_moves_v1_internal_teams__team_id__lineup_moves_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyLineupMovesReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyLineupMovesResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apply Lineup Moves",
+        "tags": [
+          "lineup editor"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/lineup/plan": {
+      "get": {
+        "description": "The fill-only moves Court Vision would make today. Never writes.",
+        "operationId": "get_lineup_plan_v1_internal_teams__team_id__lineup_plan_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineupPlanResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Lineup Plan",
+        "tags": [
+          "lineup editor"
         ]
       }
     },

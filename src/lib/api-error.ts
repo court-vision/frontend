@@ -7,6 +7,7 @@
  * in QueryProvider and `userMessage` turns it into copy the UI can show.
  */
 import type { ApiStatus } from "@/types/auth";
+import { WRITE_BLOCKED_COPY, writeBlockedCopy } from "@/types/lineup-editor";
 
 export type ApiErrorKind =
   | "network"
@@ -25,6 +26,19 @@ export const PROVIDER_AUTH_EXPIRED = "PROVIDER_AUTH_EXPIRED";
 export const LINEUP_SERVICE_UNAVAILABLE = "LINEUP_SERVICE_UNAVAILABLE";
 /** Client-side code for a success envelope with no `data` where one was required. */
 export const EMPTY_RESULT = "EMPTY_RESULT";
+
+/**
+ * Lineup editor (`POST /teams/{id}/lineup/moves`). Real statuses with the
+ * envelope: 409 STALE carries the fresh board in `data.lineup`, 422
+ * MOVE_INVALID carries `data.errors`, 409 REJECTED's `message` is ESPN's own
+ * text, 409 BLOCKED carries `data.reason` (a `WriteBlockedReason`).
+ */
+export const ROSTER_STALE = "ROSTER_STALE";
+export const ROSTER_MOVE_INVALID = "ROSTER_MOVE_INVALID";
+export const ROSTER_WRITE_REJECTED = "ROSTER_WRITE_REJECTED";
+export const ROSTER_WRITE_BLOCKED = "ROSTER_WRITE_BLOCKED";
+export const ROSTER_WRITE_DISABLED = "ROSTER_WRITE_DISABLED";
+export const ROSTER_WRITE_UNAVAILABLE = "ROSTER_WRITE_UNAVAILABLE";
 
 const RETRYABLE_KINDS: ReadonlySet<ApiErrorKind> = new Set<ApiErrorKind>([
   "network",
@@ -262,12 +276,43 @@ export function providerName(error: unknown): string | null {
   return null;
 }
 
+/** `data.<field>` of an error envelope when it is a string, else null. */
+function dataString(err: ApiError, field: string): string | null {
+  const data = err.data;
+  if (typeof data !== "object" || data === null) return null;
+  const value = (data as Record<string, unknown>)[field];
+  return typeof value === "string" ? value : null;
+}
+
+/** Copy for the lineup editor's write errors; null for every other code. */
+function rosterMessage(err: ApiError): string | null {
+  switch (err.code) {
+    case ROSTER_STALE:
+      return "Your lineup changed on ESPN — review the refreshed roster and try again";
+    case ROSTER_MOVE_INVALID:
+      return "Some of these moves aren't allowed — check the highlighted rows";
+    case ROSTER_WRITE_REJECTED:
+      // ESPN's own explanation is the most useful thing we can show.
+      return err.message || "ESPN rejected the lineup change";
+    case ROSTER_WRITE_BLOCKED:
+      return writeBlockedCopy(dataString(err, "reason"));
+    case ROSTER_WRITE_DISABLED:
+      return WRITE_BLOCKED_COPY.writes_disabled;
+    case ROSTER_WRITE_UNAVAILABLE:
+      return "Couldn't reach ESPN to update your lineup — retry in a minute";
+    default:
+      return null;
+  }
+}
+
 /** Copy safe to show a user for any error a query or mutation can throw. */
 export function userMessage(error: unknown, fallback = "Something went wrong"): string {
   const err = toApiError(error);
   if (isProviderAuthError(err)) {
     return `Your ${providerName(err) ?? "league"} connection expired — reconnect it in Manage Teams`;
   }
+  const roster = rosterMessage(err);
+  if (roster) return roster;
   switch (err.kind) {
     case "network":
       return "Can't reach the Court Vision API — check your connection and retry";

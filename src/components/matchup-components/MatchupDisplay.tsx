@@ -51,6 +51,16 @@ import type {
 import type { CategoryDef } from "@/types/scoring";
 import type { GameInfo } from "@/types/games";
 import type { FantasyProvider } from "@/types/team";
+import {
+  EditableSlotBadge,
+  MoveButton,
+  editableRowClass,
+  useEditableRows,
+} from "@/components/lineup/LineupRowControls";
+import { LineupTargetSheet } from "@/components/lineup/LineupTargetSheet";
+import { LineupApplyBar } from "@/components/lineup/LineupApplyBar";
+import { ApplyLineupDialog } from "@/components/lineup/ApplyLineupDialog";
+import { slotName } from "@/lib/lineup-editor";
 
 interface SelectedPlayer {
   playerId: number;
@@ -182,74 +192,130 @@ function GameStatusCell({ player, game }: GameStatusCellProps) {
   return <span className="text-muted-foreground/30">—</span>;
 }
 
+// ── Lineup editor glue ──────────────────────────────────────────────────────
+
+/** An eligible slot with an open seat has no player row; while a player is selected it gets one. */
+function OpenSlotRow({ slot, colSpan, onMove }: { slot: number; colSpan: number; onMove: () => void }) {
+  return (
+    <TableRow
+      className="cursor-pointer border-l-2 border-l-status-win bg-status-win/10 hover:bg-status-win/15"
+      onClick={onMove}
+    >
+      <TableCell className="pl-3">
+        <Badge variant={slot === 12 ? "secondary" : "default"}>{slotName(slot)}</Badge>
+      </TableCell>
+      <TableCell colSpan={colSpan - 1}>
+        <span className="text-xs italic text-muted-foreground">Open seat</span>
+        <span className="ml-2 font-mono text-[10px] uppercase text-status-win">move here</span>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 // ── Simple roster table (used when live data is not yet available) ──────────
 
 interface TeamRosterTableProps {
   team: MatchupTeam;
   onPlayerClick: (player: MatchupPlayer) => void;
+  /** Only the user's own ESPN team; rows join the lineup editor's board when it is present. */
+  editable?: boolean;
 }
 
-function TeamRosterTable({ team, onPlayerClick }: TeamRosterTableProps) {
+function TeamRosterTable({ team, onPlayerClick, editable }: TeamRosterTableProps) {
   const sortedRoster = sortByLineupSlot(team.roster);
+  const rows = useEditableRows(editable);
+  const ed = rows.ed;
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[50px] pl-3">Slot</TableHead>
-          <TableHead>Player</TableHead>
-          <TableHead className="w-[50px]">Team</TableHead>
-          <TableHead className="w-[70px] text-right pr-3">Pts</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sortedRoster.map((player) => (
-          <TableRow
-            key={player.player_id}
-            className="cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary"
-            onClick={() => onPlayerClick(player)}
-          >
-            <TableCell className="pl-3">
-              <Badge
-                variant={
-                  player.lineup_slot === "IR"
-                    ? "outline"
-                    : player.lineup_slot === "BE"
-                      ? "secondary"
-                      : "default"
-                }
-                className={player.lineup_slot === "IR" ? "text-muted-foreground" : ""}
-              >
-                {player.lineup_slot}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-2">
-                <PlayerHeadshot
-                  playerId={player.nba_player_id}
-                  name={player.name}
-                  size="xs"
-                />
-                <span className={`text-sm ${player.injured ? "text-muted-foreground" : ""}`}>
-                  {player.name}
-                </span>
-                {player.injured && player.injury_status && (
-                  <Badge variant="destructive" className="text-[11px]">
-                    {player.injury_status}
-                  </Badge>
-                )}
-              </div>
-            </TableCell>
-            <TableCell className="text-xs text-muted-foreground">
-              {player.team}
-            </TableCell>
-            <TableCell className="text-right font-mono text-sm tabular-nums pr-3">
-              {player.avg_points.toFixed(1)}
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[50px] pl-3">Slot</TableHead>
+            <TableHead>Player</TableHead>
+            <TableHead className="w-[50px]">Team</TableHead>
+            <TableHead className="w-[70px] text-right pr-3">Pts</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {sortedRoster.map((player) => {
+            const decor = rows.decorate(player.player_id);
+            return (
+              <TableRow
+                key={player.player_id}
+                className={cn(
+                  "cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary",
+                  editableRowClass(decor)
+                )}
+                onClick={() => rows.handleRowClick(player.player_id, () => onPlayerClick(player))}
+              >
+                <TableCell className="pl-3">
+                  {decor ? (
+                    <EditableSlotBadge slot={player.lineup_slot} stagedTo={decor.stagedTo} />
+                  ) : (
+                    <Badge
+                      variant={
+                        player.lineup_slot === "IR"
+                          ? "outline"
+                          : player.lineup_slot === "BE"
+                            ? "secondary"
+                            : "default"
+                      }
+                      className={player.lineup_slot === "IR" ? "text-muted-foreground" : ""}
+                    >
+                      {player.lineup_slot}
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <PlayerHeadshot
+                      playerId={player.nba_player_id}
+                      name={player.name}
+                      size="xs"
+                    />
+                    <span className={`text-sm ${player.injured ? "text-muted-foreground" : ""}`}>
+                      {player.name}
+                    </span>
+                    {player.injured && player.injury_status && (
+                      <Badge variant="destructive" className="text-[11px]">
+                        {player.injury_status}
+                      </Badge>
+                    )}
+                    {decor && ed && (
+                      <MoveButton
+                        decor={decor}
+                        canWrite={ed.canWrite}
+                        onBegin={() => rows.beginMove(player.player_id)}
+                        onCancel={() => ed.select(null)}
+                        onStage={() => ed.stage(ed.selectedPlayerId!, decor.assigned)}
+                      />
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {player.team}
+                </TableCell>
+                <TableCell className="text-right font-mono text-sm tabular-nums pr-3">
+                  {player.avg_points.toFixed(1)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+          {ed &&
+            !rows.isMobile &&
+            rows.openTargets.map((slot) => (
+              <OpenSlotRow
+                key={`open-${slot}`}
+                slot={slot}
+                colSpan={4}
+                onMove={() => ed.stage(ed.selectedPlayerId!, slot)}
+              />
+            ))}
+        </TableBody>
+      </Table>
+      {ed && <LineupTargetSheet open={rows.sheetOpen} onOpenChange={rows.onSheetOpenChange} />}
+    </>
   );
 }
 
@@ -354,9 +420,13 @@ interface LiveTeamRosterTableProps {
   onPlayerClick: (player: LiveMatchupPlayer) => void;
   format: ScoringFormat;
   categories: CategoryDef[];
+  /** Only the user's own ESPN team; rows join the lineup editor's board when it is present. */
+  editable?: boolean;
 }
 
-function LiveTeamRosterTable({ team, games, onPlayerClick, format, categories }: LiveTeamRosterTableProps) {
+function LiveTeamRosterTable({ team, games, onPlayerClick, format, categories, editable }: LiveTeamRosterTableProps) {
+  const rows = useEditableRows(editable);
+  const ed = rows.ed;
   const sorted = sortByLineupSlot(team.roster);
   const activePlayers = sorted.filter(
     (p) => p.lineup_slot !== "BE" && p.lineup_slot !== "IR"
@@ -369,8 +439,11 @@ function LiveTeamRosterTable({ team, games, onPlayerClick, format, categories }:
   const isCategories = format === "categories";
   const columns = isCategories ? liveColumns(categories) : POINTS_LIVE_COLUMNS;
 
+  const totalColumns = 4 + columns.length + (isCategories ? 0 : 1);
+
   // No scroll wrapper here: `Table` is already a horizontal scroller with edge fades.
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
@@ -400,29 +473,37 @@ function LiveTeamRosterTable({ team, games, onPlayerClick, format, categories }:
           const live = player.live;
           const hasStats = live !== null && live.game_status >= 2;
           const isBench = player.lineup_slot === "BE" || player.lineup_slot === "IR";
+          const decor = rows.decorate(player.player_id);
 
           return (
             <TableRow
               key={player.player_id}
               className={cn(
                 "cursor-pointer hover:bg-muted/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary",
-                isBench && "opacity-50"
+                isBench && "opacity-50",
+                // A bench player being moved (or a swap target) must not read as faded.
+                decor && (decor.selected || decor.isTarget) && "opacity-100",
+                editableRowClass(decor)
               )}
-              onClick={() => onPlayerClick(player)}
+              onClick={() => rows.handleRowClick(player.player_id, () => onPlayerClick(player))}
             >
               <TableCell className="pl-3">
-                <Badge
-                  variant={
-                    player.lineup_slot === "IR"
-                      ? "outline"
-                      : player.lineup_slot === "BE"
-                        ? "secondary"
-                        : "default"
-                  }
-                  className={player.lineup_slot === "IR" ? "text-muted-foreground" : ""}
-                >
-                  {player.lineup_slot}
-                </Badge>
+                {decor ? (
+                  <EditableSlotBadge slot={player.lineup_slot} stagedTo={decor.stagedTo} />
+                ) : (
+                  <Badge
+                    variant={
+                      player.lineup_slot === "IR"
+                        ? "outline"
+                        : player.lineup_slot === "BE"
+                          ? "secondary"
+                          : "default"
+                    }
+                    className={player.lineup_slot === "IR" ? "text-muted-foreground" : ""}
+                  >
+                    {player.lineup_slot}
+                  </Badge>
+                )}
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -441,6 +522,15 @@ function LiveTeamRosterTable({ team, games, onPlayerClick, format, categories }:
                     <Badge variant="destructive" className="text-[11px] shrink-0">
                       {player.injury_status}
                     </Badge>
+                  )}
+                  {decor && ed && (
+                    <MoveButton
+                      decor={decor}
+                      canWrite={ed.canWrite}
+                      onBegin={() => rows.beginMove(player.player_id)}
+                      onCancel={() => ed.select(null)}
+                      onStage={() => ed.stage(ed.selectedPlayerId!, decor.assigned)}
+                    />
                   )}
                 </div>
               </TableCell>
@@ -473,6 +563,17 @@ function LiveTeamRosterTable({ team, games, onPlayerClick, format, categories }:
           );
         })}
 
+        {ed &&
+          !rows.isMobile &&
+          rows.openTargets.map((slot) => (
+            <OpenSlotRow
+              key={`open-${slot}`}
+              slot={slot}
+              colSpan={totalColumns}
+              onMove={() => ed.stage(ed.selectedPlayerId!, slot)}
+            />
+          ))}
+
         {/* Summary row — active players only */}
         {isCategories ? (
           <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
@@ -503,6 +604,8 @@ function LiveTeamRosterTable({ team, games, onPlayerClick, format, categories }:
         )}
       </TableBody>
     </Table>
+    {ed && <LineupTargetSheet open={rows.sheetOpen} onOpenChange={rows.onSheetOpenChange} />}
+    </>
   );
 }
 
@@ -574,7 +677,7 @@ function TeamCard({ team, isYourTeam, onPlayerClick, format, record }: TeamCardP
         />
       </CardHeader>
       <CardContent className="p-0">
-        <TeamRosterTable team={team} onPlayerClick={onPlayerClick} />
+        <TeamRosterTable team={team} onPlayerClick={onPlayerClick} editable={isYourTeam} />
       </CardContent>
     </Card>
   );
@@ -616,6 +719,7 @@ function LiveTeamCard({ team, isYourTeam, games, onPlayerClick, format, categori
           onPlayerClick={onPlayerClick}
           format={format}
           categories={categories}
+          editable={isYourTeam}
         />
       </CardContent>
     </Card>
@@ -982,6 +1086,14 @@ export function MatchupDisplay({
             }
           />
         ) : null}
+
+        {/* Lineup editor actions (own ESPN team only; renders nothing without a board) */}
+        {!(selectedDate && selectedDate !== todayDate) && (liveMatchup || matchup) && (
+          <>
+            <LineupApplyBar alwaysShow />
+            <ApplyLineupDialog />
+          </>
+        )}
       </div>
 
       {/* Player Stats Dialog */}

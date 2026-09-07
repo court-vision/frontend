@@ -25,6 +25,7 @@ const DEFAULT_PREFS: NotificationPreference = {
   alert_active_non_playing: true,
   alert_injured_active: true,
   alert_minutes_before: 90,
+  auto_lineup_enabled: false,
   email: null,
 };
 
@@ -97,6 +98,7 @@ function TeamForm({
         alert_active_non_playing: teamOverride.alert_active_non_playing ?? globalPrefs.alert_active_non_playing,
         alert_injured_active: teamOverride.alert_injured_active ?? globalPrefs.alert_injured_active,
         alert_minutes_before: teamOverride.alert_minutes_before ?? globalPrefs.alert_minutes_before,
+        auto_lineup_enabled: teamOverride.auto_lineup_enabled ?? globalPrefs.auto_lineup_enabled,
         email: teamOverride.email ?? globalPrefs.email,
       }
     : { ...globalPrefs };
@@ -113,6 +115,7 @@ function TeamForm({
         alert_active_non_playing: teamOverride.alert_active_non_playing ?? globalPrefs.alert_active_non_playing,
         alert_injured_active: teamOverride.alert_injured_active ?? globalPrefs.alert_injured_active,
         alert_minutes_before: teamOverride.alert_minutes_before ?? globalPrefs.alert_minutes_before,
+        auto_lineup_enabled: teamOverride.auto_lineup_enabled ?? globalPrefs.auto_lineup_enabled,
         email: teamOverride.email ?? globalPrefs.email,
       });
       setIsDirty(false);
@@ -131,6 +134,7 @@ function TeamForm({
       alert_active_non_playing: prefs.alert_active_non_playing,
       alert_injured_active: prefs.alert_injured_active,
       alert_minutes_before: prefs.alert_minutes_before,
+      auto_lineup_enabled: prefs.auto_lineup_enabled,
       email: prefs.email,
     };
     onUpsert({ teamId, data }, { onSuccess: () => { setIsDirty(false); setIsEditing(false); } });

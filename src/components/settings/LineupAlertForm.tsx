@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Mail, Clock, ShieldAlert, Armchair, CalendarX } from "lucide-react";
+import { Bell, Mail, Clock, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -143,7 +143,7 @@ export function LineupAlertForm({
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Email reminders before your players&apos; games tip off
+                Before tip-off, an email listing the moves that would fill today&apos;s open seats
               </p>
             </div>
           </div>
@@ -163,32 +163,17 @@ export function LineupAlertForm({
           )}
         >
           <p className="text-[11px] font-mono text-muted-foreground/60 uppercase tracking-widest pt-3 pb-1">
-            Alert Types
+            Automation
           </p>
+          {/* The legacy alert-type flags (benched starters / active non-playing /
+              injured active) stay in `prefs` untouched so the API contract holds;
+              the alerts pipeline now derives every alert from the fill-only plan. */}
           <ToggleRow
-            icon={Armchair}
-            label="Benched Starters"
-            description="A player on your bench has a game today"
-            checked={displayPrefs.alert_benched_starters}
-            onCheckedChange={(v) => update("alert_benched_starters", v)}
-            disabled={subDisabled}
-          />
-          <Separator className="opacity-50" />
-          <ToggleRow
-            icon={CalendarX}
-            label="Active Players Not Playing"
-            description="A player in your active lineup has no game today"
-            checked={displayPrefs.alert_active_non_playing}
-            onCheckedChange={(v) => update("alert_active_non_playing", v)}
-            disabled={subDisabled}
-          />
-          <Separator className="opacity-50" />
-          <ToggleRow
-            icon={ShieldAlert}
-            label="Injured Players Active"
-            description="An injured player is sitting in an active roster slot"
-            checked={displayPrefs.alert_injured_active}
-            onCheckedChange={(v) => update("alert_injured_active", v)}
+            icon={Wand2}
+            label="Auto-set my lineup"
+            description="Before tip-off, Court Vision moves bench players with a game into slots held by players who aren't playing today. It never benches a healthy starter, keeps injured players who have a game unless a healthy bench player needs the spot, never touches IR, and emails you what changed."
+            checked={displayPrefs.auto_lineup_enabled}
+            onCheckedChange={(v) => update("auto_lineup_enabled", v)}
             disabled={subDisabled}
           />
         </div>
