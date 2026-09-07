@@ -272,6 +272,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/drafts/{session_id}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a finished ESPN draft
+         * @description Records a completed ESPN draft into this session, so a draft run without the room still gets a recap.
+         *
+         *     Only after the fact: ESPN writes the picks into `mDraftDetail` when the draft completes, atomically with its `drafted` flag, and shows every slot empty until then — an unfinished draft answers 409 `DRAFT_NOT_COMPLETE` rather than importing a skeleton. While a draft is running, the tap (`/sync/init` plus live picks) is what tracks it.
+         *
+         *     An empty session takes its pick order, slot, length and type from the draft; one that already holds picks keeps its own and reports the disagreements as `warnings`. Picks are recorded `source: import` (ESPN's keepers as `keeper`), and `by_me` is the team whose name matches the session team's.
+         *
+         *     Idempotent: re-importing skips every pick already held and reports any that disagree instead of overwriting them. The session is marked completed either way.
+         */
+        post: operations["import_draft_v1_internal_drafts__session_id__import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/drafts/{session_id}/mock/advance": {
         parameters: {
             query?: never;
@@ -337,6 +363,36 @@ export interface paths {
          * @description Removes one pick by its overall number. The number becomes the next default, so a mis-entered pick is re-recorded in place.
          */
         delete: operations["remove_draft_pick_v1_internal_drafts__session_id__picks__overall_pick__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/drafts/{session_id}/recap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Grade a finished draft
+         * @description The session's own picks, priced against the board they were drafted from — however they were recorded (by hand, from a live ESPN room, from an import, or by the autopicker).
+         *
+         *     Each pick carries `value_over_slot`: what the player was worth against the player CV ranked at that pick number. `surplus_cv` and `surplus_market` say the same in rank terms, against our board and against ESPN's ADP.
+         *
+         *     Seats are graded A–F on the sum of their picks' `value_over_slot`, **ranked against the other seats in this room only** — a grade says who drafted best here, not how the room compares to any other league. An auction has no value ladder to price a pick number against, so those rooms grade on total value instead (`meta.graded_by`).
+         *
+         *     Category leagues also project the standings: each seat's per-category z-sum ranked into roto points, plus the categories it would win against every other seat. That is an approximation from the draft, not a season simulation (`meta.standings_basis`). Points leagues get projected season value per seat.
+         *
+         *     A pick whose player never resolved, or who has no line to value, is listed with a null `value` and left out of its seat's sums — never dropped, and never charged to the seat.
+         *
+         *     Available before a draft finishes as well: `meta.complete` and `picks_made` say how far it got.
+         */
+        get: operations["get_draft_recap_v1_internal_drafts__session_id__recap_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2659,6 +2715,67 @@ export interface components {
              */
             stacks: components["schemas"]["DraftStackResp"][];
         };
+        /** DraftImportResp */
+        DraftImportResp: {
+            /**
+             * Conflicts
+             * @default []
+             */
+            conflicts: components["schemas"]["DraftSyncConflict"][];
+            /**
+             * Draft Type
+             * @enum {string}
+             */
+            draft_type: "snake" | "auction";
+            /** Espn League Id */
+            espn_league_id: number;
+            /**
+             * Espn Team Id
+             * @description The session team's ESPN team id — what `by_me` is counted against
+             */
+            espn_team_id: number;
+            /**
+             * Header Applied
+             * @description Whether pick order / slot / rounds / type were written from ESPN (only on an empty session)
+             */
+            header_applied: boolean;
+            /**
+             * Inserted
+             * @description Picks newly recorded from this import
+             */
+            inserted: number;
+            /**
+             * Made
+             * @description Picks in the completed ESPN draft
+             */
+            made: number;
+            session: components["schemas"]["DraftSessionResp"];
+            /**
+             * Skipped
+             * @description Picks the session already held (a re-import)
+             */
+            skipped: number;
+            /**
+             * Warnings
+             * @description Header disagreements on a session that already has picks (not applied)
+             * @default []
+             */
+            warnings: string[];
+        };
+        /**
+         * DraftImportResponse
+         * @description What the import recorded, in the shape `sync/init` reports.
+         */
+        DraftImportResponse: {
+            data: components["schemas"]["DraftImportResp"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /**
          * DraftInitSyncRequest
          * @description The base64 body of the ESPN draft room's `INIT <base64>` frame.
@@ -2922,6 +3039,35 @@ export interface components {
             error_code: string | null;
             /** Message */
             message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * DraftRecapResp
+         * @description The finished draft: every pick priced, every seat graded, standings projected.
+         */
+        DraftRecapResp: {
+            /**
+             * Data
+             * @default []
+             */
+            data: components["schemas"]["RecapPickResp"][];
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            meta: components["schemas"]["RecapMeta"] | null;
+            /**
+             * Seats
+             * @default []
+             */
+            seats: components["schemas"]["RecapSeatResp"][];
+            /**
+             * Standings
+             * @default []
+             */
+            standings: components["schemas"]["RecapStandingResp"][];
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
@@ -5737,6 +5883,239 @@ export interface components {
              */
             unsupported: string[];
         };
+        /** RecapCategoryLine */
+        RecapCategoryLine: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Rank */
+            rank: number;
+            /** Roto Points */
+            roto_points: number;
+            /**
+             * Z Sum
+             * @description Summed per-category z of everyone the seat drafted
+             */
+            z_sum: number;
+        };
+        /** RecapH2HCell */
+        RecapH2HCell: {
+            /** Lost */
+            lost: number;
+            /** Opponent Slot */
+            opponent_slot: number;
+            /** Tied */
+            tied: number;
+            /** Won */
+            won: number;
+        };
+        /** RecapMeta */
+        RecapMeta: {
+            /**
+             * Categories
+             * @default []
+             */
+            categories: components["schemas"]["CategoryDefResp"][];
+            /**
+             * Complete
+             * @description Whether every pick in the draft has been recorded
+             */
+            complete: boolean;
+            /**
+             * Draft Type
+             * @enum {string}
+             */
+            draft_type: "snake" | "auction";
+            /** Format */
+            format: string;
+            /**
+             * Graded By
+             * @description What the seat grades rank on. An auction has no value ladder to price picks against.
+             * @enum {string}
+             */
+            graded_by: "value_over_slot" | "value";
+            /** League Size */
+            league_size: number | null;
+            /** Market As Of */
+            market_as_of: string | null;
+            /** My Slot */
+            my_slot: number | null;
+            /** Picks Made */
+            picks_made: number;
+            /** Projections As Of */
+            projections_as_of: string | null;
+            /** Rounds */
+            rounds: number | null;
+            /** Session Id */
+            session_id: number;
+            /**
+             * Standings Basis
+             * @description Category standings sum per-player z; they approximate a roto finish, they do not simulate a season.
+             * @enum {string}
+             */
+            standings_basis: "z_sum" | "season_value";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "completed" | "abandoned";
+            /** Total Picks */
+            total_picks: number | null;
+            /**
+             * Unattributed
+             * @description Picks with no seat — a room that never learned its pick order
+             */
+            unattributed: number;
+            /**
+             * Unscored
+             * @description Picks nothing could value
+             */
+            unscored: number;
+            /**
+             * Value Kind
+             * @enum {string}
+             */
+            value_kind: "fpts" | "cat_value";
+        };
+        /**
+         * RecapPickResp
+         * @description One pick, priced against the board CV would have drafted from.
+         */
+        RecapPickResp: {
+            /** Adp */
+            adp: number | null;
+            /** Bid */
+            bid: number | null;
+            /**
+             * By Me
+             * @default false
+             */
+            by_me: boolean;
+            /** Cv Rank */
+            cv_rank: number | null;
+            /** Espn Player Id */
+            espn_player_id: number | null;
+            /** Market Rank */
+            market_rank: number | null;
+            /** Overall Pick */
+            overall_pick: number;
+            /** Player Id */
+            player_id: number | null;
+            /** Player Name */
+            player_name: string | null;
+            /** Round */
+            round: number | null;
+            /**
+             * Slot
+             * @description Seat that made the pick (index into `pick_order`)
+             */
+            slot: number | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "manual" | "espn_sync" | "import" | "keeper" | "mock";
+            /**
+             * Surplus Cv
+             * @description cv_rank − overall_pick; positive = taken later than his rank
+             */
+            surplus_cv: number | null;
+            /**
+             * Surplus Market
+             * @description adp − overall_pick; positive = later than ESPN's crowd
+             */
+            surplus_market: number | null;
+            /** Team */
+            team: string | null;
+            /**
+             * Value
+             * @description League-scored value; null for a pick nothing can score
+             */
+            value: number | null;
+            /**
+             * Value Over Slot
+             * @description value(player) − value(the cv-ranked player at this pick number); null in an auction
+             */
+            value_over_slot: number | null;
+        };
+        /**
+         * RecapSeatResp
+         * @description One seat's draft, graded against the other seats in the same room.
+         */
+        RecapSeatResp: {
+            /** Best Pick */
+            best_pick: number | null;
+            /** Espn Team Id */
+            espn_team_id: number | null;
+            /**
+             * Grade
+             * @description Relative letter A–F; a four-seat league tops out at D
+             */
+            grade: string | null;
+            /**
+             * Is Me
+             * @default false
+             */
+            is_me: boolean;
+            /** Picks */
+            picks: number;
+            /**
+             * Position
+             * @description Rank among the seats, ties sharing the average position
+             */
+            position: number | null;
+            /** Slot */
+            slot: number;
+            /** Total Value */
+            total_value: number;
+            /**
+             * Unscored
+             * @description Picks with no value to price — listed in `picks`, left out of the sums
+             */
+            unscored: number;
+            /**
+             * Value Over Slot
+             * @description Σ over the seat's priced picks; null in an auction
+             */
+            value_over_slot: number | null;
+            /** Worst Pick */
+            worst_pick: number | null;
+        };
+        /**
+         * RecapStandingResp
+         * @description Where a seat's drafted roster projects to finish.
+         */
+        RecapStandingResp: {
+            /**
+             * Categories
+             * @default []
+             */
+            categories: components["schemas"]["RecapCategoryLine"][];
+            /**
+             * Expected Wins
+             * @description Categories won in an average matchup; a tie counts half
+             */
+            expected_wins: number | null;
+            /**
+             * H2H
+             * @default []
+             */
+            h2h: components["schemas"]["RecapH2HCell"][];
+            /** Roto Points */
+            roto_points: number | null;
+            /** Roto Rank */
+            roto_rank: number | null;
+            /**
+             * Season Value
+             * @description Points leagues: Σ value × projected games
+             */
+            season_value: number | null;
+            /** Slot */
+            slot: number;
+            /** Value Rank */
+            value_rank: number | null;
+        };
         /**
          * RecommendationComponent
          * @description One visible term of a recommendation score, in season-value points.
@@ -7291,6 +7670,65 @@ export interface operations {
             };
         };
     };
+    import_draft_v1_internal_drafts__session_id__import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Imported — see `inserted`, `skipped`, `conflicts`, `header_applied` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftImportResponse"];
+                };
+            };
+            /** @description The room has no team, the provider is not ESPN, or the team is not in the league */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The stored ESPN credentials were rejected */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such session, or it does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The draft has not finished, the room is simulated, or it follows a different ESPN draft */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     advance_mock_draft_v1_internal_drafts__session_id__mock_advance_post: {
         parameters: {
             query?: never;
@@ -7421,6 +7859,44 @@ export interface operations {
                 };
             };
             /** @description No such session or pick, or the session does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_draft_recap_v1_internal_drafts__session_id__recap_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recap built (empty data with a message when the room has no picks) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftRecapResp"];
+                };
+            };
+            /** @description No such session, or it does not belong to the caller */
             404: {
                 headers: {
                     [name: string]: unknown;

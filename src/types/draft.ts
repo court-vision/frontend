@@ -35,6 +35,21 @@ export type DraftInitSync = S["DraftInitSyncResp"];
 export type DraftInitSyncRequest = S["DraftInitSyncRequest"];
 export type DraftSyncConflict = S["DraftSyncConflict"];
 
+/** The finished draft, read back: every pick priced, every seat graded. */
+export type RecapPick = S["RecapPickResp"];
+/** One seat's draft, graded against the other seats in the same room. */
+export type RecapSeat = S["RecapSeatResp"];
+/** Where a seat's drafted roster projects to finish. */
+export type RecapStanding = S["RecapStandingResp"];
+export type RecapCategoryLine = S["RecapCategoryLine"];
+export type RecapH2HCell = S["RecapH2HCell"];
+export type RecapMeta = S["RecapMeta"];
+/** What the grades rank on. An auction has no value ladder to price picks against. */
+export type RecapGradedBy = RecapMeta["graded_by"];
+
+/** What importing a completed ESPN draft recorded. */
+export type DraftImport = S["DraftImportResp"];
+
 /** What the mock autopicker did, and the room it left behind. */
 export type MockAdvance = S["MockAdvanceResp"];
 /** How far to play a mock forward. `end` drafts your own seat too. */
@@ -63,6 +78,19 @@ export interface DraftBoardResult {
   roster: DraftRosterEntry[];
   meta: DraftBoardMeta | null;
   /** Backend message; explains an empty board (e.g. before any season data). */
+  message: string;
+}
+
+/**
+ * Like the board, the recap carries `seats`, `standings` and `meta` as
+ * siblings of `data`, so it cannot be plainly unwrapped either.
+ */
+export interface DraftRecapResult {
+  picks: RecapPick[];
+  seats: RecapSeat[];
+  standings: RecapStanding[];
+  meta: RecapMeta | null;
+  /** Backend message; explains an empty recap (e.g. a room with no picks yet). */
   message: string;
 }
 
