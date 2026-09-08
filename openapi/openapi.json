@@ -9466,6 +9466,356 @@
         "title": "PlayerPercentilesResp",
         "type": "object"
       },
+      "PlayerProfileData": {
+        "description": "Player identity plus its optional profile snapshot.",
+        "properties": {
+          "created_at": {
+            "description": "UTC timestamp when the player identity was created",
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "espn_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN player ID, when mapped",
+            "title": "Espn Id"
+          },
+          "id": {
+            "description": "NBA player ID",
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Position from the player dimension",
+            "title": "Position"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlayerProfileDetails"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Biographical/profile snapshot; null until the profile pipeline has supplied one"
+          },
+          "updated_at": {
+            "description": "UTC timestamp when the player identity was last updated",
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "espn_id",
+          "name",
+          "position",
+          "created_at",
+          "updated_at",
+          "profile"
+        ],
+        "title": "PlayerProfileData",
+        "type": "object"
+      },
+      "PlayerProfileDetails": {
+        "description": "The optional ``nba.player_profiles`` row for a player identity.",
+        "properties": {
+          "birthdate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthdate"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "draft_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Overall draft pick",
+            "title": "Draft Number"
+          },
+          "draft_round": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Round"
+          },
+          "draft_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Year"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "from_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Year"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA height text, for example \"6-11\"",
+            "title": "Height"
+          },
+          "height_inches": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Inches"
+          },
+          "jersey_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jersey Number"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "school": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School"
+          },
+          "season_exp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season Exp"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Team abbreviation at profile refresh time; not a current-roster guarantee",
+            "title": "Team"
+          },
+          "to_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Year"
+          },
+          "updated_at": {
+            "description": "UTC timestamp of this profile snapshot",
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Weight in pounds",
+            "title": "Weight"
+          }
+        },
+        "required": [
+          "first_name",
+          "last_name",
+          "birthdate",
+          "height",
+          "height_inches",
+          "weight",
+          "position",
+          "jersey_number",
+          "team",
+          "draft_year",
+          "draft_round",
+          "draft_number",
+          "season_exp",
+          "country",
+          "school",
+          "from_year",
+          "to_year",
+          "updated_at"
+        ],
+        "title": "PlayerProfileDetails",
+        "type": "object"
+      },
+      "PlayerProfileResp": {
+        "description": "Response for GET /v1/players/{player_id}/profile.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlayerProfileData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "PlayerProfileResp",
+        "type": "object"
+      },
       "PlayerProjectionData": {
         "properties": {
           "as_of_date": {
@@ -9683,6 +10033,174 @@
           "has_b2b"
         ],
         "title": "PlayerScheduleInfo",
+        "type": "object"
+      },
+      "PlayerSearchData": {
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/PlayerSearchItem"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query",
+          "players",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "PlayerSearchData",
+        "type": "object"
+      },
+      "PlayerSearchItem": {
+        "description": "Minimal dimension-backed player identity for search results.",
+        "properties": {
+          "espn_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN player ID, when mapped",
+            "title": "Espn Id"
+          },
+          "id": {
+            "description": "NBA player ID",
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_updated_at": {
+            "description": "UTC timestamp of the player identity row",
+            "format": "date-time",
+            "title": "Player Updated At",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "profile_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC timestamp of the joined profile snapshot, or null when no profile is stored",
+            "title": "Profile Updated At"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Team abbreviation from the player-profile snapshot; not a current-roster guarantee",
+            "title": "Team"
+          }
+        },
+        "required": [
+          "id",
+          "espn_id",
+          "name",
+          "position",
+          "team",
+          "player_updated_at",
+          "profile_updated_at"
+        ],
+        "title": "PlayerSearchItem",
+        "type": "object"
+      },
+      "PlayerSearchResp": {
+        "description": "Response for GET /v1/players/search.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlayerSearchData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "PlayerSearchResp",
         "type": "object"
       },
       "PlayerStats": {
@@ -18053,6 +18571,84 @@
         ]
       }
     },
+    "/v1/players/search": {
+      "get": {
+        "description": "Search the NBA player dimension rather than season statistics. Results include mapped rookies and players without games, with NBA/ESPN identities and profile freshness timestamps.",
+        "operationId": "search_players_v1_players_search_get",
+        "parameters": [
+          {
+            "description": "Player name, NBA ID, or ESPN ID",
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "description": "Player name, NBA ID, or ESPN ID",
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": ".*\\S.*",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum results",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Maximum results",
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Offset for pagination",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Offset for pagination",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerSearchResp"
+                }
+              }
+            },
+            "description": "Players retrieved successfully"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "Search the player directory",
+        "tags": [
+          "Players"
+        ]
+      }
+    },
     "/v1/players/stats": {
       "get": {
         "description": "Retrieve detailed statistics for a player by ID or name/team combination. Use the `window` parameter to get averages over a specific game window.",
@@ -18367,6 +18963,58 @@
           }
         },
         "summary": "Get player percentile ranks",
+        "tags": [
+          "Players"
+        ]
+      }
+    },
+    "/v1/players/{player_id}/profile": {
+      "get": {
+        "description": "Return NBA/ESPN identity fields and the latest biographical profile snapshot. A known player whose profile has not been ingested returns data with profile=null.",
+        "operationId": "get_player_profile_v1_players__player_id__profile_get",
+        "parameters": [
+          {
+            "description": "NBA player ID",
+            "in": "path",
+            "name": "player_id",
+            "required": true,
+            "schema": {
+              "description": "NBA player ID",
+              "exclusiveMinimum": 0,
+              "title": "Player Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerProfileResp"
+                }
+              }
+            },
+            "description": "Player profile retrieved successfully"
+          },
+          "404": {
+            "description": "Player not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "Get a player's profile",
         "tags": [
           "Players"
         ]
