@@ -45,6 +45,7 @@ function ToggleRow({
       <Switch
         checked={checked}
         onCheckedChange={onCheckedChange}
+        disabled={disabled}
         className="shrink-0"
       />
     </div>
