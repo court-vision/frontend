@@ -99,7 +99,8 @@ const ut1 = player({
   has_game_today: false, opponent: null, game_time_et: null, playable: false,
 });
 const ut2 = player({ player_id: 5, lineup_slot_id: UT, eligible_slot_ids: [PG, G, UT, BE] });
-const bench = player({ player_id: 6, lineup_slot_id: BE, eligible_slot_ids: [SG, G, UT, BE, IR] });
+// Every ESPN roster lists IR for everyone; only an injured player may actually use it.
+const bench = player({ player_id: 6, lineup_slot_id: BE, eligible_slot_ids: [SG, G, UT, BE, IR], injured: true, injury_status: "OUT" });
 const ir = player({
   player_id: 7, lineup_slot_id: IR, eligible_slot_ids: [PG, G, UT, BE, IR],
   injured: true, injury_status: "OUT", playable: false,

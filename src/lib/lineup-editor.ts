@@ -96,9 +96,22 @@ export function occupants(state: LineupState, staged: Staged, slotId: number): L
   return state.players.filter((p) => assign.get(p.player_id) === slotId);
 }
 
-/** ESPN lets anyone sit on the bench; every other slot needs to be in the player's list. */
+/** ESPN's `injured` flag, or an OUT-type status: what ESPN's own IR rule checks. */
+export function isInjured(player: LineupPlayer): boolean {
+  const status = (player.injury_status ?? "").toUpperCase();
+  return player.injured || ["OUT", "O", "IL", "IL+", "SUSPENSION", "INJURY_RESERVE"].includes(status);
+}
+
+/**
+ * ESPN lets anyone sit on the bench; every other slot needs to be in the
+ * player's list — except IR, which ESPN lists for *everyone* and refuses at
+ * transaction time unless the player is injured (TRAN_ROSTER_INELIGIBLE_IR_NOT_INJURED,
+ * captured 2026-09-08), so that rule is applied here too.
+ */
 function canOccupy(player: LineupPlayer, slotId: number): boolean {
-  return slotId === BENCH_SLOT_ID || player.eligible_slot_ids.includes(slotId);
+  if (slotId === BENCH_SLOT_ID) return true;
+  if (!player.eligible_slot_ids.includes(slotId)) return false;
+  return slotId !== IR_SLOT_ID || isInjured(player);
 }
 
 /** Drop entries that no longer differ from the board (or name a player who left it). */
@@ -336,7 +349,7 @@ export function diff(state: LineupState, staged: Staged): LineupMove[] {
  */
 export function ineligibleMessage(p: LineupPlayer, toSlotId: number): string {
   if (toSlotId === IR_SLOT_ID) {
-    return `${p.name} can't go on IR — ESPN only lists players it has marked OUT as IR-eligible`;
+    return `${p.name} can't go on IR — ESPN only allows players it lists as injured (OUT) there`;
   }
   const eligible = p.eligible_slot_ids.filter((s) => isActiveSlot(s)).map(slotName);
   const where = eligible.length ? ` (eligible: ${eligible.join(", ")})` : "";
