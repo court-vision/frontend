@@ -330,6 +330,20 @@ export function diff(state: LineupState, staged: Staged): LineupMove[] {
 }
 
 /**
+ * Why a move is refused before it reaches ESPN (mirrors the server's wording).
+ * Eligibility is ESPN's own `eligibleSlots`; IR is on it only for players ESPN
+ * has marked OUT, so an IR refusal names that rule instead of the slot.
+ */
+export function ineligibleMessage(p: LineupPlayer, toSlotId: number): string {
+  if (toSlotId === IR_SLOT_ID) {
+    return `${p.name} can't go on IR — ESPN only lists players it has marked OUT as IR-eligible`;
+  }
+  const eligible = p.eligible_slot_ids.filter((s) => isActiveSlot(s)).map(slotName);
+  const where = eligible.length ? ` (eligible: ${eligible.join(", ")})` : "";
+  return `${p.name} isn't eligible at ${slotName(toSlotId)}${where}`;
+}
+
+/**
  * The checks `validate_moves` runs server-side, for instant feedback: per-move
  * UNTOUCHABLE_SLOT / LOCKED / INELIGIBLE first, then CAPACITY per target slot
  * once every move is individually sound.
@@ -358,11 +372,7 @@ export function validateStaged(state: LineupState, staged: Staged): MoveError[] 
       continue;
     }
     if (!canOccupy(p, m.to_slot_id)) {
-      errors.push({
-        player_id: m.player_id,
-        code: "INELIGIBLE",
-        message: `${p.name} is not eligible for ${slotName(m.to_slot_id)}`,
-      });
+      errors.push({ player_id: m.player_id, code: "INELIGIBLE", message: ineligibleMessage(p, m.to_slot_id) });
     }
   }
   if (errors.length) return errors;
