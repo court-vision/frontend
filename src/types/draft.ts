@@ -29,6 +29,10 @@ export type PickSource = DraftPick["source"];
 export type CategoryNeed = S["CategoryNeedResp"];
 /** Whether a player is likely to survive to the caller's next pick. */
 export type Availability = NonNullable<DraftBoardRow["availability"]>;
+/** Lineup congestion on the caller's roster, as the board measured it on the calendar. */
+export type DraftCongestion = NonNullable<DraftBoardMeta["congestion"]>;
+/** Roster players sharing one NBA team's schedule, counted by the board. */
+export type DraftStack = DraftCongestion["stacks"][number];
 
 /** The result of reconciling a session with an ESPN INIT snapshot. */
 export type DraftInitSync = S["DraftInitSyncResp"];
@@ -116,6 +120,24 @@ export type BoardSortKey =
   | `cat:${string}`;
 
 export type SortDirection = "asc" | "desc";
+
+/**
+ * Recap pick-table sort columns. Rank-like columns (`#`, round, seat, ranks,
+ * ADP) open ascending; value-like ones descending — `pickNaturalDirection`.
+ */
+export type PickSortKey =
+  | "overall_pick"
+  | "round"
+  | "slot"
+  | "player_name"
+  | "team"
+  | "value"
+  | "cv_rank"
+  | "surplus_cv"
+  | "adp"
+  | "surplus_market"
+  | "value_over_slot"
+  | "bid";
 
 /** Position filter over a row's ESPN primary position; `all` disables it. */
 export type PositionFilter = "all" | "PG" | "SG" | "SF" | "PF" | "C";

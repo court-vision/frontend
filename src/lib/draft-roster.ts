@@ -1,11 +1,12 @@
 /**
  * Pure roster-zone logic: how the caller's drafted players fill the league's
  * lineup slots, how they count against hard position caps, where they stack
- * on one NBA schedule, and which keepers are still to be recorded. Kept out of
+ * on one NBA schedule, what they leave on the bench, and which keepers are
+ * still to be recorded. Kept out of
  * the component so the slot-filling rule — the one a roster zone is quietly
  * wrong about — is testable without a DOM.
  */
-import type { DraftKeeperOut, DraftPick, DraftRosterEntry } from "@/types/draft";
+import type { DraftCongestion, DraftKeeperOut, DraftPick, DraftRosterEntry } from "@/types/draft";
 
 /** ESPN lineup slots in display order. IR is filled from the roster, never from the draft. */
 export const SLOT_ORDER = [
@@ -255,4 +256,74 @@ export function lastPick(picks: DraftPick[]): DraftPick | null {
   const latest = (list: DraftPick[]) =>
     list.reduce<DraftPick | null>((best, p) => (best === null || p.overall_pick > best.overall_pick ? p : best), null);
   return latest(picks.filter((p) => p.source !== "keeper")) ?? latest(picks);
+}
+
+export interface CongestionSummary {
+  label: string;
+  title: string;
+  tone: "muted" | "normal";
+}
+
+/**
+ * The roster zone's benched line, from the board's congestion summary. Null
+ * when the board carries none (the stateless team board), so the zone simply
+ * does not draw it rather than claim a zero it never measured. The two empty
+ * states say why nothing could be benched instead of reading as "nothing is".
+ */
+export function congestionSummary(
+  congestion: DraftCongestion | null | undefined
+): CongestionSummary | null {
+  if (!congestion) return null;
+  if (congestion.slots === 0) {
+    return {
+      label: "no lineup slots known",
+      title:
+        "This league's starting slots are unknown, so nothing can be benched — sync its settings from Manage Teams",
+      tone: "muted",
+    };
+  }
+  if (congestion.sample_weeks.length === 0) {
+    return {
+      label: "no schedule sampled",
+      title: "No season calendar could be read, so nothing was benched",
+      tone: "muted",
+    };
+  }
+  const perWeek = Math.round(congestion.benched_per_week);
+  const season = Math.round(congestion.benched_season);
+  return {
+    label: `~${perWeek}/week benched`,
+    title:
+      `~${season} of starter value would ride the bench over ${congestion.season_weeks} weeks, ` +
+      `from your lineup on the game nights of weeks ${congestion.sample_weeks.join(", ")}; ` +
+      `congestion is charged to the top ${congestion.evaluated} candidates`,
+    tone: perWeek > 0 ? "normal" : "muted",
+  };
+}
+
+/**
+ * NBA stacks: the board's own, measured on the real calendar, when it carries
+ * them — an empty list there means "no stacks", not "unknown" — else the
+ * client count of `team`, which is all the stateless board can offer.
+ */
+export function stacksFrom(
+  congestion: DraftCongestion | null | undefined,
+  players: Pick<RosterPlayer, "team">[]
+): TeamStack[] {
+  if (!congestion) return teamStacks(players);
+  return congestion.stacks
+    .map(({ team, count }) => ({ team, count }))
+    .sort((a, b) => b.count - a.count || a.team.localeCompare(b.team));
+}
+
+/**
+ * Names for the roster players the matching left out (no team on file), so
+ * the zone can say who; `#id` when the roster cannot place one.
+ */
+export function noTeamPlayers(
+  ids: number[],
+  players: Pick<RosterPlayer, "player_id" | "name">[]
+): string[] {
+  const byId = new Map(players.map((p) => [p.player_id, p.name]));
+  return ids.map((id) => byId.get(id) ?? `#${id}`);
 }

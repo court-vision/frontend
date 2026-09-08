@@ -2,16 +2,19 @@ import { describe, expect, test } from "bun:test";
 import {
   canonicalSlot,
   capStatuses,
+  congestionSummary,
   fillLineup,
   keeperStatuses,
   lastPick,
   myRoster,
+  noTeamPlayers,
   openStartingSlots,
+  stacksFrom,
   startableSlots,
   teamStacks,
   type RosterPlayer,
 } from "../draft-roster";
-import type { DraftKeeperOut, DraftPick, DraftRosterEntry } from "../../types/draft";
+import type { DraftCongestion, DraftKeeperOut, DraftPick, DraftRosterEntry } from "../../types/draft";
 
 const ESPN_SLOTS = { PG: 1, SG: 1, SF: 1, PF: 1, C: 1, G: 1, F: 1, UT: 3, BE: 3, IR: 1 };
 
@@ -45,6 +48,21 @@ function pick(overrides: Partial<DraftPick> & { overall_pick: number }): DraftPi
 
 function keeper(overrides: Partial<DraftKeeperOut>): DraftKeeperOut {
   return { player_id: null, espn_player_id: null, name: null, round: null, overall_pick: null, ...overrides };
+}
+
+/** The board's congestion summary, every field present so a schema change trips here. */
+function congestion(overrides: Partial<DraftCongestion> = {}): DraftCongestion {
+  return {
+    benched_per_week: 0,
+    benched_season: 0,
+    sample_weeks: [3, 9, 16],
+    season_weeks: 24,
+    slots: 10,
+    stacks: [],
+    no_team: [],
+    evaluated: 25,
+    ...overrides,
+  };
 }
 
 describe("startableSlots", () => {
@@ -203,5 +221,75 @@ describe("provider slot labels", () => {
   test("duplicate spellings of one slot add up rather than overwrite", () => {
     const lineup = fillLineup({ UT: 1, UTIL: 1 }, []);
     expect(lineup.slots.map((s) => s.slot)).toEqual(["UT", "UT"]);
+  });
+});
+
+describe("congestionSummary", () => {
+  test("a board with no congestion draws nothing", () => {
+    expect(congestionSummary(null)).toBeNull();
+    expect(congestionSummary(undefined)).toBeNull();
+  });
+
+  test("the two empty states say why nothing could be benched", () => {
+    const noSlots = congestionSummary(congestion({ slots: 0, benched_per_week: 0 }));
+    expect(noSlots?.label).toBe("no lineup slots known");
+    expect(noSlots?.tone).toBe("muted");
+    expect(noSlots?.title).toContain("sync its settings");
+    const noWeeks = congestionSummary(congestion({ sample_weeks: [] }));
+    expect(noWeeks?.label).toBe("no schedule sampled");
+    expect(noWeeks?.tone).toBe("muted");
+  });
+
+  test("a measured roster reads per week, with the season and the sample in the title", () => {
+    const line = congestionSummary(
+      congestion({ benched_per_week: 41.4, benched_season: 993.6, evaluated: 25 })
+    );
+    expect(line?.label).toBe("~41/week benched");
+    expect(line?.tone).toBe("normal");
+    expect(line?.title).toContain("~994 of starter value");
+    expect(line?.title).toContain("over 24 weeks");
+    expect(line?.title).toContain("weeks 3, 9, 16");
+    expect(line?.title).toContain("top 25 candidates");
+  });
+
+  test("a roster that benches nothing is muted, not hidden", () => {
+    const line = congestionSummary(congestion({ benched_per_week: 0.3, benched_season: 7.2 }));
+    expect(line?.label).toBe("~0/week benched");
+    expect(line?.tone).toBe("muted");
+  });
+});
+
+describe("stacksFrom", () => {
+  const roster = [player({ player_id: 1, team: "DEN" }), player({ player_id: 2, team: "DEN" })];
+
+  test("the board's stacks win over the client count, an empty list included", () => {
+    const measured = congestion({ stacks: [{ team: "BOS", count: 3, player_ids: [5, 6, 7] }] });
+    expect(stacksFrom(measured, roster)).toEqual([{ team: "BOS", count: 3 }]);
+    // Two Nuggets on the roster, but the board measured no stack: no stack.
+    expect(stacksFrom(congestion({ stacks: [] }), roster)).toEqual([]);
+  });
+
+  test("without congestion the stateless count stands", () => {
+    expect(stacksFrom(null, roster)).toEqual(teamStacks(roster));
+    expect(stacksFrom(undefined, roster)).toEqual([{ team: "DEN", count: 2 }]);
+  });
+
+  test("biggest first, then by team", () => {
+    const measured = congestion({
+      stacks: [
+        { team: "MIA", count: 2, player_ids: [1, 2] },
+        { team: "BOS", count: 3, player_ids: [5, 6, 7] },
+        { team: "ATL", count: 2, player_ids: [8, 9] },
+      ],
+    });
+    expect(stacksFrom(measured, roster).map((s) => s.team)).toEqual(["BOS", "ATL", "MIA"]);
+  });
+});
+
+describe("noTeamPlayers", () => {
+  test("names the players the matching left out, by id when the roster cannot", () => {
+    const roster = [player({ player_id: 4, name: "Rookie" })];
+    expect(noTeamPlayers([4, 9], roster)).toEqual(["Rookie", "#9"]);
+    expect(noTeamPlayers([], roster)).toEqual([]);
   });
 });
