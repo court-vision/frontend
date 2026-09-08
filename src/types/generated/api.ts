@@ -1538,6 +1538,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/players/projections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List ESPN preseason player projections
+         * @description Return every row from one ESPN projection snapshot, ordered by player name and NBA ID. `as_of` selects the newest snapshot on or before that date and the response reports the actual snapshot date. Statistics are per-game, shooting rates use a 0–1 scale, and missing measurements remain null. An unavailable snapshot returns an empty success response.
+         */
+        get: operations["list_player_projections_v1_players_projections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/players/search": {
         parameters: {
             query?: never;
@@ -1795,6 +1815,26 @@ export interface paths {
          * @description ESPN editorial draft ranks, ADP, auction values, position eligibility, and injury status. These are preseason market snapshots, separate from Court Vision performance rankings. Includes mapped players without game stats. Missing values are null and sort last; ties sort by NBA player ID. `as_of` selects the newest snapshot on or before that date. An unavailable snapshot returns an empty success response; there is no cross-season fallback.
          */
         get: operations["get_espn_rankings_v1_rankings_espn_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rankings/espn/movement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare ESPN draft-market snapshots
+         * @description Compare the union of players in two independently resolved ESPN market snapshots. Each selector uses the newest snapshot on or before its date. Positive rank and ADP changes mean an earlier, improved position; positive auction changes mean an increase. Entrants, exits, and missing measurements remain null instead of becoming zero. If the selectors cannot resolve two distinct snapshots, the response is a successful empty collection.
+         */
+        get: operations["get_espn_market_movement_v1_rankings_espn_movement_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3598,6 +3638,67 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** ESPNMarketMovementData */
+        ESPNMarketMovementData: {
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "up" | "down" | "both";
+            /** From As Of Date */
+            from_as_of_date: string | null;
+            /** Limit */
+            limit: number;
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "rank" | "adp" | "auction_value" | "auction_value_avg";
+            /** Offset */
+            offset: number;
+            /** Players */
+            players: components["schemas"]["ESPNMarketMovementPlayer"][];
+            /** Season */
+            season: string;
+            /**
+             * Source
+             * @default espn
+             * @constant
+             */
+            source: "espn";
+            /** To As Of Date */
+            to_as_of_date: string | null;
+            /** Total */
+            total: number;
+        };
+        /** ESPNMarketMovementPlayer */
+        ESPNMarketMovementPlayer: {
+            /** @description Measurements in the resolved to snapshot; null when the player was absent */
+            after: components["schemas"]["MarketMeasurements"] | null;
+            /** @description Measurements in the resolved from snapshot; null when the player was absent */
+            before: components["schemas"]["MarketMeasurements"] | null;
+            changes: components["schemas"]["MarketChanges"];
+            /** Espn Id */
+            espn_id: number | null;
+            /** Name */
+            name: string;
+            /**
+             * Player Id
+             * @description NBA player ID
+             */
+            player_id: number;
+        };
+        /** ESPNMarketMovementResp */
+        ESPNMarketMovementResp: {
+            data: components["schemas"]["ESPNMarketMovementData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /** ESPNMarketPlayer */
         ESPNMarketPlayer: {
             /**
@@ -4900,6 +5001,40 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** MarketChanges */
+        MarketChanges: {
+            /**
+             * Adp
+             * @description Positive means the player improved to an earlier average draft position
+             */
+            adp: number | null;
+            /**
+             * Auction Value
+             * @description Positive means ESPN's editorial auction value increased
+             */
+            auction_value: number | null;
+            /**
+             * Auction Value Avg
+             * @description Positive means the average ESPN auction price increased
+             */
+            auction_value_avg: number | null;
+            /**
+             * Overall Rank
+             * @description Positive means the player improved to an earlier ESPN editorial rank
+             */
+            overall_rank: number | null;
+        };
+        /** MarketMeasurements */
+        MarketMeasurements: {
+            /** Adp */
+            adp: number | null;
+            /** Auction Value */
+            auction_value: number | null;
+            /** Auction Value Avg */
+            auction_value_avg: number | null;
+            /** Overall Rank */
+            overall_rank: number | null;
+        };
         /**
          * MatchupData
          * @description Complete matchup data structure
@@ -6017,6 +6152,38 @@ export interface components {
         /** PlayerProjectionResp */
         PlayerProjectionResp: {
             data: components["schemas"]["PlayerProjectionData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** PlayerProjectionsData */
+        PlayerProjectionsData: {
+            /** As Of Date */
+            as_of_date: string | null;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Players */
+            players: components["schemas"]["PlayerProjectionData"][];
+            /** Season */
+            season: string;
+            /**
+             * Source
+             * @default espn
+             * @constant
+             */
+            source: "espn";
+            /** Total */
+            total: number;
+        };
+        /** PlayerProjectionsResp */
+        PlayerProjectionsResp: {
+            data: components["schemas"]["PlayerProjectionsData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -10379,6 +10546,53 @@ export interface operations {
             };
         };
     };
+    list_player_projections_v1_players_projections_get: {
+        parameters: {
+            query?: {
+                /** @description NBA season; defaults to the configured active season */
+                season?: string | null;
+                /** @description Latest snapshot on or before this date; omit for latest */
+                as_of?: string | null;
+                /** @description Case- and accent-insensitive name search */
+                name?: string | null;
+                /** @description Maximum results */
+                limit?: number;
+                /** @description Offset for pagination */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerProjectionsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     search_players_v1_players_search_get: {
         parameters: {
             query: {
@@ -10994,6 +11208,57 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_espn_market_movement_v1_rankings_espn_movement_get: {
+        parameters: {
+            query: {
+                /** @description Resolve the before snapshot on or before this date */
+                from_as_of: string;
+                /** @description Resolve the after snapshot on or before this date */
+                to_as_of: string;
+                /** @description NBA season; defaults to the configured active season */
+                season?: string | null;
+                /** @description Case- and accent-insensitive name search */
+                name?: string | null;
+                /** @description Metric used to filter and order movement */
+                metric?: "rank" | "adp" | "auction_value" | "auction_value_avg";
+                /** @description Return risers, fallers, or both */
+                direction?: "up" | "down" | "both";
+                /** @description Maximum results */
+                limit?: number;
+                /** @description Offset for pagination */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ESPNMarketMovementResp"];
+                };
+            };
+            /** @description Invalid date order, metric, direction, or pagination */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded */
             429: {
