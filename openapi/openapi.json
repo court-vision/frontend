@@ -3643,6 +3643,22 @@
             "description": "Defaults to the league's draftable roster size",
             "title": "Rounds"
           },
+          "scoring_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "points",
+                  "categories"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What a room with no team drafts for: `points` (the default) or `categories`, the standard 9-cat. Rejected with a `team_id` \u2014 a room that has a league takes that league's format, and the team's `scoring_preview` is how that one is overridden.",
+            "title": "Scoring Format"
+          },
           "team_id": {
             "anyOf": [
               {
@@ -3963,6 +3979,22 @@
             ],
             "title": "Rounds"
           },
+          "scoring_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "points",
+                  "categories"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The format a league-less room drafts for; null when the room takes its league's format instead (or when a league-less room drafts for points, the default)",
+            "title": "Scoring Format"
+          },
           "started_at": {
             "anyOf": [
               {
@@ -4034,6 +4066,7 @@
           "rounds",
           "keepers",
           "punts",
+          "scoring_format",
           "league_size",
           "keeper_count",
           "total_picks",

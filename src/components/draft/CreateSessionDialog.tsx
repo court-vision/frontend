@@ -28,7 +28,7 @@ import { scoringShortLabel } from "@/lib/category-format";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useTeamLeagueQuery } from "@/hooks/useTeams";
 import { useCreateDraftSessionMutation } from "@/hooks/useDrafts";
-import type { DraftKind, DraftType } from "@/types/draft";
+import type { DraftKind, DraftType, ScoringFormat } from "@/types/draft";
 
 const NO_TEAM = "none";
 
@@ -78,6 +78,11 @@ export function CreateSessionDialog() {
   // which needs a length to run to, refuses every advance. The user says how
   // many teams instead.
   const [teams_, setTeams] = useState("12");
+  // Only ever sent for a team-less room. A room with a team draws its format
+  // from that team's league (and the team's own scoring preview over it), so
+  // offering a second answer here would let the two disagree — the API rejects
+  // the combination outright.
+  const [scoringFormat, setScoringFormat] = useState<ScoringFormat>("points");
   const [existingRoom, setExistingRoom] = useState<number | null>(null);
 
   useEffect(() => {
@@ -162,6 +167,7 @@ export function CreateSessionDialog() {
     setMySlot("");
     setRounds("");
     setTeams("12");
+    setScoringFormat("points");
     setExistingRoom(null);
   }
 
@@ -179,6 +185,7 @@ export function CreateSessionDialog() {
         // nothing — every reader of `pick_order` in a mock room cares only how
         // many there are. A room with a team takes its league's real order.
         pick_order: mockSeats === null ? null : Array.from({ length: mockSeats }, (_, i) => i + 1),
+        scoring_format: teamValue === NO_TEAM ? scoringFormat : null,
         keepers: [],
       },
       {
@@ -263,6 +270,33 @@ export function CreateSessionDialog() {
               </p>
             )}
           </div>
+
+          {teamValue === NO_TEAM && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Scored as</label>
+              <Select
+                value={scoringFormat}
+                onValueChange={(v) => setScoringFormat(v as ScoringFormat)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="points" className="text-xs">
+                    Points
+                  </SelectItem>
+                  <SelectItem value="categories" className="text-xs">
+                    Categories — standard 9-cat
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                {scoringFormat === "categories"
+                  ? "The board ranks on category fit and the room can punt, the same as a 9-cat league's."
+                  : "Default league weights. A points room has no categories, so nothing to punt."}
+              </p>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Picks from</label>

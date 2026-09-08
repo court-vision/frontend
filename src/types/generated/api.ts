@@ -3382,6 +3382,11 @@ export interface components {
              */
             rounds?: number | null;
             /**
+             * Scoring Format
+             * @description What a room with no team drafts for: `points` (the default) or `categories`, the standard 9-cat. Rejected with a `team_id` — a room that has a league takes that league's format, and the team's `scoring_preview` is how that one is overridden.
+             */
+            scoring_format?: ("points" | "categories") | null;
+            /**
              * Team Id
              * @description Owned team whose league settings the room uses; omit for generic settings
              */
@@ -3505,6 +3510,11 @@ export interface components {
             punts: string[];
             /** Rounds */
             rounds: number | null;
+            /**
+             * Scoring Format
+             * @description The format a league-less room drafts for; null when the room takes its league's format instead (or when a league-less room drafts for points, the default)
+             */
+            scoring_format: ("points" | "categories") | null;
             /** Started At */
             started_at: string | null;
             /**

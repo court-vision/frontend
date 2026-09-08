@@ -27,6 +27,7 @@ function session(overrides: Partial<DraftSession> = {}): DraftSession {
     rounds: 13,
     keepers: [],
     punts: [],
+    scoring_format: null,
     league_size: 4,
     keeper_count: null,
     total_picks: 52,
