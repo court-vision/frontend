@@ -2,11 +2,21 @@
 
 import { useState, type MouseEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { ArrowRight, CheckCircle2, MoreHorizontal, Pencil, Swords, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  CheckCircle2,
+  MoreHorizontal,
+  Pencil,
+  Swords,
+  Trash2,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/relative-time";
+import { sessionTitle } from "@/lib/draft-session";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -28,6 +38,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-error";
 import { CreateSessionDialog } from "@/components/draft/CreateSessionDialog";
+import { ImportDraftDialog } from "@/components/draft/ImportDraftDialog";
 import {
   useDeleteDraftSessionMutation,
   useDraftSessionsQuery,
@@ -47,14 +58,6 @@ const KIND_LABEL: Record<DraftKind, string> = {
   manual: "manual",
   import: "import",
 };
-
-/** A room's title: its name, else what kind of room it is. */
-export function sessionTitle(session: Pick<DraftSession, "id" | "name" | "kind">): string {
-  if (session.name) return session.name;
-  if (session.kind === "mock") return "Mock draft";
-  if (session.kind === "live") return "Live draft";
-  return `Draft #${session.id}`;
-}
 
 /** API timestamps: ISO with an offset, or naive UTC — never local time. */
 function apiTime(value: string | null | undefined): number {
@@ -152,9 +155,13 @@ function DeleteDialog({
 }
 
 function SessionCard({ session }: { session: DraftSession }) {
+  const router = useRouter();
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const finish = useUpdateDraftSessionMutation(session.id);
+  const recapHref = `/draft/${session.id}/recap`;
+  // An imported draft's board is a spent list; its recap is the point of it.
+  const href = session.kind === "import" ? recapHref : `/draft/${session.id}`;
 
   const progress =
     session.total_picks && session.total_picks > 0
@@ -176,7 +183,7 @@ function SessionCard({ session }: { session: DraftSession }) {
 
   return (
     <>
-      <Link href={`/draft/${session.id}`} className="block">
+      <Link href={href} className="block">
         <Card
           variant="panel"
           className="group flex items-center gap-3 p-3 transition-colors hover:border-primary/40"
@@ -253,6 +260,21 @@ function SessionCard({ session }: { session: DraftSession }) {
             )}
           </div>
 
+          {/* A button, not a nested link: the card is already one. */}
+          {session.status === "completed" && session.kind !== "import" && (
+            <button
+              type="button"
+              onClick={(e) => {
+                stop(e);
+                router.push(recapHref);
+              }}
+              title="Grades, every pick priced, the standings projected"
+              className="shrink-0 rounded border border-border/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            >
+              Recap
+            </button>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -265,6 +287,10 @@ function SessionCard({ session }: { session: DraftSession }) {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={stop} className="text-xs">
+              <DropdownMenuItem onSelect={() => router.push(recapHref)} className="gap-2 text-xs">
+                <BarChart3 className="h-3 w-3" />
+                View recap
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setRenaming(true)} className="gap-2 text-xs">
                 <Pencil className="h-3 w-3" />
                 Rename
@@ -311,7 +337,12 @@ export default function DraftSessions() {
           Your draft rooms — board, recommendations and pick tracking for draft day.
         </p>
       </div>
-      {isSignedIn && <CreateSessionDialog />}
+      {isSignedIn && (
+        <div className="flex items-center gap-2">
+          <ImportDraftDialog />
+          <CreateSessionDialog />
+        </div>
+      )}
     </section>
   );
 
@@ -361,7 +392,8 @@ export default function DraftSessions() {
           <p className="text-sm font-medium">No draft rooms yet</p>
           <p className="max-w-sm text-xs text-muted-foreground">
             Start one from a synced team and the draft type, pick order and rounds are prefilled
-            from its league — you only confirm which seat is yours.
+            from its league — you only confirm which seat is yours. Or import a finished ESPN
+            draft and read its recap.
           </p>
         </Card>
       </div>

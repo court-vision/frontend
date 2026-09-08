@@ -14,7 +14,8 @@ import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
 import { POSITION_FILTERS } from "@/types/draft";
 import type { DraftBoardMeta, DraftBoardRow, SortDirection } from "@/types/draft";
 
-function SortIcon({ active, direction }: { active: boolean; direction?: SortDirection }) {
+/** The sort-state glyph a column header carries; the recap pick table reuses it. */
+export function SortIcon({ active, direction }: { active: boolean; direction?: SortDirection }) {
   if (!active) return <ArrowUpDown className="h-3 w-3 opacity-30" />;
   return direction === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
 }
