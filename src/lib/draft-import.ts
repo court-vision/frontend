@@ -12,6 +12,11 @@ export interface ImportFailure {
   existingSessionId: number | null;
   /** The stored ESPN credentials were rejected: point at Manage Teams. */
   reconnect: boolean;
+  /**
+   * The response was lost (network, timeout), so the server may well have
+   * finished the import: the room must be kept, not cleaned up.
+   */
+  outcomeUnknown: boolean;
 }
 
 export function importFailure(error: unknown): ImportFailure {
@@ -20,6 +25,16 @@ export function importFailure(error: unknown): ImportFailure {
   const data = (api.data ?? null) as { existing_session_id?: unknown } | null;
   const existing =
     typeof data?.existing_session_id === "number" ? data.existing_session_id : null;
+  if (api.kind === "network" || api.kind === "timeout") {
+    return {
+      code,
+      message:
+        "The import did not answer in time. The room may already hold the draft — open it before trying again.",
+      existingSessionId: null,
+      reconnect: false,
+      outcomeUnknown: true,
+    };
+  }
   switch (code) {
     case "DRAFT_NOT_COMPLETE":
       return {
@@ -28,6 +43,7 @@ export function importFailure(error: unknown): ImportFailure {
           "ESPN has not finished this draft yet — picks appear only when the draft completes.",
         existingSessionId: null,
         reconnect: false,
+        outcomeUnknown: false,
       };
     case "DRAFT_ROOM_ALREADY_LINKED":
       return {
@@ -38,15 +54,23 @@ export function importFailure(error: unknown): ImportFailure {
             : "Another room already follows that ESPN draft.",
         existingSessionId: existing,
         reconnect: false,
+        outcomeUnknown: false,
       };
     case PROVIDER_AUTH_EXPIRED:
-      return { code, message: userMessage(error), existingSessionId: null, reconnect: true };
+      return {
+        code,
+        message: userMessage(error),
+        existingSessionId: null,
+        reconnect: true,
+        outcomeUnknown: false,
+      };
     default:
       return {
         code,
         message: userMessage(error, "The draft could not be imported."),
         existingSessionId: null,
         reconnect: false,
+        outcomeUnknown: false,
       };
   }
 }

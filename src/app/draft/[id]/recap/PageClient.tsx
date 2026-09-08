@@ -48,12 +48,12 @@ export default function DraftRecapPage({ sessionId }: { sessionId: number }) {
           <span className="font-mono text-xs">{subtitle}</span>
         </p>
       </div>
-      <Link href={`/draft/${sessionId}`}>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+      <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
+        <Link href={`/draft/${sessionId}`}>
           <ArrowLeft className="h-3.5 w-3.5" />
           Room
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     </section>
   );
 

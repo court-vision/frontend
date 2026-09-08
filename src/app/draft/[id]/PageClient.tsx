@@ -547,12 +547,12 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
           </span>
         )}
         {session?.status === "completed" && (
-          <Link href={`/draft/${sessionId}/recap`}>
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+          <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
+            <Link href={`/draft/${sessionId}/recap`}>
               <BarChart3 className="h-3.5 w-3.5" />
               Recap
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         )}
         <DraftSyncChip sync={sync} onLink={linkRoom} />
         <Link href="/draft">

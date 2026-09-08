@@ -39,6 +39,19 @@ describe("importFailure", () => {
     expect(out.message.length).toBeGreaterThan(0);
   });
 
+  test("a lost response keeps the room: the server may have finished the import", () => {
+    for (const kind of ["network", "timeout"] as const) {
+      const out = importFailure(new ApiError({ message: "lost", status: 0, kind }));
+      expect(out.outcomeUnknown).toBe(true);
+      expect(out.message).toContain("may already hold the draft");
+      expect(out.existingSessionId).toBeNull();
+    }
+    const refused = importFailure(
+      new ApiError({ message: "x", status: 409, code: "DRAFT_NOT_COMPLETE" })
+    );
+    expect(refused.outcomeUnknown).toBe(false);
+  });
+
   test("anything else is the backend's own words, or a fallback", () => {
     const named = importFailure(
       new ApiError({ message: "Team Dunk Dynasty is not in the league", status: 400, code: "TEAM_NAME_NOT_IN_LEAGUE" })

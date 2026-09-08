@@ -118,17 +118,24 @@ export function ImportDraftDialog() {
       reset();
       router.push(`/draft/${session.id}/recap`);
     } catch (error) {
-      if (sessionId !== null) {
-        // The refusal left an empty room behind; one click here recreates it.
-        setPhase("cleaning");
-        try {
-          await deleteSession.mutateAsync(sessionId);
-        } catch (cleanupError) {
-          console.error("Import cleanup error:", cleanupError);
-          toast.error(`Could not remove the empty room #${sessionId}`);
+      const failure = importFailure(error);
+      if (sessionId !== null && failure.outcomeUnknown) {
+        // A lost response does not prove the import was refused — the server
+        // may have finished it. Keep the room and point at it.
+        setFailure({ ...failure, existingSessionId: sessionId });
+      } else {
+        if (sessionId !== null) {
+          // The refusal left an empty room behind; one click here recreates it.
+          setPhase("cleaning");
+          try {
+            await deleteSession.mutateAsync(sessionId);
+          } catch (cleanupError) {
+            console.error("Import cleanup error:", cleanupError);
+            toast.error(`Could not remove the empty room #${sessionId}`);
+          }
         }
+        setFailure(failure);
       }
-      setFailure(importFailure(error));
       setPhase("idle");
     }
   }
@@ -217,7 +224,7 @@ export function ImportDraftDialog() {
                   className="inline-block underline decoration-dotted underline-offset-2"
                   onClick={() => setOpen(false)}
                 >
-                  Open its recap
+                  {failure.outcomeUnknown ? "Open the room" : "Open its recap"}
                 </Link>
               )}
               {failure.reconnect && (
