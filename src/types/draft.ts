@@ -70,6 +70,8 @@ export type DraftKind = DraftSession["kind"];
 export type DraftStatus = DraftSession["status"];
 export type DraftType = DraftSession["draft_type"];
 export type ValueSource = DraftBoardRow["value_source"];
+/** What a league-less room drafts for; a room with a league takes its format. */
+export type ScoringFormat = NonNullable<DraftSession["scoring_format"]>;
 
 /**
  * The board endpoint carries `meta` and `recommendations` as siblings of
