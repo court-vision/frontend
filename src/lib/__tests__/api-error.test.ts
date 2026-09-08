@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   ApiError,
+  espnProse,
   isEmptyResult,
   isProviderAuthError,
   toApiError,
@@ -234,5 +235,36 @@ describe("userMessage", () => {
       "Team with ID 3 not found"
     );
     expect(userMessage(new Error(""), "fallback")).toBe("fallback");
+  });
+});
+
+describe("espnProse", () => {
+  test("plain text passes through, non-JSON braces do not throw", () => {
+    expect(espnProse("Invalid selection")).toBe("Invalid selection");
+    expect(espnProse("{not json")).toBeNull();
+    expect(espnProse("")).toBeNull();
+    expect(espnProse(null)).toBeNull();
+  });
+
+  test("reads ESPN's shortMessage out of the error dict", () => {
+    const body = JSON.stringify({
+      messages: ["Austin Reaves is not eligible for the IL/IR slot, player is not injured."],
+      details: [{ shortMessage: "Not eligible for IL/IR.", type: "TRAN_ROSTER_INELIGIBLE_IR_NOT_INJURED" }],
+    });
+    expect(espnProse(body)).toBe("Not eligible for IL/IR.");
+  });
+
+  test("an empty shortMessage falls through to the next candidate", () => {
+    // `??` would stop at the "" and lose the real sentence.
+    expect(espnProse(JSON.stringify({ details: [{ shortMessage: "", message: "Roster is locked." }] })))
+      .toBe("Roster is locked.");
+    expect(espnProse(JSON.stringify({ details: [{ shortMessage: "  ", message: "" }], messages: ["Try later."] })))
+      .toBe("Try later.");
+  });
+
+  test("nothing usable is null, never a raw dict", () => {
+    expect(espnProse(JSON.stringify({ details: [{ shortMessage: "", message: "" }], messages: [""] }))).toBeNull();
+    expect(espnProse(JSON.stringify({ details: 1, messages: 7 }))).toBeNull();
+    expect(espnProse(JSON.stringify({}))).toBeNull();
   });
 });

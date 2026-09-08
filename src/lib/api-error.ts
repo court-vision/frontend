@@ -292,8 +292,9 @@ function rosterMessage(err: ApiError): string | null {
     case ROSTER_MOVE_INVALID:
       return "Some of these moves aren't allowed — check the highlighted rows";
     case ROSTER_WRITE_REJECTED:
-      // ESPN's own explanation is the most useful thing we can show.
-      return err.message || "ESPN rejected the lineup change";
+      // ESPN's own explanation is the most useful thing we can show — as a sentence,
+      // never as its raw error dict should one ever get through.
+      return espnProse(err.message) || "ESPN rejected the lineup change";
     case ROSTER_WRITE_BLOCKED:
       return writeBlockedCopy(dataString(err, "reason"));
     case ROSTER_WRITE_DISABLED:
@@ -302,6 +303,28 @@ function rosterMessage(err: ApiError): string | null {
       return "Couldn't reach ESPN to update your lineup — retry in a minute";
     default:
       return null;
+  }
+}
+
+/**
+ * ESPN's transaction errors are JSON: {"messages": [...], "details": [{"shortMessage", "type", ...}]}.
+ * The backend already reduces them to a sentence; this is the last line of defence.
+ */
+export function espnProse(message: string | null | undefined): string | null {
+  const text = (message ?? "").trim();
+  if (!text) return null;
+  if (!text.startsWith("{")) return text;
+  try {
+    const parsed = JSON.parse(text) as { messages?: unknown; details?: unknown };
+    const details = Array.isArray(parsed.details) ? (parsed.details[0] as Record<string, unknown> | undefined) : undefined;
+    const messages = Array.isArray(parsed.messages) ? parsed.messages : [];
+    // The first non-empty one, not the first non-nullish one: ESPN sends an empty
+    // shortMessage alongside a populated message, and `??` would settle for the "".
+    const candidates = [details?.shortMessage, details?.message, ...messages];
+    const prose = candidates.find((c): c is string => typeof c === "string" && c.trim() !== "");
+    return prose ? prose.trim() : null;
+  } catch {
+    return null;
   }
 }
 

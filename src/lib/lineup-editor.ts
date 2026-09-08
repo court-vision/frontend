@@ -96,9 +96,27 @@ export function occupants(state: LineupState, staged: Staged, slotId: number): L
   return state.players.filter((p) => assign.get(p.player_id) === slotId);
 }
 
-/** ESPN lets anyone sit on the bench; every other slot needs to be in the player's list. */
+/**
+ * ESPN's `injured` flag, or an injury-type status: what ESPN's own IR rule checks.
+ * SUSPENSION is deliberately absent — it keeps a player out of the lineup without
+ * making him injured, and ESPN refuses the IR transaction all the same. Mirrors
+ * IR_STATUSES in the server's lineup_planner.
+ */
+export function isInjured(player: LineupPlayer): boolean {
+  const status = (player.injury_status ?? "").toUpperCase();
+  return player.injured || ["OUT", "O", "IL", "IL+", "INJURY_RESERVE"].includes(status);
+}
+
+/**
+ * ESPN lets anyone sit on the bench; every other slot needs to be in the
+ * player's list — except IR, which ESPN lists for *everyone* and refuses at
+ * transaction time unless the player is injured (TRAN_ROSTER_INELIGIBLE_IR_NOT_INJURED,
+ * captured 2026-09-08), so that rule is applied here too.
+ */
 function canOccupy(player: LineupPlayer, slotId: number): boolean {
-  return slotId === BENCH_SLOT_ID || player.eligible_slot_ids.includes(slotId);
+  if (slotId === BENCH_SLOT_ID) return true;
+  if (!player.eligible_slot_ids.includes(slotId)) return false;
+  return slotId !== IR_SLOT_ID || isInjured(player);
 }
 
 /** Drop entries that no longer differ from the board (or name a player who left it). */
@@ -330,6 +348,20 @@ export function diff(state: LineupState, staged: Staged): LineupMove[] {
 }
 
 /**
+ * Why a move is refused before it reaches ESPN (mirrors the server's wording).
+ * Eligibility is ESPN's own `eligibleSlots`; IR is on it only for players ESPN
+ * has marked OUT, so an IR refusal names that rule instead of the slot.
+ */
+export function ineligibleMessage(p: LineupPlayer, toSlotId: number): string {
+  if (toSlotId === IR_SLOT_ID) {
+    return `${p.name} can't go on IR — ESPN only allows players it lists as injured (OUT) there`;
+  }
+  const eligible = p.eligible_slot_ids.filter((s) => isActiveSlot(s)).map(slotName);
+  const where = eligible.length ? ` (eligible: ${eligible.join(", ")})` : "";
+  return `${p.name} isn't eligible at ${slotName(toSlotId)}${where}`;
+}
+
+/**
  * The checks `validate_moves` runs server-side, for instant feedback: per-move
  * UNTOUCHABLE_SLOT / LOCKED / INELIGIBLE first, then CAPACITY per target slot
  * once every move is individually sound.
@@ -358,11 +390,7 @@ export function validateStaged(state: LineupState, staged: Staged): MoveError[] 
       continue;
     }
     if (!canOccupy(p, m.to_slot_id)) {
-      errors.push({
-        player_id: m.player_id,
-        code: "INELIGIBLE",
-        message: `${p.name} is not eligible for ${slotName(m.to_slot_id)}`,
-      });
+      errors.push({ player_id: m.player_id, code: "INELIGIBLE", message: ineligibleMessage(p, m.to_slot_id) });
     }
   }
   if (errors.length) return errors;

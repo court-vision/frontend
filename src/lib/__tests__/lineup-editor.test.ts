@@ -99,7 +99,8 @@ const ut1 = player({
   has_game_today: false, opponent: null, game_time_et: null, playable: false,
 });
 const ut2 = player({ player_id: 5, lineup_slot_id: UT, eligible_slot_ids: [PG, G, UT, BE] });
-const bench = player({ player_id: 6, lineup_slot_id: BE, eligible_slot_ids: [SG, G, UT, BE, IR] });
+// Every ESPN roster lists IR for everyone; only an injured player may actually use it.
+const bench = player({ player_id: 6, lineup_slot_id: BE, eligible_slot_ids: [SG, G, UT, BE, IR], injured: true, injury_status: "OUT" });
 const ir = player({
   player_id: 7, lineup_slot_id: IR, eligible_slot_ids: [PG, G, UT, BE, IR],
   injured: true, injury_status: "OUT", playable: false,
@@ -264,6 +265,24 @@ describe("validateStaged", () => {
     expect(errors.map((e) => e.code).sort()).toEqual(["INELIGIBLE", "LOCKED"]);
     expect(errors.find((e) => e.code === "LOCKED")?.player_id).toBe(2);
     expect(errors.find((e) => e.code === "INELIGIBLE")?.player_id).toBe(1);
+  });
+
+  test("a suspension keeps a player out of the lineup without opening IR", () => {
+    // ESPN refuses the IR transaction for anyone it does not consider injured, and a
+    // suspended player is unavailable, not injured (mirrors IR_STATUSES on the server).
+    const suspended = player({
+      player_id: 8, lineup_slot_id: BE, eligible_slot_ids: [SG, G, UT, BE, IR],
+      injury_status: "SUSPENSION", has_game_today: false, opponent: null, playable: false,
+    });
+    const openIr = board([pg, sgLocked, g, ut1, ut2, suspended]);
+    const errors = validateStaged(openIr, { 8: IR });
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({ player_id: 8, code: "INELIGIBLE" });
+    expect(errors[0].message).toContain("injured");
+
+    // ESPN's own flag still decides: a suspended player it also marks injured may go on IR.
+    const hurtBoard = board([pg, sgLocked, g, ut1, ut2, { ...suspended, injured: true }]);
+    expect(validateStaged(hurtBoard, { 8: IR })).toEqual([]);
   });
 
   test("ESPN's 14/15 are untouchable", () => {
