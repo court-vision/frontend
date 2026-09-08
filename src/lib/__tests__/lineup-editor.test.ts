@@ -267,6 +267,24 @@ describe("validateStaged", () => {
     expect(errors.find((e) => e.code === "INELIGIBLE")?.player_id).toBe(1);
   });
 
+  test("a suspension keeps a player out of the lineup without opening IR", () => {
+    // ESPN refuses the IR transaction for anyone it does not consider injured, and a
+    // suspended player is unavailable, not injured (mirrors IR_STATUSES on the server).
+    const suspended = player({
+      player_id: 8, lineup_slot_id: BE, eligible_slot_ids: [SG, G, UT, BE, IR],
+      injury_status: "SUSPENSION", has_game_today: false, opponent: null, playable: false,
+    });
+    const openIr = board([pg, sgLocked, g, ut1, ut2, suspended]);
+    const errors = validateStaged(openIr, { 8: IR });
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({ player_id: 8, code: "INELIGIBLE" });
+    expect(errors[0].message).toContain("injured");
+
+    // ESPN's own flag still decides: a suspended player it also marks injured may go on IR.
+    const hurtBoard = board([pg, sgLocked, g, ut1, ut2, { ...suspended, injured: true }]);
+    expect(validateStaged(hurtBoard, { 8: IR })).toEqual([]);
+  });
+
   test("ESPN's 14/15 are untouchable", () => {
     const odd = board([...STATE.players, player({ player_id: 9, lineup_slot_id: 14, eligible_slot_ids: [UT, BE] })]);
     expect(validateStaged(odd, { 9: BE })).toEqual([

@@ -32,7 +32,12 @@ function player(
 ): LineupPlayer {
   const hasGame = extra.has_game_today ?? extra.opponent != null;
   const injury = extra.injury_status ?? null;
-  const isOut = injury != null && ["OUT", "O", "IL", "IL+"].includes(injury.toUpperCase());
+  const upper = injury?.toUpperCase() ?? null;
+  // Two different questions, as on the server: availability (OUT_STATUSES) decides
+  // `playable`, while injury (IR_STATUSES — no SUSPENSION) decides whether ESPN will
+  // accept an IR move. A status alone never means injured; ESPN sends its own flag.
+  const isOut = upper != null && ["OUT", "O", "IL", "IL+", "SUSPENSION", "INJURY_RESERVE"].includes(upper);
+  const isInjured = upper != null && ["OUT", "O", "IL", "IL+", "INJURY_RESERVE"].includes(upper);
   const gameStarted = extra.game_started ?? false;
   const lineupLocked = extra.lineup_locked ?? false;
   return {
@@ -44,7 +49,7 @@ function player(
     lineup_slot: SLOT_NAMES[slot],
     eligible_slot_ids: eligible,
     eligible_slots: eligible.map((s) => SLOT_NAMES[s]),
-    injured: injury != null,
+    injured: extra.injured ?? isInjured,
     injury_status: injury,
     lineup_locked: lineupLocked,
     has_game_today: hasGame,

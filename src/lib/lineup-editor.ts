@@ -96,10 +96,15 @@ export function occupants(state: LineupState, staged: Staged, slotId: number): L
   return state.players.filter((p) => assign.get(p.player_id) === slotId);
 }
 
-/** ESPN's `injured` flag, or an OUT-type status: what ESPN's own IR rule checks. */
+/**
+ * ESPN's `injured` flag, or an injury-type status: what ESPN's own IR rule checks.
+ * SUSPENSION is deliberately absent — it keeps a player out of the lineup without
+ * making him injured, and ESPN refuses the IR transaction all the same. Mirrors
+ * IR_STATUSES in the server's lineup_planner.
+ */
 export function isInjured(player: LineupPlayer): boolean {
   const status = (player.injury_status ?? "").toUpperCase();
-  return player.injured || ["OUT", "O", "IL", "IL+", "SUSPENSION", "INJURY_RESERVE"].includes(status);
+  return player.injured || ["OUT", "O", "IL", "IL+", "INJURY_RESERVE"].includes(status);
 }
 
 /**

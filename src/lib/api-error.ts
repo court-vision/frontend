@@ -318,8 +318,11 @@ export function espnProse(message: string | null | undefined): string | null {
     const parsed = JSON.parse(text) as { messages?: unknown; details?: unknown };
     const details = Array.isArray(parsed.details) ? (parsed.details[0] as Record<string, unknown> | undefined) : undefined;
     const messages = Array.isArray(parsed.messages) ? parsed.messages : [];
-    const candidate = details?.shortMessage ?? details?.message ?? messages[0];
-    return typeof candidate === "string" && candidate.trim() ? candidate.trim() : null;
+    // The first non-empty one, not the first non-nullish one: ESPN sends an empty
+    // shortMessage alongside a populated message, and `??` would settle for the "".
+    const candidates = [details?.shortMessage, details?.message, ...messages];
+    const prose = candidates.find((c): c is string => typeof c === "string" && c.trim() !== "");
+    return prose ? prose.trim() : null;
   } catch {
     return null;
   }
