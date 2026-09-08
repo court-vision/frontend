@@ -37,6 +37,7 @@ import { HintPopover } from "@/components/ui/hint";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { formatPositions } from "@/lib/positions";
 import { PlayerHeadshot } from "@/components/terminal/shared";
+import { getInjuryBadge } from "@/lib/injury-badge";
 
 type StatWindow = "season" | "l7" | "l14" | "l30";
 
@@ -58,34 +59,6 @@ function getPlayerPoints(player: EnrichedRosterPlayer, window: StatWindow): numb
     default:
       return player.avg_points;
   }
-}
-
-function getInjuryBadge(status: string | null) {
-  if (!status) return null;
-  const upper = status.toUpperCase();
-
-  if (["OUT", "O", "IL", "IL+"].includes(upper)) {
-    return (
-      <Badge className="text-[11px] px-1 py-0 h-4 bg-red-500/15 text-red-500 border-red-500/30">
-        {upper}
-      </Badge>
-    );
-  }
-  if (["DTD", "DAY_TO_DAY"].includes(upper)) {
-    return (
-      <Badge className="text-[11px] px-1 py-0 h-4 bg-orange-500/15 text-orange-500 border-orange-500/30">
-        {upper === "DAY_TO_DAY" ? "DTD" : upper}
-      </Badge>
-    );
-  }
-  if (["GTD", "QUESTIONABLE", "DOUBTFUL"].includes(upper)) {
-    return (
-      <Badge className="text-[11px] px-1 py-0 h-4 bg-yellow-500/15 text-yellow-500 border-yellow-500/30">
-        {upper === "QUESTIONABLE" ? "Q" : upper === "DOUBTFUL" ? "DBT" : upper}
-      </Badge>
-    );
-  }
-  return null;
 }
 
 interface SelectedPlayer {

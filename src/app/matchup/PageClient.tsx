@@ -13,6 +13,7 @@ import { ConnectTeamPrompt } from "@/components/teams-components/ConnectTeamProm
 import { useSeason } from "@/hooks/useSeason";
 import { seasonHeadline } from "@/lib/season";
 import { MOCK_CATEGORY_LIVE_MATCHUP, MOCK_CATEGORY_MATCHUP } from "@/__fixtures__/categoryMatchup";
+import { LineupEditorProviderIfEspn } from "@/components/lineup/LineupEditorProvider";
 
 // Dev-only: `/matchup?mock=cats` renders a fixture 9-cat matchup so the
 // category surfaces can be checked before a category league is connected.
@@ -81,15 +82,18 @@ function MatchupContent() {
           </p>
         </Card>
       ) : (
-        <MatchupDisplay
-          matchup={matchup}
-          liveMatchup={liveMatchup}
-          isLoading={isLoading}
-          error={error}
-          onRetry={() => refetch()}
-          teamId={selectedTeam}
-          provider={provider}
-        />
+        // The user's own ESPN roster rows become tap-to-move when the board loads.
+        <LineupEditorProviderIfEspn teamId={selectedTeam} provider={provider}>
+          <MatchupDisplay
+            matchup={matchup}
+            liveMatchup={liveMatchup}
+            isLoading={isLoading}
+            error={error}
+            onRetry={() => refetch()}
+            teamId={selectedTeam}
+            provider={provider}
+          />
+        </LineupEditorProviderIfEspn>
       )}
     </div>
   );

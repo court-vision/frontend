@@ -471,6 +471,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/jobs/lineup/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Evaluate Lineup
+         * @description Plan today's fill-only moves for one team; apply them when `apply` is set.
+         *
+         *     Called by data-platform's lineup-alerts pipeline for every opted-in team.
+         *     Business outcomes are reported in `data.outcome`, never raised.
+         */
+        post: operations["evaluate_lineup_v1_internal_jobs_lineup_evaluate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/lineups": {
         parameters: {
             query?: never;
@@ -783,10 +806,11 @@ export interface paths {
         put?: never;
         /**
          * Send Test Alert
-         * @description Force-send a lineup alert for a team, bypassing the time window check.
+         * @description Force-send today's lineup alert for a team to an address of your choice.
          *
-         *     Useful for testing Resend integration and verifying lineup issue detection.
-         *     The notification log dedup is also bypassed so you can re-send freely.
+         *     Bypasses the pipeline's tip-off window and daily dedup. The content is the
+         *     same fill plan the pipeline would mail (services.lineup_planner): the
+         *     suggested moves, or a "nothing to fill" confirmation when the lineup is set.
          */
         post: operations["send_test_alert_v1_internal_notifications_send_test__team_id__post"];
         delete?: never;
@@ -1142,6 +1166,66 @@ export interface paths {
          *     that the client renders, so it stays a 200.
          */
         post: operations["sync_team_league_v1_internal_teams__team_id__league_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/lineup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lineup
+         * @description Slots, eligibility, locks and game times for the team's current ESPN day.
+         */
+        get: operations["get_lineup_v1_internal_teams__team_id__lineup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/lineup/moves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Lineup Moves
+         * @description Send slot moves to ESPN as one transaction, then return the re-read board.
+         */
+        post: operations["apply_lineup_moves_v1_internal_teams__team_id__lineup_moves_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/lineup/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lineup Plan
+         * @description The fill-only moves Court Vision would make today. Never writes.
+         */
+        get: operations["get_lineup_plan_v1_internal_teams__team_id__lineup_plan_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1937,6 +2021,36 @@ export interface components {
          * @enum {string}
          */
         ApiStatus: "success" | "error" | "skipped" | "bad_request" | "validation_error" | "authentication_error" | "authorization_error" | "not_found" | "conflict" | "rate_limited" | "server_error";
+        /** ApplyLineupMovesData */
+        ApplyLineupMovesData: {
+            /** Applied Moves */
+            applied_moves: components["schemas"]["LineupMoveResult"][];
+            /** Audit Id */
+            audit_id: number | null;
+            lineup: components["schemas"]["LineupState"];
+            /** Verified */
+            verified: boolean;
+        };
+        /** ApplyLineupMovesReq */
+        ApplyLineupMovesReq: {
+            /** Expected Scoring Period Id */
+            expected_scoring_period_id: number;
+            /** Moves */
+            moves: components["schemas"]["LineupMoveReq"][];
+            /** Roster Version */
+            roster_version: string;
+        };
+        /** ApplyLineupMovesResp */
+        ApplyLineupMovesResp: {
+            data: components["schemas"]["ApplyLineupMovesData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /** AvgStats */
         AvgStats: {
             /** Avg Assists */
@@ -3988,6 +4102,8 @@ export interface components {
              * @default
              */
             espn_s2?: string | null;
+            /** Espn Team Id */
+            espn_team_id?: number | null;
             /**
              * League Id
              * @description League ID must be positive
@@ -4044,6 +4160,8 @@ export interface components {
          *     anything — it is useless without a token.
          */
         LeagueInfoPublic: {
+            /** Espn Team Id */
+            espn_team_id: number | null;
             /**
              * Has Espn Credentials
              * @default false
@@ -4213,6 +4331,69 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** LineupEvaluateReq */
+        LineupEvaluateReq: {
+            /**
+             * Apply
+             * @default false
+             */
+            apply?: boolean;
+            /**
+             * Nba Date
+             * Format: date
+             */
+            nba_date: string;
+            /** Team Id */
+            team_id: number;
+            /** User Id */
+            user_id: number;
+        };
+        /** LineupEvaluationData */
+        LineupEvaluationData: {
+            /** Audit Id */
+            audit_id: number | null;
+            /** First Game Time Et */
+            first_game_time_et: string | null;
+            /**
+             * Moves
+             * @default []
+             */
+            moves: components["schemas"]["LineupMoveResult"][];
+            /** Nba Date */
+            nba_date: string | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "planned" | "applied" | "noop" | "rejected" | "failed" | "skipped";
+            /** Reason */
+            reason: string | null;
+            /** Scoring Period Id */
+            scoring_period_id: number | null;
+            /**
+             * Team Name
+             * @default
+             */
+            team_name: string;
+            /**
+             * Unfilled
+             * @default []
+             */
+            unfilled: components["schemas"]["LineupUnfilled"][];
+            /** Verified */
+            verified: boolean | null;
+        };
+        /** LineupEvaluationResp */
+        LineupEvaluationResp: {
+            data: components["schemas"]["LineupEvaluationData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /** LineupInfo */
         "LineupInfo-Input": {
             /** Id */
@@ -4291,6 +4472,138 @@ export interface components {
             /** Suggested Action */
             suggested_action: string;
         };
+        /** LineupMoveReq */
+        LineupMoveReq: {
+            /** From Slot Id */
+            from_slot_id: number;
+            /** Player Id */
+            player_id: number;
+            /** To Slot Id */
+            to_slot_id: number;
+        };
+        /** LineupMoveResult */
+        LineupMoveResult: {
+            /** From Slot */
+            from_slot: string;
+            /** From Slot Id */
+            from_slot_id: number;
+            /** Name */
+            name: string;
+            /** Note */
+            note: string | null;
+            /** Player Id */
+            player_id: number;
+            /**
+             * Role
+             * @default shift
+             * @enum {string}
+             */
+            role: "start" | "bench" | "shift";
+            /** To Slot */
+            to_slot: string;
+            /** To Slot Id */
+            to_slot_id: number;
+        };
+        /** LineupPlanData */
+        LineupPlanData: {
+            /**
+             * Moves
+             * @default []
+             */
+            moves: components["schemas"]["LineupMoveResult"][];
+            /** Nba Date */
+            nba_date: string | null;
+            /** Roster Version */
+            roster_version: string;
+            /** Scoring Period Id */
+            scoring_period_id: number | null;
+            /** Summary */
+            summary: string;
+            /**
+             * Unfilled
+             * @default []
+             */
+            unfilled: components["schemas"]["LineupUnfilled"][];
+        };
+        /** LineupPlanResp */
+        LineupPlanResp: {
+            data: components["schemas"]["LineupPlanData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** LineupPlayer */
+        LineupPlayer: {
+            /**
+             * Avg Points
+             * @default 0
+             */
+            avg_points: number;
+            /** Eligible Slot Ids */
+            eligible_slot_ids: number[];
+            /** Eligible Slots */
+            eligible_slots: string[];
+            /**
+             * Game Started
+             * @default false
+             */
+            game_started: boolean;
+            /** Game Time Et */
+            game_time_et: string | null;
+            /**
+             * Has Game Today
+             * @default false
+             */
+            has_game_today: boolean;
+            /**
+             * Injured
+             * @default false
+             */
+            injured: boolean;
+            /** Injury Status */
+            injury_status: string | null;
+            /**
+             * Lineup Locked
+             * @default false
+             */
+            lineup_locked: boolean;
+            /** Lineup Slot */
+            lineup_slot: string;
+            /** Lineup Slot Id */
+            lineup_slot_id: number;
+            /**
+             * Locked
+             * @default false
+             */
+            locked: boolean;
+            /** Name */
+            name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
+            /** Opponent */
+            opponent: string | null;
+            /**
+             * Playable
+             * @default false
+             */
+            playable: boolean;
+            /** Player Id */
+            player_id: number;
+            /** Team */
+            team: string;
+            /**
+             * Value Kind
+             * @default fpts
+             * @enum {string}
+             */
+            value_kind: "fpts" | "cat_value";
+            /** Value Source */
+            value_source: string | null;
+        };
         /**
          * LineupResponse
          * @description Lineup data response model
@@ -4308,6 +4621,90 @@ export interface components {
             threshold: number | null;
             /** Week */
             week: string | null;
+        };
+        /** LineupSlotDef */
+        LineupSlotDef: {
+            /** Count */
+            count: number;
+            /** Slot */
+            slot: string;
+            /** Slot Id */
+            slot_id: number;
+        };
+        /** LineupState */
+        LineupState: {
+            /**
+             * Can Write
+             * @default false
+             */
+            can_write: boolean;
+            /** Espn Team Id */
+            espn_team_id: number | null;
+            /** Fetched At */
+            fetched_at: string;
+            /** First Game Time Et */
+            first_game_time_et: string | null;
+            /** Lock Type */
+            lock_type: string | null;
+            /** Nba Date */
+            nba_date: string | null;
+            /**
+             * Players
+             * @default []
+             */
+            players: components["schemas"]["LineupPlayer"][];
+            provider: components["schemas"]["FantasyProvider"];
+            /** Roster Version */
+            roster_version: string;
+            /** Scoring Period Id */
+            scoring_period_id: number | null;
+            /**
+             * Scoring Period Source
+             * @default none
+             * @enum {string}
+             */
+            scoring_period_source: "provider" | "calendar" | "none";
+            /**
+             * Slot Counts
+             * @default {}
+             */
+            slot_counts: {
+                [key: string]: number;
+            };
+            /**
+             * Slots
+             * @default []
+             */
+            slots: components["schemas"]["LineupSlotDef"][];
+            /** Team Name */
+            team_name: string;
+            /** Write Blocked Reason */
+            write_blocked_reason: ("provider_not_supported" | "no_credentials" | "writes_disabled" | "no_scoring_period" | "not_team_owner" | "team_id_unresolved") | null;
+        };
+        /** LineupStateResp */
+        LineupStateResp: {
+            data: components["schemas"]["LineupState"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * LineupUnfilled
+         * @description A bench player with a game today the planner could not start.
+         */
+        LineupUnfilled: {
+            /** Name */
+            name: string;
+            /** Player Id */
+            player_id: number;
+            /** Reason */
+            reason: string;
+            /** Slot */
+            slot: string;
         };
         /** LiveMatchupData */
         LiveMatchupData: {
@@ -4960,6 +5357,11 @@ export interface components {
              * @default 90
              */
             alert_minutes_before?: number;
+            /**
+             * Auto Lineup Enabled
+             * @default false
+             */
+            auto_lineup_enabled?: boolean;
             /** Email */
             email?: string | null;
             /**
@@ -4993,6 +5395,11 @@ export interface components {
              * @default 90
              */
             alert_minutes_before: number;
+            /**
+             * Auto Lineup Enabled
+             * @default false
+             */
+            auto_lineup_enabled: boolean;
             /** Email */
             email: string | null;
             /**
@@ -5043,6 +5450,8 @@ export interface components {
             alert_injured_active?: boolean | null;
             /** Alert Minutes Before */
             alert_minutes_before?: number | null;
+            /** Auto Lineup Enabled */
+            auto_lineup_enabled?: boolean | null;
             /** Email */
             email?: string | null;
             /** Lineup Alerts Enabled */
@@ -5061,6 +5470,8 @@ export interface components {
             alert_injured_active: boolean | null;
             /** Alert Minutes Before */
             alert_minutes_before: number | null;
+            /** Auto Lineup Enabled */
+            auto_lineup_enabled: boolean | null;
             /** Email */
             email: string | null;
             /** Has Override */
@@ -8281,6 +8692,39 @@ export interface operations {
             };
         };
     };
+    evaluate_lineup_v1_internal_jobs_lineup_evaluate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LineupEvaluateReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineupEvaluationResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_lineups_v1_internal_lineups_get: {
         parameters: {
             query: {
@@ -9378,6 +9822,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeagueSyncResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lineup_v1_internal_teams__team_id__lineup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineupStateResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_lineup_moves_v1_internal_teams__team_id__lineup_moves_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyLineupMovesReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplyLineupMovesResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lineup_plan_v1_internal_teams__team_id__lineup_plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineupPlanResp"];
                 };
             };
             /** @description Validation Error */

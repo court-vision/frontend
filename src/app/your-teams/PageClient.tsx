@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useUIStore } from "@/stores/useUIStore";
 import { useTeamInsightsQuery } from "@/hooks/useTeams";
@@ -14,8 +15,20 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Settings } from "lucide-react";
 import { scoringLabel } from "@/lib/category-format";
+import { LineupEditorProviderIfEspn } from "@/components/lineup/LineupEditorProvider";
+import { LineupEditor } from "@/components/lineup/LineupEditor";
+import { LineupApplyBar } from "@/components/lineup/LineupApplyBar";
+import { ApplyLineupDialog } from "@/components/lineup/ApplyLineupDialog";
+import { MOCK_LINEUP_EDITOR } from "@/__fixtures__/lineupState";
 
-export default function Teams() {
+// Dev-only: `/your-teams?mock=lineup` renders the lineup editor on a fixture
+// board so tap-to-move, Optimize and the confirm flow can be checked without
+// a backend (or an ESPN team).
+const MOCKS_ENABLED = process.env.NODE_ENV !== "production";
+
+function TeamsContent() {
+  const searchParams = useSearchParams();
+  const mock = MOCKS_ENABLED && searchParams.get("mock") === "lineup";
   const { isSignedIn, isLoaded } = useUser();
   const setSelectedTeam = useUIStore((s) => s.setSelectedTeam);
   const {
@@ -61,6 +74,20 @@ export default function Teams() {
       </Link>
     </section>
   );
+
+  if (mock) {
+    return (
+      <div className="space-y-4 animate-slide-up-fade">
+        {pageHeader}
+        <p className="px-1 text-xs text-muted-foreground">Mock lineup board (dev only).</p>
+        <LineupEditorProviderIfEspn teamId={0} provider="espn" mock={MOCK_LINEUP_EDITOR}>
+          <LineupEditor />
+          <LineupApplyBar />
+          <ApplyLineupDialog />
+        </LineupEditorProviderIfEspn>
+      </div>
+    );
+  }
 
   if (!isLoaded || isTeamsLoading || (selectedTeam && isInsightsLoading)) {
     return (
@@ -152,7 +179,7 @@ export default function Teams() {
       </div>
 
       {insights ? (
-        <TeamDashboard insights={insights} provider={provider} />
+        <TeamDashboard insights={insights} teamId={selectedTeam} provider={provider} />
       ) : insightsError ? (
         <Card variant="panel">
           <QueryErrorState
@@ -169,5 +196,13 @@ export default function Teams() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function Teams() {
+  return (
+    <Suspense fallback={<div className="space-y-4 animate-slide-up-fade" />}>
+      <TeamsContent />
+    </Suspense>
   );
 }
