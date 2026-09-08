@@ -4390,6 +4390,207 @@
         "title": "ESPNMarketData",
         "type": "object"
       },
+      "ESPNMarketMovementData": {
+        "properties": {
+          "direction": {
+            "enum": [
+              "up",
+              "down",
+              "both"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "from_as_of_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From As Of Date"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "metric": {
+            "enum": [
+              "rank",
+              "adp",
+              "auction_value",
+              "auction_value_avg"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/ESPNMarketMovementPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "season": {
+            "title": "Season",
+            "type": "string"
+          },
+          "source": {
+            "const": "espn",
+            "default": "espn",
+            "title": "Source",
+            "type": "string"
+          },
+          "to_as_of_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To As Of Date"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "season",
+          "source",
+          "from_as_of_date",
+          "to_as_of_date",
+          "metric",
+          "direction",
+          "players",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ESPNMarketMovementData",
+        "type": "object"
+      },
+      "ESPNMarketMovementPlayer": {
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarketMeasurements"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Measurements in the resolved to snapshot; null when the player was absent"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarketMeasurements"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Measurements in the resolved from snapshot; null when the player was absent"
+          },
+          "changes": {
+            "$ref": "#/components/schemas/MarketChanges"
+          },
+          "espn_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Id"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "description": "NBA player ID",
+            "title": "Player Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "espn_id",
+          "name",
+          "before",
+          "after",
+          "changes"
+        ],
+        "title": "ESPNMarketMovementPlayer",
+        "type": "object"
+      },
+      "ESPNMarketMovementResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ESPNMarketMovementData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "ESPNMarketMovementResp",
+        "type": "object"
+      },
       "ESPNMarketPlayer": {
         "properties": {
           "adp": {
@@ -7813,6 +8014,122 @@
         "title": "LiveScheduleResp",
         "type": "object"
       },
+      "MarketChanges": {
+        "properties": {
+          "adp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Positive means the player improved to an earlier average draft position",
+            "title": "Adp"
+          },
+          "auction_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Positive means ESPN's editorial auction value increased",
+            "title": "Auction Value"
+          },
+          "auction_value_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Positive means the average ESPN auction price increased",
+            "title": "Auction Value Avg"
+          },
+          "overall_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Positive means the player improved to an earlier ESPN editorial rank",
+            "title": "Overall Rank"
+          }
+        },
+        "required": [
+          "overall_rank",
+          "adp",
+          "auction_value",
+          "auction_value_avg"
+        ],
+        "title": "MarketChanges",
+        "type": "object"
+      },
+      "MarketMeasurements": {
+        "properties": {
+          "adp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adp"
+          },
+          "auction_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auction Value"
+          },
+          "auction_value_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auction Value Avg"
+          },
+          "overall_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Rank"
+          }
+        },
+        "required": [
+          "overall_rank",
+          "adp",
+          "auction_value",
+          "auction_value_avg"
+        ],
+        "title": "MarketMeasurements",
+        "type": "object"
+      },
       "MatchupData": {
         "description": "Complete matchup data structure",
         "properties": {
@@ -10925,6 +11242,114 @@
           "timestamp"
         ],
         "title": "PlayerProjectionResp",
+        "type": "object"
+      },
+      "PlayerProjectionsData": {
+        "properties": {
+          "as_of_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of Date"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/PlayerProjectionData"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "season": {
+            "title": "Season",
+            "type": "string"
+          },
+          "source": {
+            "const": "espn",
+            "default": "espn",
+            "title": "Source",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "season",
+          "source",
+          "as_of_date",
+          "players",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "PlayerProjectionsData",
+        "type": "object"
+      },
+      "PlayerProjectionsResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlayerProjectionsData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "PlayerProjectionsResp",
         "type": "object"
       },
       "PlayerResp": {
@@ -19766,6 +20191,128 @@
         ]
       }
     },
+    "/v1/players/projections": {
+      "get": {
+        "description": "Return every row from one ESPN projection snapshot, ordered by player name and NBA ID. `as_of` selects the newest snapshot on or before that date and the response reports the actual snapshot date. Statistics are per-game, shooting rates use a 0\u20131 scale, and missing measurements remain null. An unavailable snapshot returns an empty success response.",
+        "operationId": "list_player_projections_v1_players_projections_get",
+        "parameters": [
+          {
+            "description": "NBA season; defaults to the configured active season",
+            "in": "query",
+            "name": "season",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "NBA season; defaults to the configured active season",
+              "title": "Season"
+            }
+          },
+          {
+            "description": "Latest snapshot on or before this date; omit for latest",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest snapshot on or before this date; omit for latest",
+              "title": "As Of"
+            }
+          },
+          {
+            "description": "Case- and accent-insensitive name search",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Case- and accent-insensitive name search",
+              "title": "Name"
+            }
+          },
+          {
+            "description": "Maximum results",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Maximum results",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Offset for pagination",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Offset for pagination",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerProjectionsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "List ESPN preseason player projections",
+        "tags": [
+          "Players"
+        ]
+      }
+    },
     "/v1/players/search": {
       "get": {
         "description": "Search the NBA player dimension rather than season statistics. Results include mapped rookies and players without games, with NBA/ESPN identities and profile freshness timestamps.",
@@ -20771,6 +21318,161 @@
           }
         },
         "summary": "Get ESPN draft rankings and market values",
+        "tags": [
+          "Rankings"
+        ]
+      }
+    },
+    "/v1/rankings/espn/movement": {
+      "get": {
+        "description": "Compare the union of players in two independently resolved ESPN market snapshots. Each selector uses the newest snapshot on or before its date. Positive rank and ADP changes mean an earlier, improved position; positive auction changes mean an increase. Entrants, exits, and missing measurements remain null instead of becoming zero. If the selectors cannot resolve two distinct snapshots, the response is a successful empty collection.",
+        "operationId": "get_espn_market_movement_v1_rankings_espn_movement_get",
+        "parameters": [
+          {
+            "description": "Resolve the before snapshot on or before this date",
+            "in": "query",
+            "name": "from_as_of",
+            "required": true,
+            "schema": {
+              "description": "Resolve the before snapshot on or before this date",
+              "format": "date",
+              "title": "From As Of",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Resolve the after snapshot on or before this date",
+            "in": "query",
+            "name": "to_as_of",
+            "required": true,
+            "schema": {
+              "description": "Resolve the after snapshot on or before this date",
+              "format": "date",
+              "title": "To As Of",
+              "type": "string"
+            }
+          },
+          {
+            "description": "NBA season; defaults to the configured active season",
+            "in": "query",
+            "name": "season",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "NBA season; defaults to the configured active season",
+              "title": "Season"
+            }
+          },
+          {
+            "description": "Case- and accent-insensitive name search",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Case- and accent-insensitive name search",
+              "title": "Name"
+            }
+          },
+          {
+            "description": "Metric used to filter and order movement",
+            "in": "query",
+            "name": "metric",
+            "required": false,
+            "schema": {
+              "default": "rank",
+              "description": "Metric used to filter and order movement",
+              "enum": [
+                "rank",
+                "adp",
+                "auction_value",
+                "auction_value_avg"
+              ],
+              "title": "Metric",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Return risers, fallers, or both",
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "both",
+              "description": "Return risers, fallers, or both",
+              "enum": [
+                "up",
+                "down",
+                "both"
+              ],
+              "title": "Direction",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum results",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Maximum results",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Offset for pagination",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Offset for pagination",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ESPNMarketMovementResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Invalid date order, metric, direction, or pagination"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "Compare ESPN draft-market snapshots",
         "tags": [
           "Rankings"
         ]
