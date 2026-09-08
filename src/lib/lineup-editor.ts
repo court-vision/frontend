@@ -204,12 +204,13 @@ export function eligibleTargets(state: LineupState, staged: Staged, playerId: nu
   const current = assign.get(playerId) ?? mover.lineup_slot_id;
   if (!isEditableSlot(current)) return [];
 
-  const candidates = new Set(mover.eligible_slot_ids.filter(isEditableSlot));
-  candidates.add(BENCH_SLOT_ID);
-
+  // canOccupy is the same gate validateStaged applies to the mover, so a slot is
+  // never offered as a target and then refused: the bench takes anyone, every other
+  // slot must be in the player's list, and IR — which ESPN lists for everyone —
+  // needs an injured player.
   const out: number[] = [];
   for (const slot of SLOT_ORDER) {
-    if (slot === current || !candidates.has(slot)) continue;
+    if (slot === current || !canOccupy(mover, slot)) continue;
     const capacity = slotCapacity(state, slot);
     if (capacity <= 0) continue;
     const holders = state.players.filter((p) => assign.get(p.player_id) === slot);

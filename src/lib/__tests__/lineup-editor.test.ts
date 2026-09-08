@@ -164,6 +164,43 @@ describe("eligibleTargets", () => {
     expect(eligibleTargets(openIr, {}, bench.player_id)).toContain(IR);
   });
 
+  test("IR is not offered to a healthy player, even though ESPN lists it for him", () => {
+    // The production shape: every ESPN roster carries 13 in eligible_slot_ids, so the
+    // slot list alone can't gate IR — validateStaged would refuse what we offered.
+    const healthy = player({
+      player_id: 8, lineup_slot_id: BE, eligible_slot_ids: [SG, G, UT, BE, IR],
+    });
+    const openIr = board([pg, sgLocked, g, ut1, ut2, healthy]);
+    expect(eligibleTargets(openIr, {}, healthy.player_id)).not.toContain(IR);
+    expect(eligibleTargets(openIr, {}, healthy.player_id)).toContain(UT); // his other slots stand
+
+    // Injured, and IR appears — the same board, the same list, ESPN's flag the only change.
+    const hurt = board([pg, sgLocked, g, ut1, ut2, { ...healthy, injured: true, injury_status: "OUT" }]);
+    expect(eligibleTargets(hurt, {}, healthy.player_id)).toContain(IR);
+  });
+
+  test("every target offered would also pass validateStaged", () => {
+    // The two gates must not disagree: an offered slot that validation refuses is a
+    // dead end for the user. Run it on the production shape, where ESPN has listed
+    // slot 13 for every player on the roster.
+    const espnShaped = board(
+      STATE.players.map((p) => ({
+        ...p,
+        eligible_slot_ids: p.eligible_slot_ids.includes(IR)
+          ? p.eligible_slot_ids
+          : [...p.eligible_slot_ids, IR],
+      }))
+    );
+    let checked = 0;
+    for (const p of espnShaped.players.filter((q) => !q.locked)) {
+      for (const slot of eligibleTargets(espnShaped, {}, p.player_id)) {
+        expect(validateStaged(espnShaped, stage(espnShaped, {}, p.player_id, slot))).toEqual([]);
+        checked += 1;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
   test("a full slot whose holders are all locked is never a target", () => {
     const lockedUt = board([
       pg, sgLocked, g,
