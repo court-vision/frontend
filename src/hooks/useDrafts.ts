@@ -6,7 +6,9 @@ import { apiClient } from "@/lib/api";
 import type {
   DraftBoardResult,
   DraftBoardRow,
+  DraftImport,
   DraftInitSync,
+  DraftRecapResult,
   MockAdvance,
   MockUntil,
   DraftPick,
@@ -25,6 +27,8 @@ export const draftKeys = {
   detail: (sessionId: number) => [...draftKeys.details(), sessionId] as const,
   boards: () => [...draftKeys.all, "board"] as const,
   board: (sessionId: number) => [...draftKeys.boards(), sessionId] as const,
+  recaps: () => [...draftKeys.all, "recap"] as const,
+  recap: (sessionId: number) => [...draftKeys.recaps(), sessionId] as const,
   // The stateless board is keyed by team plus the pick sets the caller passes;
   // sorted+joined so the same picks in a different order share a cache entry.
   teamBoard: (teamId: number | null, picked: number[], mine: number[]) =>
@@ -91,15 +95,62 @@ export function useTeamDraftBoardQuery(
   });
 }
 
-export function useCreateDraftSessionMutation() {
+/**
+ * The finished draft read back. Every write path invalidates it, so it can sit
+ * for a while between reads: the page is a report, not a live board.
+ */
+export function useDraftRecapQuery(sessionId: number | null) {
+  const { getToken, isSignedIn } = useAuth();
+
+  return useQuery<DraftRecapResult>({
+    queryKey: draftKeys.recap(sessionId!),
+    queryFn: ({ signal }) => apiClient.getDraftRecap(getToken, sessionId!, { signal }),
+    enabled: !!sessionId && isSignedIn === true,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/**
+ * Fold a completed ESPN draft into a session. Silent: the import dialog reads
+ * the refusal (not finished, not an ESPN team, already followed by another
+ * room) and says it in place. The response carries the whole session, so it
+ * is written straight into the cache; the board, the recap and the list
+ * refetch behind it.
+ */
+export function useDraftImportMutation() {
+  const queryClient = useQueryClient();
+  const { getToken } = useAuth();
+
+  return useMutation<DraftImport, Error, number>({
+    mutationKey: ["drafts", "import"],
+    mutationFn: (sessionId) => apiClient.importDraft(getToken, sessionId),
+    meta: { toast: false },
+    onSuccess: (result, sessionId) => {
+      queryClient.setQueryData(draftKeys.detail(sessionId), result.session);
+      queryClient.invalidateQueries({ queryKey: draftKeys.board(sessionId) });
+      queryClient.invalidateQueries({ queryKey: draftKeys.recap(sessionId) });
+      queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
+    },
+    onError: (error) => {
+      console.error("Draft import error:", error);
+    },
+  });
+}
+
+/**
+ * Open a room. `silent` is for a flow that reports on its own: the import
+ * dialog creates a room only to fill it, and says so once, at the end.
+ */
+export function useCreateDraftSessionMutation(opts: { silent?: boolean } = {}) {
   const queryClient = useQueryClient();
   const { getToken } = useAuth();
 
   return useMutation<DraftSession, Error, DraftSessionCreate>({
     mutationKey: ["drafts", "create"],
     mutationFn: (body) => apiClient.createDraftSession(getToken, body),
+    meta: opts.silent ? { toast: false } : undefined,
     onSuccess: (session) => {
-      toast.success("Draft room created");
+      if (!opts.silent) toast.success("Draft room created");
       queryClient.setQueryData(draftKeys.detail(session.id), session);
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
     },
@@ -119,8 +170,10 @@ export function useUpdateDraftSessionMutation(sessionId: number) {
     onSuccess: (session) => {
       queryClient.setQueryData(draftKeys.detail(sessionId), session);
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
-      // my_slot and rounds change what the board recommends.
+      // my_slot and rounds change what the board recommends, and whose seat
+      // the recap calls mine.
       queryClient.invalidateQueries({ queryKey: draftKeys.board(sessionId) });
+      queryClient.invalidateQueries({ queryKey: draftKeys.recap(sessionId) });
     },
     onError: (error) => {
       console.error("Update draft session error:", error);
@@ -128,18 +181,20 @@ export function useUpdateDraftSessionMutation(sessionId: number) {
   });
 }
 
-export function useDeleteDraftSessionMutation() {
+export function useDeleteDraftSessionMutation(opts: { silent?: boolean } = {}) {
   const queryClient = useQueryClient();
   const { getToken } = useAuth();
 
   return useMutation<number, Error, number>({
     mutationKey: ["drafts", "delete"],
     mutationFn: (sessionId) => apiClient.deleteDraftSession(getToken, sessionId),
+    meta: opts.silent ? { toast: false } : undefined,
     onSuccess: (sessionId) => {
-      toast.success("Draft room deleted");
+      if (!opts.silent) toast.success("Draft room deleted");
       // Gone for good: drop its caches rather than refetching a 404.
       queryClient.removeQueries({ queryKey: draftKeys.detail(sessionId) });
       queryClient.removeQueries({ queryKey: draftKeys.board(sessionId) });
+      queryClient.removeQueries({ queryKey: draftKeys.recap(sessionId) });
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
     },
     onError: (error) => {
@@ -266,6 +321,7 @@ export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: draftKeys.board(sessionId) });
       queryClient.invalidateQueries({ queryKey: draftKeys.detail(sessionId) });
+      queryClient.invalidateQueries({ queryKey: draftKeys.recap(sessionId) });
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
     },
   });
@@ -287,6 +343,7 @@ export function useDraftInitSyncMutation(sessionId: number) {
     onSuccess: (result) => {
       queryClient.setQueryData(draftKeys.detail(sessionId), result.session);
       queryClient.invalidateQueries({ queryKey: draftKeys.board(sessionId) });
+      queryClient.invalidateQueries({ queryKey: draftKeys.recap(sessionId) });
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
     },
     onError: (error) => {
@@ -318,6 +375,7 @@ export function useMockAdvanceMutation(sessionId: number) {
     onSuccess: (result) => {
       queryClient.setQueryData(draftKeys.detail(sessionId), result.session);
       queryClient.invalidateQueries({ queryKey: draftKeys.board(sessionId) });
+      queryClient.invalidateQueries({ queryKey: draftKeys.recap(sessionId) });
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
     },
     onError: (error) => {
@@ -344,6 +402,7 @@ export function useUndoDraftPickMutation(sessionId: number, opts: { silent?: boo
       if (!opts.silent) toast.success(`Pick ${overallPick} undone`);
       queryClient.invalidateQueries({ queryKey: draftKeys.board(sessionId) });
       queryClient.invalidateQueries({ queryKey: draftKeys.detail(sessionId) });
+      queryClient.invalidateQueries({ queryKey: draftKeys.recap(sessionId) });
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
     },
     onError: (error) => {

@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   capStatuses,
+  congestionSummary,
   fillLineup,
   keeperStatuses,
   myRoster,
+  noTeamPlayers,
   openStartingSlots,
-  teamStacks,
+  stacksFrom,
   type KeeperStatus,
   type RosterPlayer,
 } from "@/lib/draft-roster";
@@ -251,7 +253,15 @@ export function RosterZone({
   const lineup = useMemo(() => fillLineup(rosterSlots, roster), [rosterSlots, roster]);
   const open = useMemo(() => openStartingSlots(lineup), [lineup]);
   const caps = useMemo(() => capStatuses(roster, positionLimits), [roster, positionLimits]);
-  const stacks = useMemo(() => teamStacks(roster), [roster]);
+  // Stacks and benched value come from the board's own calendar matching when
+  // it measured them; the stateless board did not, and falls back to counting.
+  const congestion = board?.meta?.congestion ?? null;
+  const stacks = useMemo(() => stacksFrom(congestion, roster), [congestion, roster]);
+  const benched = congestionSummary(congestion);
+  const noTeam = useMemo(
+    () => noTeamPlayers(congestion?.no_team ?? [], roster),
+    [congestion, roster]
+  );
   const keepers = useMemo(() => keeperStatuses(session?.keepers ?? [], picks), [session, picks]);
   const pendingKeepers = keepers.filter((k) => !k.recorded && k.blocker === null);
   const recent = useMemo(
@@ -330,8 +340,8 @@ export function RosterZone({
           ))
         )}
 
-        {/* Caps, open slots, stacks */}
-        {(caps.length > 0 || open.length > 0 || stacks.length > 0) && (
+        {/* Caps, open slots, stacks, benched value */}
+        {(caps.length > 0 || open.length > 0 || stacks.length > 0 || benched !== null) && (
           <div className="space-y-1 border-b border-border/30 px-2 py-1.5 font-mono text-[10px]">
             {caps.length > 0 && (
               <div className="flex flex-wrap items-center gap-1">
@@ -381,6 +391,30 @@ export function RosterZone({
                     {stack.team} ×{stack.count}
                   </span>
                 ))}
+              </div>
+            )}
+            {/* What this roster leaves on the bench on its real game nights —
+                the number the congestion term charges a candidate against. */}
+            {benched !== null && (
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="text-muted-foreground/60">benched</span>
+                <span
+                  title={benched.title}
+                  className={cn(
+                    "rounded border border-border/50 px-1",
+                    benched.tone === "muted" ? "text-muted-foreground/60" : "text-muted-foreground"
+                  )}
+                >
+                  {benched.label}
+                </span>
+                {noTeam.length > 0 && (
+                  <span
+                    title="No NBA team on file — never benched, never penalized, and not counted in the stacks"
+                    className="max-w-full truncate rounded border border-border/50 px-1 text-muted-foreground/60"
+                  >
+                    no team: {noTeam.join(", ")}
+                  </span>
+                )}
               </div>
             )}
           </div>

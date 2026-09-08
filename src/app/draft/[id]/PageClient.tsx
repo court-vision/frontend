@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { ArrowLeft, FastForward } from "lucide-react";
+import { ArrowLeft, BarChart3, FastForward } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -545,6 +545,14 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
           >
             not simulatable
           </span>
+        )}
+        {session?.status === "completed" && (
+          <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
+            <Link href={`/draft/${sessionId}/recap`}>
+              <BarChart3 className="h-3.5 w-3.5" />
+              Recap
+            </Link>
+          </Button>
         )}
         <DraftSyncChip sync={sync} onLink={linkRoom} />
         <Link href="/draft">

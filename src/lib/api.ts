@@ -99,7 +99,9 @@ import type {
   DraftBoardMeta,
   DraftBoardResult,
   DraftBoardRow,
+  DraftImport,
   DraftInitSync,
+  DraftRecapResult,
   MockAdvance,
   MockUntil,
   DraftPick,
@@ -109,6 +111,10 @@ import type {
   DraftSession,
   DraftSessionCreate,
   DraftSessionUpdate,
+  RecapMeta,
+  RecapPick,
+  RecapSeat,
+  RecapStanding,
 } from "@/types/draft";
 
 /** The lineup optimiser runs a genetic algorithm; give it well beyond the default 15 s. */
@@ -817,6 +823,48 @@ class ApiClient {
     const env = await fetchJson<BaseApiResponse<MockAdvance>>(
       `${DRAFTS_API}/${sessionId}/mock/advance`,
       { getToken, method: "POST", body: { until }, timeoutMs: 30_000 }
+    );
+    return unwrap(env);
+  }
+
+  /**
+   * The finished draft read back: every pick priced, every seat graded, the
+   * standings projected. Like the board, `seats`, `standings` and `meta` ride
+   * beside `data`, so the envelope is composed rather than unwrapped.
+   */
+  async getDraftRecap(
+    getToken: GetTokenFn,
+    sessionId: number,
+    opts?: RequestOptions
+  ): Promise<DraftRecapResult> {
+    const env = await fetchJson<
+      BaseApiResponse<RecapPick[]> & {
+        seats?: RecapSeat[] | null;
+        standings?: RecapStanding[] | null;
+        meta?: RecapMeta | null;
+      }
+    >(`${DRAFTS_API}/${sessionId}/recap`, { ...opts, getToken, timeoutMs: 30_000 });
+    const { data, message } = unwrapWithMessage(env, []);
+    return {
+      picks: data,
+      seats: env.seats ?? [],
+      standings: env.standings ?? [],
+      meta: env.meta ?? null,
+      message,
+    };
+  }
+
+  /**
+   * Fold a completed ESPN draft into a session. Deliberately not `raw`: the
+   * route refuses for real (409 before the draft finishes, 400 for a team that
+   * is not ESPN's, 409 when another room already follows that draft) and the
+   * import dialog turns those into the reason it could not run. The longer
+   * timeout covers the provider round trip.
+   */
+  async importDraft(getToken: GetTokenFn, sessionId: number): Promise<DraftImport> {
+    const env = await fetchJson<BaseApiResponse<DraftImport>>(
+      `${DRAFTS_API}/${sessionId}/import`,
+      { getToken, method: "POST", timeoutMs: 30_000 }
     );
     return unwrap(env);
   }

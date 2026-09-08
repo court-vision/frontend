@@ -60,7 +60,7 @@ export function RecommendationStrip({
     return (
       <div className="flex gap-2 p-2 overflow-x-auto">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-[104px] w-[220px] shrink-0" />
+          <Skeleton key={i} className="h-[120px] w-[220px] shrink-0" />
         ))}
       </div>
     );
@@ -131,7 +131,7 @@ export function RecommendationStrip({
                     </span>
                   </div>
                   {/* Every other component's detail is a sentence and stays on
-                      hover; five of them would bury the numbers. Fit's names the
+                      hover; six of them would bury the numbers. Fit's names the
                       categories that moved the pick — the thing actually being
                       decided — so it reads without hovering. */}
                   {component.key === "category_fit" && component.detail && (
