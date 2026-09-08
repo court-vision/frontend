@@ -1454,6 +1454,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/players/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search the player directory
+         * @description Search the NBA player dimension rather than season statistics. Results include mapped rookies and players without games, with NBA/ESPN identities and profile freshness timestamps.
+         */
+        get: operations["search_players_v1_players_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/players/stats": {
         parameters: {
             query?: never;
@@ -1526,6 +1546,26 @@ export interface paths {
          * @description Get percentile ranks for a player's stats compared to all qualifying players.
          */
         get: operations["get_player_percentiles_v1_players__player_id__percentiles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/players/{player_id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a player's profile
+         * @description Return NBA/ESPN identity fields and the latest biographical profile snapshot. A known player whose profile has not been ingested returns data with profile=null.
+         */
+        get: operations["get_player_profile_v1_players__player_id__profile_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5426,6 +5466,115 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /**
+         * PlayerProfileData
+         * @description Player identity plus its optional profile snapshot.
+         */
+        PlayerProfileData: {
+            /**
+             * Created At
+             * Format: date-time
+             * @description UTC timestamp when the player identity was created
+             */
+            created_at: string;
+            /**
+             * Espn Id
+             * @description ESPN player ID, when mapped
+             */
+            espn_id: number | null;
+            /**
+             * Id
+             * @description NBA player ID
+             */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Position
+             * @description Position from the player dimension
+             */
+            position: string | null;
+            /** @description Biographical/profile snapshot; null until the profile pipeline has supplied one */
+            profile: components["schemas"]["PlayerProfileDetails"] | null;
+            /**
+             * Updated At
+             * Format: date-time
+             * @description UTC timestamp when the player identity was last updated
+             */
+            updated_at: string;
+        };
+        /**
+         * PlayerProfileDetails
+         * @description The optional ``nba.player_profiles`` row for a player identity.
+         */
+        PlayerProfileDetails: {
+            /** Birthdate */
+            birthdate: string | null;
+            /** Country */
+            country: string | null;
+            /**
+             * Draft Number
+             * @description Overall draft pick
+             */
+            draft_number: number | null;
+            /** Draft Round */
+            draft_round: number | null;
+            /** Draft Year */
+            draft_year: number | null;
+            /** First Name */
+            first_name: string | null;
+            /** From Year */
+            from_year: number | null;
+            /**
+             * Height
+             * @description NBA height text, for example "6-11"
+             */
+            height: string | null;
+            /** Height Inches */
+            height_inches: number | null;
+            /** Jersey Number */
+            jersey_number: string | null;
+            /** Last Name */
+            last_name: string | null;
+            /** Position */
+            position: string | null;
+            /** School */
+            school: string | null;
+            /** Season Exp */
+            season_exp: number | null;
+            /**
+             * Team
+             * @description Team abbreviation at profile refresh time; not a current-roster guarantee
+             */
+            team: string | null;
+            /** To Year */
+            to_year: number | null;
+            /**
+             * Updated At
+             * Format: date-time
+             * @description UTC timestamp of this profile snapshot
+             */
+            updated_at: string;
+            /**
+             * Weight
+             * @description Weight in pounds
+             */
+            weight: number | null;
+        };
+        /**
+         * PlayerProfileResp
+         * @description Response for GET /v1/players/{player_id}/profile.
+         */
+        PlayerProfileResp: {
+            data: components["schemas"]["PlayerProfileData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /** PlayerProjectionData */
         PlayerProjectionData: {
             /**
@@ -5501,6 +5650,69 @@ export interface components {
             games_remaining: number;
             /** Has B2B */
             has_b2b: boolean;
+        };
+        /** PlayerSearchData */
+        PlayerSearchData: {
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Players */
+            players: components["schemas"]["PlayerSearchItem"][];
+            /** Query */
+            query: string;
+            /** Total */
+            total: number;
+        };
+        /**
+         * PlayerSearchItem
+         * @description Minimal dimension-backed player identity for search results.
+         */
+        PlayerSearchItem: {
+            /**
+             * Espn Id
+             * @description ESPN player ID, when mapped
+             */
+            espn_id: number | null;
+            /**
+             * Id
+             * @description NBA player ID
+             */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Player Updated At
+             * Format: date-time
+             * @description UTC timestamp of the player identity row
+             */
+            player_updated_at: string;
+            /** Position */
+            position: string | null;
+            /**
+             * Profile Updated At
+             * @description UTC timestamp of the joined profile snapshot, or null when no profile is stored
+             */
+            profile_updated_at: string | null;
+            /**
+             * Team
+             * @description Team abbreviation from the player-profile snapshot; not a current-roster guarantee
+             */
+            team: string | null;
+        };
+        /**
+         * PlayerSearchResp
+         * @description Response for GET /v1/players/search.
+         */
+        PlayerSearchResp: {
+            data: components["schemas"]["PlayerSearchData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /** PlayerStats */
         PlayerStats: {
@@ -9626,6 +9838,49 @@ export interface operations {
             };
         };
     };
+    search_players_v1_players_search_get: {
+        parameters: {
+            query: {
+                /** @description Player name, NBA ID, or ESPN ID */
+                q: string;
+                /** @description Maximum results */
+                limit?: number;
+                /** @description Offset for pagination */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Players retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerSearchResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_player_stats_by_query_v1_players_stats_get: {
         parameters: {
             query?: {
@@ -9800,6 +10055,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlayerPercentilesResp"];
+                };
+            };
+            /** @description Player not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_player_profile_v1_players__player_id__profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description NBA player ID */
+                player_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Player profile retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerProfileResp"];
                 };
             };
             /** @description Player not found */
