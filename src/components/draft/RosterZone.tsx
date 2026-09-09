@@ -34,6 +34,8 @@ interface RosterZoneProps {
   board: DraftBoardResult | null;
   onUndo?: (overallPick: number) => void;
   onUndoLast?: () => void;
+  /** Whether this room owns that pick. Absent means every pick is undoable. */
+  canUndo?: (overallPick: number) => boolean;
   isUndoing?: boolean;
   onEditKeepers?: () => void;
   onRecordKeepers?: (pending: KeeperStatus[]) => void;
@@ -62,13 +64,18 @@ function SectionHeader({ title, right }: { title: string; right?: React.ReactNod
 function UndoButton({
   overallPick,
   onUndo,
+  canUndo,
   isUndoing,
 }: {
   overallPick: number;
   onUndo?: (overallPick: number) => void;
+  canUndo?: (overallPick: number) => boolean;
   isUndoing?: boolean;
 }) {
   if (!onUndo) return null;
+  // A pick ESPN recorded is not this room's to unrecord; ⌘Z carries the reason,
+  // so here the control simply is not offered.
+  if (canUndo && !canUndo(overallPick)) return null;
   return (
     <Button
       size="icon"
@@ -87,9 +94,11 @@ function LineupRow({
   slot,
   player,
   onUndo,
+  canUndo,
   isUndoing,
 }: {
   slot: string;
+  canUndo?: (overallPick: number) => boolean;
   player: RosterPlayer | null;
   onUndo?: (overallPick: number) => void;
   isUndoing?: boolean;
@@ -117,7 +126,12 @@ function LineupRow({
             {[player.primary_position, player.team].filter(Boolean).join(" · ")}
           </span>
           {player.overall_pick !== null && (
-            <UndoButton overallPick={player.overall_pick} onUndo={onUndo} isUndoing={isUndoing} />
+            <UndoButton
+              overallPick={player.overall_pick}
+              onUndo={onUndo}
+              canUndo={canUndo}
+              isUndoing={isUndoing}
+            />
           )}
         </>
       ) : (
@@ -130,10 +144,12 @@ function LineupRow({
 function PickRow({
   pick,
   onUndo,
+  canUndo,
   isUndoing,
 }: {
   pick: DraftPick;
   onUndo?: (overallPick: number) => void;
+  canUndo?: (overallPick: number) => boolean;
   isUndoing?: boolean;
 }) {
   return (
@@ -158,7 +174,7 @@ function PickRow({
       {pick.round !== null && pick.round !== undefined && (
         <span className="ml-auto shrink-0 text-muted-foreground/50">R{pick.round}</span>
       )}
-      <UndoButton overallPick={pick.overall_pick} onUndo={onUndo} isUndoing={isUndoing} />
+      <UndoButton overallPick={pick.overall_pick} onUndo={onUndo} canUndo={canUndo} isUndoing={isUndoing} />
     </div>
   );
 }
@@ -237,6 +253,7 @@ export function RosterZone({
   board,
   onUndo,
   onUndoLast,
+  canUndo,
   isUndoing = false,
   onEditKeepers,
   onRecordKeepers,
@@ -309,6 +326,7 @@ export function RosterZone({
                 slot={entry.slot}
                 player={entry.player}
                 onUndo={onUndo}
+                canUndo={canUndo}
                 isUndoing={isUndoing}
               />
             ))}
@@ -318,6 +336,7 @@ export function RosterZone({
                 slot="—"
                 player={player}
                 onUndo={onUndo}
+                canUndo={canUndo}
                 isUndoing={isUndoing}
               />
             ))}
@@ -536,7 +555,13 @@ export function RosterZone({
           <p className="px-2 py-3 text-[10px] text-muted-foreground">The draft has not started.</p>
         ) : (
           recent.map((pick) => (
-            <PickRow key={pick.overall_pick} pick={pick} onUndo={onUndo} isUndoing={isUndoing} />
+            <PickRow
+              key={pick.overall_pick}
+              pick={pick}
+              onUndo={onUndo}
+              canUndo={canUndo}
+              isUndoing={isUndoing}
+            />
           ))
         )}
       </div>

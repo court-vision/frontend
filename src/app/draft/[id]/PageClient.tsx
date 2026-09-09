@@ -19,6 +19,7 @@ import {
 import { SimulateToEndDialog } from "@/components/draft/SimulateToEndDialog";
 import { useVisibleRows } from "@/hooks/useBoardView";
 import { keeperStatuses, lastPick, samePlayer, type KeeperStatus } from "@/lib/draft-roster";
+import { pickIsUndoable, undoBlocker } from "@/lib/draft-undo";
 import { canDraftLabel, sendFailureMessage } from "@/lib/espn-draft/sync-state";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -304,8 +305,29 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
       toast.message("Nothing to undo");
       return;
     }
+    // ⌘Z is where someone reaches for an undo they cannot have, so it is where
+    // the reason belongs. It stops rather than undoing an *earlier* pick: the
+    // keystroke means "take back what just happened", and quietly taking back
+    // something else instead would be the worse surprise.
+    const blocked = session ? undoBlocker(session, last) : null;
+    if (blocked) {
+      toast.message(blocked);
+      return;
+    }
     undoPick.mutate(last.overall_pick);
   }, [session, undoPick]);
+
+  // The per-pick control is hidden for a pick the room does not own, rather
+  // than disabled: in a live draft every ESPN row would otherwise carry a dead
+  // button. A pick not found is treated as not undoable — an action we cannot
+  // check is not one to offer.
+  const canUndo = useCallback(
+    (overallPick: number) => {
+      const pick = session?.picks?.find((p) => p.overall_pick === overallPick);
+      return !!session && pick !== undefined && pickIsUndoable(session, pick);
+    },
+    [session]
+  );
 
   const focusInput = useCallback(() => inputRef.current?.focus(), []);
 
@@ -694,6 +716,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
             board={board ?? null}
             onUndo={(overallPick) => undoPick.mutate(overallPick)}
             onUndoLast={undoLast}
+            canUndo={canUndo}
             isUndoing={undoPick.isPending}
             onEditKeepers={() => setKeepersOpen(true)}
             onRecordKeepers={recordKeepers}
