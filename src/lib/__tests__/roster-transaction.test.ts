@@ -7,12 +7,14 @@ import {
   rosterCapacity,
   streamerCaption,
   transactionBody,
+  dropBlockedReason,
   transactionError,
   transactionOutcomeCopy,
   waiversClearsSuffix,
 } from "../roster-transaction";
 import { ApiError } from "../api-error";
 import { MOCK_LINEUP_STATE } from "../../__fixtures__/lineupState";
+import { writeBlockedCopy } from "../../types/lineup-editor";
 import type { LineupState } from "../../types/lineup-editor";
 import type { StreamerData, StreamerPlayer } from "../../types/streamer";
 
@@ -280,5 +282,32 @@ describe("streamerCaption", () => {
     const upcoming = search({ upcoming: true, matchup_number: 1, current_day_index: 0, start_date: "2026-10-20" });
     expect(streamerCaption(upcoming, "daily")).toBe("Matchup 1 · starts Tue, Oct 20");
     expect(streamerCaption(upcoming, "week")).toBe("Matchup 1 · starts Tue, Oct 20 · full week");
+  });
+});
+
+describe("drop-only", () => {
+  test("a straight drop sends only the drop, still pinned to the board", () => {
+    expect(transactionBody({ player: null, dropId: 4066261, state: MOCK_LINEUP_STATE })).toEqual({
+      add_player_id: null,
+      drop_player_id: 4066261,
+      expected_scoring_period_id: MOCK_LINEUP_STATE.scoring_period_id!,
+      roster_version: MOCK_LINEUP_STATE.roster_version,
+    });
+  });
+
+  test("nobody to add and nobody to drop is nothing to send", () => {
+    expect(transactionBody({ player: null, dropId: null, state: MOCK_LINEUP_STATE })).toBeNull();
+  });
+
+  test("dropBlockedReason: ESPN only, then the board's own gate, never waivers", () => {
+    expect(dropBlockedReason({ state: MOCK_LINEUP_STATE, provider: "yahoo" })).toMatch(/ESPN teams/);
+    expect(
+      dropBlockedReason({
+        state: { ...MOCK_LINEUP_STATE, can_write: false, write_blocked_reason: "writes_disabled" },
+        provider: "espn",
+      })
+    ).toBe(writeBlockedCopy("writes_disabled"));
+    expect(dropBlockedReason({ state: null, provider: "espn" })).toBeNull();
+    expect(dropBlockedReason({ state: MOCK_LINEUP_STATE, provider: "espn" })).toBeNull();
   });
 });

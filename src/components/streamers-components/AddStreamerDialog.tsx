@@ -26,6 +26,7 @@ import { formatPositions } from "@/lib/positions";
 import {
   addBlockedReason,
   canAddWithoutDrop,
+  dropBlockedReason,
   dropCandidates,
   transactionBody,
   transactionError,
@@ -36,7 +37,7 @@ import type { StreamerPlayer } from "@/types/streamer";
 import { WaiversBadge } from "./StreamerBadges";
 
 interface AddStreamerDialogProps {
-  /** The streamer to add; null renders an empty shell (the dialog is closed). */
+  /** The streamer to add, or null for drop-only mode: release a roster player, add nobody. */
   player: StreamerPlayer | null;
   teamId: number;
   open: boolean;
@@ -56,10 +57,11 @@ function slotVariant(slotId: number): "default" | "secondary" | "outline" {
 }
 
 /**
- * Confirm step for picking a streamer up on ESPN: choose who (if anyone)
- * to drop, then send. The board comes from the lineup editor's query (so it
- * is shared with /your-teams and re-polls while writable); the rules live
- * in `lib/roster-transaction`. The dialog only reads them.
+ * Confirm step for picking a streamer up on ESPN — choose who (if anyone) to
+ * drop, then send — or, with no streamer, for dropping someone outright. The
+ * board comes from the lineup editor's query (so it is shared with
+ * /your-teams and re-polls while writable); the rules live in
+ * `lib/roster-transaction`. The dialog only reads them.
  */
 export function AddStreamerDialog({
   player,
@@ -74,8 +76,9 @@ export function AddStreamerDialog({
 
   // The drop choice is remembered for the player it was made for, so opening
   // the dialog for someone else starts clean. `undefined` = nothing picked yet.
-  const [choice, setChoice] = useState<{ forPlayer: number; dropId: number | null } | null>(null);
+  const [choice, setChoice] = useState<{ forPlayer: number | null; dropId: number | null } | null>(null);
   const playerId = player?.player_id ?? null;
+  const dropOnly = player === null;
   const picked = choice && choice.forPlayer === playerId ? choice.dropId : undefined;
   const { reset } = mutation;
   useEffect(() => {
@@ -83,13 +86,17 @@ export function AddStreamerDialog({
   }, [playerId, open, reset]);
 
   const hasSeat = !!state && canAddWithoutDrop(state);
-  // Nothing picked and a seat is open: "don't drop anyone" is the default.
-  const dropId: number | null | undefined = picked !== undefined ? picked : hasSeat ? null : undefined;
-  const blocked = player ? addBlockedReason({ player, state, provider: "espn" }) : null;
+  // Nothing picked and a seat is open: "don't drop anyone" is the default for
+  // an add. A straight drop has no default — someone must be chosen.
+  const dropId: number | null | undefined =
+    picked !== undefined ? picked : hasSeat && !dropOnly ? null : undefined;
+  const blocked = player
+    ? addBlockedReason({ player, state, provider: "espn" })
+    : dropBlockedReason({ state, provider: "espn" });
   const candidates = state ? dropCandidates(state) : [];
   const inlineError = transactionError(mutation.error);
   const pending = mutation.isPending;
-  const body = player && state && dropId !== undefined ? transactionBody({ player, dropId, state }) : null;
+  const body = state && dropId !== undefined ? transactionBody({ player, dropId, state }) : null;
   const canSubmit = !!body && !blocked && !pending;
 
   const submit = () => {
@@ -104,7 +111,7 @@ export function AddStreamerDialog({
       <DialogContent className="max-w-md gap-3 p-0 max-sm:p-0">
         <DialogHeader className="px-5 pr-10 pt-5">
           <DialogTitle className="flex flex-wrap items-center gap-2">
-            <span>Add {player?.name ?? "player"} on ESPN</span>
+            <span>{player ? `Add ${player.name} on ESPN` : "Drop a player on ESPN"}</span>
             {player?.acquisition_status === "waivers" && <WaiversBadge until={player.waivers_until} />}
           </DialogTitle>
           <DialogDescription>
@@ -114,7 +121,9 @@ export function AddStreamerDialog({
                 {positions ? ` · ${positions}` : ""}
               </span>
             )}
-            This sends the transaction to ESPN now. Players lock at their game&apos;s tip-off.
+            {dropOnly
+              ? "This releases the player on ESPN now — he goes to waivers or the free-agent pool under your league's rules."
+              : "This sends the transaction to ESPN now. Players lock at their game's tip-off."}
           </DialogDescription>
         </DialogHeader>
 
@@ -148,20 +157,22 @@ export function AddStreamerDialog({
             aria-label="Player to drop"
             className="max-h-[50vh] overflow-y-auto border-y border-border"
           >
-            <ChoiceRow
-              checked={dropId === null}
-              disabled={!hasSeat || pending}
-              onSelect={() => player && setChoice({ forPlayer: player.player_id, dropId: null })}
-            >
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">Don&apos;t drop anyone</span>
-              {hasSeat ? (
-                <span className="shrink-0 text-xs text-muted-foreground">Open seat</span>
-              ) : (
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  Roster is full — pick someone to drop
-                </span>
-              )}
-            </ChoiceRow>
+            {!dropOnly && (
+              <ChoiceRow
+                checked={dropId === null}
+                disabled={!hasSeat || pending}
+                onSelect={() => setChoice({ forPlayer: playerId, dropId: null })}
+              >
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">Don&apos;t drop anyone</span>
+                {hasSeat ? (
+                  <span className="shrink-0 text-xs text-muted-foreground">Open seat</span>
+                ) : (
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    Roster is full — pick someone to drop
+                  </span>
+                )}
+              </ChoiceRow>
+            )}
             {candidates.map(({ player: p, locked }) => {
               const lock = lockLabel(p);
               return (
@@ -169,7 +180,7 @@ export function AddStreamerDialog({
                   key={p.player_id}
                   checked={dropId === p.player_id}
                   disabled={locked || pending}
-                  onSelect={() => player && setChoice({ forPlayer: player.player_id, dropId: p.player_id })}
+                  onSelect={() => setChoice({ forPlayer: playerId, dropId: p.player_id })}
                 >
                   <Badge variant={slotVariant(p.lineup_slot_id)} className="w-11 shrink-0 justify-center font-mono">
                     {slotName(p.lineup_slot_id)}
@@ -210,7 +221,7 @@ export function AddStreamerDialog({
           </DialogClose>
           <Button type="button" onClick={submit} disabled={!canSubmit} className="gap-1.5">
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {pending ? "Sending…" : "Add on ESPN"}
+            {pending ? "Sending…" : dropOnly ? "Drop on ESPN" : "Add on ESPN"}
           </Button>
         </DialogFooter>
       </DialogContent>

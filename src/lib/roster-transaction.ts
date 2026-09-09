@@ -112,23 +112,36 @@ export function addBlockedReason({ player, state, provider }: AddBlockedInput): 
   return null;
 }
 
+/**
+ * Why nobody can be dropped right now — the same gates as an add minus the
+ * waivers one, which is about the incoming player. Null when a drop may be
+ * offered.
+ */
+export function dropBlockedReason({ state, provider }: Pick<AddBlockedInput, "state" | "provider">): string | null {
+  if (provider !== "espn") return "Dropping players is available for ESPN teams";
+  if (state && !state.can_write) return writeBlockedCopy(state.write_blocked_reason);
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Request
 // ---------------------------------------------------------------------------
 
 export interface TransactionBodyInput {
-  player: Pick<StreamerPlayer, "player_id">;
+  /** The streamer to add, or null for a straight drop. */
+  player: Pick<StreamerPlayer, "player_id"> | null;
   /** ESPN id of the player to release, or null for a straight add. */
   dropId: number | null;
   state: LineupState;
 }
 
 /**
- * The request for "add this streamer, dropping `dropId` if given", pinned to
- * the board the user saw (`roster_version`, `scoring_period_id`) so a board
- * that moved on ESPN answers ROSTER_STALE. Null when the board has no
- * scoring period: there is nothing to pin to, and such a board is read-only
- * anyway (`write_blocked_reason: no_scoring_period`).
+ * The request for "add this streamer, dropping `dropId` if given" — or, with
+ * no streamer, "drop `dropId`" — pinned to the board the user saw
+ * (`roster_version`, `scoring_period_id`) so a board that moved on ESPN
+ * answers ROSTER_STALE. Null when there is nothing to send (neither side) or
+ * the board has no scoring period: there is nothing to pin to, and such a
+ * board is read-only anyway (`write_blocked_reason: no_scoring_period`).
  */
 export function transactionBody({
   player,
@@ -136,8 +149,9 @@ export function transactionBody({
   state,
 }: TransactionBodyInput): RosterTransactionRequest | null {
   if (state.scoring_period_id == null) return null;
+  if (player === null && dropId === null) return null;
   return {
-    add_player_id: player.player_id,
+    add_player_id: player?.player_id ?? null,
     drop_player_id: dropId ?? null,
     expected_scoring_period_id: state.scoring_period_id,
     roster_version: state.roster_version,

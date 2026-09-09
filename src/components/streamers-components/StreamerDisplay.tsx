@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, Fragment } from "react";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, UserMinus } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,8 @@ import { STREAMERS_PAGE_QUERY, useStreamersQuery } from "@/hooks/useStreamers";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import { CAT_VALUE_TITLE } from "@/lib/category-format";
 import { formatPositions } from "@/lib/positions";
-import { addBlockedReason, streamerCaption } from "@/lib/roster-transaction";
+import { addBlockedReason, dropBlockedReason, streamerCaption } from "@/lib/roster-transaction";
+import { cn } from "@/lib/utils";
 import { PlayerHeadshot } from "@/components/terminal/shared";
 import { userMessage } from "@/lib/api-error";
 import type { StreamerPlayer, StreamerMode } from "@/types/streamer";
@@ -115,10 +116,10 @@ export default function StreamerDisplay() {
   const [avgDays, setAvgDays] = useState(DEFAULT_AVG_DAYS);
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  // The add dialog keeps its player while it animates closed, so the target
-  // and the open flag are separate.
-  const [addTarget, setAddTarget] = useState<StreamerPlayer | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
+  // The add/drop dialog keeps its subject while it animates closed, so the
+  // target and the open flag are separate. `{ player: null }` is a straight drop.
+  const [txnTarget, setTxnTarget] = useState<{ player: StreamerPlayer | null } | null>(null);
+  const [txnOpen, setTxnOpen] = useState(false);
 
   // Fetch streamers
   const streamers = useStreamersQuery(selectedTeam, {
@@ -139,9 +140,14 @@ export default function StreamerDisplay() {
   const addReason = (player: StreamerPlayer) =>
     addBlockedReason({ player, state: board, provider });
   const openAdd = (player: StreamerPlayer) => {
-    setAddTarget(player);
-    setAddOpen(true);
+    setTxnTarget({ player });
+    setTxnOpen(true);
   };
+  const openDrop = () => {
+    setTxnTarget({ player: null });
+    setTxnOpen(true);
+  };
+  const dropReason = dropBlockedReason({ state: board, provider });
 
   // Fetch breakout candidates (public endpoint, no auth)
   const { data: breakoutData, error: breakoutError } = useBreakoutStreamersQuery();
@@ -351,6 +357,9 @@ export default function StreamerDisplay() {
             triggerClassName="text-xs px-3"
           />
           <StreamerFilterControls layout="inline" {...filterProps} />
+          {canAdd && (
+            <DropPlayerButton reason={dropReason} onClick={openDrop} className="ml-auto h-8 text-xs" />
+          )}
         </div>
       </Card>
 
@@ -374,6 +383,9 @@ export default function StreamerDisplay() {
             <SlidersHorizontal />
             Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
           </Button>
+          {canAdd && (
+            <DropPlayerButton reason={dropReason} onClick={openDrop} className="h-10 shrink-0 px-3 text-xs" iconOnly />
+          )}
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -622,15 +634,49 @@ export default function StreamerDisplay() {
         </DialogContent>
       </Dialog>
 
-      {addTarget && (
+      {txnTarget && (
         <AddStreamerDialog
-          player={addTarget}
+          player={txnTarget.player}
           teamId={selectedTeam}
-          open={addOpen}
-          onOpenChange={setAddOpen}
+          open={txnOpen}
+          onOpenChange={setTxnOpen}
         />
       )}
     </div>
+  );
+}
+
+/** "Drop a player": opens the transaction dialog with nobody to add; disabled with the reason as a hint. */
+function DropPlayerButton({
+  reason,
+  onClick,
+  className,
+  iconOnly = false,
+}: {
+  reason: string | null;
+  onClick: () => void;
+  className?: string;
+  /** Phones: the icon alone, with the label for assistive tech. */
+  iconOnly?: boolean;
+}) {
+  const button = (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={onClick}
+      disabled={!!reason}
+      className={className}
+      aria-label={iconOnly ? "Drop a player" : undefined}
+    >
+      <UserMinus className="h-4 w-4" />
+      {!iconOnly && "Drop a player"}
+    </Button>
+  );
+  if (!reason) return button;
+  return (
+    <HintPopover content={<p className="text-xs">{reason}</p>} contentClassName="max-w-[240px]">
+      <span className={cn("inline-flex", iconOnly ? "shrink-0" : "ml-auto")}>{button}</span>
+    </HintPopover>
   );
 }
 
