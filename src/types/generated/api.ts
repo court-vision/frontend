@@ -361,6 +361,8 @@ export interface paths {
         /**
          * Undo a pick
          * @description Removes one pick by its overall number. The number becomes the next default, so a mis-entered pick is re-recorded in place.
+         *
+         *     A room that follows an ESPN draft may only undo what Court Vision recorded itself — a hand-entered pick or the autopicker's. A pick ESPN reported is ESPN's record: removing it here would change nothing on their side and the next sync would restore it, so it is refused with `DRAFT_PICK_NOT_UNDOABLE`.
          */
         delete: operations["remove_draft_pick_v1_internal_drafts__session_id__picks__overall_pick__delete"];
         options?: never;
@@ -1226,6 +1228,60 @@ export interface paths {
         get: operations["get_lineup_plan_v1_internal_teams__team_id__lineup_plan_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/roster/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Roster Transaction
+         * @description Pick up and/or release one player as a single ESPN transaction, then return
+         *     the re-read board.
+         *
+         *     Failures keep the lineup editor's statuses — 403 ROSTER_WRITE_DISABLED, 409
+         *     ROSTER_WRITE_BLOCKED / ROSTER_STALE (with the fresh board) /
+         *     ROSTER_WRITE_REJECTED (ESPN's own sentence), 503 ROSTER_WRITE_UNAVAILABLE —
+         *     plus 422 ROSTER_TRANSACTION_INVALID with `data.reason` when the board or the
+         *     player pool refuses the request before ESPN is asked (a locked drop, a player
+         *     on waivers, one already rostered, ...). Roster limits are ESPN's call.
+         */
+        post: operations["apply_roster_transaction_v1_internal_teams__team_id__roster_transactions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/streamers/find": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Find Team Streamers
+         * @description Rank the free agents this team could pick up for the week it is (or will be)
+         *     playing — the same search as `POST /streamers/find`, scoped to a saved team.
+         *
+         *     Each candidate says whether the pickup is immediate (`acquisition_status:
+         *     free_agent`) or a waiver claim (`waivers`, clearing on `waivers_until`).
+         *     Before opening night the picks are for week 1 (`upcoming: true`). A 200
+         *     with `data: null` means there is no matchup on the calendar.
+         */
+        post: operations["find_team_streamers_v1_internal_teams__team_id__streamers_find_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6204,6 +6260,8 @@ export interface components {
         };
         /** PlayerResp */
         PlayerResp: {
+            /** Acquisition Status */
+            acquisition_status: ("free_agent" | "waivers") | null;
             /** Avg Points */
             avg_points: number;
             /** Injured */
@@ -6226,6 +6284,8 @@ export interface components {
             value_kind: "fpts" | "cat_value";
             /** Value Source */
             value_source: string | null;
+            /** Waivers Until */
+            waivers_until: string | null;
         };
         /**
          * PlayerScheduleInfo
@@ -6997,6 +7057,49 @@ export interface components {
             /** Total Players */
             total_players: number;
         };
+        /** RosterTransactionData */
+        RosterTransactionData: {
+            added: components["schemas"]["RosterTransactionPlayer"] | null;
+            /** Audit Id */
+            audit_id: number | null;
+            dropped: components["schemas"]["RosterTransactionPlayer"] | null;
+            lineup: components["schemas"]["LineupState"];
+            /** Scoring Period Id */
+            scoring_period_id: number | null;
+            /** Verified */
+            verified: boolean;
+        };
+        /** RosterTransactionPlayer */
+        RosterTransactionPlayer: {
+            /** Name */
+            name: string;
+            /** Player Id */
+            player_id: number;
+            /** Team */
+            team: string;
+        };
+        /** RosterTransactionReq */
+        RosterTransactionReq: {
+            /** Add Player Id */
+            add_player_id?: number | null;
+            /** Drop Player Id */
+            drop_player_id?: number | null;
+            /** Expected Scoring Period Id */
+            expected_scoring_period_id: number;
+            /** Roster Version */
+            roster_version: string;
+        };
+        /** RosterTransactionResp */
+        RosterTransactionResp: {
+            data: components["schemas"]["RosterTransactionData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /** SaveLineupReq */
         SaveLineupReq: {
             lineup_info: components["schemas"]["LineupInfo-Input"];
@@ -7276,11 +7379,21 @@ export interface components {
             avg_days: number;
             /** Current Day Index */
             current_day_index: number;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
             /** Game Span */
             game_span: number;
             /** Matchup Number */
             matchup_number: number;
             mode: components["schemas"]["StreamerMode"];
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
             /** Streamers */
             streamers: components["schemas"]["StreamerPlayerResp"][];
             /** Target Day */
@@ -7288,11 +7401,55 @@ export interface components {
             /** Teams With B2B */
             teams_with_b2b: string[];
             /**
+             * Upcoming
+             * @default false
+             */
+            upcoming: boolean;
+            /**
              * Value Kind
              * @default fpts
              * @enum {string}
              */
             value_kind: "fpts" | "cat_value";
+        };
+        /**
+         * StreamerFindReq
+         * @description Streamer search options for a saved team (`POST /teams/{id}/streamers/find`);
+         *     the league and its credentials come from the team, never from the body.
+         */
+        StreamerFindReq: {
+            /**
+             * Avg Days
+             * @description Number of days to use for rolling average calculation
+             * @default 7
+             */
+            avg_days?: number;
+            /**
+             * B2B Only
+             * @description Only show B2B players (week: any remaining B2B, daily: target day + next day)
+             * @default false
+             */
+            b2b_only?: boolean;
+            /**
+             * Exclude Injured
+             * @default true
+             */
+            exclude_injured?: boolean;
+            /**
+             * Fa Count
+             * @default 300
+             */
+            fa_count?: number;
+            /**
+             * @description Scoring mode: 'week' for rest-of-week hold, 'daily' for single-day pickup
+             * @default week
+             */
+            mode?: components["schemas"]["StreamerMode"];
+            /**
+             * Target Day
+             * @description Day index for daily mode (0-indexed). If None, uses current day.
+             */
+            target_day?: number | null;
         };
         /**
          * StreamerMode
@@ -7304,6 +7461,8 @@ export interface components {
          * @description A streaming candidate player.
          */
         StreamerPlayerResp: {
+            /** Acquisition Status */
+            acquisition_status: ("free_agent" | "waivers") | null;
             /** Avg Points Last N */
             avg_points_last_n: number | null;
             /** Avg Points Season */
@@ -7334,10 +7493,12 @@ export interface components {
             team: string;
             /** Valid Positions */
             valid_positions: string[];
+            /** Waivers Until */
+            waivers_until: string | null;
         };
         /**
          * StreamerReq
-         * @description Request for finding streamers.
+         * @description The legacy `POST /streamers/find` body: the same options plus the league itself.
          */
         StreamerReq: {
             /**
@@ -8657,6 +8818,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DraftPickDeleteResponse"];
                 };
+            };
+            /** @description The pick is ESPN's, not this room's, to undo */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description No such session or pick, or the session does not belong to the caller */
             404: {
@@ -10096,6 +10264,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LineupPlanResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_roster_transaction_v1_internal_teams__team_id__roster_transactions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RosterTransactionReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterTransactionResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    find_team_streamers_v1_internal_teams__team_id__streamers_find_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StreamerFindReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreamerResp"];
                 };
             };
             /** @description Validation Error */
