@@ -74,18 +74,33 @@ export function AddStreamerDialog({
   const mutation = useRosterTransactionMutation(teamId);
   const state = lineup.data ?? null;
 
-  // The drop choice is remembered for the player it was made for, so opening
-  // the dialog for someone else starts clean. `undefined` = nothing picked yet.
+  // The drop choice belongs to one opening of the dialog for one player. The
+  // dialog stays mounted through its close animation, so a choice is cleared
+  // on every opening: kept across sessions it could name a player who has
+  // since left the board. `undefined` = nothing picked yet.
   const [choice, setChoice] = useState<{ forPlayer: number | null; dropId: number | null } | null>(null);
   const playerId = player?.player_id ?? null;
   const dropOnly = player === null;
-  const picked = choice && choice.forPlayer === playerId ? choice.dropId : undefined;
   const { reset } = mutation;
   useEffect(() => {
+    setChoice(null);
     reset();
   }, [playerId, open, reset]);
 
   const hasSeat = !!state && canAddWithoutDrop(state);
+  const candidates = state ? dropCandidates(state) : [];
+  // A remembered choice counts only while it is still on offer: the board
+  // re-polls while writable, so a seat can fill and a player can leave between
+  // two renders. Anything else is treated as nothing picked.
+  const remembered = choice && choice.forPlayer === playerId ? choice.dropId : undefined;
+  const picked: number | null | undefined =
+    remembered === undefined
+      ? undefined
+      : remembered === null
+        ? (hasSeat ? null : undefined)
+        : candidates.some((c) => c.player.player_id === remembered)
+          ? remembered
+          : undefined;
   // Nothing picked and a seat is open: "don't drop anyone" is the default for
   // an add. A straight drop has no default — someone must be chosen.
   const dropId: number | null | undefined =
@@ -93,7 +108,6 @@ export function AddStreamerDialog({
   const blocked = player
     ? addBlockedReason({ player, state, provider: "espn" })
     : dropBlockedReason({ state, provider: "espn" });
-  const candidates = state ? dropCandidates(state) : [];
   const inlineError = transactionError(mutation.error);
   const pending = mutation.isPending;
   const body = state && dropId !== undefined ? transactionBody({ player, dropId, state }) : null;

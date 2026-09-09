@@ -27,7 +27,7 @@ import {
 import { HintPopover } from "@/components/ui/hint";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
-import { QueryErrorState } from "@/components/ui/query-error";
+import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 
 import { WeekSchedule, WeekScheduleHeader } from "./WeekSchedule";
 import { BreakoutContextSection } from "./BreakoutContextSection";
@@ -287,13 +287,14 @@ export default function StreamerDisplay() {
     );
   }
 
-  // `unwrap` turns an empty success envelope into an EMPTY_RESULT error, so
-  // this branch is also the "no matchup on the calendar" state.
-  if (streamers.isError) {
+  // No result at all: the first load failed, or `unwrap` turned an empty
+  // success envelope into EMPTY_RESULT (no matchup on the calendar). A refetch
+  // that failed after a result keeps the table and flags it stale instead.
+  if (found === undefined) {
     return (
       <Card variant="panel" className="w-full">
         <QueryErrorState
-          error={streamers.error}
+          error={streamers.error ?? new Error("Streamers unavailable")}
           onRetry={() => streamers.refetch()}
           isRetrying={streamers.isFetching}
         />
@@ -301,7 +302,7 @@ export default function StreamerDisplay() {
     );
   }
 
-  const data = streamers.data;
+  const data = found;
   const totalDays = data.game_span;
   const pickupDay = data.target_day ?? data.current_day_index;
   // -1 = no day is today: the schedule strip marks nothing as today or past.
@@ -413,6 +414,13 @@ export default function StreamerDisplay() {
         </span>
         {mode === "week" && data.teams_with_b2b.length > 0 && (
           <span className="hidden sm:inline">B2B: {data.teams_with_b2b.join(", ")}</span>
+        )}
+        {streamers.isRefetchError && (
+          <StaleBadge
+            dataUpdatedAt={streamers.dataUpdatedAt}
+            isFetching={streamers.isFetching}
+            error={streamers.error}
+          />
         )}
         <span className="ml-auto">
           {filteredStreamers.length} of {data.streamers.length} players
