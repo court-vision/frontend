@@ -236,6 +236,48 @@ describe("userMessage", () => {
     );
     expect(userMessage(new Error(""), "fallback")).toBe("fallback");
   });
+
+  describe("roster writes", () => {
+    const roster = (status: number, error_code: string, message: string, data?: unknown) => {
+      const body = { status: "error", message, error_code, data };
+      return ApiError.fromResponse(response(body, status), body);
+    };
+
+    test("an invalid add/drop is the server's own sentence, with a fallback", () => {
+      expect(
+        userMessage(
+          roster(422, "ROSTER_TRANSACTION_INVALID", "Malik Monk is locked — his game has started", {
+            reason: "drop_locked",
+            player_id: 4066261,
+          })
+        )
+      ).toBe("Malik Monk is locked — his game has started");
+      expect(userMessage(roster(422, "ROSTER_TRANSACTION_INVALID", ""))).toBe(
+        "That add/drop isn't allowed"
+      );
+    });
+
+    test("an ESPN rejection is ESPN's sentence, else a fallback that fits any write", () => {
+      expect(userMessage(roster(409, "ROSTER_WRITE_REJECTED", "Roster is locked."))).toBe(
+        "Roster is locked."
+      );
+      expect(userMessage(roster(409, "ROSTER_WRITE_REJECTED", "{not json"))).toBe(
+        "ESPN rejected the change"
+      );
+    });
+
+    test("ESPN unreachable", () => {
+      expect(userMessage(roster(503, "ROSTER_WRITE_UNAVAILABLE", "upstream"))).toBe(
+        "Couldn't reach ESPN — retry in a minute"
+      );
+    });
+
+    test("a blocked board explains why", () => {
+      expect(
+        userMessage(roster(409, "ROSTER_WRITE_BLOCKED", "blocked", { reason: "no_credentials" }))
+      ).toBe("Add your ESPN cookies in Manage Teams to edit your lineup here.");
+    });
+  });
 });
 
 describe("espnProse", () => {
