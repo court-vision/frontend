@@ -87,13 +87,7 @@ function StreamerCard({
 export function StreamersPanel() {
   const { focusedPlayerId } = useTerminalStore();
   const focusPlayer = useFocusPlayer();
-  const { selectedTeam, teams } = useTeams();
-
-  const selectedTeamData = useMemo(
-    () => teams.find((t) => t.team_id === selectedTeam),
-    [teams, selectedTeam]
-  );
-  const leagueInfo = selectedTeamData?.league_info || null;
+  const { selectedTeam } = useTeams();
 
   const {
     data: breakoutData,
@@ -108,13 +102,13 @@ export function StreamersPanel() {
     error: streamerError,
     refetch: refetchStreamers,
     isFetching: streamerFetching,
-  } = useStreamersQuery(leagueInfo, selectedTeam, {
+  } = useStreamersQuery(selectedTeam, {
     faCount: 50,
     excludeInjured: true,
     mode: "daily",
   });
 
-  const isLoading = breakoutLoading || (!!leagueInfo && streamerLoading);
+  const isLoading = breakoutLoading || (!!selectedTeam && streamerLoading);
 
   // Merge breakout candidates and regular streamers into a unified list
   const unified = useMemo(() => {
@@ -187,7 +181,7 @@ export function StreamersPanel() {
       <QueryErrorState
         error={loadError}
         onRetry={() => {
-          if (leagueInfo) refetchStreamers();
+          if (selectedTeam) refetchStreamers();
           refetchBreakout();
         }}
         isRetrying={streamerFetching || breakoutFetching}

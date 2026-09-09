@@ -28,13 +28,16 @@ export const LINEUP_SERVICE_UNAVAILABLE = "LINEUP_SERVICE_UNAVAILABLE";
 export const EMPTY_RESULT = "EMPTY_RESULT";
 
 /**
- * Lineup editor (`POST /teams/{id}/lineup/moves`). Real statuses with the
- * envelope: 409 STALE carries the fresh board in `data.lineup`, 422
- * MOVE_INVALID carries `data.errors`, 409 REJECTED's `message` is ESPN's own
- * text, 409 BLOCKED carries `data.reason` (a `WriteBlockedReason`).
+ * Roster writes (`POST /teams/{id}/lineup/moves` and
+ * `POST /teams/{id}/roster/transactions`). Real statuses with the envelope:
+ * 409 STALE carries the fresh board in `data.lineup`, 422 MOVE_INVALID
+ * carries `data.errors`, 422 TRANSACTION_INVALID a `data.reason` and a
+ * `message` already written for the user, 409 REJECTED's `message` is ESPN's
+ * own text, 409 BLOCKED carries `data.reason` (a `WriteBlockedReason`).
  */
 export const ROSTER_STALE = "ROSTER_STALE";
 export const ROSTER_MOVE_INVALID = "ROSTER_MOVE_INVALID";
+export const ROSTER_TRANSACTION_INVALID = "ROSTER_TRANSACTION_INVALID";
 export const ROSTER_WRITE_REJECTED = "ROSTER_WRITE_REJECTED";
 export const ROSTER_WRITE_BLOCKED = "ROSTER_WRITE_BLOCKED";
 export const ROSTER_WRITE_DISABLED = "ROSTER_WRITE_DISABLED";
@@ -277,30 +280,49 @@ export function providerName(error: unknown): string | null {
 }
 
 /** `data.<field>` of an error envelope when it is a string, else null. */
-function dataString(err: ApiError, field: string): string | null {
+export function dataString(err: ApiError, field: string): string | null {
   const data = err.data;
   if (typeof data !== "object" || data === null) return null;
   const value = (data as Record<string, unknown>)[field];
   return typeof value === "string" ? value : null;
 }
 
-/** Copy for the lineup editor's write errors; null for every other code. */
+/** `data.<field>` of an error envelope when it is a number, else null. */
+export function dataNumber(err: ApiError, field: string): number | null {
+  const data = err.data;
+  if (typeof data !== "object" || data === null) return null;
+  const value = (data as Record<string, unknown>)[field];
+  return typeof value === "number" ? value : null;
+}
+
+/** The message `fromResponse` / `fromEnvelope` make up when the body carried none. */
+const SYNTHESIZED_MESSAGE = /^Request failed \((HTTP \d+|[a-z_]+)\)$/;
+
+/** The envelope's own `message`, or "" when the client had to invent one. */
+function envelopeMessage(err: ApiError): string {
+  return SYNTHESIZED_MESSAGE.test(err.message) ? "" : err.message;
+}
+
+/** Copy for the roster write errors (lineup moves, add/drop); null for every other code. */
 function rosterMessage(err: ApiError): string | null {
   switch (err.code) {
     case ROSTER_STALE:
       return "Your lineup changed on ESPN — review the refreshed roster and try again";
     case ROSTER_MOVE_INVALID:
       return "Some of these moves aren't allowed — check the highlighted rows";
+    case ROSTER_TRANSACTION_INVALID:
+      // The server writes this one for the user ("Ja Morant is locked — his game has started").
+      return envelopeMessage(err) || "That add/drop isn't allowed";
     case ROSTER_WRITE_REJECTED:
       // ESPN's own explanation is the most useful thing we can show — as a sentence,
       // never as its raw error dict should one ever get through.
-      return espnProse(err.message) || "ESPN rejected the lineup change";
+      return espnProse(envelopeMessage(err)) || "ESPN rejected the change";
     case ROSTER_WRITE_BLOCKED:
       return writeBlockedCopy(dataString(err, "reason"));
     case ROSTER_WRITE_DISABLED:
       return WRITE_BLOCKED_COPY.writes_disabled;
     case ROSTER_WRITE_UNAVAILABLE:
-      return "Couldn't reach ESPN to update your lineup — retry in a minute";
+      return "Couldn't reach ESPN — retry in a minute";
     default:
       return null;
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { CalendarDays, ChevronDown, Info, Loader2, Lock, Wand2 } from "lucide-react";
+import { CalendarDays, ChevronDown, Info, Loader2, Lock, UserMinus, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -66,6 +66,7 @@ export function LineupEditor({ className }: { className?: string }) {
     planStatus,
     canWrite,
     blockedReason,
+    requestDrop,
   } = editor;
 
   if (state === null) return null;
@@ -110,6 +111,7 @@ export function LineupEditor({ className }: { className?: string }) {
   const lockedCount = state.players.filter((p) => p.locked).length;
   const stagedCount = Object.keys(staged).length;
   const selecting = selectedPlayerId != null;
+  const selectedName = selecting ? (editor.playerById.get(selectedPlayerId!)?.name ?? "the player") : null;
 
   return (
     <Card variant="panel" className={cn("overflow-hidden", className)}>
@@ -190,11 +192,8 @@ export function LineupEditor({ className }: { className?: string }) {
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border px-4 py-1.5 text-[11px] text-muted-foreground">
             {selecting ? (
               <span className="text-foreground">
-                Tap a highlighted slot to move{" "}
-                <span className="font-medium">
-                  {editor.playerById.get(selectedPlayerId!)?.name ?? "the player"}
-                </span>{" "}
-                there · Esc cancels
+                Tap a highlighted slot to move <span className="font-medium">{selectedName}</span> there,
+                or the Drop row · Esc cancels
               </span>
             ) : (
               <span>{canWrite ? "Tap a player, then the slot to move him to." : "Today's slots as ESPN has them."}</span>
@@ -233,9 +232,62 @@ export function LineupEditor({ className }: { className?: string }) {
                 </Fragment>
               );
             })}
+            {canWrite && (
+              <>
+                <li aria-hidden className="h-1.5 bg-muted/40" />
+                <DropRow selectedName={selectedName} onTap={requestDrop} />
+              </>
+            )}
           </ul>
         </>
       )}
     </Card>
+  );
+}
+
+/**
+ * The board's last row: with a player selected it is a target like any slot,
+ * except the move is off the roster. Dropping is its own ESPN transaction
+ * (confirmed in `DropPlayerDialog`), so nothing is staged here.
+ */
+function DropRow({ selectedName, onTap }: { selectedName: string | null; onTap: () => void }) {
+  const armed = selectedName !== null;
+  return (
+    <li>
+      <div
+        role="button"
+        tabIndex={armed ? 0 : -1}
+        aria-disabled={!armed || undefined}
+        aria-label={armed ? `Drop ${selectedName} from your roster` : "Drop a player: tap a player first"}
+        onClick={armed ? onTap : undefined}
+        onKeyDown={(e) => {
+          if (!armed) return;
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onTap();
+          }
+        }}
+        className={cn(
+          "flex min-h-[44px] items-center gap-2 border-l-2 border-l-transparent px-3 py-1 transition-colors max-md:gap-1.5 max-md:px-2",
+          armed
+            ? "cursor-pointer border-l-status-loss bg-status-loss/10 ring-1 ring-inset ring-status-loss/30 hover:bg-status-loss/15"
+            : "opacity-60"
+        )}
+      >
+        <span className="flex w-11 shrink-0 justify-center max-md:w-9">
+          <UserMinus className={cn("h-4 w-4", armed ? "text-status-loss" : "text-muted-foreground")} />
+        </span>
+        <span className={cn("min-w-0 flex-1 truncate text-sm", armed ? "font-medium" : "italic text-muted-foreground")}>
+          {armed ? `Drop ${selectedName}` : "Drop a player"}
+        </span>
+        <span className="w-10 shrink-0 text-right font-mono text-[10px] uppercase max-md:w-7">
+          {armed ? (
+            <span className="text-status-loss">drop</span>
+          ) : (
+            <span className="hidden text-muted-foreground sm:inline">select first</span>
+          )}
+        </span>
+      </div>
+    </li>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, Fragment } from "react";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, UserMinus } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,12 +27,13 @@ import {
 import { HintPopover } from "@/components/ui/hint";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
-import { QueryErrorState } from "@/components/ui/query-error";
+import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 
 import { WeekSchedule, WeekScheduleHeader } from "./WeekSchedule";
 import { BreakoutContextSection } from "./BreakoutContextSection";
-import { OppBadge, PositionBadges, PriorSeasonBadge } from "./StreamerBadges";
-import { StreamerCard } from "./StreamerCard";
+import { OppBadge, PositionBadges, PriorSeasonBadge, WaiversBadge } from "./StreamerBadges";
+import { AddButton, StreamerCard } from "./StreamerCard";
+import { AddStreamerDialog } from "./AddStreamerDialog";
 import {
   StreamerFilterControls,
   countActiveStreamerFilters,
@@ -43,21 +44,21 @@ import { StreamerFilterSheet } from "./StreamerFilterSheet";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { useIsMobile } from "@/hooks/useBreakpoint";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
-import { useStreamersQuery } from "@/hooks/useStreamers";
+import { useTeamLineupQuery } from "@/hooks/useLineupEditor";
+import { STREAMERS_PAGE_QUERY, useStreamersQuery } from "@/hooks/useStreamers";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import { CAT_VALUE_TITLE } from "@/lib/category-format";
 import { formatPositions } from "@/lib/positions";
+import { addBlockedReason, dropBlockedReason, streamerCaption } from "@/lib/roster-transaction";
+import { cn } from "@/lib/utils";
 import { PlayerHeadshot } from "@/components/terminal/shared";
 import { userMessage } from "@/lib/api-error";
 import type { StreamerPlayer, StreamerMode } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
 
 interface SelectedPlayer {
-  playerId: number;
-  playerName: string;
-  playerTeam: string;
+  player: StreamerPlayer;
   position: string | null;
-  breakoutContext?: BreakoutCandidateResp;
 }
 
 function ModeTabs({
@@ -99,7 +100,6 @@ export default function StreamerDisplay() {
     teamsError,
     refetchTeams,
   } = useSelectedTeam();
-  const leagueInfo = selectedTeamData?.league_info || null;
   // Safe to branch on: Base withholds this page until Clerk has loaded, so the
   // hook has its real value before we mount (no desktop flash).
   const isMobile = useIsMobile();
@@ -116,20 +116,38 @@ export default function StreamerDisplay() {
   const [avgDays, setAvgDays] = useState(DEFAULT_AVG_DAYS);
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // The add/drop dialog keeps its subject while it animates closed, so the
+  // target and the open flag are separate. `{ player: null }` is a straight drop.
+  const [txnTarget, setTxnTarget] = useState<{ player: StreamerPlayer | null } | null>(null);
+  const [txnOpen, setTxnOpen] = useState(false);
 
   // Fetch streamers
-  const { data, isLoading, error, refetch, isFetching } = useStreamersQuery(
-    leagueInfo,
-    selectedTeam,
-    {
-      faCount: 300,
-      excludeInjured: true,
-      b2bOnly: b2bOnly,
-      avgDays: avgDays,
-      mode: mode,
-      targetDay: mode === "daily" ? targetDay : undefined,
-    }
-  );
+  const streamers = useStreamersQuery(selectedTeam, {
+    ...STREAMERS_PAGE_QUERY,
+    b2bOnly,
+    avgDays,
+    mode,
+    targetDay: mode === "daily" ? targetDay : null,
+  });
+  // The result while it may still be missing; `data` below is the narrowed one.
+  const found = streamers.data;
+
+  // Today's ESPN board, fetched once for the page: it decides whether an add
+  // is offered at all (and why not). Off for every other provider.
+  const canAdd = provider === "espn";
+  const lineup = useTeamLineupQuery(selectedTeam, provider);
+  const board = lineup.data ?? null;
+  const addReason = (player: StreamerPlayer) =>
+    addBlockedReason({ player, state: board, provider });
+  const openAdd = (player: StreamerPlayer) => {
+    setTxnTarget({ player });
+    setTxnOpen(true);
+  };
+  const openDrop = () => {
+    setTxnTarget({ player: null });
+    setTxnOpen(true);
+  };
+  const dropReason = dropBlockedReason({ state: board, provider });
 
   // Fetch breakout candidates (public endpoint, no auth)
   const { data: breakoutData, error: breakoutError } = useBreakoutStreamersQuery();
@@ -144,11 +162,11 @@ export default function StreamerDisplay() {
 
   // Filter and sort streamers, merging in breakout context where applicable
   const filteredStreamers = useMemo(() => {
-    if (!data?.streamers) return [];
+    if (!found?.streamers) return [];
 
-    const pickupDay = data.target_day ?? data.current_day_index;
+    const pickupDay = found.target_day ?? found.current_day_index;
 
-    const enriched = data.streamers.map((player) => ({
+    const enriched = found.streamers.map((player) => ({
       ...player,
       breakout_context: breakoutMap.get(player.player_id),
     }));
@@ -177,7 +195,7 @@ export default function StreamerDisplay() {
 
     // Sort all streamers by composite streamer_score (OPP, B2B, and regular ranked fairly)
     return filtered.sort((a, b) => b.streamer_score - a.streamer_score);
-  }, [data?.streamers, data?.target_day, data?.current_day_index, breakoutMap, searchQuery, selectedPositions, b2bOnly, breakoutOnly, mode]);
+  }, [found?.streamers, found?.target_day, found?.current_day_index, breakoutMap, searchQuery, selectedPositions, b2bOnly, breakoutOnly, mode]);
 
   const togglePosition = (pos: Position) => {
     setSelectedPositions((prev) => {
@@ -212,22 +230,17 @@ export default function StreamerDisplay() {
   };
 
   const selectPlayer = (player: StreamerPlayer) =>
-    setSelectedPlayer({
-      playerId: player.player_id,
-      playerName: player.name,
-      playerTeam: player.team,
-      position: formatPositions(player.valid_positions),
-      breakoutContext: player.breakout_context,
-    });
+    setSelectedPlayer({ player, position: formatPositions(player.valid_positions) });
 
-  // Generate day options for daily mode day picker
+  // Generate day options for daily mode day picker. Before opening night no
+  // day is today, so none is labelled as such.
   const dayOptions = useMemo(() => {
-    if (!data) return [];
-    return Array.from({ length: data.game_span }, (_, i) => ({
+    if (!found) return [];
+    return Array.from({ length: found.game_span }, (_, i) => ({
       value: i,
-      label: `Day ${i + 1}${i === data.current_day_index ? " (Today)" : ""}`,
+      label: `Day ${i + 1}${!found.upcoming && i === found.current_day_index ? " (Today)" : ""}`,
     }));
-  }, [data]);
+  }, [found]);
 
   const breakoutAvailable = breakoutMap.size > 0;
   const breakoutUnavailableReason = breakoutError
@@ -264,7 +277,7 @@ export default function StreamerDisplay() {
     );
   }
 
-  if (isLoading) {
+  if (streamers.isPending) {
     return (
       <Card variant="panel" className="w-full">
         <CardContent className="p-4">
@@ -274,28 +287,29 @@ export default function StreamerDisplay() {
     );
   }
 
-  if (error) {
+  // No result at all: the first load failed, or `unwrap` turned an empty
+  // success envelope into EMPTY_RESULT (no matchup on the calendar). A refetch
+  // that failed after a result keeps the table and flags it stale instead.
+  if (found === undefined) {
     return (
       <Card variant="panel" className="w-full">
-        <QueryErrorState error={error} onRetry={() => refetch()} isRetrying={isFetching} />
+        <QueryErrorState
+          error={streamers.error ?? new Error("Streamers unavailable")}
+          onRetry={() => streamers.refetch()}
+          isRetrying={streamers.isFetching}
+        />
       </Card>
     );
   }
 
-  if (!data) {
-    return (
-      <Card variant="panel" className="w-full p-8">
-        <p className="text-sm text-muted-foreground text-center">
-          No streamer data available.
-        </p>
-      </Card>
-    );
-  }
-
+  const data = found;
   const totalDays = data.game_span;
   const pickupDay = data.target_day ?? data.current_day_index;
+  // -1 = no day is today: the schedule strip marks nothing as today or past.
+  const currentDay = data.upcoming ? -1 : data.current_day_index;
   const isCatValue = data.value_kind === "cat_value";
   const valueHeader = isCatValue ? `Cat value (L${avgDays})` : `${avgDays}D Avg`;
+  const columnCount = canAdd ? 8 : 7;
 
   const filterProps = {
     mode,
@@ -344,6 +358,9 @@ export default function StreamerDisplay() {
             triggerClassName="text-xs px-3"
           />
           <StreamerFilterControls layout="inline" {...filterProps} />
+          {canAdd && (
+            <DropPlayerButton reason={dropReason} onClick={openDrop} className="ml-auto h-8 text-xs" />
+          )}
         </div>
       </Card>
 
@@ -367,6 +384,9 @@ export default function StreamerDisplay() {
             <SlidersHorizontal />
             Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
           </Button>
+          {canAdd && (
+            <DropPlayerButton reason={dropReason} onClick={openDrop} className="h-10 shrink-0 px-3 text-xs" iconOnly />
+          )}
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -389,14 +409,18 @@ export default function StreamerDisplay() {
       {/* Info Bar */}
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground px-1">
         <span>
-          Matchup {data.matchup_number} &middot;{" "}
-          {mode === "daily"
-            ? `Day ${(data.target_day ?? data.current_day_index) + 1} Pickup`
-            : `Day ${data.current_day_index + 1} of ${data.game_span}`}
+          {streamerCaption(data, mode)}
           {breakoutOnly && " · Breakout view"}
         </span>
         {mode === "week" && data.teams_with_b2b.length > 0 && (
           <span className="hidden sm:inline">B2B: {data.teams_with_b2b.join(", ")}</span>
+        )}
+        {streamers.isRefetchError && (
+          <StaleBadge
+            dataUpdatedAt={streamers.dataUpdatedAt}
+            isFetching={streamers.isFetching}
+            error={streamers.error}
+          />
         )}
         <span className="ml-auto">
           {filteredStreamers.length} of {data.streamers.length} players
@@ -423,8 +447,10 @@ export default function StreamerDisplay() {
                       showB2bBadge={showB2bBadge}
                       showDivider={showDivider}
                       totalDays={totalDays}
-                      currentDay={data.current_day_index}
+                      currentDay={currentDay}
                       onSelect={selectPlayer}
+                      onAdd={canAdd ? openAdd : undefined}
+                      addDisabledReason={canAdd ? addReason(player) : null}
                     />
                   );
                 })}
@@ -457,17 +483,22 @@ export default function StreamerDisplay() {
                       <span>Schedule</span>
                       <WeekScheduleHeader
                         totalDays={totalDays}
-                        currentDay={data.current_day_index}
+                        currentDay={currentDay}
                       />
                     </div>
                   </TableHead>
+                  {canAdd && (
+                    <TableHead className="w-[56px] text-center">
+                      <span className="sr-only">Add</span>
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredStreamers.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={columnCount}
                       className="text-center text-sm text-muted-foreground py-8"
                     >
                       No streamers found matching your filters.
@@ -481,7 +512,7 @@ export default function StreamerDisplay() {
                       <Fragment key={player.player_id}>
                         {showDivider && (
                           <TableRow className="h-px pointer-events-none">
-                            <TableCell colSpan={7} className="p-0 bg-border" />
+                            <TableCell colSpan={columnCount} className="p-0 bg-border" />
                           </TableRow>
                         )}
                         <TableRow
@@ -510,6 +541,9 @@ export default function StreamerDisplay() {
                               {player.breakout_context && (
                                 <OppBadge context={player.breakout_context} />
                               )}
+                              {player.acquisition_status === "waivers" && (
+                                <WaiversBadge until={player.waivers_until} />
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-center text-xs text-muted-foreground">
@@ -534,10 +568,20 @@ export default function StreamerDisplay() {
                               <WeekSchedule
                                 gameDays={player.game_days}
                                 totalDays={totalDays}
-                                currentDay={data.current_day_index}
+                                currentDay={currentDay}
                               />
                             </div>
                           </TableCell>
+                          {canAdd && (
+                            <TableCell className="py-1 pr-3 text-center">
+                              <AddButton
+                                name={player.name}
+                                disabledReason={addReason(player)}
+                                onClick={() => openAdd(player)}
+                                className="h-8 w-8"
+                              />
+                            </TableCell>
+                          )}
                         </TableRow>
                       </Fragment>
                     );
@@ -556,32 +600,120 @@ export default function StreamerDisplay() {
       >
         <DialogContent className="max-w-[900px]">
           <DialogHeader className="sr-only">
-            <DialogTitle>{selectedPlayer?.playerName ?? "Player"} details</DialogTitle>
+            <DialogTitle>{selectedPlayer?.player.name ?? "Player"} details</DialogTitle>
             <DialogDescription>
               Detailed stats and performance history.
             </DialogDescription>
           </DialogHeader>
           {selectedPlayer && (
             <div className="flex flex-col gap-4">
-              {selectedPlayer.breakoutContext && (
-                <BreakoutContextSection context={selectedPlayer.breakoutContext} />
+              {selectedPlayer.player.breakout_context && (
+                <BreakoutContextSection context={selectedPlayer.player.breakout_context} />
               )}
               <PlayerStatDisplay
-                playerId={selectedPlayer.playerId}
-                playerName={selectedPlayer.playerName}
-                playerTeam={selectedPlayer.playerTeam}
+                playerId={selectedPlayer.player.player_id}
+                playerName={selectedPlayer.player.name}
+                playerTeam={selectedPlayer.player.team}
                 provider={provider}
                 position={selectedPlayer.position}
               />
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
+            {selectedPlayer && canAdd && (
+              <AddToRosterButton
+                reason={addReason(selectedPlayer.player)}
+                waiversUntil={
+                  selectedPlayer.player.acquisition_status === "waivers"
+                    ? selectedPlayer.player.waivers_until
+                    : undefined
+                }
+                onClick={() => {
+                  const target = selectedPlayer.player;
+                  setSelectedPlayer(null);
+                  openAdd(target);
+                }}
+              />
+            )}
             <DialogClose asChild>
-              <Button>Close</Button>
+              <Button variant={canAdd ? "ghost" : "default"}>Close</Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {txnTarget && (
+        <AddStreamerDialog
+          player={txnTarget.player}
+          teamId={selectedTeam}
+          open={txnOpen}
+          onOpenChange={setTxnOpen}
+        />
+      )}
     </div>
+  );
+}
+
+/** "Drop a player": opens the transaction dialog with nobody to add; disabled with the reason as a hint. */
+function DropPlayerButton({
+  reason,
+  onClick,
+  className,
+  iconOnly = false,
+}: {
+  reason: string | null;
+  onClick: () => void;
+  className?: string;
+  /** Phones: the icon alone, with the label for assistive tech. */
+  iconOnly?: boolean;
+}) {
+  const button = (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={onClick}
+      disabled={!!reason}
+      className={className}
+      aria-label={iconOnly ? "Drop a player" : undefined}
+    >
+      <UserMinus className="h-4 w-4" />
+      {!iconOnly && "Drop a player"}
+    </Button>
+  );
+  if (!reason) return button;
+  return (
+    <HintPopover content={<p className="text-xs">{reason}</p>} contentClassName="max-w-[240px]">
+      <span className={cn("inline-flex", iconOnly ? "shrink-0" : "ml-auto")}>{button}</span>
+    </HintPopover>
+  );
+}
+
+/** The stats dialog's "Add to roster": disabled with the reason as a hint when the add is refused. */
+function AddToRosterButton({
+  reason,
+  waiversUntil,
+  onClick,
+}: {
+  reason: string | null;
+  /** Set only when the player is on waivers; renders the badge beside the button. */
+  waiversUntil?: string | null;
+  onClick: () => void;
+}) {
+  const button = (
+    <Button type="button" onClick={onClick} disabled={!!reason}>
+      Add to roster
+    </Button>
+  );
+  return (
+    <span className="flex items-center gap-2 max-sm:justify-end">
+      {waiversUntil !== undefined && <WaiversBadge until={waiversUntil} />}
+      {reason ? (
+        <HintPopover content={<p className="text-xs">{reason}</p>} contentClassName="max-w-[240px]">
+          <span className="inline-flex">{button}</span>
+        </HintPopover>
+      ) : (
+        button
+      )}
+    </span>
   );
 }

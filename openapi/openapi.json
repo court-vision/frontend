@@ -11387,6 +11387,21 @@
       },
       "PlayerResp": {
         "properties": {
+          "acquisition_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "free_agent",
+                  "waivers"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acquisition Status"
+          },
           "avg_points": {
             "title": "Avg Points",
             "type": "number"
@@ -11444,6 +11459,18 @@
               }
             ],
             "title": "Value Source"
+          },
+          "waivers_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waivers Until"
           }
         },
         "required": [
@@ -11455,7 +11482,9 @@
           "injured",
           "injury_status",
           "value_kind",
-          "value_source"
+          "value_source",
+          "acquisition_status",
+          "waivers_until"
         ],
         "title": "PlayerResp",
         "type": "object"
@@ -13756,6 +13785,189 @@
         "title": "RosterHealthSummary",
         "type": "object"
       },
+      "RosterTransactionData": {
+        "properties": {
+          "added": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RosterTransactionPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "audit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Id"
+          },
+          "dropped": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RosterTransactionPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lineup": {
+            "$ref": "#/components/schemas/LineupState"
+          },
+          "scoring_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Period Id"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lineup",
+          "added",
+          "dropped",
+          "verified",
+          "audit_id",
+          "scoring_period_id"
+        ],
+        "title": "RosterTransactionData",
+        "type": "object"
+      },
+      "RosterTransactionPlayer": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "team": {
+            "title": "Team",
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "team"
+        ],
+        "title": "RosterTransactionPlayer",
+        "type": "object"
+      },
+      "RosterTransactionReq": {
+        "properties": {
+          "add_player_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Add Player Id"
+          },
+          "drop_player_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drop Player Id"
+          },
+          "expected_scoring_period_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Expected Scoring Period Id",
+            "type": "integer"
+          },
+          "roster_version": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Roster Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_scoring_period_id",
+          "roster_version"
+        ],
+        "title": "RosterTransactionReq",
+        "type": "object"
+      },
+      "RosterTransactionResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RosterTransactionData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "RosterTransactionResp",
+        "type": "object"
+      },
       "SaveLineupReq": {
         "properties": {
           "lineup_info": {
@@ -14519,6 +14731,11 @@
             "title": "Current Day Index",
             "type": "integer"
           },
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
           "game_span": {
             "title": "Game Span",
             "type": "integer"
@@ -14529,6 +14746,11 @@
           },
           "mode": {
             "$ref": "#/components/schemas/StreamerMode"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
           },
           "streamers": {
             "items": {
@@ -14555,6 +14777,11 @@
             "title": "Teams With B2B",
             "type": "array"
           },
+          "upcoming": {
+            "default": false,
+            "title": "Upcoming",
+            "type": "boolean"
+          },
           "value_kind": {
             "default": "fpts",
             "enum": [
@@ -14569,6 +14796,9 @@
           "matchup_number",
           "current_day_index",
           "game_span",
+          "start_date",
+          "end_date",
+          "upcoming",
           "avg_days",
           "mode",
           "target_day",
@@ -14577,6 +14807,57 @@
           "value_kind"
         ],
         "title": "StreamerData",
+        "type": "object"
+      },
+      "StreamerFindReq": {
+        "description": "Streamer search options for a saved team (`POST /teams/{id}/streamers/find`);\nthe league and its credentials come from the team, never from the body.",
+        "properties": {
+          "avg_days": {
+            "default": 7,
+            "description": "Number of days to use for rolling average calculation",
+            "maximum": 30.0,
+            "minimum": 3.0,
+            "title": "Avg Days",
+            "type": "integer"
+          },
+          "b2b_only": {
+            "default": false,
+            "description": "Only show B2B players (week: any remaining B2B, daily: target day + next day)",
+            "title": "B2B Only",
+            "type": "boolean"
+          },
+          "exclude_injured": {
+            "default": true,
+            "title": "Exclude Injured",
+            "type": "boolean"
+          },
+          "fa_count": {
+            "default": 300,
+            "maximum": 300.0,
+            "minimum": 5.0,
+            "title": "Fa Count",
+            "type": "integer"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/StreamerMode",
+            "default": "week",
+            "description": "Scoring mode: 'week' for rest-of-week hold, 'daily' for single-day pickup"
+          },
+          "target_day": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Day index for daily mode (0-indexed). If None, uses current day.",
+            "title": "Target Day"
+          }
+        },
+        "title": "StreamerFindReq",
         "type": "object"
       },
       "StreamerMode": {
@@ -14590,6 +14871,21 @@
       "StreamerPlayerResp": {
         "description": "A streaming candidate player.",
         "properties": {
+          "acquisition_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "free_agent",
+                  "waivers"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acquisition Status"
+          },
           "avg_points_last_n": {
             "anyOf": [
               {
@@ -14683,6 +14979,18 @@
             },
             "title": "Valid Positions",
             "type": "array"
+          },
+          "waivers_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waivers Until"
           }
         },
         "required": [
@@ -14700,13 +15008,15 @@
           "game_days",
           "streamer_score",
           "injured",
-          "injury_status"
+          "injury_status",
+          "acquisition_status",
+          "waivers_until"
         ],
         "title": "StreamerPlayerResp",
         "type": "object"
       },
       "StreamerReq": {
-        "description": "Request for finding streamers.",
+        "description": "The legacy `POST /streamers/find` body: the same options plus the league itself.",
         "properties": {
           "avg_days": {
             "default": 7,
@@ -17218,7 +17528,7 @@
     },
     "/v1/internal/drafts/{session_id}/picks/{overall_pick}": {
       "delete": {
-        "description": "Removes one pick by its overall number. The number becomes the next default, so a mis-entered pick is re-recorded in place.",
+        "description": "Removes one pick by its overall number. The number becomes the next default, so a mis-entered pick is re-recorded in place.\n\nA room that follows an ESPN draft may only undo what Court Vision recorded itself \u2014 a hand-entered pick or the autopicker's. A pick ESPN reported is ESPN's record: removing it here would change nothing on their side and the next sync would restore it, so it is refused with `DRAFT_PICK_NOT_UNDOABLE`.",
         "operationId": "remove_draft_pick_v1_internal_drafts__session_id__picks__overall_pick__delete",
         "parameters": [
           {
@@ -17250,6 +17560,9 @@
               }
             },
             "description": "Pick undone"
+          },
+          "400": {
+            "description": "The pick is ESPN's, not this room's, to undo"
           },
           "404": {
             "description": "No such session or pick, or the session does not belong to the caller"
@@ -19422,6 +19735,122 @@
         "summary": "Get Lineup Plan",
         "tags": [
           "lineup editor"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/roster/transactions": {
+      "post": {
+        "description": "Pick up and/or release one player as a single ESPN transaction, then return\nthe re-read board.\n\nFailures keep the lineup editor's statuses \u2014 403 ROSTER_WRITE_DISABLED, 409\nROSTER_WRITE_BLOCKED / ROSTER_STALE (with the fresh board) /\nROSTER_WRITE_REJECTED (ESPN's own sentence), 503 ROSTER_WRITE_UNAVAILABLE \u2014\nplus 422 ROSTER_TRANSACTION_INVALID with `data.reason` when the board or the\nplayer pool refuses the request before ESPN is asked (a locked drop, a player\non waivers, one already rostered, ...). Roster limits are ESPN's call.",
+        "operationId": "apply_roster_transaction_v1_internal_teams__team_id__roster_transactions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RosterTransactionReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterTransactionResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apply Roster Transaction",
+        "tags": [
+          "roster transactions"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/streamers/find": {
+      "post": {
+        "description": "Rank the free agents this team could pick up for the week it is (or will be)\nplaying \u2014 the same search as `POST /streamers/find`, scoped to a saved team.\n\nEach candidate says whether the pickup is immediate (`acquisition_status:\nfree_agent`) or a waiver claim (`waivers`, clearing on `waivers_until`).\nBefore opening night the picks are for week 1 (`upcoming: true`). A 200\nwith `data: null` means there is no matchup on the calendar.",
+        "operationId": "find_team_streamers_v1_internal_teams__team_id__streamers_find_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StreamerFindReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamerResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Find Team Streamers",
+        "tags": [
+          "Streamers"
         ]
       }
     },

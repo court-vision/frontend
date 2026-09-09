@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 interface WeekScheduleProps {
   gameDays: number[];
   totalDays: number;
+  /** Index of today in the matchup; -1 (pre-season) marks no cell as today or past. */
   currentDay: number;
   showHeader?: boolean;
   /**
@@ -198,6 +199,7 @@ export function WeekSchedule({
 
 interface WeekScheduleHeaderProps {
   totalDays: number;
+  /** Index of today in the matchup; -1 (pre-season) shows no chevron. */
   currentDay: number;
 }
 

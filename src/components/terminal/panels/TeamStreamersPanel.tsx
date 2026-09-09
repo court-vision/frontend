@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { Zap, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTerminalStore } from "@/stores/useTerminalStore";
@@ -110,16 +109,10 @@ function WeakCategoryBadge({ label }: { label: string }) {
 export function TeamStreamersPanel() {
   const { focusedPlayerId, focusedTeamId } = useTerminalStore();
   const focusPlayer = useFocusPlayer();
-  const { selectedTeam, teams } = useTeams();
+  const { selectedTeam } = useTeams();
 
   // Use focusedTeamId (terminal mode) or selectedTeam (dashboard mode)
   const teamId = focusedTeamId ?? selectedTeam;
-
-  const selectedTeamData = useMemo(
-    () => teams.find((t) => t.team_id === teamId),
-    [teams, teamId]
-  );
-  const leagueInfo = selectedTeamData?.league_info || null;
 
   const {
     data: breakoutData,
@@ -134,7 +127,7 @@ export function TeamStreamersPanel() {
     error: streamerError,
     refetch: refetchStreamers,
     isFetching: streamerFetching,
-  } = useStreamersQuery(leagueInfo, teamId, {
+  } = useStreamersQuery(teamId, {
     faCount: 50,
     excludeInjured: true,
     mode: "daily",
@@ -143,7 +136,7 @@ export function TeamStreamersPanel() {
   const { data: insightsData, isLoading: insightsLoading } =
     useTeamInsightsQuery(focusedTeamId);
 
-  const isLoading = breakoutLoading || (!!leagueInfo && streamerLoading);
+  const isLoading = breakoutLoading || (!!teamId && streamerLoading);
 
   // ── No team selected ────────────────────────────────────────────────────────
   if (teamId === null) {
@@ -182,7 +175,7 @@ export function TeamStreamersPanel() {
       <QueryErrorState
         error={loadError}
         onRetry={() => {
-          if (leagueInfo) refetchStreamers();
+          if (teamId) refetchStreamers();
           refetchBreakout();
         }}
         isRetrying={streamerFetching || breakoutFetching}

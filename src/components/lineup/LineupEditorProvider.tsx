@@ -15,6 +15,7 @@ import {
   useLineupPlanQuery,
   useTeamLineupQuery,
 } from "@/hooks/useLineupEditor";
+import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { ROSTER_MOVE_INVALID, toApiError, type ApiError } from "@/lib/api-error";
 import {
   assignment as computeAssignment,
@@ -99,6 +100,22 @@ export interface LineupEditorContextValue {
   canWrite: boolean;
   blockedReason: WriteBlockedReason | null;
   isMock: boolean;
+
+  /**
+   * Dropping a player outright is its own ESPN transaction, separate from the
+   * staged lineup moves: the board's Drop row asks for the selected player,
+   * a confirm sends it, and the re-read board that comes back drops any
+   * staging (its roster_version changes).
+   */
+  /** The selected player, once the Drop row was tapped; null = no confirm pending. */
+  dropTargetId: number | null;
+  /** Tap the Drop row: asks to release the selected player (no-op without a selection). */
+  requestDrop: () => void;
+  cancelDrop: () => void;
+  confirmDrop: () => Promise<void>;
+  dropping: boolean;
+  /** The last drop attempt's failure, for the confirm dialog to explain inline. */
+  dropError: ApiError | null;
 }
 
 const LineupEditorContext = createContext<LineupEditorContextValue | null>(null);
@@ -136,6 +153,7 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
   const query = useTeamLineupQuery(teamId, "espn", { enabled: !mock });
   const planQuery = useLineupPlanQuery(teamId, { enabled: false });
   const mutation = useApplyLineupMovesMutation(teamId);
+  const dropMutation = useRosterTransactionMutation(teamId);
 
   // Mock boards live here so a fake "apply" can advance the roster_version.
   const [mockState, setMockState] = useState<LineupState | undefined>(mock?.state);
@@ -144,6 +162,7 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
   const [store, setStore] = useState<StagingStore>(EMPTY_STORE);
   const [planStore, setPlanStore] = useState<PlanStore>(PLAN_IDLE);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [dropTargetId, setDropTargetId] = useState<number | null>(null);
 
   const version = state?.roster_version ?? null;
   const live = store.version === version && version !== null;
@@ -293,6 +312,54 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
     }
   }, [state, moves, staged, mock, mutateAsync]);
 
+  // ---- drop a player outright (its own transaction, not a staged move) ----
+  const resetDrop = dropMutation.reset;
+  const requestDrop = useCallback(() => {
+    if (selectedPlayerId == null) return;
+    const player = playerById.get(selectedPlayerId);
+    if (!player || player.locked) return;
+    resetDrop();
+    setDropTargetId(selectedPlayerId);
+  }, [selectedPlayerId, playerById, resetDrop]);
+
+  const cancelDrop = useCallback(() => setDropTargetId(null), []);
+
+  const dropMutateAsync = dropMutation.mutateAsync;
+  const confirmDrop = useCallback(async () => {
+    if (!state || dropTargetId == null) return;
+    const player = playerById.get(dropTargetId);
+    if (mock) {
+      setMockState({
+        ...state,
+        players: state.players.filter((p) => p.player_id !== dropTargetId),
+        roster_version: `${state.roster_version}:drop:${dropTargetId}`,
+      });
+      setPlanStore(PLAN_IDLE);
+      setDropTargetId(null);
+      toast.success(`Dropped ${player?.name ?? "player"} on ESPN (mock)`);
+      return;
+    }
+    if (state.scoring_period_id == null) return;
+    try {
+      await dropMutateAsync({
+        add_player_id: null,
+        drop_player_id: dropTargetId,
+        expected_scoring_period_id: state.scoring_period_id,
+        roster_version: state.roster_version,
+      });
+      // The re-read board replaces the cached one; its new roster_version
+      // clears the staging and the selection on its own.
+      setPlanStore(PLAN_IDLE);
+      setDropTargetId(null);
+    } catch (err) {
+      // The mutation's onError already toasted / swapped in the fresh board;
+      // a refusal it left on the error is rendered by the dialog.
+      if (staleLineup(err)) setDropTargetId(null);
+    }
+  }, [state, dropTargetId, playerById, mock, dropMutateAsync]);
+
+  const dropError = dropMutation.error ? toApiError(dropMutation.error) : null;
+
   const applyError = mutation.error ? toApiError(mutation.error) : null;
   const moveErrors = useMemo<MoveError[]>(() => {
     if (!applyError || applyError.code !== ROSTER_MOVE_INVALID) return [];
@@ -336,12 +403,19 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
       canWrite: !!state?.can_write,
       blockedReason: (state?.write_blocked_reason ?? null) as WriteBlockedReason | null,
       isMock: !!mock,
+      dropTargetId,
+      requestDrop,
+      cancelDrop,
+      confirmDrop,
+      dropping: dropMutation.isPending,
+      dropError,
     }),
     [
       teamId, state, mock, query, staged, rows, assignment, playerById, selectedPlayerId,
       selectedTargets, select, stage, unstage, reset, eligibleTargetsFor, tap, moves,
       validation, moveErrors, loadPlan, planStore, apply, mutation.isPending, applyError,
-      confirmOpen,
+      confirmOpen, dropTargetId, requestDrop, cancelDrop, confirmDrop, dropMutation.isPending,
+      dropError,
     ]
   );
 

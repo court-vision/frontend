@@ -12,6 +12,7 @@ import {
 import { LineupEditor } from "@/components/lineup/LineupEditor";
 import { LineupApplyBar } from "@/components/lineup/LineupApplyBar";
 import { ApplyLineupDialog } from "@/components/lineup/ApplyLineupDialog";
+import { DropPlayerDialog } from "@/components/lineup/DropPlayerDialog";
 
 interface TeamDashboardProps {
   insights: TeamInsightsData;
@@ -43,6 +44,7 @@ export function TeamDashboard({ insights, teamId, provider = "espn", lineupMock 
             <LineupEditor />
             <LineupApplyBar />
             <ApplyLineupDialog />
+            <DropPlayerDialog />
           </>
         )}
 

@@ -3,10 +3,36 @@
 import { Badge } from "@/components/ui/badge";
 import { HintPopover } from "@/components/ui/hint";
 import { BASELINE_VALUE_TITLE } from "@/lib/category-format";
+import { waiversClearsSuffix } from "@/lib/roster-transaction";
 import { cn } from "@/lib/utils";
 import type { BreakoutCandidateResp } from "@/types/breakout";
 
 import { POSITIONS } from "./StreamerFilterControls";
+
+/** Marks a player who has to be claimed off waivers, with the clearing date when ESPN gave one. */
+export function WaiversBadge({
+  until,
+  className,
+}: {
+  until?: string | null;
+  className?: string;
+}) {
+  return (
+    <HintPopover
+      contentClassName="max-w-[240px]"
+      content={
+        <p className="text-xs">
+          On waivers — claims aren&apos;t supported from Court Vision yet
+          {waiversClearsSuffix(until)}
+        </p>
+      }
+    >
+      <Badge variant="outline" className={cn("text-[11px] cursor-help", className)}>
+        Waivers
+      </Badge>
+    </HintPopover>
+  );
+}
 
 /** "OPP" badge with the injury-opportunity summary as a hover/tap hint. */
 export function OppBadge({

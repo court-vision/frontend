@@ -69,7 +69,7 @@ import type {
   SeasonSummaryData,
   SeasonSummaryResponse,
 } from "@/types/matchup";
-import type { StreamerData, StreamerRequest, StreamerResponse } from "@/types/streamer";
+import type { StreamerData, StreamerFindRequest, StreamerResponse } from "@/types/streamer";
 import type {
   YahooAuthUrlResponse,
   YahooLeaguesResponse,
@@ -104,6 +104,11 @@ import type {
   LineupState,
   LineupStateResponse,
 } from "@/types/lineup-editor";
+import type {
+  RosterTransactionData,
+  RosterTransactionRequest,
+  RosterTransactionResponse,
+} from "@/types/roster-transaction";
 import type {
   DraftBoardMeta,
   DraftBoardResult,
@@ -283,6 +288,25 @@ class ApiClient {
     return unwrap(env);
   }
 
+  /**
+   * Pick up and/or release one player as a single ESPN transaction. Same
+   * contract as `applyLineupMoves` — deliberately NOT `raw`, so the real
+   * 403/409/422/503 statuses reject (ROSTER_STALE hands back the fresh board
+   * in `data.lineup`, ROSTER_TRANSACTION_INVALID a `data.reason`), and the
+   * same long timeout: the write proxies to ESPN and re-reads the roster.
+   */
+  async applyRosterTransaction(
+    getToken: GetTokenFn,
+    teamId: number,
+    body: RosterTransactionRequest
+  ): Promise<RosterTransactionData> {
+    const env = await fetchJson<RosterTransactionResponse>(
+      `${TEAMS_API}/${teamId}/roster/transactions`,
+      { getToken, method: "POST", body, timeoutMs: LINEUP_WRITE_TIMEOUT_MS }
+    );
+    return unwrap(env);
+  }
+
   // Lineups API - calls backend directly
   async getLineups(getToken: GetTokenFn, teamId: number): Promise<Lineup[]> {
     const env = await fetchJson<GetLineupsResponse>(`${LINEUPS_API}?team_id=${teamId}`, {
@@ -419,17 +443,21 @@ class ApiClient {
     );
   }
 
-  // Streamers API
+  /**
+   * Streamer candidates for a saved team. The league and its credentials
+   * come from the team on the server, so the body is only the search options.
+   */
   async findStreamers(
     getToken: GetTokenFn,
-    request: StreamerRequest,
+    teamId: number,
+    body: StreamerFindRequest,
     opts?: RequestOptions
   ): Promise<StreamerData> {
-    const env = await fetchJson<StreamerResponse>(`${STREAMERS_API}/find`, {
+    const env = await fetchJson<StreamerResponse>(`${TEAMS_API}/${teamId}/streamers/find`, {
       ...opts,
       getToken,
       method: "POST",
-      body: request,
+      body,
       timeoutMs: STREAMERS_TIMEOUT_MS,
     });
     return unwrap(env);
