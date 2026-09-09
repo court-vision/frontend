@@ -43,7 +43,7 @@ import { StreamerFilterSheet } from "./StreamerFilterSheet";
 import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
 import { useIsMobile } from "@/hooks/useBreakpoint";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
-import { useStreamersQuery } from "@/hooks/useStreamers";
+import { STREAMERS_PAGE_QUERY, useStreamersQuery } from "@/hooks/useStreamers";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import { CAT_VALUE_TITLE } from "@/lib/category-format";
 import { formatPositions } from "@/lib/positions";
@@ -99,7 +99,6 @@ export default function StreamerDisplay() {
     teamsError,
     refetchTeams,
   } = useSelectedTeam();
-  const leagueInfo = selectedTeamData?.league_info || null;
   // Safe to branch on: Base withholds this page until Clerk has loaded, so the
   // hook has its real value before we mount (no desktop flash).
   const isMobile = useIsMobile();
@@ -118,18 +117,13 @@ export default function StreamerDisplay() {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Fetch streamers
-  const { data, isLoading, error, refetch, isFetching } = useStreamersQuery(
-    leagueInfo,
-    selectedTeam,
-    {
-      faCount: 300,
-      excludeInjured: true,
-      b2bOnly: b2bOnly,
-      avgDays: avgDays,
-      mode: mode,
-      targetDay: mode === "daily" ? targetDay : undefined,
-    }
-  );
+  const { data, isLoading, error, refetch, isFetching } = useStreamersQuery(selectedTeam, {
+    ...STREAMERS_PAGE_QUERY,
+    b2bOnly,
+    avgDays,
+    mode,
+    targetDay: mode === "daily" ? targetDay : null,
+  });
 
   // Fetch breakout candidates (public endpoint, no auth)
   const { data: breakoutData, error: breakoutError } = useBreakoutStreamersQuery();

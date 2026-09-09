@@ -1,56 +1,35 @@
-import type { BaseApiResponse } from "./auth";
-import type { LeagueInfo } from "./team";
+/**
+ * Streamer search types — shims over the generated OpenAPI schemas
+ * (`bun run generate:api`). The search is scoped to a saved team
+ * (`POST /teams/{id}/streamers/find`): the league and its credentials come
+ * from the team, so the request body carries only the search options.
+ *
+ * `StreamerPlayer.player_id` is the ESPN id (the id the roster transaction
+ * takes); `nba_player_id` is for headshots and terminal panels.
+ */
+import type { components } from "./generated/api";
 import type { BreakoutCandidateResp } from "./breakout";
-import type { ValueKind, ValueSource } from "./scoring";
 
-export type StreamerMode = "week" | "daily";
+type S = components["schemas"];
 
-// Streamer player from backend response
-export interface StreamerPlayer {
-  player_id: number;
-  nba_player_id: number | null;  // NBA (nba_api) player ID for terminal navigation
-  name: string;
-  team: string;
-  valid_positions: string[];
-  avg_points_last_n: number | null;
-  avg_points_season: number;
-  games_remaining: number;
-  has_b2b: boolean;
-  b2b_game_count: number;
-  game_days: number[];
-  streamer_score: number;
-  injured: boolean;
-  injury_status: string | null;
-  /** Where the average came from; "baseline" = last season's per-game line. Absent on older API builds. */
-  avg_source?: ValueSource | null;
+export type StreamerMode = S["StreamerMode"];
+
+/** Options for the search; every field is optional and defaults server-side. */
+export type StreamerFindRequest = S["StreamerFindReq"];
+
+/**
+ * A streaming candidate. `acquisition_status` is null when the provider did
+ * not say (Yahoo); `waivers_until` is the ISO date a waiver claim clears.
+ */
+export type StreamerPlayer = S["StreamerPlayerResp"] & {
   // Attached client-side when player matches a breakout candidate
   breakout_context?: BreakoutCandidateResp;
-}
+};
 
-// Streamer data from backend response
-export interface StreamerData {
-  matchup_number: number;
-  current_day_index: number;
-  game_span: number;
-  avg_days: number;
-  mode: StreamerMode;
-  target_day: number | null;
-  teams_with_b2b: string[];
-  streamers: StreamerPlayer[];
-  /** What `avg_points_*` mean; "cat_value" for H2H-category leagues. Absent on older API builds → fpts. */
-  value_kind?: ValueKind;
-}
+/**
+ * The search result. `upcoming` is true before opening night, when the
+ * server resolves to matchup 1, day 0 and the whole week ahead.
+ */
+export type StreamerData = S["StreamerData"];
 
-// Request to find streamers
-export interface StreamerRequest {
-  league_info: LeagueInfo;
-  fa_count?: number;
-  exclude_injured?: boolean;
-  b2b_only?: boolean;
-  mode?: StreamerMode;
-  target_day?: number | null;
-  avg_days?: number;
-}
-
-// Backend API Response Type
-export type StreamerResponse = BaseApiResponse<StreamerData>;
+export type StreamerResponse = S["StreamerResp"];
