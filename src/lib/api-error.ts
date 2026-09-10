@@ -107,7 +107,7 @@ export class ApiError extends Error {
   static fromEnvelope(body: unknown, requestCorrelationId?: string): ApiError {
     const parsed = readBody(body);
     return new ApiError({
-      message: parsed.message ?? `Request failed (${parsed.apiStatus ?? "error"})`,
+      message: parsed.message ?? synthesizedMessage(parsed.apiStatus),
       status: inferStatus(parsed.apiStatus, parsed.code),
       code: parsed.code,
       apiStatus: parsed.apiStatus,
@@ -191,6 +191,15 @@ function inferStatus(apiStatus: ApiStatus | null, code: string | null): number {
   if (code === LINEUP_SERVICE_UNAVAILABLE) return 503;
   if (code?.startsWith("PROVIDER_")) return 502;
   return 500;
+}
+
+/**
+ * `fromEnvelope`'s stand-in for a body that carried no message of its own.
+ * Callers that would rather show their own copy than a placeholder compare
+ * against this — see `userMessage`'s provider-auth branch.
+ */
+function synthesizedMessage(apiStatus: ApiStatus | null): string {
+  return `Request failed (${apiStatus ?? "error"})`;
 }
 
 interface ParsedBody {
@@ -354,7 +363,19 @@ export function espnProse(message: string | null | undefined): string | null {
 export function userMessage(error: unknown, fallback = "Something went wrong"): string {
   const err = toApiError(error);
   if (isProviderAuthError(err)) {
-    return `Your ${providerName(err) ?? "league"} connection expired — reconnect it in Manage Teams`;
+    // The backend writes provider-specific prose for these — which credential
+    // to redo, whether any were sent at all, and for ESPN that the saved season
+    // is a suspect too, since a wrong year on a private league also comes back
+    // 401/403. Trust it for the same reason the `server` case below does; the
+    // templates only cover an envelope that arrived without a message.
+    if (err.message && err.message !== synthesizedMessage(err.apiStatus)) {
+      return err.message;
+    }
+    const provider = providerName(err);
+    if (provider === "ESPN") {
+      return "ESPN rejected this league's credentials — check espn_s2, SWID and the season in Manage Teams";
+    }
+    return `Your ${provider ?? "league"} connection expired — reconnect it in Manage Teams`;
   }
   const roster = rosterMessage(err);
   if (roster) return roster;

@@ -50,14 +50,24 @@ export default function Account() {
     },
   };
 
+  // Rendered identically in both branches: neither line depends on auth or on
+  // a response, so holding them still is what stops the body shifting down
+  // when Clerk resolves.
+  const pageHeader = (
+    <section>
+      <h1 className="font-display text-2xl font-bold tracking-tight">
+        Account
+      </h1>
+      <p className="text-muted-foreground text-sm mt-0.5">
+        Manage your profile and settings.
+      </p>
+    </section>
+  );
+
   if (!isLoaded) {
     return (
       <div className="space-y-4 animate-slide-up-fade">
-        <section>
-          <h1 className="font-display text-2xl font-bold tracking-tight">
-            Account
-          </h1>
-        </section>
+        {pageHeader}
         <Skeleton className="w-full max-w-md h-64 rounded-md" />
       </div>
     );
@@ -65,14 +75,7 @@ export default function Account() {
 
   return (
     <div className="space-y-4 animate-slide-up-fade">
-      <section>
-        <h1 className="font-display text-2xl font-bold tracking-tight">
-          Account
-        </h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          Manage your profile and settings.
-        </p>
-      </section>
+      {pageHeader}
 
       <Show when="signed-out">
         <div className="flex justify-center py-8">

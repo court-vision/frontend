@@ -9,12 +9,15 @@ export const breakoutKeys = {
 };
 
 export function useBreakoutStreamersQuery(limit: number = 30) {
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
   return useQuery({
     queryKey: breakoutKeys.list(limit),
     queryFn: (): Promise<BreakoutData | null> =>
       apiClient.getBreakoutStreamers(getToken, limit),
     staleTime: 1000 * 60 * 30, // 30 minutes — pipeline runs once daily
     refetchOnWindowFocus: false,
+    // Pages render before Clerk resolves, so stay idle until there is a token:
+    // `fetchJson` throws on a null one rather than sending an anonymous request.
+    enabled: isSignedIn === true,
   });
 }
