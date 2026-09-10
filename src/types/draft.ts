@@ -25,6 +25,13 @@ export type DraftRosterEntry = S["DraftRosterEntry"];
 export type DraftKeeperOut = S["DraftKeeper-Output"];
 export type PickSource = DraftPick["source"];
 
+/**
+ * Whose board the room drafts off: ESPN's own ranking for the league's format,
+ * or Court Vision's composite value. Sent to the API — it changes what comes
+ * back, not just how it is displayed.
+ */
+export type RankSource = NonNullable<DraftBoardMeta["rank_source"]>;
+
 /** Where the caller's roster stands in one category, and what fit does about it. */
 export type CategoryNeed = S["CategoryNeedResp"];
 /** Whether a player is likely to survive to the caller's next pick. */
