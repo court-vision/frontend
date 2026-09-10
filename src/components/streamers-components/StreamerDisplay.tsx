@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { HintPopover } from "@/components/ui/hint";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SkeletonTable } from "@/components/ui/skeleton-table";
+import { SkeletonTable, type SkeletonColumn } from "@/components/ui/skeleton-table";
 import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
 
 import { WeekSchedule, WeekScheduleHeader } from "./WeekSchedule";
@@ -90,6 +90,31 @@ function ModeTabs({
       </TabsList>
     </Tabs>
   );
+}
+
+/**
+ * Mirrors the loaded table's own TableHead widths and alignment (see the
+ * TableHeader further down) so the rows sit on the same grid before and after
+ * the data arrives, and nothing reflows when the values land.
+ *
+ * `canAdd` comes from the selected team's provider, not the response, so the
+ * Add column is known up front — the loaded table counts it (`columnCount`)
+ * and the loading one has to as well. The value column's real label depends on
+ * the response (`value_kind`, `avgDays`), so it shows a generic word at the
+ * same fixed width.
+ */
+function streamerSkeletonColumns(canAdd: boolean): SkeletonColumn[] {
+  const columns: SkeletonColumn[] = [
+    { header: "#", className: "w-[50px] text-center pl-3", numeric: true, placeholder: "--" },
+    { header: "Player", className: "min-w-[200px]" },
+    { header: "Team", className: "w-[50px] text-center" },
+    { header: "Pos", className: "w-[120px]" },
+    { header: "Value", className: "w-[70px] text-right whitespace-nowrap", numeric: true },
+    { header: "Games left", className: "w-[70px] text-center", numeric: true, placeholder: "-" },
+    { header: "Schedule", className: "text-center" },
+  ];
+  if (canAdd) columns.push({ header: "", className: "w-[56px] text-center" });
+  return columns;
 }
 
 export default function StreamerDisplay() {
@@ -281,7 +306,7 @@ export default function StreamerDisplay() {
     return (
       <Card variant="panel" className="w-full">
         <CardContent className="p-4">
-          <SkeletonTable rows={10} columns={7} />
+          <SkeletonTable rows={10} columns={streamerSkeletonColumns(canAdd)} />
         </CardContent>
       </Card>
     );

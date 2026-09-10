@@ -192,15 +192,38 @@ describe("userMessage", () => {
   test("auth", () => {
     expect(userMessage(ApiError.auth())).toBe("Your session expired — sign in again");
   });
-  test("provider auth expired names the provider", () => {
+  test("provider auth expired shows the backend's own prose", () => {
+    // The backend distinguishes "no token", "unusable token", "rejected
+    // cookies" and "none were sent at all"; collapsing them into one sentence
+    // hid every one of them.
     const err = ApiError.fromEnvelope({
       status: "authorization_error",
-      message: "x",
+      message: "Stored Yahoo token is unusable — reconnect your Yahoo account",
       error_code: "PROVIDER_AUTH_EXPIRED",
       data: { provider: "yahoo" },
     });
     expect(isProviderAuthError(err)).toBe(true);
     expect(userMessage(err)).toBe(
+      "Stored Yahoo token is unusable — reconnect your Yahoo account"
+    );
+  });
+  test("provider auth expired falls back per provider with no message", () => {
+    // No `message`, so fromEnvelope synthesizes "Request failed (...)" — a
+    // placeholder, not copy, so the provider template wins instead.
+    const espn = ApiError.fromEnvelope({
+      status: "authorization_error",
+      error_code: "PROVIDER_AUTH_EXPIRED",
+      data: { provider: "espn" },
+    });
+    expect(userMessage(espn)).toBe(
+      "ESPN rejected this league's credentials — check espn_s2, SWID and the season in Manage Teams"
+    );
+    const yahoo = ApiError.fromEnvelope({
+      status: "authorization_error",
+      error_code: "PROVIDER_AUTH_EXPIRED",
+      data: { provider: "yahoo" },
+    });
+    expect(userMessage(yahoo)).toBe(
       "Your Yahoo connection expired — reconnect it in Manage Teams"
     );
   });

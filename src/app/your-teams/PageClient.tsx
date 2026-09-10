@@ -93,6 +93,13 @@ function TeamsContent() {
     return (
       <div className="space-y-4 animate-slide-up-fade">
         {pageHeader}
+        {/* The loaded page carries a summary strip here. Holding its row — same
+            wrapper, same text-xs line box — keeps the dashboard below it from
+            dropping ~32px when the team and roster count arrive. */}
+        <div className="flex items-center gap-4 text-xs text-muted-foreground px-1">
+          <Skeleton className="h-4 w-56" />
+          <Skeleton className="ml-auto h-4 w-20" />
+        </div>
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[...Array(4)].map((_, i) => (
