@@ -18,10 +18,25 @@ function getRouteIndex(path: string): number {
   return idx === -1 ? ROUTE_ORDER.length : idx;
 }
 
-// Public pages whose content doesn't depend on auth render immediately, so
-// their prerendered HTML carries real content (crawlers, first paint) instead
-// of a skeleton waiting on Clerk.
-const RENDER_BEFORE_AUTH = new Set(["/rankings"]);
+// Pages render immediately, so prerendered HTML carries real content (crawlers,
+// first paint) instead of a skeleton waiting on Clerk. A page shell — heading,
+// tabs, filters, table structure — never depends on auth, and every
+// authenticated query is gated on `isSignedIn === true`, so those stay idle
+// until Clerk resolves rather than firing without a token.
+//
+// The exception is the two pages whose body IS Clerk's own auth widget:
+// /sign-in renders <SignIn> with no loading state of its own, and /account
+// renders <SignIn> / <Show when="signed-in">. Rendering them early buys
+// nothing — the widget only appears once Clerk has loaded either way — so they
+// keep waiting rather than hand hydration a tree whose shape depends on how
+// far Clerk has got.
+const AWAIT_AUTH_BEFORE_RENDER = ["/account", "/sign-in"];
+
+function awaitsAuth(path: string): boolean {
+  return AWAIT_AUTH_BEFORE_RENDER.some(
+    (p) => path === p || path.startsWith(`${p}/`)
+  );
+}
 
 // After this long without Clerk loading, render the page anyway (with a
 // banner) rather than leaving the user on a permanent skeleton.
@@ -42,8 +57,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
     return () => clearTimeout(timer);
   }, [isLoaded]);
 
-  const authPending = !isLoaded && !authTimedOut;
-  const loading = authPending && !RENDER_BEFORE_AUTH.has(pathname);
+  const loading = !isLoaded && !authTimedOut && awaitsAuth(pathname);
   const showAuthBanner = !isLoaded && authTimedOut;
 
   // Determine slide direction based on nav order
@@ -76,8 +90,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Main Content Area */}
       <main className={`flex-1 overflow-y-auto overflow-x-clip overscroll-y-contain relative ${isFullHeightPage ? '' : 'p-4 md:p-5 lg:p-8'}`}>
         <div key={pathname} className={`relative z-10 ${direction}`}>
-          {loading && <SkeletonCard />}
-          {!loading && children}
+          {loading ? <SkeletonCard /> : children}
         </div>
       </main>
 
