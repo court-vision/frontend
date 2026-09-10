@@ -2888,6 +2888,18 @@
             "description": "League-scored per-game value: fantasy points under the league's weights, or the fpts-scale category value. None for a market-only row \u2014 a player ESPN ranks but neither a projection nor last season's baseline can value (a rookie, before projections).",
             "title": "Value"
           },
+          "value_season": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set only when a baseline `value` came from an OLDER season than the board's own previous one, e.g. `2024-25` on a 2026-27 board \u2014 a player who missed last season entirely is valued off the most recent one he played, and that value is a year staler than every other row. None for everyone valued from last season, and for projection and market-only rows.",
+            "title": "Value Season"
+          },
           "value_source": {
             "description": "projection: ESPN's published per-game projection. baseline: last season's per-game averages. market: no stat line at all \u2014 the row exists because ESPN drafts him.",
             "enum": [
@@ -2911,6 +2923,7 @@
           "cv_rank",
           "value",
           "value_source",
+          "value_season",
           "last_season_gp",
           "projected_gp",
           "fpts_avg",

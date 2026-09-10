@@ -152,9 +152,21 @@ function Cell({ column, row }: { column: BoardColumn; row: DraftBoardRow }) {
       );
     }
     case "projected_gp":
+      // `value_season` is set only on a walked-back row, whose games come from
+      // an older season than every other row here — 73 games reads as "last
+      // year" unless the cell says otherwise, and for a player who sat out a
+      // whole season that is exactly the wrong story.
       return (
         <div className={cn(base, "text-muted-foreground")}>
           {row.projected_gp ?? row.last_season_gp ?? "—"}
+          {row.value_season && (
+            <span
+              title={`Missed last season — valued off his ${row.value_season} line`}
+              className="ml-0.5 align-super text-[8px] text-amber-500"
+            >
+              {row.value_season.slice(2)}
+            </span>
+          )}
         </div>
       );
     default:

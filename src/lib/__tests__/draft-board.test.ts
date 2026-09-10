@@ -29,6 +29,7 @@ function row(overrides: Partial<DraftBoardRow> & { player_id: number }): DraftBo
     cv_rank: overrides.player_id,
     value: 50,
     value_source: "baseline",
+    value_season: null,
     last_season_gp: 70,
     projected_gp: null,
     fpts_avg: 50,

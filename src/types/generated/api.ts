@@ -3166,6 +3166,11 @@ export interface components {
              */
             value: number | null;
             /**
+             * Value Season
+             * @description Set only when a baseline `value` came from an OLDER season than the board's own previous one, e.g. `2024-25` on a 2026-27 board — a player who missed last season entirely is valued off the most recent one he played, and that value is a year staler than every other row. None for everyone valued from last season, and for projection and market-only rows.
+             */
+            value_season: string | null;
+            /**
              * Value Source
              * @description projection: ESPN's published per-game projection. baseline: last season's per-game averages. market: no stat line at all — the row exists because ESPN drafts him.
              * @enum {string}
