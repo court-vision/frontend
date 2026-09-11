@@ -165,11 +165,30 @@ export function WelcomeView() {
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/[0.04] rounded-full blur-[100px] pointer-events-none" />
 
         <div className="relative z-10 text-center max-w-3xl mx-auto animate-slide-up-fade">
-          <div className="mb-6 font-display text-5xl font-black leading-none tracking-tighter">
-            C<span className="text-primary">V</span>
+          {/* The key, drawn around the copy: the mark sits in the free-throw
+              semicircle, the words sit in the paint, and the three-point arc
+              wraps the lot. Borders rather than an image, so the lines follow
+              the copy wherever it wraps; the section clips the overflow. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-[84px] -z-10 h-[200vh] w-[min(600px,92vw)] -translate-x-1/2 border-x border-t border-foreground/[0.12] bg-primary/[0.035]"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-[-150px] -z-10 h-[1500px] w-[1500px] -translate-x-1/2 rounded-full border border-foreground/[0.07]"
+          />
+
+          <div className="relative mx-auto flex h-[84px] w-[168px] items-end justify-center">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-t-full border border-b-0 border-foreground/[0.12]"
+            />
+            <div className="mb-4 font-display text-5xl font-black leading-none tracking-tighter">
+              C<span className="text-primary">V</span>
+            </div>
           </div>
 
-          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">
+          <h1 className="mt-6 font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">
             See the move.
             <br />
             <span className="text-primary">Make the move.</span>
@@ -271,7 +290,6 @@ export function WelcomeView() {
                     {"⌘"}K
                   </span>
                 </div>
-                <div className="h-2 w-2 rounded-full bg-status-win animate-beacon" />
               </div>
             </div>
 

@@ -111,12 +111,6 @@ export function CommandStrip() {
         </kbd>
       </button>
 
-      {/* Status indicator */}
-      <div className="hidden lg:flex items-center gap-1.5 ml-2">
-        <span className="h-1.5 w-1.5 rounded-full bg-signal-live animate-beacon" />
-        <span className="text-[11px] text-muted-foreground/50">Live</span>
-      </div>
-
       {/* Settings + User */}
       <div className="ml-2 flex items-center gap-1.5">
         {authReady && isSignedIn && (
