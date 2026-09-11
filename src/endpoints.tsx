@@ -17,6 +17,8 @@ export const LINEUPS_API = `${API_BASE}/v1/internal/lineups`;
 export const MATCHUPS_API = `${API_BASE}/v1/internal/matchups`;
 export const STREAMERS_API = `${API_BASE}/v1/internal/streamers`;
 export const YAHOO_API = `${API_BASE}/v1/internal/yahoo`;
+// Provider connections: an ESPN account's cookies, stored once for every team on it
+export const CONNECTIONS_API = `${API_BASE}/v1/internal/connections`;
 export const NOTIFICATIONS_API = `${API_BASE}/v1/internal/notifications`;
 export const API_KEYS_API = `${API_BASE}/v1/internal/api-keys`;
 // Draft Lab: sessions, picks, and the board scored for either.

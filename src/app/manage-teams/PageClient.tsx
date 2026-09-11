@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+import { EspnConnectionCard } from "@/components/teams-components/EspnConnectionCard";
 import { ManageTeamsTable } from "@/components/teams-components/ManageTeamsTable";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -67,6 +68,7 @@ function ManageTeamsContent() {
           </Button>
         </Link>
       </section>
+      <EspnConnectionCard />
       <ManageTeamsTable yahooOAuthState={yahooOAuthState} autoOpenAdd={autoOpenAdd} />
     </div>
   );

@@ -1114,6 +1114,60 @@
         "title": "CategoryTeamScore",
         "type": "object"
       },
+      "ConnectionTeamInfo": {
+        "properties": {
+          "league_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Id"
+          },
+          "league_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Name"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "required": [
+          "team_id",
+          "team_name",
+          "league_name",
+          "league_id",
+          "year"
+        ],
+        "title": "ConnectionTeamInfo",
+        "type": "object"
+      },
       "CreateApiKeyData": {
         "description": "Response data returned when a new API key is created.",
         "properties": {
@@ -5308,6 +5362,164 @@
         "title": "EnrichedRosterPlayer",
         "type": "object"
       },
+      "EspnAccountTeam": {
+        "properties": {
+          "espn_team_id": {
+            "title": "Espn Team Id",
+            "type": "integer"
+          },
+          "league_id": {
+            "title": "League Id",
+            "type": "integer"
+          },
+          "league_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Name"
+          },
+          "league_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Size"
+          },
+          "scoring_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Type"
+          },
+          "season": {
+            "title": "Season",
+            "type": "integer"
+          },
+          "team_abbrev": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Abbrev"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          },
+          "tracked_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracked Team Id"
+          }
+        },
+        "required": [
+          "league_id",
+          "season",
+          "espn_team_id",
+          "team_name",
+          "team_abbrev",
+          "league_name",
+          "league_size",
+          "scoring_type",
+          "tracked_team_id"
+        ],
+        "title": "EspnAccountTeam",
+        "type": "object"
+      },
+      "EspnAccountTeamsResp": {
+        "properties": {
+          "data": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/EspnAccountTeam"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "EspnAccountTeamsResp",
+        "type": "object"
+      },
+      "EspnConnectReq": {
+        "properties": {
+          "espn_s2": {
+            "minLength": 1,
+            "title": "Espn S2",
+            "type": "string"
+          },
+          "swid": {
+            "minLength": 1,
+            "title": "Swid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "espn_s2",
+          "swid"
+        ],
+        "title": "EspnConnectReq",
+        "type": "object"
+      },
       "FantasyProvider": {
         "description": "Supported fantasy basketball providers.",
         "enum": [
@@ -6185,6 +6397,17 @@
       },
       "LeagueInfo": {
         "properties": {
+          "espn_connection_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Connection Id"
+          },
           "espn_s2": {
             "anyOf": [
               {
@@ -6432,6 +6655,17 @@
       "LeagueInfoWrite": {
         "description": "What a client is allowed to *send* about a team.\n\nThe request-side twin of `LeagueInfoPublic`, and separate from `LeagueInfo`\nfor the same reason: a model that cannot represent a Yahoo token cannot\naccept one. The browser stopped handling raw tokens with the credential\nboundary (7b) \u2014 it sends `yahoo_connection_id`, an opaque handle the OAuth\ncallback issued \u2014 but the request schema still advertised the token fields,\nso a generated client would have typed them right back into the UI.\n\nPydantic silently drops unknown fields, so a legacy client posting raw\ntokens loses them rather than erroring; post-7b no shipped client does.\nESPN cookies stay accepted here: the browser legitimately collects them\n(empty string = \"keep what is stored\" on update).",
         "properties": {
+          "espn_connection_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Connection Id"
+          },
           "espn_s2": {
             "anyOf": [
               {
@@ -12991,6 +13225,274 @@
         "title": "ProjectionStats",
         "type": "object"
       },
+      "ProviderConnectionDeleteData": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "unlinked_team_ids": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Unlinked Team Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "unlinked_team_ids"
+        ],
+        "title": "ProviderConnectionDeleteData",
+        "type": "object"
+      },
+      "ProviderConnectionDeleteResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderConnectionDeleteData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "ProviderConnectionDeleteResp",
+        "type": "object"
+      },
+      "ProviderConnectionInfo": {
+        "properties": {
+          "account_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Hint"
+          },
+          "auth_failed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auth Failed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/FantasyProvider"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "expired",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "teams": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ConnectionTeamInfo"
+            },
+            "title": "Teams",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "account_hint",
+          "status",
+          "verified_at",
+          "auth_failed_at",
+          "created_at",
+          "updated_at",
+          "teams"
+        ],
+        "title": "ProviderConnectionInfo",
+        "type": "object"
+      },
+      "ProviderConnectionListResp": {
+        "properties": {
+          "data": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProviderConnectionInfo"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "ProviderConnectionListResp",
+        "type": "object"
+      },
+      "ProviderConnectionResp": {
+        "properties": {
+          "created": {
+            "default": false,
+            "title": "Created",
+            "type": "boolean"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderConnectionInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp",
+          "created"
+        ],
+        "title": "ProviderConnectionResp",
+        "type": "object"
+      },
       "RankingsMeta": {
         "properties": {
           "as_of": {
@@ -17399,6 +17901,223 @@
         "summary": "Revoke Api Key",
         "tags": [
           "API Keys"
+        ]
+      }
+    },
+    "/v1/internal/connections/": {
+      "get": {
+        "operationId": "list_connections_v1_internal_connections__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConnectionListResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Connections",
+        "tags": [
+          "provider connections"
+        ]
+      }
+    },
+    "/v1/internal/connections/espn": {
+      "post": {
+        "description": "Connect an ESPN account, or refresh the cookies of one already connected.\n\nESPN checks the pair first, by reading one of the account's private leagues\nwith it: 403 PROVIDER_AUTH_EXPIRED when it refuses them, 400\nESPN_ACCOUNT_NOT_FOUND for a SWID it does not know, and nothing is saved.\nAn account with only public leagues cannot confirm a pair; it is saved with\nstatus \"unknown\".",
+        "operationId": "connect_espn_v1_internal_connections_espn_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EspnConnectReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConnectionResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Connect Espn",
+        "tags": [
+          "provider connections"
+        ]
+      }
+    },
+    "/v1/internal/connections/{connection_id}": {
+      "delete": {
+        "description": "Remove a connection. Its teams are unlinked, not deleted.",
+        "operationId": "delete_connection_v1_internal_connections__connection_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "title": "Connection Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConnectionDeleteResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Connection",
+        "tags": [
+          "provider connections"
+        ]
+      }
+    },
+    "/v1/internal/connections/{connection_id}/espn/teams": {
+      "get": {
+        "description": "The fantasy basketball teams on a connected ESPN account, as ESPN lists\nthem, each marked with the Court Vision team already tracking it.",
+        "operationId": "espn_account_teams_v1_internal_connections__connection_id__espn_teams_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "title": "Connection Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EspnAccountTeamsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Espn Account Teams",
+        "tags": [
+          "provider connections"
+        ]
+      }
+    },
+    "/v1/internal/connections/{connection_id}/verify": {
+      "post": {
+        "description": "Re-check a stored ESPN connection's cookies. A refusal is a 200 whose\nconnection reads \"expired\"; an ESPN outage, or an account with no private\nleague to check against, records nothing.",
+        "operationId": "verify_connection_v1_internal_connections__connection_id__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "title": "Connection Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConnectionResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Verify Connection",
+        "tags": [
+          "provider connections"
         ]
       }
     },

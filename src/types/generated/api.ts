@@ -159,6 +159,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/connections/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Connections */
+        get: operations["list_connections_v1_internal_connections__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/connections/espn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Connect Espn
+         * @description Connect an ESPN account, or refresh the cookies of one already connected.
+         *
+         *     ESPN checks the pair first, by reading one of the account's private leagues
+         *     with it: 403 PROVIDER_AUTH_EXPIRED when it refuses them, 400
+         *     ESPN_ACCOUNT_NOT_FOUND for a SWID it does not know, and nothing is saved.
+         *     An account with only public leagues cannot confirm a pair; it is saved with
+         *     status "unknown".
+         */
+        post: operations["connect_espn_v1_internal_connections_espn_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/connections/{connection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Connection
+         * @description Remove a connection. Its teams are unlinked, not deleted.
+         */
+        delete: operations["delete_connection_v1_internal_connections__connection_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/connections/{connection_id}/espn/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Espn Account Teams
+         * @description The fantasy basketball teams on a connected ESPN account, as ESPN lists
+         *     them, each marked with the Court Vision team already tracking it.
+         */
+        get: operations["espn_account_teams_v1_internal_connections__connection_id__espn_teams_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/connections/{connection_id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Connection
+         * @description Re-check a stored ESPN connection's cookies. A refusal is a 200 whose
+         *     connection reads "expired"; an ESPN outage, or an account with no private
+         *     league to check against, records nothing.
+         */
+        post: operations["verify_connection_v1_internal_connections__connection_id__verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/drafts": {
         parameters: {
             query?: never;
@@ -2471,6 +2577,19 @@ export interface components {
              */
             wins: number;
         };
+        /** ConnectionTeamInfo */
+        ConnectionTeamInfo: {
+            /** League Id */
+            league_id: number | null;
+            /** League Name */
+            league_name: string | null;
+            /** Team Id */
+            team_id: number;
+            /** Team Name */
+            team_name: string;
+            /** Year */
+            year: number | null;
+        };
         /**
          * CreateApiKeyData
          * @description Response data returned when a new API key is created.
@@ -3971,6 +4090,49 @@ export interface components {
             /** Value Source */
             value_source: string | null;
         };
+        /** EspnAccountTeam */
+        EspnAccountTeam: {
+            /** Espn Team Id */
+            espn_team_id: number;
+            /** League Id */
+            league_id: number;
+            /** League Name */
+            league_name: string | null;
+            /** League Size */
+            league_size: number | null;
+            /** Scoring Type */
+            scoring_type: string | null;
+            /** Season */
+            season: number;
+            /** Team Abbrev */
+            team_abbrev: string | null;
+            /** Team Name */
+            team_name: string;
+            /** Tracked Team Id */
+            tracked_team_id: number | null;
+        };
+        /** EspnAccountTeamsResp */
+        EspnAccountTeamsResp: {
+            /**
+             * Data
+             * @default []
+             */
+            data: components["schemas"]["EspnAccountTeam"][];
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** EspnConnectReq */
+        EspnConnectReq: {
+            /** Espn S2 */
+            espn_s2: string;
+            /** Swid */
+            swid: string;
+        };
         /**
          * FantasyProvider
          * @description Supported fantasy basketball providers.
@@ -4381,6 +4543,8 @@ export interface components {
         };
         /** LeagueInfo */
         LeagueInfo: {
+            /** Espn Connection Id */
+            espn_connection_id?: number | null;
             /**
              * Espn S2
              * @default
@@ -4491,6 +4655,8 @@ export interface components {
          *     (empty string = "keep what is stored" on update).
          */
         LeagueInfoWrite: {
+            /** Espn Connection Id */
+            espn_connection_id?: number | null;
             /**
              * Espn S2
              * @default
@@ -6748,6 +6914,90 @@ export interface components {
             /** Tov */
             tov: number | null;
         };
+        /** ProviderConnectionDeleteData */
+        ProviderConnectionDeleteData: {
+            /** Id */
+            id: number;
+            /**
+             * Unlinked Team Ids
+             * @default []
+             */
+            unlinked_team_ids: number[];
+        };
+        /** ProviderConnectionDeleteResp */
+        ProviderConnectionDeleteResp: {
+            data: components["schemas"]["ProviderConnectionDeleteData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** ProviderConnectionInfo */
+        ProviderConnectionInfo: {
+            /** Account Hint */
+            account_hint: string | null;
+            /** Auth Failed At */
+            auth_failed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            provider: components["schemas"]["FantasyProvider"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "expired" | "unknown";
+            /**
+             * Teams
+             * @default []
+             */
+            teams: components["schemas"]["ConnectionTeamInfo"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Verified At */
+            verified_at: string | null;
+        };
+        /** ProviderConnectionListResp */
+        ProviderConnectionListResp: {
+            /**
+             * Data
+             * @default []
+             */
+            data: components["schemas"]["ProviderConnectionInfo"][];
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** ProviderConnectionResp */
+        ProviderConnectionResp: {
+            /**
+             * Created
+             * @default false
+             */
+            created: boolean;
+            data: components["schemas"]["ProviderConnectionInfo"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /** RankingsMeta */
         RankingsMeta: {
             /** As Of */
@@ -8466,6 +8716,152 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevokeApiKeyResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_connections_v1_internal_connections__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderConnectionListResp"];
+                };
+            };
+        };
+    };
+    connect_espn_v1_internal_connections_espn_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EspnConnectReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderConnectionResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_connection_v1_internal_connections__connection_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderConnectionDeleteResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    espn_account_teams_v1_internal_connections__connection_id__espn_teams_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EspnAccountTeamsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_connection_v1_internal_connections__connection_id__verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderConnectionResp"];
                 };
             };
             /** @description Validation Error */
