@@ -83,12 +83,12 @@ describe("MOBILE_ORDER", () => {
     }
   });
 
-  test("team template leads with the matchup score, categories with the category breakdown", () => {
+  test("team templates lead with daily actions, the default with today's leaders", () => {
     const first = (template: LayoutTemplate) =>
       orderForMobile(DEFAULT_LAYOUTS[template].widgets, MOBILE_ORDER[template])[0]
         ?.definitionId;
     expect(first("default")).toBe("today-leaders");
-    expect(first("team")).toBe("matchup-score");
-    expect(first("categories")).toBe("category-comparison");
+    expect(first("team")).toBe("daily-actions");
+    expect(first("categories")).toBe("daily-actions");
   });
 });

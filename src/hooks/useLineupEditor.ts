@@ -18,6 +18,8 @@ export const lineupKeys = {
   all: ["lineup"] as const,
   state: (teamId: number) => [...lineupKeys.all, "state", teamId] as const,
   plan: (teamId: number) => [...lineupKeys.all, "plan", teamId] as const,
+  /** Today's recommended actions (the home widget); lives in the lineup family so a write invalidates it here. */
+  actions: (teamId: number) => [...lineupKeys.all, "actions", teamId] as const,
 };
 
 /**
@@ -76,6 +78,7 @@ export function useApplyLineupMovesMutation(teamId: number) {
     onSuccess: (data) => {
       queryClient.setQueryData<LineupState | null>(lineupKeys.state(teamId), data.lineup);
       queryClient.removeQueries({ queryKey: lineupKeys.plan(teamId) });
+      queryClient.invalidateQueries({ queryKey: lineupKeys.actions(teamId) });
       // Everything that renders the roster by slot is now out of date.
       queryClient.invalidateQueries({ queryKey: teamsKeys.insights(teamId) });
       queryClient.invalidateQueries({ queryKey: teamsKeys.roster(teamId) });

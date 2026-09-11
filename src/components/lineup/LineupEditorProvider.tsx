@@ -25,8 +25,10 @@ import {
   playerIndex,
   slotRows,
   stage as stageMove,
+  stageMoves as stageMovesPure,
   staleLineup,
   unstage as unstageMove,
+  unstageMoves as unstageMovesPure,
   validateStaged,
   type SlotRow,
   type Staged,
@@ -71,6 +73,14 @@ export interface LineupEditorContextValue {
   /** Stage a move (or swap) for `playerId`; true when the board changed. Clears the selection. */
   stage: (playerId: number, slotId: number) => boolean;
   unstage: (playerId: number) => void;
+  /**
+   * Stage a whole row of moves at once (a Daily Actions row, or "Stage all"):
+   * every listed player lands on its target, composed with what is already
+   * staged. Clears the selection.
+   */
+  stageMoves: (moves: ReadonlyArray<Pick<LineupMove, "player_id" | "to_slot_id">>) => void;
+  /** Undo a row: every listed player's staged move, swap partners included. */
+  unstageMoves: (moves: ReadonlyArray<Pick<LineupMove, "player_id">>) => void;
   reset: () => void;
   eligibleTargetsFor: (playerId: number) => number[];
   /**
@@ -217,6 +227,24 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
     (playerId: number) => {
       if (!state) return;
       write((prev) => ({ ...prev, staged: unstageMove(state, prev.staged, playerId) }));
+    },
+    [state, write]
+  );
+
+  // Functional updates, so several rows staged in one tick compose instead of
+  // the last one winning.
+  const stageMoves = useCallback(
+    (moves: ReadonlyArray<Pick<LineupMove, "player_id" | "to_slot_id">>) => {
+      if (!state) return;
+      write((prev) => ({ staged: stageMovesPure(state, prev.staged, moves), selected: null }));
+    },
+    [state, write]
+  );
+
+  const unstageMoves = useCallback(
+    (moves: ReadonlyArray<Pick<LineupMove, "player_id">>) => {
+      if (!state) return;
+      write((prev) => ({ ...prev, staged: unstageMovesPure(state, prev.staged, moves) }));
     },
     [state, write]
   );
@@ -385,6 +413,8 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
       select,
       stage,
       unstage,
+      stageMoves,
+      unstageMoves,
       reset,
       eligibleTargetsFor,
       tap,
@@ -412,7 +442,7 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
     }),
     [
       teamId, state, mock, query, staged, rows, assignment, playerById, selectedPlayerId,
-      selectedTargets, select, stage, unstage, reset, eligibleTargetsFor, tap, moves,
+      selectedTargets, select, stage, unstage, stageMoves, unstageMoves, reset, eligibleTargetsFor, tap, moves,
       validation, moveErrors, loadPlan, planStore, apply, mutation.isPending, applyError,
       confirmOpen, dropTargetId, requestDrop, cancelDrop, confirmDrop, dropMutation.isPending,
       dropError,

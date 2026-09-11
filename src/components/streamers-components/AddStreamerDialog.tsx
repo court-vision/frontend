@@ -48,6 +48,12 @@ interface AddStreamerDialogProps {
    * is passed today.
    */
   impact?: ReactNode;
+  /**
+   * Preselect the player to drop for this opening (the Daily Actions widget
+   * passes the drop it suggested; `null` preselects "don't drop anyone").
+   * Honoured only while that choice is still on offer, like any other choice.
+   */
+  defaultDropId?: number | null;
 }
 
 function slotVariant(slotId: number): "default" | "secondary" | "outline" {
@@ -69,6 +75,7 @@ export function AddStreamerDialog({
   open,
   onOpenChange,
   impact,
+  defaultDropId,
 }: AddStreamerDialogProps) {
   const lineup = useTeamLineupQuery(teamId, "espn");
   const mutation = useRosterTransactionMutation(teamId);
@@ -83,9 +90,9 @@ export function AddStreamerDialog({
   const dropOnly = player === null;
   const { reset } = mutation;
   useEffect(() => {
-    setChoice(null);
+    setChoice(defaultDropId === undefined ? null : { forPlayer: playerId, dropId: defaultDropId });
     reset();
-  }, [playerId, open, reset]);
+  }, [playerId, open, reset, defaultDropId]);
 
   const hasSeat = !!state && canAddWithoutDrop(state);
   const candidates = state ? dropCandidates(state) : [];

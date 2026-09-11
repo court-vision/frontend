@@ -42,6 +42,7 @@ export function useRosterTransactionMutation(teamId: number) {
     onSuccess: (data) => {
       queryClient.setQueryData<LineupState | null>(lineupKeys.state(teamId), data.lineup);
       queryClient.removeQueries({ queryKey: lineupKeys.plan(teamId) });
+      queryClient.invalidateQueries({ queryKey: lineupKeys.actions(teamId) });
       queryClient.invalidateQueries({ queryKey: streamersKeys.team(teamId) });
       // Everything that renders the roster is now out of date.
       queryClient.invalidateQueries({ queryKey: teamsKeys.insights(teamId) });

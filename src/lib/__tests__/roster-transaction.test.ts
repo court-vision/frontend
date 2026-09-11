@@ -37,6 +37,7 @@ function streamer(overrides: Partial<StreamerPlayer> = {}): StreamerPlayer {
     streamer_score: 88.4,
     injured: false,
     injury_status: null,
+    default_position_id: null,
     acquisition_status: "free_agent",
     waivers_until: null,
     ...overrides,

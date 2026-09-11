@@ -13,6 +13,7 @@ import {
   CategoryStrengthsPanel,
   CategoryComparisonPanel,
   TeamStreamersPanel,
+  DailyActionsPanel,
 } from "@/components/terminal/panels";
 import { QuickActionsWidget } from "../widgets/QuickActionsWidget";
 
@@ -24,6 +25,8 @@ export function DashboardWidgetRenderer({
   definitionId,
 }: DashboardWidgetRendererProps) {
   switch (definitionId) {
+    case "daily-actions":
+      return <DailyActionsPanel />;
     case "matchup-score":
       return <MatchupPanel />;
     case "roster-overview":

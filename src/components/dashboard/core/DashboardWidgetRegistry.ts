@@ -12,11 +12,24 @@ import {
   Sparkles,
   Navigation,
   Grid3x3,
+  ListChecks,
 } from "lucide-react";
 import type { DashboardWidgetDefinition } from "@/types/dashboard";
 
 export const DASHBOARD_WIDGET_REGISTRY: DashboardWidgetDefinition[] = [
   // Team widgets
+  {
+    id: "daily-actions",
+    name: "Daily Actions",
+    description: "Today's lineup, IR and pickup moves, staged for your approval",
+    icon: ListChecks,
+    category: "team",
+    defaultW: 5,
+    defaultH: 5,
+    minW: 3,
+    minH: 3,
+    requiresTeam: true,
+  },
   {
     id: "matchup-score",
     name: "Matchup Score",

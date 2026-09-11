@@ -18,8 +18,10 @@ import {
   slotName,
   slotRows,
   stage,
+  stageMoves,
   staleLineup,
   unstage,
+  unstageMoves,
   validateStaged,
   type Staged,
 } from "../lineup-editor";
@@ -44,6 +46,7 @@ function player(
     eligible_slots: overrides.eligible_slot_ids.map(slotName),
     injured: false,
     injury_status: null,
+    default_position_id: null,
     lineup_locked: false,
     has_game_today: true,
     opponent: "vs LAL",
@@ -68,6 +71,7 @@ function board(players: LineupPlayer[], overrides: Partial<LineupState> = {}): L
     scoring_period_id: 1,
     scoring_period_source: "provider",
     first_game_time_et: "19:00",
+    position_limits: {},
     slot_counts: { "0": 1, "1": 1, "5": 1, "11": 2, "12": 2, "13": 1 },
     slots: [
       { slot_id: PG, slot: "PG", count: 1 },
@@ -394,5 +398,43 @@ describe("gameLabel compact", () => {
   test("phone form drops the separator and shortens the meridiem", () => {
     expect(gameLabel(pg, { compact: true })).toBe("vs LAL 7:30P");
     expect(gameLabel({ has_game_today: true, opponent: "@ BOS", game_time_et: "00:30" }, { compact: true })).toBe("@ BOS 12:30A");
+  });
+});
+
+describe("stageMoves / unstageMoves (Daily Actions rows)", () => {
+  const state = MOCK_LINEUP_STATE;
+  const plan = MOCK_LINEUP_PLAN;
+
+  test("a whole plan staged as moves equals planToStaged", () => {
+    expect(stageMoves(state, {}, plan.moves)).toEqual(planToStaged(state, plan));
+  });
+
+  test("composes with what is already staged and returns the same reference when nothing changes", () => {
+    const first = plan.moves.slice(0, 1);
+    const once = stageMoves(state, {}, first);
+    expect(Object.keys(once)).toHaveLength(1);
+    const again = stageMoves(state, once, first);
+    expect(again).toBe(once);
+    const all = stageMoves(state, once, plan.moves);
+    expect(all).toEqual(planToStaged(state, plan));
+  });
+
+  test("a move to the player's own slot and an unknown player are dropped", () => {
+    const p = state.players[0]!;
+    const empty: Staged = {};
+    expect(stageMoves(state, empty, [{ player_id: p.player_id, to_slot_id: p.lineup_slot_id }])).toBe(empty);
+    expect(stageMoves(state, empty, [{ player_id: 999_999_999, to_slot_id: BE }])).toBe(empty);
+  });
+
+  test("unstageMoves undoes every player in the row, swap partners included", () => {
+    const staged = stageMoves(state, {}, plan.moves);
+    expect(unstageMoves(state, staged, plan.moves)).toEqual({});
+    const subject = plan.moves[0]!;
+    const rest = unstageMoves(state, staged, [subject]);
+    expect(rest[subject.player_id]).toBeUndefined();
+  });
+
+  test("a staged plan validates clean", () => {
+    expect(validateStaged(state, stageMoves(state, {}, plan.moves))).toEqual([]);
   });
 });
