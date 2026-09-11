@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function Account() {
   const { user, isLoaded } = useUser();
@@ -54,14 +55,7 @@ export default function Account() {
   // a response, so holding them still is what stops the body shifting down
   // when Clerk resolves.
   const pageHeader = (
-    <section>
-      <h1 className="font-display text-2xl font-bold tracking-tight">
-        Account
-      </h1>
-      <p className="text-muted-foreground text-sm mt-0.5">
-        Manage your profile and settings.
-      </p>
-    </section>
+    <PageHeader title="Account" subtitle="Manage your profile and settings." />
   );
 
   if (!isLoaded) {

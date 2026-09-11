@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 
 export type PlayerIdType = "espn" | "nba";
@@ -25,6 +25,8 @@ export function usePlayerStatsQuery(
     queryFn: () => apiClient.getPlayerStats(playerId!, idType, window),
     enabled: !!playerId,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    // Switching windows swaps the numbers in place instead of blanking the card.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -47,5 +49,6 @@ export function usePlayerStatsByNameQuery(
     queryFn: () => apiClient.getPlayerStatsByName(name!, team!, window),
     enabled: !!name && !!team,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    placeholderData: keepPreviousData,
   });
 }

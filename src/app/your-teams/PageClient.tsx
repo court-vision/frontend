@@ -20,6 +20,7 @@ import { LineupEditor } from "@/components/lineup/LineupEditor";
 import { LineupApplyBar } from "@/components/lineup/LineupApplyBar";
 import { ApplyLineupDialog } from "@/components/lineup/ApplyLineupDialog";
 import { MOCK_LINEUP_EDITOR } from "@/__fixtures__/lineupState";
+import { PageHeader } from "@/components/PageHeader";
 
 // Dev-only: `/your-teams?mock=lineup` renders the lineup editor on a fixture
 // board so tap-to-move, Optimize and the confirm flow can be checked without
@@ -57,22 +58,18 @@ function TeamsContent() {
   }, [isSignedIn, teams, selectedTeam, setSelectedTeam]);
 
   const pageHeader = (
-    <section className="flex items-center justify-between">
-      <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight">
-          Your Teams
-        </h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          Roster overview and team analysis.
-        </p>
-      </div>
-      <Link href="/manage-teams">
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-          <Settings className="h-3.5 w-3.5" />
-          Manage Teams
-        </Button>
-      </Link>
-    </section>
+    <PageHeader
+      title="Your Teams"
+      subtitle="Roster overview and team analysis."
+      actions={
+        <Link href="/manage-teams">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+            <Settings className="h-3.5 w-3.5" />
+            Manage Teams
+          </Button>
+        </Link>
+      }
+    />
   );
 
   if (mock) {

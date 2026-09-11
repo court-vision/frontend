@@ -3,6 +3,7 @@ import { ImageResponse } from "next/og";
 export const size = { width: 512, height: 512 };
 export const contentType = "image/png";
 
+/** The wordmark's own initials: bone "C", amber "V", on the app background. */
 export default function Icon() {
   return new ImageResponse(
     (
@@ -13,23 +14,22 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#121418",
-          borderRadius: 96,
-          border: "16px solid rgba(245, 122, 18, 0.35)",
+          background: "#221f1c",
+          borderRadius: 112,
         }}
       >
         <span
           style={{
-            fontSize: 280,
+            display: "flex",
+            fontSize: 300,
             fontWeight: 900,
-            fontStyle: "italic",
-            color: "#F57A12",
-            letterSpacing: -10,
+            color: "#f1ede9",
+            letterSpacing: -24,
             lineHeight: 1,
-            marginTop: 16,
+            marginTop: 12,
           }}
         >
-          CV
+          C<span style={{ color: "#f57d14" }}>V</span>
         </span>
       </div>
     ),

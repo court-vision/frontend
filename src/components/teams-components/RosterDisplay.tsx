@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,21 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import type { FantasyProvider } from "@/types/team";
 import type { EnrichedRosterPlayer } from "@/types/team-insights";
 import type { ValueKind } from "@/types/scoring";
 import { CAT_VALUE_TITLE } from "@/lib/category-format";
 import { HintPopover } from "@/components/ui/hint";
-import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
+import { PlayerCardDialog } from "@/components/player-card/PlayerCardDialog";
 import { formatPositions } from "@/lib/positions";
 import { PlayerHeadshot } from "@/components/terminal/shared";
 import { getInjuryBadge } from "@/lib/injury-badge";
@@ -223,36 +213,17 @@ export function RosterDisplay({ roster, provider = "espn", valueKind = "fpts" }:
         </CardContent>
       </Card>
 
-      {/* Player Stats Dialog */}
-      <Dialog
+      <PlayerCardDialog
         open={!!selectedPlayer}
-        onOpenChange={() => setSelectedPlayer(null)}
-      >
-        <DialogContent className="max-w-[900px]">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{selectedPlayer?.playerName ?? "Player"} details</DialogTitle>
-            <DialogDescription>
-              Detailed stats and performance history.
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedPlayer && (
-            <PlayerStatDisplay
-              playerId={selectedPlayer.playerId}
-              playerName={selectedPlayer.playerName}
-              playerTeam={selectedPlayer.playerTeam}
-              provider={provider}
-              position={selectedPlayer.position}
-            />
-          )}
-
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button">Close</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={(open) => {
+          if (!open) setSelectedPlayer(null);
+        }}
+        playerId={selectedPlayer?.playerId}
+        playerName={selectedPlayer?.playerName}
+        playerTeam={selectedPlayer?.playerTeam}
+        provider={provider}
+        position={selectedPlayer?.position}
+      />
     </>
   );
 }

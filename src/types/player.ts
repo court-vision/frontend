@@ -65,6 +65,8 @@ export interface AdvancedStatsData {
 }
 
 export interface PercentileData {
+  /** Added with the player card; older backends omit it. */
+  avg_fg3m?: number;
   avg_fpts: number;
   avg_points: number;
   avg_rebounds: number;

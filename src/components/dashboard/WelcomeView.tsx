@@ -125,10 +125,8 @@ export function WelcomeView() {
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/[0.04] rounded-full blur-[100px] pointer-events-none" />
 
         <div className="relative z-10 text-center max-w-3xl mx-auto animate-slide-up-fade">
-          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary/10 border border-primary/20 mb-6">
-            <span className="font-display text-xl font-bold text-primary">
-              CV
-            </span>
+          <div className="mb-6 font-display text-5xl font-black leading-none tracking-tighter">
+            C<span className="text-primary">V</span>
           </div>
 
           <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">

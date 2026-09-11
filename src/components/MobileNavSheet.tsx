@@ -27,11 +27,10 @@ export function MobileNavSheet({ open, onOpenChange }: MobileNavSheetProps) {
         className="h-auto max-h-[70vh] supports-[height:100dvh]:max-h-[70dvh] overflow-y-auto rounded-t-xl p-0 pb-[env(safe-area-inset-bottom)]"
       >
         <SheetTitle className="sr-only">Navigation</SheetTitle>
-        <div className="p-4 border-b flex items-center gap-2">
-          <div className="h-7 w-7 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center">
-            <span className="font-display text-[13px] font-bold text-primary leading-none">CV</span>
-          </div>
-          <span className="font-display text-base font-extrabold tracking-tight brand-text">Court Vision</span>
+        <div className="p-4 border-b flex items-center">
+          <span className="font-display text-lg font-black tracking-tighter leading-none">
+            COURT<span className="text-primary">VISION</span>
+          </span>
         </div>
         <nav className="grid grid-cols-2 gap-1 p-3">
           {MOBILE_NAV.map((item) => {

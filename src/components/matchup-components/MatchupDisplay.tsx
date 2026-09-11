@@ -12,19 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState, StaleBadge } from "@/components/ui/query-error";
-import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
+import { PlayerCardDialog } from "@/components/player-card/PlayerCardDialog";
 import { PlayerHeadshot } from "@/components/terminal/shared";
 import { MatchupScoreChart } from "@/components/matchup-components/MatchupScoreChart";
 import { DayNavigationBar } from "@/components/matchup-components/DayNavigationBar";
@@ -1096,33 +1087,17 @@ export function MatchupDisplay({
         )}
       </div>
 
-      {/* Player Stats Dialog */}
-      <Dialog open={!!selectedPlayer} onOpenChange={() => setSelectedPlayer(null)}>
-        <DialogContent className="max-w-[900px]">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{selectedPlayer?.playerName ?? "Player"} details</DialogTitle>
-            <DialogDescription>
-              Detailed stats and performance history.
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedPlayer && (
-            <PlayerStatDisplay
-              playerId={selectedPlayer.playerId}
-              playerName={selectedPlayer.playerName}
-              playerTeam={selectedPlayer.playerTeam}
-              provider={provider}
-              position={selectedPlayer.position}
-            />
-          )}
-
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button">Close</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PlayerCardDialog
+        open={!!selectedPlayer}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPlayer(null);
+        }}
+        playerId={selectedPlayer?.playerId}
+        playerName={selectedPlayer?.playerName}
+        playerTeam={selectedPlayer?.playerTeam}
+        provider={provider}
+        position={selectedPlayer?.position}
+      />
     </>
   );
 }

@@ -3,72 +3,75 @@
 @tailwind utilities;
 
 @layer base {
-  /* Polished platform dark theme */
+  /* "Warm Court": one warm hue (24) for every surface, stepped in lightness
+     so background → card → popover → muted read as layers instead of one
+     blue-black void. Text is bone rather than blue-white. The amber brand
+     colour is unchanged; ink on amber is dark for contrast (7:1 vs 2.9:1). */
   :root {
     color-scheme: dark;
 
     /* Core backgrounds - layered depth */
-    --background: 222 16% 7%;
-    --foreground: 215 15% 93%;
+    --background: 24 10% 12%;
+    --foreground: 32 24% 93%;
 
     /* Surface hierarchy */
-    --card: 222 14% 11%;
-    --card-foreground: 215 15% 93%;
-    --popover: 222 14% 13%;
-    --popover-foreground: 215 15% 93%;
+    --card: 24 9% 15%;
+    --card-foreground: 32 24% 93%;
+    --popover: 24 9% 18%;
+    --popover-foreground: 32 24% 93%;
 
     /* Primary - warm amber-orange (basketball / ESPN energy) */
     --primary: 28 92% 52%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 24 10% 12%;
 
     /* Secondary */
-    --secondary: 222 12% 15%;
-    --secondary-foreground: 215 15% 93%;
+    --secondary: 24 8% 19%;
+    --secondary-foreground: 32 24% 93%;
 
-    /* Tertiary - operational green */
-    --tertiary: 152 72% 46%;
-    --tertiary-foreground: 222 16% 7%;
+    /* Tertiary - operational green (softened to sit on a warm base) */
+    --tertiary: 152 55% 45%;
+    --tertiary-foreground: 24 10% 12%;
 
     /* Muted */
-    --muted: 222 10% 17%;
-    --muted-foreground: 215 10% 55%;
+    --muted: 24 8% 21%;
+    --muted-foreground: 26 8% 60%;
 
     /* Accent */
-    --accent: 222 12% 15%;
-    --accent-foreground: 215 15% 93%;
+    --accent: 24 8% 19%;
+    --accent-foreground: 32 24% 93%;
 
-    /* Destructive */
-    --destructive: 0 78% 55%;
-    --destructive-foreground: 0 0% 100%;
+    /* Destructive - coral rather than pure red */
+    --destructive: 8 72% 60%;
+    --destructive-foreground: 24 10% 12%;
 
     /* Borders - visible structure */
-    --border: 215 10% 22%;
-    --input: 215 10% 22%;
+    --border: 24 8% 26%;
+    --input: 24 8% 26%;
     --ring: 28 92% 52%;
 
     --radius: 0.625rem;
 
     /* Chart colors */
     --chart-1: 28 92% 52%;
-    --chart-2: 152 72% 46%;
-    --chart-3: 45 93% 58%;
-    --chart-4: 200 70% 55%;
-    --chart-5: 280 65% 58%;
+    --chart-2: 152 55% 45%;
+    --chart-3: 42 92% 58%;
+    --chart-4: 200 60% 55%;
+    --chart-5: 280 50% 60%;
 
     /* Status colors */
-    --status-win: 152 72% 46%;
-    --status-loss: 0 78% 55%;
-    --status-projected: 45 93% 58%;
-    --status-neutral: 215 10% 48%;
+    --status-win: 152 55% 45%;
+    --status-loss: 8 72% 60%;
+    --status-projected: 42 92% 58%;
+    --status-neutral: 26 8% 50%;
 
     /* Signal colors */
-    --signal-hot: 15 90% 55%;
-    --signal-cold: 210 75% 55%;
-    --signal-live: 152 72% 46%;
-    --signal-stale: 215 10% 35%;
+    --signal-hot: 15 88% 58%;
+    --signal-cold: 210 60% 58%;
+    --signal-live: 152 55% 45%;
+    --signal-stale: 26 8% 36%;
 
     /* Grid system */
-    --grid-line: 215 10% 10%;
+    --grid-line: 24 8% 16%;
 
     /* Shell chrome height: header (48) + status bar (28). See Base.tsx. */
     --chrome-h: 4.75rem;
@@ -133,7 +136,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(215 10% 28%);
+    background: hsl(24 8% 30%);
     border-radius: 3px;
   }
 
@@ -143,34 +146,25 @@
 }
 
 @layer utilities {
-  /* Page transitions */
-  .page-enter-right {
-    animation: pageEnterRight 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Page transition: a short fade. Pages add their own `animate-slide-up-fade`
+     rise, so the shell only fades — the old full-width horizontal slide
+     dragged the whole page across the screen on every navigation. */
+  .page-enter {
+    animation: pageEnter 180ms ease-out both;
   }
 
-  .page-enter-left {
-    animation: pageEnterLeft 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  @keyframes pageEnterRight {
+  @keyframes pageEnter {
     from {
-      opacity: 0.3;
-      transform: translateX(100%);
+      opacity: 0;
     }
     to {
       opacity: 1;
-      transform: translateX(0);
     }
   }
 
-  @keyframes pageEnterLeft {
-    from {
-      opacity: 0.3;
-      transform: translateX(-100%);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
+  @media (prefers-reduced-motion: reduce) {
+    .page-enter {
+      animation: none;
     }
   }
 
@@ -214,8 +208,8 @@
   .brand-text {
     background: linear-gradient(
       135deg,
-      hsl(0 0% 97%) 0%,
-      hsl(0 0% 93%) 40%,
+      hsl(32 24% 97%) 0%,
+      hsl(32 24% 93%) 40%,
       hsl(var(--primary)) 100%
     );
     -webkit-background-clip: text;
@@ -228,8 +222,8 @@
   .panel-bezel {
     border: 1px solid hsl(var(--border));
     box-shadow:
-      inset 0 0 0 1px hsl(215 12% 10%),
-      0 0 0 1px hsl(220 16% 3%);
+      inset 0 0 0 1px hsl(24 9% 13%),
+      0 0 0 1px hsl(24 10% 6%);
   }
 
   /* Ticker marquee — clean translateX(-50%) with no seam correction */
@@ -245,7 +239,7 @@
     background: radial-gradient(
       ellipse 80% 60% at 50% 40%,
       transparent 0%,
-      hsl(220 16% 3% / 0.3) 100%
+      hsl(24 10% 5% / 0.3) 100%
     );
     pointer-events: none;
     z-index: 0;
