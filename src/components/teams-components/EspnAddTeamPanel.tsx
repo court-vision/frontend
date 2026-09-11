@@ -35,13 +35,23 @@ import {
  * look up. Without one they connect first, or type a public league's id.
  */
 export function EspnAddTeamPanel({ onAdded }: { onAdded?: () => void }) {
-  const { data, isLoading } = useConnectionsQuery();
+  const { data, error, refetch, isFetching } = useConnectionsQuery();
   const connections = espnConnections(data);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [manual, setManual] = useState(false);
   const connection = connections.find((c) => c.id === selectedId) ?? connections[0] ?? null;
 
-  if (isLoading) {
+  // Until the list has arrived -- a failed request, or a query still waiting on
+  // Clerk's session -- "no connection" is unknown, not empty: don't offer to
+  // connect an account the user may already have.
+  if (error && !data) {
+    return (
+      <div className="pt-4">
+        <QueryErrorState error={error} onRetry={() => refetch()} isRetrying={isFetching} compact />
+      </div>
+    );
+  }
+  if (data === undefined) {
     return (
       <div className="space-y-2 pt-4">
         <Skeleton className="h-12 w-full" />

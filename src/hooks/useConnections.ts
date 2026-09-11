@@ -5,18 +5,23 @@ import { apiClient } from "@/lib/api";
 import { teamsKeys } from "@/hooks/useTeams";
 import type { EspnConnectRequest } from "@/types/connections";
 
+// Keyed by the Clerk user too: the QueryClient outlives a sign-out that keeps
+// client-side routing, and connections are one user's accounts, so a cached
+// list must not be shown to whoever signs in next.
 export const connectionKeys = {
   all: ["connections"] as const,
-  list: () => [...connectionKeys.all, "list"] as const,
-  espnTeams: (connectionId: number) => [...connectionKeys.all, "espn-teams", connectionId] as const,
+  lists: () => [...connectionKeys.all, "list"] as const,
+  list: (userId: string | null | undefined) => [...connectionKeys.lists(), userId ?? null] as const,
+  espnTeams: (userId: string | null | undefined, connectionId: number) =>
+    [...connectionKeys.all, "espn-teams", userId ?? null, connectionId] as const,
 };
 
 /** The user's provider connections (ESPN accounts, Yahoo), without credentials. */
 export function useConnectionsQuery() {
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn, userId } = useAuth();
 
   return useQuery({
-    queryKey: connectionKeys.list(),
+    queryKey: connectionKeys.list(userId),
     queryFn: () => apiClient.getConnections(getToken),
     enabled: isSignedIn === true,
     staleTime: 1000 * 60 * 5,
@@ -25,10 +30,10 @@ export function useConnectionsQuery() {
 
 /** The teams on a connected ESPN account, as ESPN lists them. */
 export function useEspnAccountTeamsQuery(connectionId: number | null) {
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn, userId } = useAuth();
 
   return useQuery({
-    queryKey: connectionKeys.espnTeams(connectionId ?? 0),
+    queryKey: connectionKeys.espnTeams(userId, connectionId ?? 0),
     queryFn: () => apiClient.getEspnAccountTeams(getToken, connectionId!),
     enabled: connectionId !== null && isSignedIn === true,
     staleTime: 1000 * 60 * 2,
@@ -71,7 +76,7 @@ export function useVerifyConnectionMutation() {
       if (status === "ok") toast.success(response.message);
       else if (status === "expired") toast.error(response.message);
       else toast.info(response.message);
-      queryClient.invalidateQueries({ queryKey: connectionKeys.list() });
+      queryClient.invalidateQueries({ queryKey: connectionKeys.lists() });
     },
   });
 }

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { accountLabel } from "@/lib/connections";
+import { decodeSwid } from "@/lib/espn-cookies";
 import type { ProviderConnection } from "@/types/connections";
 import type { LeagueInfo, ScoringPreview } from "@/types/team";
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
@@ -279,10 +280,11 @@ function PrivateLeagueCookies({
 
           <TabsContent value="paste" className="space-y-3">
             <EspnCookiePaste
+              // Every result writes both fields: a pair edited into something
+              // unparseable must not leave the last good one to be submitted
               onParsed={(cookies) => {
-                if (!cookies) return;
-                form.setValue("s2", cookies.s2, { shouldDirty: true });
-                form.setValue("swid", cookies.swid, { shouldDirty: true });
+                form.setValue("s2", cookies?.s2 ?? "", { shouldDirty: true });
+                form.setValue("swid", cookies?.swid ?? "", { shouldDirty: true });
               }}
             />
           </TabsContent>
@@ -308,8 +310,13 @@ function PrivateLeagueCookies({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>SWID</FormLabel>
+                  {/* Copied from document.cookie it reads %7B…%7D, which the backend cannot decode */}
                   <FormControl>
-                    <Input placeholder="SWID" {...field} />
+                    <Input
+                      placeholder="SWID"
+                      {...field}
+                      onChange={(event) => field.onChange(decodeSwid(event.target.value))}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

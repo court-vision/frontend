@@ -461,7 +461,12 @@ function EditTeamFormContent({
 }) {
   const { mutate: editTeam, isPending } = useUpdateTeamMutation();
   // A team on a connected ESPN account takes its cookies from it; the form says so
-  const { data: connections } = useConnectionsQuery();
+  const {
+    data: connections,
+    error: connectionsError,
+    refetch: refetchConnections,
+    isFetching: fetchingConnections,
+  } = useConnectionsQuery();
   const connection = connectionForTeam(
     connections?.filter((c) => c.provider === "espn"),
     team_id
@@ -503,6 +508,29 @@ function EditTeamFormContent({
       }
     );
   };
+
+  // Until the connections have arrived, which cookie section applies is
+  // unknown, and the per-team fields would invite replacing a connected
+  // account's cookies from one team's form.
+  if (connectionsError && !connections) {
+    return (
+      <QueryErrorState
+        error={connectionsError}
+        onRetry={() => refetchConnections()}
+        isRetrying={fetchingConnections}
+        compact
+      />
+    );
+  }
+  if (connections === undefined) {
+    return (
+      <div className="flex flex-col gap-3">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-9 w-full" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>

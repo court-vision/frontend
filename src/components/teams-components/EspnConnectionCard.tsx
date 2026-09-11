@@ -359,7 +359,8 @@ function RemoveConnectionDialog({
             variant="destructive"
             disabled={isPending}
             onClick={() => {
-              if (connection) remove(connection.id, { onSettled: () => onOpenChange(false) });
+              // Stays open on failure (the error is toasted) so Remove can be retried
+              if (connection) remove(connection.id, { onSuccess: () => onOpenChange(false) });
             }}
           >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remove"}
