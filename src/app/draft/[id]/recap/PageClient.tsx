@@ -12,6 +12,7 @@ import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { QueryErrorState } from "@/components/ui/query-error";
 import { RecapView } from "@/components/draft/RecapView";
 import { useDraftRecapQuery, useDraftSessionQuery } from "@/hooks/useDrafts";
+import { PageHeader } from "@/components/PageHeader";
 
 /**
  * The finished draft, read back: seats graded against each other, every pick
@@ -38,23 +39,23 @@ export default function DraftRecapPage({ sessionId }: { sessionId: number }) {
     : "Reading the draft back...";
 
   const header = (
-    <section className="flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <h1 className="font-display text-2xl font-bold tracking-tight">
+    <PageHeader
+      title={
+        <>
           {session ? sessionTitle(session) : `Draft #${sessionId}`}
           <span className="ml-2 text-base font-normal text-muted-foreground">recap</span>
-        </h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          <span className="font-mono text-xs">{subtitle}</span>
-        </p>
-      </div>
-      <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
-        <Link href={`/draft/${sessionId}`}>
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Room
-        </Link>
-      </Button>
-    </section>
+        </>
+      }
+      subtitle={<span className="font-mono text-xs">{subtitle}</span>}
+      actions={
+        <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
+          <Link href={`/draft/${sessionId}`}>
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Room
+          </Link>
+        </Button>
+      }
+    />
   );
 
   if (!isLoaded || (isSignedIn && isLoading)) {

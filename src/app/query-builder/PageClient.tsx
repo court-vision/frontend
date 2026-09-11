@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useIsBelowLg } from "@/hooks/useBreakpoint";
 import { getSchema } from "@/lib/sqlmateClient";
 import type { SchemaTable } from "@/types/sqlmate";
+import { PageHeader } from "@/components/PageHeader";
 
 const TOKEN_REFRESH_INTERVAL = 30_000;
 
@@ -79,24 +80,20 @@ export default function QueryBuilderPage() {
 
   return (
     <div className="hidden lg:flex flex-col h-[calc(94vh-60px)]">
-      <div className="flex items-center justify-between border-b border-border pb-3">
-        <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">
-            Query Builder
-          </h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            Build and run SQL queries against real NBA data.
-          </p>
-        </div>
-        {isSignedIn && (
-          <Link href="/query-builder/manage-tables">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <FolderOpen className="h-3.5 w-3.5" />
-              Manage Tables
-            </Button>
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title="Query Builder"
+        subtitle="Build and run SQL queries against real NBA data."
+        actions={
+          isSignedIn ? (
+            <Link href="/query-builder/manage-tables">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <FolderOpen className="h-3.5 w-3.5" />
+                Manage Tables
+              </Button>
+            </Link>
+          ) : undefined
+        }
+      />
 
       {schemaError && (
         <div className="p-4 text-sm text-red-500">{schemaError}</div>

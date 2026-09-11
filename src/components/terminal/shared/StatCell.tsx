@@ -40,9 +40,9 @@ export function StatCell({
 
   const trendColor =
     trend === "up"
-      ? "text-green-500"
+      ? "text-status-win"
       : trend === "down"
-      ? "text-red-500"
+      ? "text-status-loss"
       : "text-muted-foreground";
 
   return (
@@ -81,10 +81,10 @@ export function StatCell({
         <span
           className={cn(
             "text-[9px] font-mono leading-none mt-0.5",
-            percentile >= 75 && "text-green-500",
-            percentile >= 50 && percentile < 75 && "text-amber-500",
+            percentile >= 75 && "text-status-win",
+            percentile >= 50 && percentile < 75 && "text-status-projected",
             percentile >= 25 && percentile < 50 && "text-muted-foreground",
-            percentile < 25 && "text-red-500"
+            percentile < 25 && "text-status-loss"
           )}
         >
           P{percentile}

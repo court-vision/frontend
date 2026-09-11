@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -33,15 +32,6 @@ import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { QueryErrorState } from "@/components/ui/query-error";
 import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogContent,
-  DialogHeader,
-  DialogClose,
-} from "../ui/dialog";
-import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -51,7 +41,7 @@ import {
   PaginationEllipsis,
 } from "../ui/pagination";
 import { Input } from "../ui/input";
-import PlayerStatDisplay from "./PlayerStatDisplay";
+import { PlayerCardDialog } from "@/components/player-card/PlayerCardDialog";
 import { PlayerHeadshot } from "@/components/terminal/shared";
 import { cn } from "@/lib/utils";
 import { DEFAULT_9CAT, formatCategoryValue, polarityGlyph } from "@/lib/category-format";
@@ -746,34 +736,16 @@ export default function RankingsDisplay() {
         </CardContent>
       </Card>
 
-      {/* Player Stats Dialog */}
-      <Dialog
+      <PlayerCardDialog
         open={!!selectedPlayerId}
-        onOpenChange={() => setSelectedPlayerId(null)}
-      >
-        <DialogContent className="max-w-[900px]">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Player details</DialogTitle>
-            <DialogDescription>
-              Detailed stats and performance history.
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedPlayerId && (
-            <PlayerStatDisplay
-              playerId={selectedPlayerId}
-              idType="nba"
-              position={selectedPlayer?.position ?? null}
-            />
-          )}
-
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" size="sm">Close</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={(open) => {
+          if (!open) setSelectedPlayerId(null);
+        }}
+        playerId={selectedPlayerId}
+        idType="nba"
+        position={selectedPlayer?.position ?? null}
+        rank={selectedPlayer?.rank ?? null}
+      />
     </>
   );
 }

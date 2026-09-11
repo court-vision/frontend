@@ -15,15 +15,6 @@ import {
   TableRow,
   TableHeader,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
 import { HintPopover } from "@/components/ui/hint";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonTable, type SkeletonColumn } from "@/components/ui/skeleton-table";
@@ -41,7 +32,7 @@ import {
   type Position,
 } from "./StreamerFilterControls";
 import { StreamerFilterSheet } from "./StreamerFilterSheet";
-import PlayerStatDisplay from "@/components/rankings-components/PlayerStatDisplay";
+import { PlayerCardDialog } from "@/components/player-card/PlayerCardDialog";
 import { useIsMobile } from "@/hooks/useBreakpoint";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useTeamLineupQuery } from "@/hooks/useLineupEditor";
@@ -618,54 +609,39 @@ export default function StreamerDisplay() {
         </CardContent>
       </Card>
 
-      {/* Player Stats Dialog */}
-      <Dialog
+      <PlayerCardDialog
         open={!!selectedPlayer}
-        onOpenChange={() => setSelectedPlayer(null)}
-      >
-        <DialogContent className="max-w-[900px]">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{selectedPlayer?.player.name ?? "Player"} details</DialogTitle>
-            <DialogDescription>
-              Detailed stats and performance history.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedPlayer && (
-            <div className="flex flex-col gap-4">
-              {selectedPlayer.player.breakout_context && (
-                <BreakoutContextSection context={selectedPlayer.player.breakout_context} />
-              )}
-              <PlayerStatDisplay
-                playerId={selectedPlayer.player.player_id}
-                playerName={selectedPlayer.player.name}
-                playerTeam={selectedPlayer.player.team}
-                provider={provider}
-                position={selectedPlayer.position}
-              />
-            </div>
-          )}
-          <DialogFooter className="gap-2 sm:gap-0">
-            {selectedPlayer && canAdd && (
-              <AddToRosterButton
-                reason={addReason(selectedPlayer.player)}
-                waiversUntil={
-                  selectedPlayer.player.acquisition_status === "waivers"
-                    ? selectedPlayer.player.waivers_until
-                    : undefined
-                }
-                onClick={() => {
-                  const target = selectedPlayer.player;
-                  setSelectedPlayer(null);
-                  openAdd(target);
-                }}
-              />
-            )}
-            <DialogClose asChild>
-              <Button variant={canAdd ? "ghost" : "default"}>Close</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={(open) => {
+          if (!open) setSelectedPlayer(null);
+        }}
+        playerId={selectedPlayer?.player.player_id}
+        playerName={selectedPlayer?.player.name}
+        playerTeam={selectedPlayer?.player.team}
+        provider={provider}
+        position={selectedPlayer?.position}
+        aside={
+          selectedPlayer?.player.breakout_context ? (
+            <BreakoutContextSection context={selectedPlayer.player.breakout_context} />
+          ) : undefined
+        }
+        actions={
+          selectedPlayer && canAdd ? (
+            <AddToRosterButton
+              reason={addReason(selectedPlayer.player)}
+              waiversUntil={
+                selectedPlayer.player.acquisition_status === "waivers"
+                  ? selectedPlayer.player.waivers_until
+                  : undefined
+              }
+              onClick={() => {
+                const target = selectedPlayer.player;
+                setSelectedPlayer(null);
+                openAdd(target);
+              }}
+            />
+          ) : undefined
+        }
+      />
 
       {txnTarget && (
         <AddStreamerDialog

@@ -11,7 +11,7 @@ const cardVariants = cva(
         default: "bg-card border-border",
         panel: "bg-card/80 border-border shadow-[inset_0_1px_0_hsl(var(--border)/0.5)]",
         interactive: "bg-card border-border hover:border-primary/30 cursor-pointer",
-        instrument: "bg-background border-border shadow-[inset_0_1px_0_hsl(215_15%_14%)]",
+        instrument: "bg-background border-border shadow-[inset_0_1px_0_hsl(24_9%_18%)]",
         glow: "bg-card border-primary/20 shadow-[0_0_15px_hsl(var(--primary)/0.15)]",
         ghost: "bg-transparent border-transparent",
       },

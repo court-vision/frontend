@@ -45,6 +45,7 @@ import {
   useUpdateDraftSessionMutation,
 } from "@/hooks/useDrafts";
 import type { DraftKind, DraftSession, DraftStatus } from "@/types/draft";
+import { PageHeader } from "@/components/PageHeader";
 
 const STATUS_CLASSES: Record<DraftStatus, string> = {
   active: "border-green-500/40 bg-green-500/10 text-green-500",
@@ -330,20 +331,18 @@ export default function DraftSessions() {
   const { data: sessions = [], isLoading, error, refetch, isFetching } = useDraftSessionsQuery();
 
   const pageHeader = (
-    <section className="flex items-center justify-between">
-      <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight">Draft Lab</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          Your draft rooms — board, recommendations and pick tracking for draft day.
-        </p>
-      </div>
-      {isSignedIn && (
-        <div className="flex items-center gap-2">
-          <ImportDraftDialog />
-          <CreateSessionDialog />
-        </div>
-      )}
-    </section>
+    <PageHeader
+      title="Draft Lab"
+      subtitle="Your draft rooms — board, recommendations and pick tracking for draft day."
+      actions={
+        isSignedIn ? (
+          <>
+            <ImportDraftDialog />
+            <CreateSessionDialog />
+          </>
+        ) : undefined
+      }
+    />
   );
 
   if (!isLoaded || (isSignedIn && isLoading)) {

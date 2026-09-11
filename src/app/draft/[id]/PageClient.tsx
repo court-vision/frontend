@@ -43,6 +43,7 @@ import {
 } from "@/hooks/useDrafts";
 import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
 import type { DraftBoardRow, DraftKeeper, MockUntil } from "@/types/draft";
+import { PageHeader } from "@/components/PageHeader";
 
 /**
  * The draft room: recommendation strip on top, board in the centre, roster on
@@ -491,13 +492,15 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
     : session?.picks_until_my_turn === 0 && session.status === "active";
 
   const header = (
-    <section className="flex items-center justify-between">
-      <div className="min-w-0">
-        <h1 className="font-display text-2xl font-bold tracking-tight">
+    <PageHeader
+      title={
+        <>
           {session?.name ??
             (session?.kind === "mock" ? "Mock draft" : session?.kind === "live" ? "Live draft" : `Draft #${sessionId}`)}
-        </h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
+        </>
+      }
+      subtitle={
+        <>
           {session ? (
             <span className="font-mono text-xs">
               {session.draft_type}
@@ -528,9 +531,10 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
           ) : (
             "Loading the room..."
           )}
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
+        </>
+      }
+      actions={
+        <>
         {mockRoom && canSimulate && (
           <>
             <Button
@@ -583,8 +587,9 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
             Back
           </Button>
         </Link>
-      </div>
-    </section>
+        </>
+      }
+    />
   );
 
   if (!isLoaded || (isSignedIn && sessionLoading)) {

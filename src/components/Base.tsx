@@ -9,14 +9,8 @@ import { StatusBar } from "@/components/StatusBar";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { KeyboardShortcutOverlay } from "@/components/KeyboardShortcutOverlay";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
-import { ROUTE_ORDER } from "@/lib/navigation";
 
-import { FC, useEffect, useRef, useState } from "react";
-
-function getRouteIndex(path: string): number {
-  const idx = ROUTE_ORDER.indexOf(path);
-  return idx === -1 ? ROUTE_ORDER.length : idx;
-}
+import { FC, useEffect, useState } from "react";
 
 // Pages render immediately, so prerendered HTML carries real content (crawlers,
 // first paint) instead of a skeleton waiting on Clerk. A page shell — heading,
@@ -46,7 +40,6 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isLoaded } = useUser();
   const pathname = usePathname();
   const [authTimedOut, setAuthTimedOut] = useState(false);
-  const prevPathRef = useRef(pathname);
 
   useEffect(() => {
     if (isLoaded) return;
@@ -59,15 +52,6 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const loading = !isLoaded && !authTimedOut && awaitsAuth(pathname);
   const showAuthBanner = !isLoaded && authTimedOut;
-
-  // Determine slide direction based on nav order
-  const prevIndex = getRouteIndex(prevPathRef.current);
-  const currIndex = getRouteIndex(pathname);
-  const direction = currIndex >= prevIndex ? "page-enter-right" : "page-enter-left";
-
-  useEffect(() => {
-    prevPathRef.current = pathname;
-  }, [pathname]);
 
   // Terminal and dashboard pages manage their own full-height layout
   const isFullHeightPage = pathname === "/terminal" || pathname === "/";
@@ -89,7 +73,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
 
       {/* Main Content Area */}
       <main className={`flex-1 overflow-y-auto overflow-x-clip overscroll-y-contain relative ${isFullHeightPage ? '' : 'p-4 md:p-5 lg:p-8'}`}>
-        <div key={pathname} className={`relative z-10 ${direction}`}>
+        <div key={pathname} className="relative z-10 page-enter">
           {loading ? <SkeletonCard /> : children}
         </div>
       </main>

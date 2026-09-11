@@ -8,6 +8,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-error";
 import type { PlayoffSeriesData } from "@/types/playoff";
+import { PageHeader } from "@/components/PageHeader";
 
 // ─── Series card ─────────────────────────────────────────────────────────────
 
@@ -237,17 +238,14 @@ export default function PlayoffsPage() {
   return (
     <div className="space-y-6 animate-slide-up-fade">
       {/* Header */}
-      <section>
-        <div className="flex items-center gap-2">
-          <Medal className="h-5 w-5 text-primary" />
-          <h1 className="font-display text-2xl font-bold tracking-tight">Playoffs</h1>
-        </div>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          {bracket
+      <PageHeader
+        title="Playoffs"
+        subtitle={
+          bracket
             ? `${bracket.season} NBA Playoff bracket — updated nightly`
-            : "NBA playoff bracket — updated nightly."}
-        </p>
-      </section>
+            : "NBA playoff bracket — updated nightly."
+        }
+      />
 
       {/* Loading */}
       {isLoading && <Skeleton className="h-[520px] w-full rounded-lg" />}

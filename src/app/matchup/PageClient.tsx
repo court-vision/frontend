@@ -14,6 +14,7 @@ import { useSeason } from "@/hooks/useSeason";
 import { seasonHeadline } from "@/lib/season";
 import { MOCK_CATEGORY_LIVE_MATCHUP, MOCK_CATEGORY_MATCHUP } from "@/__fixtures__/categoryMatchup";
 import { LineupEditorProviderIfEspn } from "@/components/lineup/LineupEditorProvider";
+import { PageHeader } from "@/components/PageHeader";
 
 // Dev-only: `/matchup?mock=cats` renders a fixture 9-cat matchup so the
 // category surfaces can be checked before a category league is connected.
@@ -39,14 +40,10 @@ function MatchupContent() {
 
   return (
     <div className="space-y-4 animate-slide-up-fade">
-      <section>
-        <h1 className="font-display text-2xl font-bold tracking-tight">
-          Matchup
-        </h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          {mock ? "Mock 9-cat matchup (dev only)." : seasonHeadline("matchup", season.phase, season)}
-        </p>
-      </section>
+      <PageHeader
+        title="Matchup"
+        subtitle={mock ? "Mock 9-cat matchup (dev only)." : seasonHeadline("matchup", season.phase, season)}
+      />
       {!mock && <SeasonBanner />}
 
       {seasonSummary && <SeasonSummaryCard summary={seasonSummary} />}

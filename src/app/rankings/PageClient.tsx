@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import RankingsDisplay from "@/components/rankings-components/RankingsDisplay";
 import { SeasonBanner } from "@/components/SeasonBanner";
 import { useSeason } from "@/hooks/useSeason";
@@ -9,14 +10,7 @@ export default function Rankings() {
   const season = useSeason();
   return (
     <div className="space-y-4 animate-slide-up-fade">
-      <section>
-        <h1 className="font-display text-2xl font-bold tracking-tight">
-          Rankings
-        </h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          {seasonHeadline("rankings", season.phase, season)}
-        </p>
-      </section>
+      <PageHeader title="Rankings" subtitle={seasonHeadline("rankings", season.phase, season)} />
       <SeasonBanner />
       <RankingsDisplay />
     </div>

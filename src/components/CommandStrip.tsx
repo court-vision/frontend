@@ -29,15 +29,17 @@ export function CommandStrip() {
     <header className="h-12 border-b border-border bg-card flex items-center px-3 md:px-4 gap-1.5 sticky top-0 z-50 shrink-0">
       {/* Brand mark (+ phone-only API health dot: the StatusBar is hidden below md) */}
       <div className="relative mr-3 shrink-0">
-        <Link href="/" className="flex items-center gap-1.5 group">
-          <div className="h-7 w-7 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center group-hover:bg-primary/25 group-hover:shadow-[0_0_8px_hsl(var(--primary)/0.3)] transition-all duration-200">
-            <span className="font-display text-[13px] font-bold text-primary leading-none">CV</span>
-          </div>
-          <span
-            className={cn(
-              "font-display font-black tracking-tighter text-foreground drop-shadow-sm leading-none pt-0.5 hidden lg:block"
-            )}
-          >
+        {/* The logo is the wordmark's own letters: the full word from lg, its
+            initials below. One mark, not a boxed "CV" beside a second one. */}
+        <Link
+          href="/"
+          aria-label="Court Vision home"
+          className="flex items-center font-display font-black tracking-tighter text-foreground leading-none pt-0.5"
+        >
+          <span className="text-xl lg:hidden">
+            C<span className="text-primary">V</span>
+          </span>
+          <span className="hidden lg:block">
             COURT<span className="text-primary">VISION</span>
           </span>
         </Link>
@@ -69,7 +71,8 @@ export function CommandStrip() {
               <div className={cn(
                 "relative px-2.5 py-1.5 text-xs font-medium tracking-wide transition-all duration-150 rounded-md",
                 "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                isActive && "text-primary"
+                // Desktop pages carry no title row, so the active tab names the page.
+                isActive && "text-primary text-sm font-semibold tracking-normal"
               )}>
                 <span>{item.label}</span>
                 <sup className="ml-0.5 text-[9px] text-muted-foreground/25 font-mono">{item.altDigit}</sup>
@@ -107,12 +110,6 @@ export function CommandStrip() {
           <span className="text-[9px]">⌘</span>K
         </kbd>
       </button>
-
-      {/* Status indicator */}
-      <div className="hidden lg:flex items-center gap-1.5 ml-2">
-        <span className="h-1.5 w-1.5 rounded-full bg-signal-live animate-beacon" />
-        <span className="text-[11px] text-muted-foreground/50">Live</span>
-      </div>
 
       {/* Settings + User */}
       <div className="ml-2 flex items-center gap-1.5">

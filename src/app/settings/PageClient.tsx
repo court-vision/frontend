@@ -6,6 +6,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import { LeagueSettings } from "@/components/settings/LeagueSettings";
+import { PageHeader } from "@/components/PageHeader";
 
 function DeveloperSettings() {
   return (
@@ -60,13 +61,7 @@ export default function Settings() {
 
   return (
     <div className="space-y-4 animate-slide-up-fade">
-      {/* Page header */}
-      <section>
-        <h1 className="font-display text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          League format, notifications, and developer access.
-        </p>
-      </section>
+      <PageHeader title="Settings" subtitle="League format, notifications, and developer access." />
 
       {/* Mobile: accordion */}
       <div className="md:hidden space-y-1.5">

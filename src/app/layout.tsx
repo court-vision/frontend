@@ -98,7 +98,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Extend under the iOS home indicator / notch; Base.tsx pads with safe-area insets.
   viewportFit: "cover",
-  themeColor: "#0f1117",
+  themeColor: "#221f1c",
   colorScheme: "dark",
 };
 

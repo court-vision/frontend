@@ -7,6 +7,7 @@ import { ApiKeyManager } from "@/components/developer/ApiKeyManager";
 import { ApiDocs } from "@/components/developer/ApiDocs";
 import { ApiPlayground } from "@/components/developer/ApiPlayground";
 import type { Endpoint } from "@/components/developer/api-data";
+import { PageHeader } from "@/components/PageHeader";
 
 const developerTabs = [
   {
@@ -61,13 +62,7 @@ export default function Developer() {
 
   return (
     <div className="space-y-4 animate-slide-up-fade">
-      {/* Page header */}
-      <section>
-        <h1 className="font-display text-2xl font-bold tracking-tight">Developer</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          Manage API keys and explore the Court Vision API.
-        </p>
-      </section>
+      <PageHeader title="Developer" subtitle="Manage API keys and explore the Court Vision API." />
 
       {/* Mobile: accordion */}
       <div className="md:hidden space-y-1.5">
