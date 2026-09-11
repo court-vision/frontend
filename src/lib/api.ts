@@ -54,6 +54,7 @@ import type { BaseApiResponse } from "@/types/auth";
 import type { GamesOnDateData, TeamScheduleData, NBATeamLiveGameData } from "@/types/games";
 import type { NBATeamStatsData, NBATeamRosterData } from "@/types/nba-team";
 import type { PlayoffBracketData } from "@/types/playoff";
+import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actions";
 import type {
   MatchupData,
   MatchupResponse,
@@ -264,6 +265,23 @@ class ApiClient {
     opts?: RequestOptions
   ): Promise<LineupPlanData> {
     const env = await fetchJson<LineupPlanResponse>(`${TEAMS_API}/${teamId}/lineup/plan`, {
+      ...opts,
+      getToken,
+    });
+    return unwrap(env);
+  }
+
+  /**
+   * Today's recommended roster actions for an ESPN team, with the board they
+   * were computed against. `data` is always populated (a non-ESPN team gets a
+   * read-only reason, not null). Never writes.
+   */
+  async getTeamDailyActions(
+    getToken: GetTokenFn,
+    teamId: number,
+    opts?: RequestOptions
+  ): Promise<DailyActionsData> {
+    const env = await fetchJson<DailyActionsResponse>(`${TEAMS_API}/${teamId}/actions`, {
       ...opts,
       getToken,
     });

@@ -1220,6 +1220,388 @@
         "title": "CreateApiKeyResp",
         "type": "object"
       },
+      "DailyAction": {
+        "properties": {
+          "blocked_reason": {
+            "anyOf": [
+              {
+                "const": "roster_full",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Reason"
+          },
+          "counterpart": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DailyActionPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "game_time_et": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Game Time Et"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "start",
+              "ir_in",
+              "ir_out",
+              "add",
+              "add_drop"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "moves": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineupMoveResult"
+            },
+            "title": "Moves",
+            "type": "array"
+          },
+          "player": {
+            "$ref": "#/components/schemas/DailyActionPlayer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "transaction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DailyActionTransaction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "detail",
+          "player",
+          "counterpart",
+          "moves",
+          "transaction",
+          "blocked_reason",
+          "game_time_et"
+        ],
+        "title": "DailyAction",
+        "type": "object"
+      },
+      "DailyActionPlayer": {
+        "properties": {
+          "avg_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Points"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injury Status"
+          },
+          "lineup_slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lineup Slot"
+          },
+          "lineup_slot_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lineup Slot Id"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "team": {
+            "title": "Team",
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "nba_player_id",
+          "name",
+          "team",
+          "injury_status",
+          "lineup_slot_id",
+          "lineup_slot",
+          "avg_points"
+        ],
+        "title": "DailyActionPlayer",
+        "type": "object"
+      },
+      "DailyActionTransaction": {
+        "properties": {
+          "drop_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drop Player Id"
+          },
+          "pickup": {
+            "$ref": "#/components/schemas/StreamerPlayerResp"
+          }
+        },
+        "required": [
+          "pickup",
+          "drop_player_id"
+        ],
+        "title": "DailyActionTransaction",
+        "type": "object"
+      },
+      "DailyActionsData": {
+        "properties": {
+          "actions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DailyAction"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "can_write": {
+            "default": false,
+            "title": "Can Write",
+            "type": "boolean"
+          },
+          "lineup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LineupState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nba_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Date"
+          },
+          "roster_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roster Version"
+          },
+          "scoring_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Period Id"
+          },
+          "streamers_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Streamers Error"
+          },
+          "unfilled": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineupUnfilled"
+            },
+            "title": "Unfilled",
+            "type": "array"
+          },
+          "value_kind": {
+            "default": "fpts",
+            "enum": [
+              "fpts",
+              "cat_value"
+            ],
+            "title": "Value Kind",
+            "type": "string"
+          },
+          "write_blocked_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "provider_not_supported",
+                  "no_credentials",
+                  "writes_disabled",
+                  "no_scoring_period",
+                  "not_team_owner",
+                  "team_id_unresolved"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Write Blocked Reason"
+          }
+        },
+        "required": [
+          "lineup",
+          "roster_version",
+          "scoring_period_id",
+          "nba_date",
+          "can_write",
+          "write_blocked_reason",
+          "value_kind",
+          "unfilled",
+          "actions",
+          "streamers_error"
+        ],
+        "title": "DailyActionsData",
+        "type": "object"
+      },
+      "DailyActionsResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DailyActionsData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DailyActionsResp",
+        "type": "object"
+      },
       "DailyMatchupData": {
         "description": "Response data for daily matchup drill-down.",
         "properties": {
@@ -19438,6 +19820,54 @@
         "summary": "View Team",
         "tags": [
           "team management"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/actions": {
+      "get": {
+        "description": "Today's recommended roster actions (start / IR / pickup), each ready to stage. Never writes.",
+        "operationId": "get_daily_actions_v1_internal_teams__team_id__actions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyActionsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Daily Actions",
+        "tags": [
+          "lineup editor"
         ]
       }
     },

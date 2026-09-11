@@ -74,12 +74,22 @@ const DEFAULT_LAYOUT: DashboardLayout = {
 const TEAM_LAYOUT: DashboardLayout = {
   cols: 12,
   widgets: [
-    // Top row: Matchup score + Roster + Team Streamers
+    // Top row: Daily actions + Roster + Team Streamers
+    {
+      i: "team-actions",
+      definitionId: "daily-actions",
+      x: 0,
+      y: 0,
+      w: 5,
+      h: 5,
+      minW: 3,
+      minH: 3,
+    },
     {
       i: "team-matchup",
       definitionId: "matchup-score",
       x: 0,
-      y: 0,
+      y: 5,
       w: 5,
       h: 5,
       minW: 3,
@@ -110,7 +120,7 @@ const TEAM_LAYOUT: DashboardLayout = {
       i: "team-daily",
       definitionId: "daily-breakdown",
       x: 0,
-      y: 5,
+      y: 9,
       w: 5,
       h: 4,
       minW: 3,
@@ -130,18 +140,28 @@ const TEAM_LAYOUT: DashboardLayout = {
 };
 
 /**
- * Default layout template for a category-league team: the category breakdown
- * leads, the points score chart is replaced by category strengths.
+ * Default layout template for a category-league team: daily actions lead, then
+ * the category breakdown; the points score chart is replaced by category strengths.
  */
 const CATEGORY_LAYOUT: DashboardLayout = {
   cols: 12,
   widgets: [
-    // Top row: Category breakdown + Roster + Team Streamers
+    // Top row: Daily actions + Roster + Team Streamers
+    {
+      i: "cat-actions",
+      definitionId: "daily-actions",
+      x: 0,
+      y: 0,
+      w: 5,
+      h: 5,
+      minW: 3,
+      minH: 3,
+    },
     {
       i: "cat-comparison",
       definitionId: "category-comparison",
       x: 0,
-      y: 0,
+      y: 5,
       w: 5,
       h: 5,
       minW: 3,
@@ -172,7 +192,7 @@ const CATEGORY_LAYOUT: DashboardLayout = {
       i: "cat-matchup",
       definitionId: "matchup-score",
       x: 0,
-      y: 5,
+      y: 10,
       w: 5,
       h: 5,
       minW: 3,
@@ -231,6 +251,7 @@ export const MOBILE_ORDER: Record<LayoutTemplate, string[]> = {
     "quick-actions",
   ],
   team: [
+    "daily-actions",
     "matchup-score",
     "daily-breakdown",
     "score-history",
@@ -238,6 +259,7 @@ export const MOBILE_ORDER: Record<LayoutTemplate, string[]> = {
     "team-streamers",
   ],
   categories: [
+    "daily-actions",
     "category-comparison",
     "matchup-score",
     "category-strengths",

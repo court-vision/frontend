@@ -423,6 +423,39 @@ export function planToStaged(state: LineupState, plan: LineupPlanData): Staged {
   return out;
 }
 
+/**
+ * Stage an explicit set of moves (a Daily Actions row): every listed player
+ * lands on its `to_slot_id`, a later entry wins over an earlier one for the
+ * same player, and anything that no longer differs from the board is dropped.
+ * Returns `staged` itself when nothing changes.
+ */
+export function stageMoves(
+  state: LineupState,
+  staged: Staged,
+  moves: ReadonlyArray<Pick<LineupMove, "player_id" | "to_slot_id">>
+): Staged {
+  const next: Staged = { ...staged };
+  for (const m of moves) next[m.player_id] = m.to_slot_id;
+  const out = normalize(state, next);
+  return sameStaged(out, staged) ? staged : out;
+}
+
+/** Undo a row: every listed player's staged move, swap partners included (see `unstage`). */
+export function unstageMoves(
+  state: LineupState,
+  staged: Staged,
+  moves: ReadonlyArray<Pick<LineupMove, "player_id">>
+): Staged {
+  let out = staged;
+  for (const m of moves) out = unstage(state, out, m.player_id);
+  return out;
+}
+
+function sameStaged(a: Staged, b: Staged): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((k) => a[Number(k)] === b[Number(k)]);
+}
+
 // ---------------------------------------------------------------------------
 // Stale boards
 // ---------------------------------------------------------------------------

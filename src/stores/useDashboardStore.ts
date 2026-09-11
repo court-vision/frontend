@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { DashboardState } from "@/types/dashboard";
 import { getWidgetDefinition } from "@/components/dashboard/core/DashboardWidgetRegistry";
 import { DEFAULT_LAYOUTS } from "@/components/dashboard/core/defaultLayouts";
+import { DASHBOARD_STORE_VERSION, migrateDashboardStore } from "@/lib/dashboard-migrations";
 
 export const useDashboardStore = create<DashboardState>()(
   persist(
@@ -82,6 +83,9 @@ export const useDashboardStore = create<DashboardState>()(
     }),
     {
       name: "dashboard-store-v1",
+      // Bump with a migration in lib/dashboard-migrations.ts; the name stays.
+      version: DASHBOARD_STORE_VERSION,
+      migrate: migrateDashboardStore,
       partialize: (s) => ({ layouts: s.layouts }),
     }
   )

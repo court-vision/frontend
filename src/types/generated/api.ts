@@ -1113,6 +1113,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/teams/{team_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Daily Actions
+         * @description Today's recommended roster actions (start / IR / pickup), each ready to stage. Never writes.
+         */
+        get: operations["get_daily_actions_v1_internal_teams__team_id__actions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/teams/{team_id}/insights": {
         parameters: {
             query?: never;
@@ -2483,6 +2503,103 @@ export interface components {
          */
         CreateApiKeyResp: {
             data: components["schemas"]["CreateApiKeyData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** DailyAction */
+        DailyAction: {
+            /** Blocked Reason */
+            blocked_reason: "roster_full" | null;
+            counterpart: components["schemas"]["DailyActionPlayer"] | null;
+            /** Detail */
+            detail: string | null;
+            /** Game Time Et */
+            game_time_et: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "start" | "ir_in" | "ir_out" | "add" | "add_drop";
+            /**
+             * Moves
+             * @default []
+             */
+            moves: components["schemas"]["LineupMoveResult"][];
+            player: components["schemas"]["DailyActionPlayer"];
+            /** Title */
+            title: string;
+            transaction: components["schemas"]["DailyActionTransaction"] | null;
+        };
+        /** DailyActionPlayer */
+        DailyActionPlayer: {
+            /** Avg Points */
+            avg_points: number | null;
+            /** Injury Status */
+            injury_status: string | null;
+            /** Lineup Slot */
+            lineup_slot: string | null;
+            /** Lineup Slot Id */
+            lineup_slot_id: number | null;
+            /** Name */
+            name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
+            /** Player Id */
+            player_id: number;
+            /** Team */
+            team: string;
+        };
+        /** DailyActionTransaction */
+        DailyActionTransaction: {
+            /** Drop Player Id */
+            drop_player_id: number | null;
+            pickup: components["schemas"]["StreamerPlayerResp"];
+        };
+        /** DailyActionsData */
+        DailyActionsData: {
+            /**
+             * Actions
+             * @default []
+             */
+            actions: components["schemas"]["DailyAction"][];
+            /**
+             * Can Write
+             * @default false
+             */
+            can_write: boolean;
+            lineup: components["schemas"]["LineupState"] | null;
+            /** Nba Date */
+            nba_date: string | null;
+            /** Roster Version */
+            roster_version: string | null;
+            /** Scoring Period Id */
+            scoring_period_id: number | null;
+            /** Streamers Error */
+            streamers_error: string | null;
+            /**
+             * Unfilled
+             * @default []
+             */
+            unfilled: components["schemas"]["LineupUnfilled"][];
+            /**
+             * Value Kind
+             * @default fpts
+             * @enum {string}
+             */
+            value_kind: "fpts" | "cat_value";
+            /** Write Blocked Reason */
+            write_blocked_reason: ("provider_not_supported" | "no_credentials" | "writes_disabled" | "no_scoring_period" | "not_team_owner" | "team_id_unresolved") | null;
+        };
+        /** DailyActionsResp */
+        DailyActionsResp: {
+            data: components["schemas"]["DailyActionsData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -10074,6 +10191,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeamDataResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_daily_actions_v1_internal_teams__team_id__actions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyActionsResp"];
                 };
             };
             /** @description Validation Error */
