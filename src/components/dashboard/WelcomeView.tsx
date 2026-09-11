@@ -192,7 +192,7 @@ export function WelcomeView() {
               aria-hidden
               className="pointer-events-none absolute inset-x-0 top-full -z-10 h-[200vh] border-x border-t border-foreground/[0.12] bg-primary/[0.035]"
             />
-            <div className="pb-[15%] font-display text-[24cqw] font-black leading-none tracking-tighter">
+            <div className="pb-[10%] font-display text-[24cqw] font-black leading-none tracking-tighter">
               C<span className="text-primary">V</span>
             </div>
           </div>
