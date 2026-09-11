@@ -4827,6 +4827,8 @@ export interface components {
              * @default 0
              */
             avg_points: number;
+            /** Default Position Id */
+            default_position_id: number | null;
             /** Eligible Slot Ids */
             eligible_slot_ids: number[];
             /** Eligible Slots */
@@ -4937,6 +4939,13 @@ export interface components {
              * @default []
              */
             players: components["schemas"]["LineupPlayer"][];
+            /**
+             * Position Limits
+             * @default {}
+             */
+            position_limits: {
+                [key: string]: number;
+            };
             provider: components["schemas"]["FantasyProvider"];
             /** Roster Version */
             roster_version: string;
@@ -6381,6 +6390,8 @@ export interface components {
             acquisition_status: ("free_agent" | "waivers") | null;
             /** Avg Points */
             avg_points: number;
+            /** Default Position Id */
+            default_position_id: number | null;
             /** Injured */
             injured: boolean;
             /** Injury Status */
@@ -7588,6 +7599,8 @@ export interface components {
             avg_source: string | null;
             /** B2B Game Count */
             b2b_game_count: number;
+            /** Default Position Id */
+            default_position_id: number | null;
             /** Game Days */
             game_days: number[];
             /** Games Remaining */

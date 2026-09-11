@@ -7370,6 +7370,17 @@
             "title": "Avg Points",
             "type": "number"
           },
+          "default_position_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Position Id"
+          },
           "eligible_slot_ids": {
             "items": {
               "type": "integer"
@@ -7510,6 +7521,7 @@
           "eligible_slots",
           "injured",
           "injury_status",
+          "default_position_id",
           "lineup_locked",
           "has_game_today",
           "opponent",
@@ -7666,6 +7678,14 @@
             "title": "Players",
             "type": "array"
           },
+          "position_limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "title": "Position Limits",
+            "type": "object"
+          },
           "provider": {
             "$ref": "#/components/schemas/FantasyProvider"
           },
@@ -7744,6 +7764,7 @@
           "first_game_time_et",
           "slot_counts",
           "slots",
+          "position_limits",
           "lock_type",
           "players",
           "can_write",
@@ -11788,6 +11809,17 @@
             "title": "Avg Points",
             "type": "number"
           },
+          "default_position_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Position Id"
+          },
           "injured": {
             "title": "Injured",
             "type": "boolean"
@@ -11866,7 +11898,8 @@
           "value_kind",
           "value_source",
           "acquisition_status",
-          "waivers_until"
+          "waivers_until",
+          "default_position_id"
         ],
         "title": "PlayerResp",
         "type": "object"
@@ -15298,6 +15331,17 @@
             "title": "B2B Game Count",
             "type": "integer"
           },
+          "default_position_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Position Id"
+          },
           "game_days": {
             "items": {
               "type": "integer"
@@ -15392,7 +15436,8 @@
           "injured",
           "injury_status",
           "acquisition_status",
-          "waivers_until"
+          "waivers_until",
+          "default_position_id"
         ],
         "title": "StreamerPlayerResp",
         "type": "object"
