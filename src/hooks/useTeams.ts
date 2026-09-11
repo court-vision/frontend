@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { scoringLabel } from "@/lib/category-format";
 import { useUIStore } from "@/stores/useUIStore";
+import { connectionKeys } from "@/hooks/useConnections";
 import { matchupKeys } from "@/hooks/useMatchup";
 import { rankingsKeys } from "@/hooks/useRankings";
 import type { LeagueInfoRequest } from "@/types/team";
@@ -96,6 +97,8 @@ export function useAddTeamMutation() {
           useUIStore.getState().setSelectedTeam(newTeamId);
         }
         queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
+        // The team joins a connection's team list (and leaves the "to add" picker)
+        queryClient.invalidateQueries({ queryKey: connectionKeys.all });
       } else {
         toast.error(response.message || "Failed to add team.");
       }
@@ -125,6 +128,8 @@ export function useUpdateTeamMutation() {
         queryClient.invalidateQueries({ queryKey: teamsKeys.detail(teamId) });
         queryClient.invalidateQueries({ queryKey: teamsKeys.roster(teamId) });
         queryClient.invalidateQueries({ queryKey: teamsKeys.league(teamId) });
+        // New cookies pasted on a team land in (or create) its account's connection
+        queryClient.invalidateQueries({ queryKey: connectionKeys.all });
       } else {
         toast.error(response.message || "Failed to update team.");
       }
@@ -148,6 +153,7 @@ export function useDeleteTeamMutation() {
           useUIStore.getState().setSelectedTeam(null);
         }
         queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
+        queryClient.invalidateQueries({ queryKey: connectionKeys.all });
         queryClient.removeQueries({ queryKey: teamsKeys.detail(teamId) });
         queryClient.removeQueries({ queryKey: teamsKeys.roster(teamId) });
         queryClient.removeQueries({ queryKey: teamsKeys.league(teamId) });

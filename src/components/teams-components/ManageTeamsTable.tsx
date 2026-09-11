@@ -29,8 +29,11 @@ import {
   useUpdateTeamMutation,
 } from "@/hooks/useTeams";
 import { useYahooAuthUrl, useYahooLeagues, useYahooTeams } from "@/hooks/useYahoo";
+import { useConnectionsQuery } from "@/hooks/useConnections";
 import { normalizeProviderScoringType } from "@/lib/category-format";
+import { connectionForTeam } from "@/lib/connections";
 import { cn } from "@/lib/utils";
+import { EspnAddTeamPanel } from "./EspnAddTeamPanel";
 import { TeamCard } from "./TeamCard";
 import {
   EspnTeamFormFields,
@@ -229,7 +232,9 @@ function AddTeamFormContent({
   }, [yahooOAuthState]);
 
   return (
-    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "espn" | "yahoo")}>
+    // min-w-0: DialogContent is a grid, and a grid item will not shrink below its
+    // widest unwrapped row (a long league name in the ESPN picker) without it
+    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "espn" | "yahoo")} className="min-w-0">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="espn" className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-orange-500" />
@@ -242,74 +247,13 @@ function AddTeamFormContent({
       </TabsList>
 
       <TabsContent value="espn">
-        <EspnAddTeamForm onAdded={onAdded} />
+        <EspnAddTeamPanel onAdded={onAdded} />
       </TabsContent>
 
       <TabsContent value="yahoo">
         <YahooAddTeamFlow yahooOAuthState={yahooOAuthState} onAdded={onAdded} />
       </TabsContent>
     </Tabs>
-  );
-}
-
-function EspnAddTeamForm({ onAdded }: { onAdded?: () => void }) {
-  const { mutate: addTeam, isPending } = useAddTeamMutation();
-  const [fieldsKey, setFieldsKey] = useState(0);
-
-  const form = useForm<EspnTeamFormValues>({
-    resolver: zodResolver(espnTeamFormSchema),
-    defaultValues: espnFormDefaults(),
-  });
-
-  const handleClear = () => {
-    form.reset(espnFormDefaults());
-    setFieldsKey((k) => k + 1);
-  };
-
-  const handleSubmit = (values: EspnTeamFormValues) => {
-    addTeam(
-      {
-        provider: "espn",
-        league_id: parseInt(values.leagueID),
-        team_name: values.teamName,
-        year: parseInt(values.leagueYear),
-        league_name: values.leagueName || undefined,
-        espn_s2: values.s2 || undefined,
-        swid: values.swid || undefined,
-      },
-      {
-        onSuccess: (response) => {
-          if (response.status === "success") {
-            handleClear();
-            onAdded?.();
-          }
-        },
-      }
-    );
-  };
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-3 pt-4">
-        <EspnTeamFormFields key={fieldsKey} form={form} required />
-
-        <div className="flex justify-between pt-1">
-          <Button type="button" variant="outline" size="sm" onClick={handleClear} disabled={isPending}>
-            Clear
-          </Button>
-          <Button type="submit" size="sm" disabled={isPending}>
-            {isPending ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                Adding…
-              </>
-            ) : (
-              "Add Team"
-            )}
-          </Button>
-        </div>
-      </form>
-    </Form>
   );
 }
 
@@ -514,6 +458,12 @@ function EditTeamFormContent({
   onClose: () => void;
 }) {
   const { mutate: editTeam, isPending } = useUpdateTeamMutation();
+  // A team on a connected ESPN account takes its cookies from it; the form says so
+  const { data: connections } = useConnectionsQuery();
+  const connection = connectionForTeam(
+    connections?.filter((c) => c.provider === "espn"),
+    team_id
+  );
 
   const form = useForm<EspnTeamFormValues>({
     resolver: zodResolver(espnTeamFormSchema),
@@ -559,6 +509,7 @@ function EditTeamFormContent({
           form={form}
           showPreview
           storedCredentials={Boolean(team_info.has_espn_credentials)}
+          connection={connection}
         />
 
         <div className="flex justify-between pt-1">

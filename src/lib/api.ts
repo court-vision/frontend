@@ -25,6 +25,7 @@ import {
   NOTIFICATIONS_API,
   API_KEYS_API,
   DRAFTS_API,
+  CONNECTIONS_API,
 } from "@/endpoints";
 import type {
   RosterPlayer,
@@ -38,6 +39,15 @@ import type {
   LeagueGetResponse,
   LeagueSyncResponse,
 } from "@/types/team";
+import type {
+  EspnAccountTeam,
+  EspnAccountTeamsResponse,
+  EspnConnectRequest,
+  ProviderConnection,
+  ProviderConnectionDeleteResponse,
+  ProviderConnectionListResponse,
+  ProviderConnectionResponse,
+} from "@/types/connections";
 import type {
   Lineup,
   LineupGenerationRequest,
@@ -138,6 +148,8 @@ const LINEUP_GENERATION_TIMEOUT_MS = 100_000;
 const STREAMERS_TIMEOUT_MS = 30_000;
 /** A lineup write goes to ESPN and re-reads the roster before answering. */
 const LINEUP_WRITE_TIMEOUT_MS = 45_000;
+/** Connecting or re-checking an ESPN account reads ESPN up to four times first. */
+const ESPN_CHECK_TIMEOUT_MS = 30_000;
 
 /**
  * Every method is one of three shapes:
@@ -509,6 +521,56 @@ class ApiClient {
       { getToken }
     );
     return env.teams ?? [];
+  }
+
+  // Provider connections: an ESPN account's cookies, stored once for every team on it
+  async getConnections(getToken: GetTokenFn): Promise<ProviderConnection[]> {
+    const env = await fetchJson<ProviderConnectionListResponse>(`${CONNECTIONS_API}/`, { getToken });
+    return unwrap(env, []);
+  }
+
+  async connectEspn(
+    getToken: GetTokenFn,
+    body: EspnConnectRequest
+  ): Promise<ProviderConnectionResponse> {
+    return fetchJson<ProviderConnectionResponse>(`${CONNECTIONS_API}/espn`, {
+      getToken,
+      method: "POST",
+      body,
+      timeoutMs: ESPN_CHECK_TIMEOUT_MS,
+    });
+  }
+
+  async verifyConnection(
+    getToken: GetTokenFn,
+    connectionId: number
+  ): Promise<ProviderConnectionResponse> {
+    return fetchJson<ProviderConnectionResponse>(`${CONNECTIONS_API}/${connectionId}/verify`, {
+      getToken,
+      method: "POST",
+      timeoutMs: ESPN_CHECK_TIMEOUT_MS,
+    });
+  }
+
+  async getEspnAccountTeams(
+    getToken: GetTokenFn,
+    connectionId: number
+  ): Promise<EspnAccountTeam[]> {
+    const env = await fetchJson<EspnAccountTeamsResponse>(
+      `${CONNECTIONS_API}/${connectionId}/espn/teams`,
+      { getToken }
+    );
+    return unwrap(env, []);
+  }
+
+  async deleteConnection(
+    getToken: GetTokenFn,
+    connectionId: number
+  ): Promise<ProviderConnectionDeleteResponse> {
+    return fetchJson<ProviderConnectionDeleteResponse>(`${CONNECTIONS_API}/${connectionId}`, {
+      getToken,
+      method: "DELETE",
+    });
   }
 
   // Notifications API
