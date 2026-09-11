@@ -161,34 +161,43 @@ export function WelcomeView() {
   return (
     <div>
       {/* HERO */}
-      <section className="relative flex flex-col items-center justify-center min-h-[calc(100vh-var(--chrome-h))] supports-[height:100dvh]:min-h-[calc(100dvh-var(--chrome-h))] px-4 sm:px-6 overflow-hidden">
+      <section className="relative flex flex-col items-center justify-center min-h-[calc(100vh-var(--chrome-h))] supports-[height:100dvh]:min-h-[calc(100dvh-var(--chrome-h))] px-4 py-20 sm:px-6 overflow-hidden">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/[0.04] rounded-full blur-[100px] pointer-events-none" />
 
-        <div className="relative z-10 text-center max-w-3xl mx-auto animate-slide-up-fade">
+        <div className="relative z-10 w-full max-w-3xl mx-auto text-center animate-slide-up-fade">
           {/* The key, drawn around the copy: the mark sits in the free-throw
               semicircle, the words sit in the paint, and the three-point arc
               wraps the lot. Borders rather than an image, so the lines follow
               the copy wherever it wraps; the section clips the overflow. */}
+          {/* Three-point line: a semicircle whose ends continue straight down
+              to the corners, as on the floor, rather than one circle bending
+              back in at the bottom of the hero. */}
           <div
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-[84px] -z-10 h-[200vh] w-[min(600px,92vw)] -translate-x-1/2 border-x border-t border-foreground/[0.12] bg-primary/[0.035]"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-[-150px] -z-10 h-[1500px] w-[1500px] -translate-x-1/2 rounded-full border border-foreground/[0.07]"
-          />
+            className="pointer-events-none absolute left-1/2 top-[-80px] -z-10 w-[min(1200px,200%)] -translate-x-1/2 md:top-[-60px]"
+          >
+            <div className="aspect-[2/1] w-full rounded-t-full border border-b-0 border-foreground/[0.07]" />
+            <div className="h-[200vh] w-full border-x border-foreground/[0.07]" />
+          </div>
 
-          <div className="relative mx-auto flex h-[84px] w-[168px] items-end justify-center">
+          {/* The semicircle and the lane share one width, so the free-throw
+              circle spans the paint. The mark is sized in container units so
+              it grows with the arc. */}
+          <div className="relative mx-auto flex aspect-[2/1] w-full max-w-[600px] items-end justify-center [container-type:inline-size]">
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0 rounded-t-full border border-b-0 border-foreground/[0.12]"
             />
-            <div className="mb-4 font-display text-5xl font-black leading-none tracking-tighter">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-full -z-10 h-[200vh] border-x border-t border-foreground/[0.12] bg-primary/[0.035]"
+            />
+            <div className="pb-[15%] font-display text-[24cqw] font-black leading-none tracking-tighter">
               C<span className="text-primary">V</span>
             </div>
           </div>
 
-          <h1 className="mt-6 font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">
+          <h1 className="mt-8 font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">
             See the move.
             <br />
             <span className="text-primary">Make the move.</span>
@@ -200,7 +209,7 @@ export function WelcomeView() {
             lineup changes. One click sends them to ESPN.
           </p>
 
-          <div className="flex items-center justify-center gap-3 mt-8">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link href="/account">
               <Button variant="glow" size="lg" className="gap-2">
                 Get Started
