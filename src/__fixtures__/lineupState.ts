@@ -51,6 +51,7 @@ function player(
     eligible_slots: eligible.map((s) => SLOT_NAMES[s]),
     injured: extra.injured ?? isInjured,
     injury_status: injury,
+    default_position_id: extra.default_position_id ?? null,
     lineup_locked: lineupLocked,
     has_game_today: hasGame,
     opponent: extra.opponent ?? null,
@@ -122,6 +123,7 @@ export const MOCK_LINEUP_STATE: LineupState = {
     "0": 1, "1": 1, "2": 1, "3": 1, "4": 1, "5": 1, "6": 1,
     "7": 0, "8": 0, "9": 0, "10": 0, "11": 3, "12": 3, "13": 1,
   },
+  position_limits: {},
   slots: [
     { slot_id: PG, slot: "PG", count: 1 },
     { slot_id: SG, slot: "SG", count: 1 },

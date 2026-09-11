@@ -46,6 +46,7 @@ function player(
     eligible_slots: overrides.eligible_slot_ids.map(slotName),
     injured: false,
     injury_status: null,
+    default_position_id: null,
     lineup_locked: false,
     has_game_today: true,
     opponent: "vs LAL",
@@ -70,6 +71,7 @@ function board(players: LineupPlayer[], overrides: Partial<LineupState> = {}): L
     scoring_period_id: 1,
     scoring_period_source: "provider",
     first_game_time_et: "19:00",
+    position_limits: {},
     slot_counts: { "0": 1, "1": 1, "5": 1, "11": 2, "12": 2, "13": 1 },
     slots: [
       { slot_id: PG, slot: "PG", count: 1 },
