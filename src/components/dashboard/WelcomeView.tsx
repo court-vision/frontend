@@ -7,7 +7,6 @@ import {
   UserPlus,
   Trophy,
   Swords,
-  Users,
   ArrowRight,
   TrendingUp,
   Activity,
@@ -15,6 +14,10 @@ import {
   Command,
   Github,
   Bell,
+  ListChecks,
+  ClipboardList,
+  LayoutList,
+  Code,
 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
@@ -27,74 +30,111 @@ type FeatureItem = {
   tag: string;
   size: "large" | "small";
   isNew?: boolean;
+  /** Mini UI preview drawn above the card body. */
+  preview?: "daily" | "draft" | "terminal";
 };
+
+// Sample values in the mock panels below are illustrative, not live data.
+const DAILY_ROWS = [
+  { kind: "Pick up", who: "Derrick White", why: "open seat · plays tonight · 37.2 avg", action: "Pickup" },
+  { kind: "Start", who: "Joel Embiid", why: "bench → PF · 43.5 avg", action: "Stage" },
+  { kind: "Sit", who: "Ja Morant", why: "out tonight", action: "Swap" },
+];
 
 export function WelcomeView() {
   const features: FeatureItem[] = [
     {
-      title: "Lineup Optimization",
+      title: "Daily Actions",
       description:
-        "Algorithmically optimize your streaming moves for the week. Our engine evaluates schedules, matchups, and projections to find the best adds and drops.",
-      icon: Zap,
-      tag: "\u2318G",
+        "Every morning the dashboard lists what your roster needs today: who to start, who is out, which open seat a streamer could fill. Approve a row and the move is sent to ESPN.",
+      icon: ListChecks,
+      tag: "⌥" + "1",
       size: "large",
+      isNew: true,
+      preview: "daily",
     },
     {
-      title: "Smart Notifications",
+      title: "Draft Lab",
       description:
-        "Get email alerts when a player is out or you're leaving points on the bench. Set your reminder window, and we'll handle the rest \u2014 more notification types coming soon.",
-      icon: Bell,
-      tag: "\u2318,",
+        "Draft rooms with a live board, pick-by-pick recommendations, and a recap that grades every pick. Follow your ESPN draft as it happens, or run a mock against the field first.",
+      icon: ClipboardList,
+      tag: "⌘D",
       size: "small",
       isNew: true,
+      preview: "draft",
     },
     {
-      title: "Matchup Tracking",
+      title: "Streamers",
       description:
-        "Daily score updates, projected winners, and category-by-category breakdowns. Stay on top of your matchup throughout the week.",
-      icon: Swords,
-      tag: "\u2318M",
-      size: "small",
-    },
-    {
-      title: "Player Rankings",
-      description:
-        "Comprehensive fantasy rankings updated daily — per-game and total fantasy points, built for H2H points and category leagues.",
-      icon: Trophy,
-      tag: "\u2318R",
-      size: "small",
-    },
-    {
-      title: "Streamer Finder",
-      description:
-        "Surface the best free agents based on upcoming schedule, category needs, and matchup difficulty. Never miss a streaming opportunity.",
+        "The best free agents for the week or for tonight, ranked by games left and your league's scoring. Add them to your ESPN roster straight from the list.",
       icon: UserPlus,
-      tag: "\u2318S",
+      tag: "⌘S",
+      size: "small",
+    },
+    {
+      title: "Rankings",
+      description:
+        "Every player ranked the way your league scores: standard points, your league's own point settings, or nine-category z-scores. The full player card is one click away.",
+      icon: Trophy,
+      tag: "⌘R",
+      size: "small",
+    },
+    {
+      title: "Matchup",
+      description:
+        "Live scores with tonight's games layered on ESPN's totals, projected winners, and category-by-category breakdowns for nine-cat leagues.",
+      icon: Swords,
+      tag: "⌘M",
       size: "small",
     },
     {
       title: "Analytics Terminal",
       description:
-        "A power-user terminal for deep player analysis. Search players, compare stats, view game logs and performance charts side by side.",
+        "Twenty-seven panels — player focus, game logs, comparisons, category strengths, live rosters, NBA team pages, the playoff bracket — in a layout you arrange and keep.",
       icon: Activity,
-      tag: "\u2325" + "6",
+      tag: "⌥" + "7",
       size: "large",
+      preview: "terminal",
     },
     {
-      title: "Team Management",
+      title: "Lineup Editor",
       description:
-        "Connect multiple ESPN and Yahoo leagues. Get a unified view across all your teams with roster snapshots and category breakdowns.",
-      icon: Users,
-      tag: "\u2318T",
+        "Your roster as ESPN sees it, with tonight's games and lock times. Move players between slots, hit Optimize today, and apply on ESPN with one confirmation.",
+      icon: LayoutList,
+      tag: "⌘T",
+      size: "small",
+    },
+    {
+      title: "Weekly Optimizer",
+      description:
+        "Plan the week's streaming. The engine weighs schedules, projections, and your open slots to find the adds and drops worth making.",
+      icon: Zap,
+      tag: "⌘G",
+      size: "small",
+    },
+    {
+      title: "Lineup Alerts",
+      description:
+        "An email when a starter is out or you are leaving points on the bench, sent when you choose before tip-off.",
+      icon: Bell,
+      tag: "⌘,",
+      size: "small",
+    },
+    {
+      title: "Developer API",
+      description:
+        "The same rankings, stats, and schedules through a public API with your own keys, plus a SQL query builder over the live tables.",
+      icon: Code,
+      tag: "⌥" + "8",
       size: "small",
     },
   ];
 
   const stats = [
-    { value: "H2H", label: "Points & Categories" },
-    { value: "500+", label: "Players Tracked" },
-    { value: "Daily", label: "Rankings & Scores" },
-    { value: "Smart", label: "Lineup Alerts" },
+    { value: "ESPN + Yahoo", label: "Leagues connected" },
+    { value: "Points + 9-cat", label: "Scoring formats" },
+    { value: "27", label: "Terminal panels" },
+    { value: "1 click", label: "Moves sent to ESPN" },
   ];
 
   const steps = [
@@ -102,19 +142,19 @@ export function WelcomeView() {
       step: "01",
       title: "Connect your league",
       description:
-        "Link your ESPN or Yahoo fantasy basketball league in seconds. We sync your roster, matchups, and league settings automatically.",
+        "Connect ESPN once and every team on the account comes along; Yahoo links with a click. Your scoring settings sync, so rankings and streamers use your league's math.",
     },
     {
       step: "02",
-      title: "Get insights instantly",
+      title: "Draft on the board",
       description:
-        "Your dashboard lights up with live scores, projections, and streaming recommendations tailored to your team's needs.",
+        "Open a room on draft night. With the Court Vision extension the board follows your ESPN draft pick by pick, prices every player, and tells you who to take.",
     },
     {
       step: "03",
-      title: "Dominate your league",
+      title: "Run the season from the dashboard",
       description:
-        "Use lineup optimization, streamer rankings, and the analytics terminal to make smarter moves every week.",
+        "Each day: approve the staged moves, check the matchup, stream the open seat. Court Vision sends the changes to ESPN for you.",
     },
   ];
 
@@ -130,15 +170,15 @@ export function WelcomeView() {
           </div>
 
           <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">
-            Your fantasy basketball
+            See the move.
             <br />
-            <span className="text-primary">command center</span>
+            <span className="text-primary">Make the move.</span>
           </h1>
 
           <p className="text-muted-foreground mt-5 max-w-lg mx-auto text-sm md:text-base leading-relaxed">
-            Advanced analytics, lineup optimization, and streaming
-            recommendations &mdash; all in one place. Connect your ESPN or Yahoo
-            league and start winning.
+            Court Vision reads your ESPN or Yahoo league, ranks every player by
+            the way your league scores, and stages each day&apos;s adds, drops, and
+            lineup changes. One click sends them to ESPN.
           </p>
 
           <div className="flex items-center justify-center gap-3 mt-8">
@@ -157,7 +197,7 @@ export function WelcomeView() {
 
           <p className="text-muted-foreground/40 text-[11px] mt-5 flex items-center justify-center gap-1.5">
             <kbd className="inline-flex items-center rounded border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[10px]">
-              {"\u2318"}K
+              {"⌘"}K
             </kbd>
             <span>to open command palette anytime</span>
           </p>
@@ -200,26 +240,27 @@ export function WelcomeView() {
               The Dashboard
             </p>
             <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-              Everything you need, at a glance
+              Your day, already sorted
             </h2>
             <p className="text-muted-foreground text-sm mt-3 max-w-md mx-auto">
-              Your scores, projections, streamers, and matchups &mdash; organized into
-              a clean, information-dense dashboard.
+              Today&apos;s moves, your matchup, your streamers, and your roster on
+              one screen &mdash; arranged the way you like, and kept that way.
             </p>
           </div>
 
-          <div className="rounded-lg border border-border bg-card/80 shadow-[0_0_40px_hsl(var(--primary)/0.06)] overflow-hidden">
+          <div className="rounded-lg border border-border bg-card/80 shadow-[0_0_40px_hsl(var(--primary)/0.06)] overflow-hidden select-none">
             <div className="h-10 border-b border-border bg-card flex items-center px-4 gap-4">
-              <span className="font-display text-xs font-bold text-primary">
-                CV
+              <span className="font-display text-xs font-black tracking-tighter">
+                COURT<span className="text-primary">VISION</span>
               </span>
               <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                <span className="text-foreground/80">Dashboard</span>
+                <span className="text-foreground/80">Home</span>
                 <span>Teams</span>
-                <span>Lineup</span>
                 <span>Matchup</span>
                 <span>Streamers</span>
                 <span>Rankings</span>
+                <span>Draft</span>
+                <span>Terminal</span>
               </div>
               <div className="ml-auto flex items-center gap-2">
                 <div className="h-6 w-32 rounded border border-border bg-muted/50 flex items-center px-2">
@@ -227,111 +268,141 @@ export function WelcomeView() {
                     Command...
                   </span>
                   <span className="ml-auto text-[9px] font-mono text-muted-foreground/30">
-                    {"\u2318"}K
+                    {"⌘"}K
                   </span>
                 </div>
                 <div className="h-2 w-2 rounded-full bg-status-win animate-beacon" />
               </div>
             </div>
 
-            <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-md border border-border bg-card p-3">
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                  Current Score
-                </p>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="font-mono text-lg font-bold">87</span>
-                  <TrendingUp className="h-3 w-3 text-status-win" />
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Daily Actions */}
+              <div className="sm:col-span-2 rounded-md border border-border bg-card p-3">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[10px] font-semibold">Daily Actions</span>
+                  <span className="text-[9px] font-mono text-muted-foreground">
+                    Tue &middot; 3 moves
+                  </span>
                 </div>
-                <p className="text-[10px] text-muted-foreground">vs 72</p>
+                <div className="space-y-1.5">
+                  {DAILY_ROWS.map((row) => (
+                    <div
+                      key={row.who}
+                      className="flex items-center gap-2 rounded border border-border/60 bg-muted/20 px-2 py-1.5"
+                    >
+                      <span className="w-10 shrink-0 text-[9px] font-semibold text-primary">
+                        {row.kind}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[10px]">
+                        {row.who}
+                        <span className="text-muted-foreground/60"> &middot; {row.why}</span>
+                      </span>
+                      <span className="shrink-0 rounded bg-primary px-1.5 py-0.5 text-[8px] font-semibold text-primary-foreground">
+                        {row.action}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="rounded-md border border-border bg-card p-3">
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                  Projected
-                </p>
-                <span className="font-mono text-lg font-bold mt-1 block">
-                  142.5
-                </span>
-                <p className="text-[10px] text-primary/70">
-                  Projected to win
-                </p>
-              </div>
-              <div className="rounded-md border border-border bg-card p-3">
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                  Teams
-                </p>
-                <span className="font-mono text-lg font-bold mt-1 block">
-                  3
-                </span>
-                <p className="text-[10px] text-muted-foreground">connected</p>
-              </div>
-              <div className="rounded-md border border-border bg-card p-3">
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                  Period
-                </p>
-                <span className="font-mono text-lg font-bold mt-1 block">
-                  Week 18
-                </span>
-                <p className="text-[10px] text-muted-foreground">
-                  Feb 10 - Feb 16
-                </p>
-              </div>
-            </div>
 
-            <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2 rounded-md border border-border bg-card p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-semibold">
-                    This Week&apos;s Matchup
-                  </span>
-                  <span className="text-[9px] text-muted-foreground">
-                    View Details &rarr;
-                  </span>
+              {/* Matchup Score */}
+              <div className="rounded-md border border-border bg-card p-3">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[10px] font-semibold">Matchup Score</span>
+                  <span className="text-[9px] text-primary/70">Projected to win</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="text-center">
-                    <span className="font-mono text-2xl font-bold">87</span>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Your Team
-                    </p>
+                <div className="flex items-end justify-between">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-2xl font-bold">87</span>
+                      <TrendingUp className="h-3 w-3 text-status-win" />
+                    </div>
+                    <p className="text-[9px] text-muted-foreground">Your team</p>
                   </div>
-                  <div className="text-[10px] text-muted-foreground/40 font-mono">
-                    VS
-                  </div>
-                  <div className="text-center">
+                  <div className="text-right">
                     <span className="font-mono text-2xl font-bold text-muted-foreground">
                       72
                     </span>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Opponent
-                    </p>
+                    <p className="text-[9px] text-muted-foreground">Opponent</p>
                   </div>
                 </div>
                 <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden flex">
-                  <div
-                    className="bg-primary rounded-full"
-                    style={{ width: "55%" }}
-                  />
+                  <div className="bg-primary rounded-full" style={{ width: "55%" }} />
                 </div>
               </div>
-              <div className="rounded-md border border-border bg-card p-4">
-                <span className="text-[10px] font-semibold block mb-3">
-                  Quick Actions
-                </span>
-                <div className="space-y-2">
+
+              {/* Today's lineup */}
+              <div className="rounded-md border border-border bg-card p-3">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[10px] font-semibold">Today&apos;s Lineup</span>
+                  <span className="rounded border border-border bg-muted/30 px-1.5 py-0.5 text-[8px] font-medium">
+                    Optimize today
+                  </span>
+                </div>
+                <div className="space-y-1">
                   {[
-                    { label: "Generate Lineup", key: "\u2318G" },
-                    { label: "Find Streamers", key: "\u2318S" },
-                    { label: "View Rankings", key: "\u2318R" },
-                  ].map((action) => (
-                    <div
-                      key={action.label}
-                      className="flex items-center justify-between py-1.5 px-2 rounded border border-border bg-muted/30 text-[10px]"
-                    >
-                      <span>{action.label}</span>
-                      <kbd className="font-mono text-[9px] text-muted-foreground/50">
-                        {action.key}
-                      </kbd>
+                    ["PG", "S. Castle", "35.1"],
+                    ["SG", "A. Edwards", "45.6"],
+                    ["PF", "J. Embiid", "43.5"],
+                    ["C", "N. Jokić", "66.3"],
+                  ].map(([slot, name, avg]) => (
+                    <div key={slot} className="flex items-center gap-2 text-[10px]">
+                      <span className="w-5 font-mono text-[8px] text-muted-foreground/60">
+                        {slot}
+                      </span>
+                      <span className="flex-1 truncate">{name}</span>
+                      <span className="font-mono tabular-nums text-muted-foreground">{avg}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Team Streamers */}
+              <div className="rounded-md border border-border bg-card p-3">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[10px] font-semibold">Team Streamers</span>
+                  <span className="text-[9px] font-mono text-muted-foreground">this week</span>
+                </div>
+                <div className="space-y-1">
+                  {[
+                    ["J. Duren", "DET", "38.6"],
+                    ["D. White", "BOS", "37.2"],
+                    ["P. George", "PHI", "35.3"],
+                    ["M. Bridges", "NYK", "33.3"],
+                  ].map(([name, team, avg]) => (
+                    <div key={name} className="flex items-center gap-2 text-[10px]">
+                      <span className="flex-1 truncate">{name}</span>
+                      <span className="font-mono text-[8px] text-muted-foreground/60">{team}</span>
+                      <span className="font-mono tabular-nums text-primary">{avg}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category strengths */}
+              <div className="rounded-md border border-border bg-card p-3">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[10px] font-semibold">Category Strengths</span>
+                  <span className="text-[9px] font-mono text-muted-foreground">9-cat</span>
+                </div>
+                <div className="space-y-1.5">
+                  {[
+                    ["REB", 92],
+                    ["AST", 78],
+                    ["3PM", 61],
+                    ["FT%", 34],
+                  ].map(([cat, pct]) => (
+                    <div key={cat} className="flex items-center gap-2">
+                      <span className="w-7 font-mono text-[8px] text-muted-foreground">{cat}</span>
+                      <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={`h-full rounded-full ${Number(pct) >= 50 ? "bg-primary" : "bg-status-loss"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="w-5 text-right font-mono text-[8px] tabular-nums text-muted-foreground">
+                        {pct}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -349,11 +420,11 @@ export function WelcomeView() {
               Features
             </p>
             <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-              Built for competitive managers
+              Draft night to the last week of the playoffs
             </h2>
             <p className="text-muted-foreground text-sm mt-3 max-w-md mx-auto">
-              Every tool you need to gain an edge, from lineup optimization to
-              deep player analytics.
+              Every decision a manager makes in a season, with the numbers behind
+              it and, on ESPN, the button that makes it happen.
             </p>
           </div>
 
@@ -367,54 +438,74 @@ export function WelcomeView() {
                   className={`transition-transform duration-150 hover:scale-[1.01] ${isLarge ? "col-span-3 md:col-span-2" : "col-span-3 md:col-span-1"}`}
                 >
                   <Card variant="panel" className="h-full overflow-hidden group">
-                    {/* Lineup Optimization: mini UI preview */}
-                    {feature.title === "Lineup Optimization" && (
+                    {/* Daily Actions: the morning's staged moves */}
+                    {feature.preview === "daily" && (
                       <div className="relative h-28 overflow-hidden border-b border-border/50 bg-card select-none pointer-events-none">
-                        <div className="absolute inset-0 flex gap-2 p-2">
-                          <div className="w-[72px] flex-none flex flex-col gap-1">
-                            <div className="text-[7px] text-muted-foreground/50 uppercase tracking-wider font-mono">Config</div>
-                            <div className="rounded border border-border/60 bg-muted/30 px-1.5 py-1">
-                              <div className="text-[6px] text-muted-foreground/50">Streaming Slots</div>
-                              <div className="text-[9px] font-mono text-foreground/70">3</div>
-                            </div>
-                            <div className="rounded border border-border/60 bg-muted/30 px-1.5 py-1">
-                              <div className="text-[6px] text-muted-foreground/50">Week</div>
-                              <div className="text-[9px] font-mono text-foreground/70">18</div>
-                            </div>
-                            <div className="mt-auto rounded bg-primary/90 px-1.5 py-0.5 text-[7px] font-semibold text-primary-foreground text-center">
-                              Generate
-                            </div>
+                        <div className="absolute inset-0 flex flex-col gap-1 p-2">
+                          <div className="mb-0.5 flex items-center justify-between">
+                            <span className="text-[7px] font-mono uppercase tracking-wider text-muted-foreground/50">
+                              Daily Actions &middot; Tue
+                            </span>
+                            <span className="text-[7px] font-mono text-primary">3 moves</span>
                           </div>
-                          <div className="flex-1 flex flex-col gap-0.5 overflow-hidden">
-                            <div className="flex items-center justify-between mb-0.5">
-                              <span className="text-[8px] font-mono font-bold text-[hsl(152_72%_46%)]">+45 pts</span>
-                              <span className="text-[6px] text-muted-foreground/40 font-mono">Week 18, Day 1</span>
+                          {DAILY_ROWS.map((row) => (
+                            <div
+                              key={row.who}
+                              className="flex items-center gap-1.5 rounded border border-border/50 bg-muted/20 px-1.5 py-1"
+                            >
+                              <span className="w-7 shrink-0 text-[7px] font-semibold text-primary">
+                                {row.kind}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-[8px] text-foreground/80">
+                                {row.who}
+                                <span className="text-muted-foreground/50"> &middot; {row.why}</span>
+                              </span>
+                              <span className="shrink-0 rounded bg-primary/90 px-1 py-[1px] text-[6px] font-semibold text-primary-foreground">
+                                {row.action}
+                              </span>
                             </div>
-                            {[
-                              { pos: "PG", name: "T. Haliburton", avg: "44.2", isNew: true },
-                              { pos: "SG", name: "D. Mitchell",   avg: "38.7", isNew: false },
-                              { pos: "SF", name: "L. James",      avg: "51.3", isNew: false },
-                              { pos: "PF", name: "E. Mobley",     avg: "32.1", isNew: true },
-                              { pos: "C",  name: "A. Davis",      avg: "48.2", isNew: false },
-                            ].map((p) => (
-                              <div key={p.name} className={`flex items-center gap-1 rounded px-1 py-[2px] ${p.isNew ? "bg-[hsl(152_72%_46%)]/[0.07]" : ""}`}>
-                                <span className="text-[7px] text-muted-foreground/40 w-4 font-mono flex-none">{p.pos}</span>
-                                <span className="text-[8px] text-foreground/75 flex-1 truncate">{p.name}</span>
-                                <span className="text-[7px] font-mono tabular-nums text-foreground/60">{p.avg}</span>
-                                {p.isNew && <span className="text-[7px] text-[hsl(152_72%_46%)] font-bold ml-0.5 flex-none">+</span>}
-                              </div>
-                            ))}
-                          </div>
+                          ))}
                         </div>
-                        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent" />
+                      </div>
+                    )}
+                    {/* Draft Lab: the board, mid-draft */}
+                    {feature.preview === "draft" && (
+                      <div className="relative h-28 overflow-hidden border-b border-border/50 bg-card select-none pointer-events-none">
+                        <div className="absolute inset-0 flex flex-col gap-1 p-2">
+                          <div className="mb-0.5 flex items-center justify-between">
+                            <span className="text-[7px] font-mono uppercase tracking-wider text-muted-foreground/50">
+                              Round 2 &middot; Pick 14
+                            </span>
+                            <span className="flex items-center gap-1 text-[7px] font-mono text-status-win">
+                              <span className="h-1 w-1 rounded-full bg-status-win animate-beacon" />
+                              live
+                            </span>
+                          </div>
+                          <div className="rounded border border-primary/25 bg-primary/10 px-1.5 py-1 text-[8px] font-semibold text-primary">
+                            You&apos;re on the clock
+                          </div>
+                          {[
+                            ["E. Mobley", "C", "+4.2"],
+                            ["J. Williams", "F", "+3.1"],
+                            ["T. Maxey", "G", "+2.8"],
+                          ].map(([name, pos, value]) => (
+                            <div key={name} className="flex items-center gap-1.5 px-1 text-[8px]">
+                              <span className="w-3 font-mono text-[7px] text-muted-foreground/40">{pos}</span>
+                              <span className="flex-1 truncate text-foreground/80">{name}</span>
+                              <span className="font-mono text-[7px] text-status-win">{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent" />
                       </div>
                     )}
                     {/* Analytics Terminal: mini UI preview */}
-                    {feature.title === "Analytics Terminal" && (
+                    {feature.preview === "terminal" && (
                       <div className="relative h-28 overflow-hidden border-b border-border/50 bg-card select-none pointer-events-none">
                         <div className="h-7 border-b border-border/50 bg-muted/20 flex items-center gap-1.5 px-2">
                           <div className="p-0.5 rounded bg-primary/10">
-                            <span className="text-[8px] text-primary font-mono leading-none">{"\u25B8"}</span>
+                            <span className="text-[8px] text-primary font-mono leading-none">{"▸"}</span>
                           </div>
                           <div className="flex-1 h-[18px] rounded border border-border/50 bg-background/50 flex items-center px-1.5">
                             <span className="text-[7px] text-muted-foreground/40 font-mono">anthony davis</span>
@@ -450,46 +541,19 @@ export function WelcomeView() {
                             <div className="text-[6px] text-muted-foreground/40 font-mono uppercase mb-1">Performance &middot; L10</div>
                             <div className="flex items-end gap-[2px] h-9">
                               {[55,70,48,82,65,88,60,75,80,92].map((h, i) => (
-                                <div key={i} className="flex-1 rounded-t-[1px]" style={{ height: `${h}%`, backgroundColor: `hsl(28 92% 52% / ${0.15 + (i / 10) * 0.35})` }} />
+                                <div key={i} className="flex-1 rounded-t-[1px]" style={{ height: `${h}%`, backgroundColor: `hsl(var(--primary) / ${0.15 + (i / 10) * 0.35})` }} />
                               ))}
                             </div>
                           </div>
                           <div className="w-[52px] flex-none bg-card/80 p-1">
                             <div className="text-[6px] text-muted-foreground/40 uppercase tracking-wider font-mono mb-1">Watch</div>
-                            {["L. James","N. Joki\u0107","S. Curry","K. Durant"].map(name => (
+                            {["L. James","N. Jokić","S. Curry","K. Durant"].map(name => (
                               <div key={name} className="text-[6px] text-muted-foreground/60 truncate py-[2px] border-b border-border/30 font-mono">{name}</div>
                             ))}
                           </div>
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-card to-transparent" />
                         <div className="absolute top-0 right-0 bottom-0 w-5 bg-gradient-to-l from-card/60 to-transparent" />
-                      </div>
-                    )}
-                    {/* Smart Notifications: mock toast header */}
-                    {feature.isNew && (
-                      <div className="relative h-28 overflow-hidden border-b border-border/50 flex items-center justify-center">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent" />
-                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[72%] rounded-md border border-border/50 bg-muted/30 p-1.5 scale-95 origin-bottom opacity-50">
-                          <div className="h-1.5 w-16 bg-muted-foreground/20 rounded-full" />
-                        </div>
-                        <div className="relative z-10 w-[80%] rounded-md border border-border bg-muted/60 p-2.5 shadow-sm">
-                          <div className="flex items-start gap-2">
-                            <div className="mt-0.5 p-1 rounded bg-primary/10 border border-primary/20">
-                              <Bell className="h-2.5 w-2.5 text-primary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[10px] font-semibold text-foreground/90 leading-none mb-0.5">
-                                Player Alert
-                              </p>
-                              <p className="text-[9px] text-muted-foreground truncate leading-snug">
-                                Ja Morant is OUT tonight &mdash; check your lineup
-                              </p>
-                            </div>
-                            <div className="text-[8px] text-muted-foreground/40 font-mono shrink-0">
-                              90m
-                            </div>
-                          </div>
-                        </div>
                       </div>
                     )}
                     {/* Card body */}
@@ -535,21 +599,21 @@ export function WelcomeView() {
               Keyboard-driven by design
             </h2>
             <p className="text-muted-foreground text-sm mt-3 leading-relaxed">
-              Navigate every page, switch teams, generate lineups, and search
-              players &mdash; all without touching your mouse. The command palette puts
-              every action one shortcut away.
+              Navigate every page, switch teams, stage moves, and search players
+              without touching your mouse. The command palette puts every action
+              one shortcut away.
             </p>
 
             <div className="mt-6 flex items-center gap-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <kbd className="inline-flex items-center rounded border border-border bg-muted/50 px-2 py-1 font-mono text-[10px]">
-                  {"\u2318"}K
+                  {"⌘"}K
                 </kbd>
                 <span>Commands</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <kbd className="inline-flex items-center rounded border border-border bg-muted/50 px-2 py-1 font-mono text-[10px]">
-                  {"\u2325"}1-9
+                  {"⌥"}1-9
                 </kbd>
                 <span>Pages</span>
               </div>
@@ -585,10 +649,10 @@ export function WelcomeView() {
                 Navigation
               </p>
               {[
-                { label: "Go to Lineup Generation", icon: "\u26A1", shortcut: "\u2318G" },
-                { label: "Go to Matchup", icon: "\u2694\uFE0F", shortcut: "\u2318M" },
-                { label: "Go to Rankings", icon: "\uD83C\uDFC6", shortcut: "\u2318R" },
-                { label: "Go to Terminal", icon: "\u25B8", shortcut: "\u23256" },
+                { label: "Go to Draft Lab", icon: "▦", shortcut: "⌘D" },
+                { label: "Go to Matchup", icon: "⚔️", shortcut: "⌘M" },
+                { label: "Go to Rankings", icon: "🏆", shortcut: "⌘R" },
+                { label: "Go to Terminal", icon: "▸", shortcut: "⌥7" },
               ].map((item, i) => (
                 <div
                   key={item.label}
@@ -622,7 +686,7 @@ export function WelcomeView() {
               Get Started
             </p>
             <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-              Up and running in minutes
+              Connected before opening night
             </h2>
           </div>
 
@@ -671,6 +735,10 @@ export function WelcomeView() {
               <span className="text-sm font-medium">Yahoo Fantasy</span>
             </div>
           </div>
+          <p className="text-muted-foreground/60 text-[11px] mt-5">
+            Adds, drops, and lineup changes are sent to ESPN today. Yahoo leagues
+            are read-only for now.
+          </p>
         </div>
       </section>
 
@@ -683,11 +751,12 @@ export function WelcomeView() {
             <Target className="h-5 w-5 text-primary" />
           </div>
           <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-            Ready to gain an edge?
+            Ready for opening night?
           </h2>
           <p className="text-muted-foreground text-sm mt-3 leading-relaxed">
-            Connect your league and start making smarter decisions today. Free to
-            use, no credit card required.
+            Connect your league before tip-off and the rankings, streamers, and
+            draft board are tuned to your scoring from day one. Free to use, no
+            credit card required.
           </p>
           <div className="mt-7">
             <Link href="/account">
@@ -704,8 +773,8 @@ export function WelcomeView() {
       <footer className="border-t border-border py-6 px-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-display text-xs font-bold text-primary">
-              CV
+            <span className="font-display text-sm font-black leading-none tracking-tighter">
+              C<span className="text-primary">V</span>
             </span>
             <span className="text-[11px] text-muted-foreground">
               Court Vision
@@ -721,7 +790,7 @@ export function WelcomeView() {
               <Github className="h-4 w-4" />
             </a>
             <p className="text-[10px] text-muted-foreground">
-              Fantasy basketball analytics platform
+              Fantasy basketball, run from one screen
             </p>
           </div>
         </div>
