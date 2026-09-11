@@ -52,15 +52,17 @@ interface ManageTeamsTableProps {
 }
 
 export function ManageTeamsTable({ yahooOAuthState, autoOpenAdd = false }: ManageTeamsTableProps) {
-  const { data, isLoading, error, refetch, isFetching } = useTeamsQuery();
+  const { data, isLoading, isSuccess, error, refetch, isFetching } = useTeamsQuery();
   const teams = data ?? [];
   const [editingTeam, setEditingTeam] = useState<TeamResponseData | null>(null);
   const [deletingTeamId, setDeletingTeamId] = useState<number | null>(null);
 
   // First-run: a user with no teams lands straight in the Add dialog. A Yahoo
   // OAuth return also reopens it so the league/team picker is right there.
+  // Only an empty list the query returned counts: until Clerk has a session the
+  // query is disabled, which reads as "not loading, no data" for every user.
   const shouldAutoOpen =
-    autoOpenAdd || !!yahooOAuthState || (!isLoading && !error && teams.length === 0);
+    autoOpenAdd || !!yahooOAuthState || (isSuccess && teams.length === 0);
 
   return (
     <>
