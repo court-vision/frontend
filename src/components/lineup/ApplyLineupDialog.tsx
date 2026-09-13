@@ -1,7 +1,8 @@
 "use client";
 
-import { AlertTriangle, Loader2, Send } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import { Badge } from "@/components/ui/badge";
 import {
   ResponsiveDialog,
@@ -75,16 +76,20 @@ export function ApplyLineupDialog() {
           </ul>
         )}
 
-        <ResponsiveDialogFooter className="gap-2 sm:gap-0">
+        {/* Column-reverse in both modes: the slider on top, Cancel under it. */}
+        <ResponsiveDialogFooter className="flex-col-reverse gap-2 sm:flex-col-reverse sm:space-x-0">
           <ResponsiveDialogClose asChild>
             <Button type="button" variant="ghost" disabled={applying}>
               Cancel
             </Button>
           </ResponsiveDialogClose>
-          <Button type="button" onClick={() => void apply()} disabled={applying || n === 0} className="gap-1.5">
-            {applying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {applying ? "Sending…" : "Apply on ESPN"}
-          </Button>
+          <SlideToConfirm
+            label="Slide to apply on ESPN"
+            releaseLabel="Release to apply"
+            onConfirm={() => void apply()}
+            pending={applying}
+            disabled={n === 0}
+          />
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
     </ResponsiveDialog>

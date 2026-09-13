@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { AlertTriangle, Info, Loader2, Lock, Send } from "lucide-react";
+import { AlertTriangle, Info, Lock } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
 import { HintPopover } from "@/components/ui/hint";
 import { QueryErrorState } from "@/components/ui/query-error";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import { PlayerHeadshot } from "@/components/terminal/shared";
 import { useTeamLineupQuery } from "@/hooks/useLineupEditor";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
@@ -234,16 +235,20 @@ export function AddStreamerDialog({
           </p>
         )}
 
-        <ResponsiveDialogFooter className="gap-2 px-5 pb-5 sm:gap-0">
+        <ResponsiveDialogFooter className="flex-col-reverse gap-2 px-5 pb-5 sm:flex-col-reverse sm:space-x-0">
           <ResponsiveDialogClose asChild>
             <Button type="button" variant="ghost" disabled={pending}>
               Cancel
             </Button>
           </ResponsiveDialogClose>
-          <Button type="button" onClick={submit} disabled={!canSubmit} className="gap-1.5">
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {pending ? "Sending…" : dropOnly ? "Drop on ESPN" : "Add on ESPN"}
-          </Button>
+          <SlideToConfirm
+            label={dropOnly ? "Slide to drop on ESPN" : "Slide to add on ESPN"}
+            releaseLabel={dropOnly ? "Release to drop" : "Release to add"}
+            variant={dropOnly ? "destructive" : "default"}
+            onConfirm={submit}
+            pending={pending}
+            disabled={!canSubmit}
+          />
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
