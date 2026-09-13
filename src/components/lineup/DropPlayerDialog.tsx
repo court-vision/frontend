@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Loader2, UserMinus } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import {
   ResponsiveDialog,
   ResponsiveDialogClose,
@@ -85,21 +86,20 @@ export function DropPlayerDialog() {
           </p>
         )}
 
-        <ResponsiveDialogFooter className="gap-2 sm:gap-0">
+        <ResponsiveDialogFooter className="flex-col-reverse gap-2 sm:flex-col-reverse sm:space-x-0">
           <ResponsiveDialogClose asChild>
             <Button type="button" variant="ghost" disabled={dropping}>
               Cancel
             </Button>
           </ResponsiveDialogClose>
-          <Button
-            type="button"
-            onClick={() => void confirmDrop()}
-            disabled={dropping || !player}
-            className="gap-1.5 bg-status-loss text-white hover:bg-status-loss/90"
-          >
-            {dropping ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserMinus className="h-4 w-4" />}
-            {dropping ? "Sending\u2026" : "Drop on ESPN"}
-          </Button>
+          <SlideToConfirm
+            label="Slide to drop on ESPN"
+            releaseLabel="Release to drop"
+            variant="destructive"
+            onConfirm={() => void confirmDrop()}
+            pending={dropping}
+            disabled={!player}
+          />
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
