@@ -4,14 +4,14 @@ import { AlertTriangle, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogClose,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { userMessage } from "@/lib/api-error";
 import { slotName } from "@/lib/lineup-editor";
 import { useLineupEditor } from "./LineupEditorProvider";
@@ -26,15 +26,15 @@ export function ApplyLineupDialog() {
   const n = moves.length;
 
   return (
-    <Dialog open={confirmOpen} onOpenChange={(open) => !applying && setConfirmOpen(open)}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Apply on ESPN</DialogTitle>
-          <DialogDescription>
+    <ResponsiveDialog open={confirmOpen} onOpenChange={(open) => !applying && setConfirmOpen(open)}>
+      <ResponsiveDialogContent className="max-w-md">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Apply on ESPN</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             This sends {n} move{n === 1 ? "" : "s"} to ESPN now. Players lock at their game&apos;s
             tip-off.
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         <ul className="max-h-[40vh] space-y-1.5 overflow-y-auto text-sm">
           {moves.map((m) => (
@@ -75,18 +75,18 @@ export function ApplyLineupDialog() {
           </ul>
         )}
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <DialogClose asChild>
+        <ResponsiveDialogFooter className="gap-2 sm:gap-0">
+          <ResponsiveDialogClose asChild>
             <Button type="button" variant="ghost" disabled={applying}>
               Cancel
             </Button>
-          </DialogClose>
+          </ResponsiveDialogClose>
           <Button type="button" onClick={() => void apply()} disabled={applying || n === 0} className="gap-1.5">
             {applying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {applying ? "Sending…" : "Apply on ESPN"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
