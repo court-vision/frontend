@@ -55,9 +55,13 @@ const ResponsiveDialogContent = React.forwardRef<
     return (
       <DrawerContent
         ref={ref}
+        // A bottom drawer is always full-bleed: a caller's dialog width cap
+        // (`max-w-md`) would otherwise pin it to a 448px box on the left of
+        // anything wider than a phone, so it is stripped last.
         className={cn(
           "gap-3 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] [&>*:last-child]:mt-0",
-          className
+          className,
+          "max-w-none"
         )}
         {...props}
       />
