@@ -19,6 +19,7 @@ import { LineupEditorProviderIfEspn } from "@/components/lineup/LineupEditorProv
 import { LineupEditor } from "@/components/lineup/LineupEditor";
 import { LineupApplyBar } from "@/components/lineup/LineupApplyBar";
 import { ApplyLineupDialog } from "@/components/lineup/ApplyLineupDialog";
+import { DropPlayerDialog } from "@/components/lineup/DropPlayerDialog";
 import { MOCK_LINEUP_EDITOR } from "@/__fixtures__/lineupState";
 import { PageHeader } from "@/components/PageHeader";
 
@@ -81,6 +82,7 @@ function TeamsContent() {
           <LineupEditor />
           <LineupApplyBar />
           <ApplyLineupDialog />
+          <DropPlayerDialog />
         </LineupEditorProviderIfEspn>
       </div>
     );
