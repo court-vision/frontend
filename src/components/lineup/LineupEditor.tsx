@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import { CalendarDays, ChevronDown, Info, Loader2, Lock, UserMinus, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -51,21 +51,11 @@ export function LineupEditor({ className }: { className?: string }) {
   // No saved preference: collapsed on phones, open from `md` (tracks the viewport live).
   const isMobile = useIsMobile();
   const collapsed = collapsedPref ?? isMobile;
-  // Phone-only state: the slot picker, the row with its actions revealed, and
-  // a drop asked for from a row (the drop confirm reads the selection, which
-  // lands a render after `select`).
+  // Phone-only state: the picker drawer (opened on Drop when a row's swipe
+  // asked for it) and the row with its actions revealed.
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetDrop, setSheetDrop] = useState(false);
   const [revealedId, setRevealedId] = useState<number | null>(null);
-  const [pendingDrop, setPendingDrop] = useState<number | null>(null);
-  const selectedPlayerId = editor?.selectedPlayerId ?? null;
-  const requestDrop = editor?.requestDrop;
-  useEffect(() => {
-    if (pendingDrop == null || !requestDrop) return;
-    if (selectedPlayerId === pendingDrop) {
-      requestDrop();
-      setPendingDrop(null);
-    }
-  }, [pendingDrop, selectedPlayerId, requestDrop]);
 
   if (!editor) return null;
   const {
@@ -75,6 +65,7 @@ export function LineupEditor({ className }: { className?: string }) {
     refetch,
     rows,
     staged,
+    selectedPlayerId,
     selectedTargets,
     select,
     tap,
@@ -84,6 +75,7 @@ export function LineupEditor({ className }: { className?: string }) {
     planStatus,
     canWrite,
     blockedReason,
+    requestDrop,
   } = editor;
 
   if (state === null) return null;
@@ -217,7 +209,7 @@ export function LineupEditor({ className }: { className?: string }) {
                 {!canWrite
                   ? "Today's slots as ESPN has them."
                   : isMobile
-                    ? "Tap a player to move him, or swipe left for Move and Drop."
+                    ? "Tap a player to move or drop him; each move is sent on its own."
                     : "Tap a player, then the slot to move him to."}
               </span>
             )}
@@ -257,6 +249,7 @@ export function LineupEditor({ className }: { className?: string }) {
                       }
                       if (!player) return;
                       select(player.player_id);
+                      setSheetDrop(false);
                       setSheetOpen(true);
                     }}
                     swipe={
@@ -267,12 +260,14 @@ export function LineupEditor({ className }: { className?: string }) {
                             onMove: () => {
                               setRevealedId(null);
                               select(player.player_id);
+                              setSheetDrop(false);
                               setSheetOpen(true);
                             },
                             onDrop: () => {
                               setRevealedId(null);
                               select(player.player_id);
-                              setPendingDrop(player.player_id);
+                              setSheetDrop(true);
+                              setSheetOpen(true);
                             },
                             canDrop: true,
                           }
@@ -285,7 +280,7 @@ export function LineupEditor({ className }: { className?: string }) {
             {canWrite && !isMobile && (
               <>
                 <li aria-hidden className="h-1.5 bg-muted/40" />
-                <DropRow selectedName={selectedName} onTap={() => requestDrop?.()} />
+                <DropRow selectedName={selectedName} onTap={requestDrop} />
               </>
             )}
           </ul>
@@ -296,9 +291,13 @@ export function LineupEditor({ className }: { className?: string }) {
           open={sheetOpen}
           onOpenChange={(open) => {
             setSheetOpen(open);
-            if (!open) select(null);
+            if (!open) {
+              setSheetDrop(false);
+              select(null);
+            }
           }}
           allowDrop
+          defaultDrop={sheetDrop}
         />
       )}
     </Card>
