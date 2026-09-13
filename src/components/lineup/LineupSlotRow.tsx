@@ -1,7 +1,7 @@
 "use client";
 
-import type { KeyboardEvent } from "react";
-import { AlertTriangle, Lock } from "lucide-react";
+import { useRef, useState, type KeyboardEvent, type TouchEvent } from "react";
+import { AlertTriangle, ArrowLeftRight, Lock, UserMinus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { HintPopover } from "@/components/ui/hint";
@@ -10,6 +10,15 @@ import { getInjuryBadge } from "@/lib/injury-badge";
 import { gameLabel, lockLabel, type SlotRow } from "@/lib/lineup-editor";
 import type { MoveError } from "@/types/lineup-editor";
 import type { ValueKind } from "@/types/scoring";
+
+/** Phone swipe actions: swipe the row left to reveal Move (and Drop). */
+export interface SlotRowSwipe {
+  revealed: boolean;
+  onReveal: (open: boolean) => void;
+  onMove: () => void;
+  onDrop: () => void;
+  canDrop: boolean;
+}
 
 export interface LineupSlotRowProps {
   row: SlotRow;
@@ -27,7 +36,14 @@ export interface LineupSlotRowProps {
   /** False when the board is read-only (no credentials, writes off…). */
   interactive: boolean;
   onTap: () => void;
+  /** Present on phones for a movable player: the row can be swiped left. */
+  swipe?: SlotRowSwipe;
 }
+
+/** Width of one revealed action, px. */
+const ACTION_W = 64;
+/** Finger travel before a touch is treated as a horizontal swipe, not a scroll. */
+const AXIS_LOCK_PX = 6;
 
 function slotVariant(slotId: number): "default" | "secondary" | "outline" {
   if (slotId === 13) return "outline";
@@ -38,7 +54,8 @@ function slotVariant(slotId: number): "default" | "secondary" | "outline" {
 /**
  * One slot instance on the editor board — a 44 px tap target. Tap a player to
  * select him; while a selection is active, eligible rows (players and empty
- * seats alike) light up and a tap there stages the move or swap.
+ * seats alike) light up and a tap there stages the move or swap. On phones a
+ * row also swipes left to reveal Move and Drop, and a tap opens the picker.
  */
 export function LineupSlotRow({
   row,
@@ -50,11 +67,56 @@ export function LineupSlotRow({
   error,
   interactive,
   onTap,
+  swipe,
 }: LineupSlotRowProps) {
   const { player } = row;
   const locked = !!player?.locked;
   const lock = player ? lockLabel(player) : null;
   const tappable = interactive && (isTarget || (!!player && !locked));
+  const swipeable = !!swipe && !!player && !locked && interactive;
+  const revealWidth = swipeable ? ACTION_W * (swipe!.canDrop ? 2 : 1) : 0;
+
+  // Live drag offset (px, 0..revealWidth) while a finger is on the row; null at rest.
+  const [drag, setDrag] = useState<number | null>(null);
+  const touch = useRef<{ x: number; y: number; base: number; axis: "x" | "y" | null } | null>(null);
+
+  const onTouchStart = (e: TouchEvent) => {
+    if (!swipeable) return;
+    const t = e.touches[0];
+    if (!t) return;
+    touch.current = { x: t.clientX, y: t.clientY, base: swipe!.revealed ? revealWidth : 0, axis: null };
+  };
+  const onTouchMove = (e: TouchEvent) => {
+    const start = touch.current;
+    const t = e.touches[0];
+    if (!start || !t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (start.axis === null) {
+      if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
+      start.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (start.axis !== "x") return;
+    setDrag(Math.min(revealWidth, Math.max(0, start.base - dx)));
+  };
+  const onTouchEnd = () => {
+    const start = touch.current;
+    touch.current = null;
+    if (!start || start.axis !== "x") return;
+    const shift = drag ?? start.base;
+    setDrag(null);
+    swipe!.onReveal(shift > revealWidth / 2);
+  };
+
+  const shift = drag ?? (swipeable && swipe!.revealed ? revealWidth : 0);
+
+  const handleTap = () => {
+    if (swipeable && swipe!.revealed) {
+      swipe!.onReveal(false);
+      return;
+    }
+    onTap();
+  };
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (!tappable) return;
@@ -65,7 +127,31 @@ export function LineupSlotRow({
   };
 
   return (
-    <li>
+    <li className={cn(swipeable && "relative overflow-hidden")}>
+      {swipeable && (
+        <div className="absolute inset-y-0 right-0 flex" aria-hidden={!swipe!.revealed}>
+          <button
+            type="button"
+            tabIndex={swipe!.revealed ? 0 : -1}
+            onClick={swipe!.onMove}
+            className="flex w-16 flex-col items-center justify-center gap-0.5 bg-primary text-[10px] font-semibold text-primary-foreground"
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+            Move
+          </button>
+          {swipe!.canDrop && (
+            <button
+              type="button"
+              tabIndex={swipe!.revealed ? 0 : -1}
+              onClick={swipe!.onDrop}
+              className="flex w-16 flex-col items-center justify-center gap-0.5 bg-status-loss text-[10px] font-semibold text-background"
+            >
+              <UserMinus className="h-4 w-4" />
+              Drop
+            </button>
+          )}
+        </div>
+      )}
       <div
         role="button"
         tabIndex={tappable ? 0 : -1}
@@ -76,10 +162,23 @@ export function LineupSlotRow({
             ? `${row.slot}: ${player.name}${locked ? ", locked" : ""}${isTarget ? ", swap here" : ""}`
             : `${row.slot}: empty${isTarget ? ", move here" : ""}`
         }
-        onClick={tappable ? onTap : undefined}
+        onClick={tappable ? handleTap : undefined}
         onKeyDown={onKeyDown}
+        onTouchStart={swipeable ? onTouchStart : undefined}
+        onTouchMove={swipeable ? onTouchMove : undefined}
+        onTouchEnd={swipeable ? onTouchEnd : undefined}
+        onTouchCancel={swipeable ? onTouchEnd : undefined}
+        style={
+          swipeable
+            ? {
+                transform: `translateX(-${shift}px)`,
+                transition: drag === null ? "transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1.1)" : "none",
+              }
+            : undefined
+        }
         className={cn(
           "flex min-h-[44px] items-center gap-2 border-l-2 border-l-transparent px-3 py-1 transition-colors max-md:gap-1.5 max-md:px-2",
+          swipeable && "relative touch-pan-y bg-card",
           tappable && "cursor-pointer hover:bg-muted/40",
           selected && "border-l-primary bg-primary/10",
           isTarget && "border-l-status-win bg-status-win/10 ring-1 ring-inset ring-status-win/30",

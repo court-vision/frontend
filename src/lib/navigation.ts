@@ -60,6 +60,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: true,
     mobile: true,
     palette: true,
+    tab: 3,
   },
   {
     href: "/your-teams",
@@ -112,7 +113,6 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: true,
     mobile: true,
     palette: true,
-    tab: 3,
   },
   {
     href: "/draft",

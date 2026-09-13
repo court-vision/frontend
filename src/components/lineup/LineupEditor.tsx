@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { CalendarDays, ChevronDown, Info, Loader2, Lock, UserMinus, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { formatNbaDate, formatTipTime, isActiveSlot, slotName } from "@/lib/line
 import { writeBlockedCopy } from "@/types/lineup-editor";
 import { useLineupEditor } from "./LineupEditorProvider";
 import { LineupSlotRow } from "./LineupSlotRow";
+import { LineupTargetSheet } from "./LineupTargetSheet";
 
 const COLLAPSED_KEY = "cv.lineupEditor.collapsed";
 
@@ -39,8 +40,10 @@ function writeCollapsed(value: boolean) {
 }
 
 /**
- * Today's ESPN board: one row per slot, tap-to-move. Renders nothing outside a
- * `LineupEditorProvider` or for a team with no board (Yahoo).
+ * Today's ESPN board: one row per slot. From `md` it is tap-to-move (tap a
+ * player, then a highlighted slot). On phones a tap opens the slot picker
+ * drawer and a swipe left reveals Move and Drop on the row. Renders nothing
+ * outside a `LineupEditorProvider` or for a team with no board (Yahoo).
  */
 export function LineupEditor({ className }: { className?: string }) {
   const editor = useLineupEditor();
@@ -48,6 +51,21 @@ export function LineupEditor({ className }: { className?: string }) {
   // No saved preference: collapsed on phones, open from `md` (tracks the viewport live).
   const isMobile = useIsMobile();
   const collapsed = collapsedPref ?? isMobile;
+  // Phone-only state: the slot picker, the row with its actions revealed, and
+  // a drop asked for from a row (the drop confirm reads the selection, which
+  // lands a render after `select`).
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [revealedId, setRevealedId] = useState<number | null>(null);
+  const [pendingDrop, setPendingDrop] = useState<number | null>(null);
+  const selectedPlayerId = editor?.selectedPlayerId ?? null;
+  const requestDrop = editor?.requestDrop;
+  useEffect(() => {
+    if (pendingDrop == null || !requestDrop) return;
+    if (selectedPlayerId === pendingDrop) {
+      requestDrop();
+      setPendingDrop(null);
+    }
+  }, [pendingDrop, selectedPlayerId, requestDrop]);
 
   if (!editor) return null;
   const {
@@ -57,8 +75,8 @@ export function LineupEditor({ className }: { className?: string }) {
     refetch,
     rows,
     staged,
-    selectedPlayerId,
     selectedTargets,
+    select,
     tap,
     validation,
     moveErrors,
@@ -66,7 +84,6 @@ export function LineupEditor({ className }: { className?: string }) {
     planStatus,
     canWrite,
     blockedReason,
-    requestDrop,
   } = editor;
 
   if (state === null) return null;
@@ -196,7 +213,13 @@ export function LineupEditor({ className }: { className?: string }) {
                 or the Drop row · Esc cancels
               </span>
             ) : (
-              <span>{canWrite ? "Tap a player, then the slot to move him to." : "Today's slots as ESPN has them."}</span>
+              <span>
+                {!canWrite
+                  ? "Today's slots as ESPN has them."
+                  : isMobile
+                    ? "Tap a player to move him, or swipe left for Move and Drop."
+                    : "Tap a player, then the slot to move him to."}
+              </span>
             )}
             <span className="ml-auto flex items-center gap-1">
               <Lock className="h-3 w-3" /> locked at tip-off
@@ -227,19 +250,56 @@ export function LineupEditor({ className }: { className?: string }) {
                     stagedFrom={stagedFrom}
                     error={player ? errorFor(player.player_id) : null}
                     interactive={canWrite}
-                    onTap={() => tap(row.slot_id, player?.player_id ?? null)}
+                    onTap={() => {
+                      if (!isMobile) {
+                        tap(row.slot_id, player?.player_id ?? null);
+                        return;
+                      }
+                      if (!player) return;
+                      select(player.player_id);
+                      setSheetOpen(true);
+                    }}
+                    swipe={
+                      isMobile && canWrite && player && !player.locked
+                        ? {
+                            revealed: revealedId === player.player_id,
+                            onReveal: (open) => setRevealedId(open ? player.player_id : null),
+                            onMove: () => {
+                              setRevealedId(null);
+                              select(player.player_id);
+                              setSheetOpen(true);
+                            },
+                            onDrop: () => {
+                              setRevealedId(null);
+                              select(player.player_id);
+                              setPendingDrop(player.player_id);
+                            },
+                            canDrop: true,
+                          }
+                        : undefined
+                    }
                   />
                 </Fragment>
               );
             })}
-            {canWrite && (
+            {canWrite && !isMobile && (
               <>
                 <li aria-hidden className="h-1.5 bg-muted/40" />
-                <DropRow selectedName={selectedName} onTap={requestDrop} />
+                <DropRow selectedName={selectedName} onTap={() => requestDrop?.()} />
               </>
             )}
           </ul>
         </>
+      )}
+      {isMobile && (
+        <LineupTargetSheet
+          open={sheetOpen}
+          onOpenChange={(open) => {
+            setSheetOpen(open);
+            if (!open) select(null);
+          }}
+          allowDrop
+        />
       )}
     </Card>
   );

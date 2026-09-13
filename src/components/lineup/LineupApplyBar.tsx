@@ -1,8 +1,10 @@
 "use client";
 
-import { AlertTriangle, Loader2, RotateCcw, Send, Wand2, X } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, ChevronDown, ChevronUp, Loader2, RotateCcw, Send, Wand2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/useBreakpoint";
 import { userMessage } from "@/lib/api-error";
 import { moveRole, slotName } from "@/lib/lineup-editor";
 import { writeBlockedCopy } from "@/types/lineup-editor";
@@ -23,11 +25,15 @@ interface LineupApplyBarProps {
 
 /**
  * The staged moves, their validation, and the actions: Optimize today, Reset,
- * Apply on ESPN. Sticks to the bottom of the scroll area on phones (just above
- * the tab bar, which sits below the scroller) and sits inline from `md`.
+ * Apply on ESPN. Sits inline from `md`. On phones it sticks to the bottom of
+ * the scroll area (just above the tab bar) as a one-line pill — the count and
+ * Apply — that expands on tap to the move list and the other actions, so the
+ * board underneath stays readable.
  */
 export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBarProps) {
   const editor = useLineupEditor();
+  const isMobile = useIsMobile();
+  const [expanded, setExpanded] = useState(false);
   if (!editor || !editor.state) return null;
 
   const {
@@ -59,6 +65,15 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
     return true;
   });
   const canApply = canWrite && moves.length > 0 && validation.length === 0 && !applying;
+  const showDetails = !isMobile || expanded;
+  const summary =
+    planStatus === "loading"
+      ? "Planning today's moves…"
+      : planStatus === "error"
+        ? "Couldn't plan today's moves"
+        : moves.length > 0
+          ? `${moves.length} move${moves.length === 1 ? "" : "s"} staged`
+          : (plan?.summary ?? "Nothing staged");
 
   return (
     <div className={cn("z-20 max-md:sticky max-md:bottom-0 max-md:-mx-4", className)}>
@@ -69,7 +84,36 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
           "max-md:shadow-[0_-12px_24px_-12px_rgba(0,0,0,0.45)]"
         )}
       >
-        <div className="space-y-2 px-3 py-2.5 md:px-4 md:py-3">
+        {/* Phone pill: the summary, the one action, and a toggle for the rest. */}
+        <div className="flex items-center gap-2 px-3 py-2 md:hidden">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="flex min-h-[36px] min-w-0 flex-1 items-center gap-2 text-left"
+          >
+            {expanded ? (
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+            )}
+            <span className="truncate text-sm font-medium">{summary}</span>
+            {errors.length > 0 && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-status-loss" />}
+          </button>
+          <Button
+            size="sm"
+            className="h-9 gap-1.5 text-xs"
+            onClick={() => setConfirmOpen(true)}
+            disabled={!canApply}
+          >
+            {applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            Apply
+            {moves.length > 0 && <span className="font-mono tabular-nums">({moves.length})</span>}
+          </Button>
+        </div>
+
+        {showDetails && (
+        <div className="space-y-2 px-3 py-2.5 max-md:border-t max-md:border-border/60 md:px-4 md:py-3">
           {planStatus === "loading" && (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Planning today&apos;s moves…
@@ -173,7 +217,7 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
             )}
             <Button
               size="sm"
-              className="ml-auto h-9 gap-1.5 text-xs md:h-8"
+              className="ml-auto h-9 gap-1.5 text-xs max-md:hidden md:h-8"
               onClick={() => setConfirmOpen(true)}
               disabled={!canApply}
             >
@@ -186,6 +230,7 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
             <p className="text-[11px] text-muted-foreground">{writeBlockedCopy(blockedReason ?? state.write_blocked_reason)}</p>
           )}
         </div>
+        )}
       </div>
     </div>
   );
