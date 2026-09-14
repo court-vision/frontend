@@ -2,13 +2,17 @@ import { describe, expect, test } from "bun:test";
 import { DESKTOP_NAV, MOBILE_NAV, NAV_ITEMS, SIGNED_OUT_TAB_NAV, TAB_NAV } from "../navigation";
 
 describe("phone navigation", () => {
-  test("signed-in tab bar is Matchup, Streamers, Rankings, Teams", () => {
+  test("signed-in tab bar is Matchup, Streamers, Home, Teams", () => {
     expect(TAB_NAV.map((i) => i.href)).toEqual([
       "/matchup",
       "/streamers",
-      "/rankings",
+      "/",
       "/your-teams",
     ]);
+  });
+
+  test("Rankings left the signed-in bar but stays reachable from the phone sheet", () => {
+    expect(MOBILE_NAV.map((i) => i.href)).toContain("/rankings");
   });
 
   test("signed-out tab bar is Home, Rankings, Playoffs", () => {

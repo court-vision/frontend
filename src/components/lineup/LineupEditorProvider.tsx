@@ -117,6 +117,17 @@ export interface LineupEditorContextValue {
    * a confirm sends it, and the re-read board that comes back drops any
    * staging (its roster_version changes).
    */
+  /**
+   * Send one move now, outside the staged list — the phone picker's "tap the
+   * slot, slide" path. Built from the board alone (a taken seat brings the
+   * swap partner's move), never from the staging; the re-read board that
+   * comes back clears the staging as any write does. "stale" means the board
+   * changed under the write and was swapped in; "refused" leaves `applyError`.
+   */
+  applyMove: (playerId: number, slotId: number) => Promise<"ok" | "stale" | "refused">;
+  /** Release one player now (the phone picker's Drop); same outcomes as `applyMove`. */
+  dropPlayer: (playerId: number) => Promise<"ok" | "stale" | "refused">;
+
   /** The selected player, once the Drop row was tapped; null = no confirm pending. */
   dropTargetId: number | null;
   /** Tap the Drop row: asks to release the selected player (no-op without a selection). */
@@ -340,6 +351,36 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
     }
   }, [state, moves, staged, mock, mutateAsync]);
 
+  const applyMove = useCallback(
+    async (playerId: number, slotId: number): Promise<"ok" | "stale" | "refused"> => {
+      if (!state) return "refused";
+      const one = stageMove(state, {}, playerId, slotId);
+      const oneMoves = diff(state, one);
+      if (oneMoves.length === 0) return "refused";
+      if (mock) {
+        setMockState(mock.apply(state, one));
+        setPlanStore(PLAN_IDLE);
+        toast.success("Lineup updated on ESPN (mock)");
+        return "ok";
+      }
+      if (state.scoring_period_id == null) return "refused";
+      resetMutation();
+      try {
+        await mutateAsync({
+          moves: oneMoves,
+          expected_scoring_period_id: state.scoring_period_id,
+          roster_version: state.roster_version,
+        });
+        setPlanStore(PLAN_IDLE);
+        return "ok";
+      } catch (err) {
+        // The mutation's onError already toasted / swapped in the fresh board.
+        return staleLineup(err) ? "stale" : "refused";
+      }
+    },
+    [state, mock, mutateAsync, resetMutation]
+  );
+
   // ---- drop a player outright (its own transaction, not a staged move) ----
   const resetDrop = dropMutation.reset;
   const requestDrop = useCallback(() => {
@@ -353,38 +394,48 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
   const cancelDrop = useCallback(() => setDropTargetId(null), []);
 
   const dropMutateAsync = dropMutation.mutateAsync;
+  const dropPlayer = useCallback(
+    async (playerId: number): Promise<"ok" | "stale" | "refused"> => {
+      if (!state) return "refused";
+      const player = playerById.get(playerId);
+      if (!player || player.locked) return "refused";
+      if (mock) {
+        setMockState({
+          ...state,
+          players: state.players.filter((p) => p.player_id !== playerId),
+          roster_version: `${state.roster_version}:drop:${playerId}`,
+        });
+        setPlanStore(PLAN_IDLE);
+        toast.success(`Dropped ${player.name} on ESPN (mock)`);
+        return "ok";
+      }
+      if (state.scoring_period_id == null) return "refused";
+      resetDrop();
+      try {
+        await dropMutateAsync({
+          add_player_id: null,
+          drop_player_id: playerId,
+          expected_scoring_period_id: state.scoring_period_id,
+          roster_version: state.roster_version,
+        });
+        // The re-read board replaces the cached one; its new roster_version
+        // clears the staging and the selection on its own.
+        setPlanStore(PLAN_IDLE);
+        return "ok";
+      } catch (err) {
+        // The mutation's onError already toasted / swapped in the fresh board;
+        // a refusal it left on the error is rendered by whoever asked.
+        return staleLineup(err) ? "stale" : "refused";
+      }
+    },
+    [state, playerById, mock, dropMutateAsync, resetDrop]
+  );
+
   const confirmDrop = useCallback(async () => {
-    if (!state || dropTargetId == null) return;
-    const player = playerById.get(dropTargetId);
-    if (mock) {
-      setMockState({
-        ...state,
-        players: state.players.filter((p) => p.player_id !== dropTargetId),
-        roster_version: `${state.roster_version}:drop:${dropTargetId}`,
-      });
-      setPlanStore(PLAN_IDLE);
-      setDropTargetId(null);
-      toast.success(`Dropped ${player?.name ?? "player"} on ESPN (mock)`);
-      return;
-    }
-    if (state.scoring_period_id == null) return;
-    try {
-      await dropMutateAsync({
-        add_player_id: null,
-        drop_player_id: dropTargetId,
-        expected_scoring_period_id: state.scoring_period_id,
-        roster_version: state.roster_version,
-      });
-      // The re-read board replaces the cached one; its new roster_version
-      // clears the staging and the selection on its own.
-      setPlanStore(PLAN_IDLE);
-      setDropTargetId(null);
-    } catch (err) {
-      // The mutation's onError already toasted / swapped in the fresh board;
-      // a refusal it left on the error is rendered by the dialog.
-      if (staleLineup(err)) setDropTargetId(null);
-    }
-  }, [state, dropTargetId, playerById, mock, dropMutateAsync]);
+    if (dropTargetId == null) return;
+    const outcome = await dropPlayer(dropTargetId);
+    if (outcome !== "refused") setDropTargetId(null);
+  }, [dropTargetId, dropPlayer]);
 
   const dropError = dropMutation.error ? toApiError(dropMutation.error) : null;
 
@@ -433,6 +484,8 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
       canWrite: !!state?.can_write,
       blockedReason: (state?.write_blocked_reason ?? null) as WriteBlockedReason | null,
       isMock: !!mock,
+      applyMove,
+      dropPlayer,
       dropTargetId,
       requestDrop,
       cancelDrop,
@@ -444,8 +497,8 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
       teamId, state, mock, query, staged, rows, assignment, playerById, selectedPlayerId,
       selectedTargets, select, stage, unstage, stageMoves, unstageMoves, reset, eligibleTargetsFor, tap, moves,
       validation, moveErrors, loadPlan, planStore, apply, mutation.isPending, applyError,
-      confirmOpen, dropTargetId, requestDrop, cancelDrop, confirmDrop, dropMutation.isPending,
-      dropError,
+      confirmOpen, applyMove, dropPlayer, dropTargetId, requestDrop, cancelDrop, confirmDrop,
+      dropMutation.isPending, dropError,
     ]
   );
 

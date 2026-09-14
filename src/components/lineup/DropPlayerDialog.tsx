@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Loader2, UserMinus } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogClose,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { PlayerHeadshot } from "@/components/terminal/shared";
 import { getInjuryBadge } from "@/lib/injury-badge";
 import { slotName } from "@/lib/lineup-editor";
@@ -42,11 +43,11 @@ export function DropPlayerDialog() {
   const staged = moves.length;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !dropping && cancelDrop()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Drop {player?.name ?? "player"} on ESPN?</DialogTitle>
-          <DialogDescription>
+    <ResponsiveDialog open={open} onOpenChange={(next) => !next && !dropping && cancelDrop()}>
+      <ResponsiveDialogContent className="max-w-md">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Drop {player?.name ?? "player"} on ESPN?</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             This releases him now &mdash; he goes to waivers or the free-agent pool under your
             league&apos;s rules, and Court Vision cannot undo it.
             {staged > 0 && (
@@ -55,8 +56,8 @@ export function DropPlayerDialog() {
                 Your {staged} staged move{staged === 1 ? "" : "s"} will be cleared.
               </>
             )}
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         {player && (
           <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
@@ -85,23 +86,22 @@ export function DropPlayerDialog() {
           </p>
         )}
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <DialogClose asChild>
+        <ResponsiveDialogFooter className="flex-col-reverse gap-2 sm:flex-col-reverse sm:space-x-0">
+          <ResponsiveDialogClose asChild>
             <Button type="button" variant="ghost" disabled={dropping}>
               Cancel
             </Button>
-          </DialogClose>
-          <Button
-            type="button"
-            onClick={() => void confirmDrop()}
-            disabled={dropping || !player}
-            className="gap-1.5 bg-status-loss text-white hover:bg-status-loss/90"
-          >
-            {dropping ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserMinus className="h-4 w-4" />}
-            {dropping ? "Sending\u2026" : "Drop on ESPN"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </ResponsiveDialogClose>
+          <SlideToConfirm
+            label="Slide to drop on ESPN"
+            releaseLabel="Release to drop"
+            variant="destructive"
+            onConfirm={() => void confirmDrop()}
+            pending={dropping}
+            disabled={!player}
+          />
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

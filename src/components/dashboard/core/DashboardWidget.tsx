@@ -20,6 +20,13 @@ interface DashboardWidgetProps {
    */
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
+  /**
+   * Never show the edit controls, whatever the global edit mode says. The
+   * phone stack sets it on the widget it shows expanded: that stack is
+   * read-only by contract, and a tablet turned below `md` mid-edit must not
+   * find a Remove button on it.
+   */
+  readOnly?: boolean;
   /** Fixed content height in px (stack mode); in the grid the card sizes it. */
   contentHeight?: number;
 }
@@ -33,12 +40,13 @@ export function DashboardWidget({
   collapsed = false,
   onToggleCollapsed,
   contentHeight,
+  readOnly = false,
 }: DashboardWidgetProps) {
   const { isEditMode, removeWidget } = useDashboardStore();
   const def = getWidgetDefinition(definitionId);
   const Icon = def?.icon;
   const collapsible = onToggleCollapsed !== undefined;
-  const editing = isEditMode && !collapsible;
+  const editing = isEditMode && !collapsible && !readOnly;
 
   return (
     <Card

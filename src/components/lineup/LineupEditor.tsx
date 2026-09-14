@@ -14,6 +14,7 @@ import { formatNbaDate, formatTipTime, isActiveSlot, slotName } from "@/lib/line
 import { writeBlockedCopy } from "@/types/lineup-editor";
 import { useLineupEditor } from "./LineupEditorProvider";
 import { LineupSlotRow } from "./LineupSlotRow";
+import { LineupTargetSheet } from "./LineupTargetSheet";
 
 const COLLAPSED_KEY = "cv.lineupEditor.collapsed";
 
@@ -39,8 +40,10 @@ function writeCollapsed(value: boolean) {
 }
 
 /**
- * Today's ESPN board: one row per slot, tap-to-move. Renders nothing outside a
- * `LineupEditorProvider` or for a team with no board (Yahoo).
+ * Today's ESPN board: one row per slot. From `md` it is tap-to-move (tap a
+ * player, then a highlighted slot). On phones a tap opens the slot picker
+ * drawer and a swipe left reveals Move and Drop on the row. Renders nothing
+ * outside a `LineupEditorProvider` or for a team with no board (Yahoo).
  */
 export function LineupEditor({ className }: { className?: string }) {
   const editor = useLineupEditor();
@@ -48,6 +51,11 @@ export function LineupEditor({ className }: { className?: string }) {
   // No saved preference: collapsed on phones, open from `md` (tracks the viewport live).
   const isMobile = useIsMobile();
   const collapsed = collapsedPref ?? isMobile;
+  // Phone-only state: the picker drawer (opened on Drop when a row's swipe
+  // asked for it) and the row with its actions revealed.
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetDrop, setSheetDrop] = useState(false);
+  const [revealedId, setRevealedId] = useState<number | null>(null);
 
   if (!editor) return null;
   const {
@@ -59,6 +67,7 @@ export function LineupEditor({ className }: { className?: string }) {
     staged,
     selectedPlayerId,
     selectedTargets,
+    select,
     tap,
     validation,
     moveErrors,
@@ -196,7 +205,13 @@ export function LineupEditor({ className }: { className?: string }) {
                 or the Drop row · Esc cancels
               </span>
             ) : (
-              <span>{canWrite ? "Tap a player, then the slot to move him to." : "Today's slots as ESPN has them."}</span>
+              <span>
+                {!canWrite
+                  ? "Today's slots as ESPN has them."
+                  : isMobile
+                    ? "Tap a player to move or drop him; each move is sent on its own."
+                    : "Tap a player, then the slot to move him to."}
+              </span>
             )}
             <span className="ml-auto flex items-center gap-1">
               <Lock className="h-3 w-3" /> locked at tip-off
@@ -227,12 +242,42 @@ export function LineupEditor({ className }: { className?: string }) {
                     stagedFrom={stagedFrom}
                     error={player ? errorFor(player.player_id) : null}
                     interactive={canWrite}
-                    onTap={() => tap(row.slot_id, player?.player_id ?? null)}
+                    onTap={() => {
+                      if (!isMobile) {
+                        tap(row.slot_id, player?.player_id ?? null);
+                        return;
+                      }
+                      if (!player) return;
+                      select(player.player_id);
+                      setSheetDrop(false);
+                      setSheetOpen(true);
+                    }}
+                    swipe={
+                      isMobile && canWrite && player && !player.locked
+                        ? {
+                            revealed: revealedId === player.player_id,
+                            onReveal: (open) => setRevealedId(open ? player.player_id : null),
+                            onMove: () => {
+                              setRevealedId(null);
+                              select(player.player_id);
+                              setSheetDrop(false);
+                              setSheetOpen(true);
+                            },
+                            onDrop: () => {
+                              setRevealedId(null);
+                              select(player.player_id);
+                              setSheetDrop(true);
+                              setSheetOpen(true);
+                            },
+                            canDrop: true,
+                          }
+                        : undefined
+                    }
                   />
                 </Fragment>
               );
             })}
-            {canWrite && (
+            {canWrite && !isMobile && (
               <>
                 <li aria-hidden className="h-1.5 bg-muted/40" />
                 <DropRow selectedName={selectedName} onTap={requestDrop} />
@@ -240,6 +285,20 @@ export function LineupEditor({ className }: { className?: string }) {
             )}
           </ul>
         </>
+      )}
+      {isMobile && (
+        <LineupTargetSheet
+          open={sheetOpen}
+          onOpenChange={(open) => {
+            setSheetOpen(open);
+            if (!open) {
+              setSheetDrop(false);
+              select(null);
+            }
+          }}
+          allowDrop
+          defaultDrop={sheetDrop}
+        />
       )}
     </Card>
   );

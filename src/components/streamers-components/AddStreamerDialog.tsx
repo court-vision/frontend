@@ -1,22 +1,23 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { AlertTriangle, Info, Loader2, Lock, Send } from "lucide-react";
+import { AlertTriangle, Info, Lock } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogClose,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { HintPopover } from "@/components/ui/hint";
 import { QueryErrorState } from "@/components/ui/query-error";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import { PlayerHeadshot } from "@/components/terminal/shared";
 import { useTeamLineupQuery } from "@/hooks/useLineupEditor";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
@@ -128,14 +129,14 @@ export function AddStreamerDialog({
   const positions = player ? formatPositions(player.valid_positions) : null;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
-      <DialogContent className="max-w-md gap-3 p-0 max-sm:p-0">
-        <DialogHeader className="px-5 pr-10 pt-5">
-          <DialogTitle className="flex flex-wrap items-center gap-2">
+    <ResponsiveDialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
+      <ResponsiveDialogContent className="max-w-md gap-3 p-0 max-sm:p-0">
+        <ResponsiveDialogHeader className="px-5 pr-10 pt-5">
+          <ResponsiveDialogTitle className="flex flex-wrap items-center gap-2">
             <span>{player ? `Add ${player.name} on ESPN` : "Drop a player on ESPN"}</span>
             {player?.acquisition_status === "waivers" && <WaiversBadge until={player.waivers_until} />}
-          </DialogTitle>
-          <DialogDescription>
+          </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             {player && (
               <span className="block text-foreground/80">
                 {player.team}
@@ -145,8 +146,8 @@ export function AddStreamerDialog({
             {dropOnly
               ? "This releases the player on ESPN now — he goes to waivers or the free-agent pool under your league's rules."
               : "This sends the transaction to ESPN now. Players lock at their game's tip-off."}
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         {blocked && (
           <div className="flex items-start gap-2 border-y border-status-projected/30 bg-status-projected/10 px-5 py-2 text-xs text-muted-foreground">
@@ -234,19 +235,23 @@ export function AddStreamerDialog({
           </p>
         )}
 
-        <DialogFooter className="gap-2 px-5 pb-5 sm:gap-0">
-          <DialogClose asChild>
+        <ResponsiveDialogFooter className="flex-col-reverse gap-2 px-5 pb-5 sm:flex-col-reverse sm:space-x-0">
+          <ResponsiveDialogClose asChild>
             <Button type="button" variant="ghost" disabled={pending}>
               Cancel
             </Button>
-          </DialogClose>
-          <Button type="button" onClick={submit} disabled={!canSubmit} className="gap-1.5">
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {pending ? "Sending…" : dropOnly ? "Drop on ESPN" : "Add on ESPN"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </ResponsiveDialogClose>
+          <SlideToConfirm
+            label={dropOnly ? "Slide to drop on ESPN" : "Slide to add on ESPN"}
+            releaseLabel={dropOnly ? "Release to drop" : "Release to add"}
+            variant={dropOnly ? "destructive" : "default"}
+            onConfirm={submit}
+            pending={pending}
+            disabled={!canSubmit}
+          />
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 

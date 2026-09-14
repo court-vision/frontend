@@ -57,7 +57,10 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const isFullHeightPage = pathname === "/terminal" || pathname === "/";
 
   return (
-    <div className="flex flex-col h-screen supports-[height:100dvh]:h-dvh w-full overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div
+      data-vaul-drawer-wrapper=""
+      className="flex flex-col h-screen supports-[height:100dvh]:h-dvh w-full overflow-hidden bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+    >
       {/* Command Strip */}
       <CommandStrip />
 
