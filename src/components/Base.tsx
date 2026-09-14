@@ -7,10 +7,13 @@ import * as Sentry from "@sentry/nextjs";
 import { CommandStrip } from "@/components/CommandStrip";
 import { StatusBar } from "@/components/StatusBar";
 import { MobileTabBar } from "@/components/MobileTabBar";
+import { MobileDockProvider } from "@/components/MobileDock";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { KeyboardShortcutOverlay } from "@/components/KeyboardShortcutOverlay";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
+import { useScrollTapGuard } from "@/hooks/useScrollTapGuard";
 
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 
 // Pages render immediately, so prerendered HTML carries real content (crawlers,
 // first paint) instead of a skeleton waiting on Clerk. A page shell — heading,
@@ -40,6 +43,11 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isLoaded } = useUser();
   const pathname = usePathname();
   const [authTimedOut, setAuthTimedOut] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const [dock, setDock] = useState<HTMLDivElement | null>(null);
+
+  // A touch that scrolls (or stops a momentum scroll) must not click the row under it.
+  useScrollTapGuard(mainRef);
 
   useEffect(() => {
     if (isLoaded) return;
@@ -57,6 +65,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const isFullHeightPage = pathname === "/terminal" || pathname === "/";
 
   return (
+    <MobileDockProvider value={dock}>
     <div
       data-vaul-drawer-wrapper=""
       className="flex flex-col h-screen supports-[height:100dvh]:h-dvh w-full overflow-hidden bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
@@ -74,12 +83,20 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
         </div>
       )}
 
-      {/* Main Content Area */}
-      <main className={`flex-1 overflow-y-auto overflow-x-clip overscroll-y-contain relative ${isFullHeightPage ? '' : 'p-4 md:p-5 lg:p-8'}`}>
-        <div key={pathname} className="relative z-10 page-enter">
-          {loading ? <SkeletonCard /> : children}
-        </div>
-      </main>
+      {/* Main Content Area. A pull slides <main> down to uncover the refresh
+          court parked behind it (hence its opaque background); the box keeps
+          the court below the header and clips the slid page at the bottom. */}
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        <PullToRefresh scrollerRef={mainRef} />
+        <main ref={mainRef} className={`flex-1 overflow-y-auto overflow-x-clip overscroll-y-contain relative bg-background ${isFullHeightPage ? '' : 'p-4 md:p-5 lg:p-8'}`}>
+          <div key={pathname} className="relative z-10 page-enter">
+            {loading ? <SkeletonCard /> : children}
+          </div>
+        </main>
+      </div>
+
+      {/* Phone dock (below md): page actions pinned flush on the tab bar, see MobileDockPortal */}
+      <div ref={setDock} className="md:hidden relative z-20 shrink-0" />
 
       {/* Phone tab bar (below md) — in flow, so no page needs bottom padding */}
       <MobileTabBar />
@@ -90,6 +107,7 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Keyboard Shortcut Overlay */}
       <KeyboardShortcutOverlay />
     </div>
+    </MobileDockProvider>
   );
 };
 

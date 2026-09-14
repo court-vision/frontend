@@ -50,6 +50,7 @@ import {
 } from "@/components/lineup/LineupRowControls";
 import { LineupTargetSheet } from "@/components/lineup/LineupTargetSheet";
 import { LineupApplyBar } from "@/components/lineup/LineupApplyBar";
+import { OptimizeLineupButton } from "@/components/lineup/OptimizeLineupButton";
 import { ApplyLineupDialog } from "@/components/lineup/ApplyLineupDialog";
 import { slotName } from "@/lib/lineup-editor";
 
@@ -659,6 +660,8 @@ function TeamCard({ team, isYourTeam, onPlayerClick, format, record }: TeamCardP
           <CardTitle className="text-sm font-semibold truncate">
             {team.team_name}
           </CardTitle>
+          {/* Your ESPN board only: the apply bar shows once the plan stages something */}
+          {isYourTeam && <OptimizeLineupButton className="ml-auto shrink-0" />}
         </div>
         <TeamScoreHeader
           current={team.current_score}
@@ -695,6 +698,8 @@ function LiveTeamCard({ team, isYourTeam, games, onPlayerClick, format, categori
           <CardTitle className="text-sm font-semibold truncate">
             {team.team_name}
           </CardTitle>
+          {/* Your ESPN board only: the apply bar shows once the plan stages something */}
+          {isYourTeam && <OptimizeLineupButton className="ml-auto shrink-0" />}
         </div>
         <TeamScoreHeader
           current={team.current_score}
@@ -1078,10 +1083,10 @@ export function MatchupDisplay({
           />
         ) : null}
 
-        {/* Lineup editor actions (own ESPN team only; renders nothing without a board) */}
+        {/* Lineup editor actions (own ESPN team only; renders only while moves are staged) */}
         {!(selectedDate && selectedDate !== todayDate) && (liveMatchup || matchup) && (
           <>
-            <LineupApplyBar alwaysShow />
+            <LineupApplyBar />
             <ApplyLineupDialog />
           </>
         )}

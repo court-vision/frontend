@@ -4,8 +4,8 @@ import { useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronUp, Loader2, RotateCcw, Send, Wand2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { MobileDockPortal } from "@/components/MobileDock";
 import { useIsMobile } from "@/hooks/useBreakpoint";
-import { userMessage } from "@/lib/api-error";
 import { moveRole, slotName } from "@/lib/lineup-editor";
 import { writeBlockedCopy } from "@/types/lineup-editor";
 import type { MoveError } from "@/types/lineup-editor";
@@ -18,19 +18,18 @@ const ROLE_CLASS: Record<ReturnType<typeof moveRole>, string> = {
 };
 
 interface LineupApplyBarProps {
-  /** Keep the bar on screen with no staged moves (the matchup page has no other "Optimize" button). */
-  alwaysShow?: boolean;
   className?: string;
 }
 
 /**
  * The staged moves, their validation, and the actions: Optimize today, Reset,
- * Apply on ESPN. Sits inline from `md`. On phones it sticks to the bottom of
- * the scroll area (just above the tab bar) as a one-line pill — the count and
- * Apply — that expands on tap to the move list and the other actions, so the
- * board underneath stays readable.
+ * Apply on ESPN. Renders only while something is staged — Optimize itself
+ * lives on the board and the matchup card, and a plan with nothing to do is a
+ * toast. Sits inline from `md`. On phones it docks between the page and the
+ * tab bar as a one-line pill — the count and Apply — that expands on tap to
+ * the move list and the other actions.
  */
-export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBarProps) {
+export function LineupApplyBar({ className }: LineupApplyBarProps) {
   const editor = useLineupEditor();
   const isMobile = useIsMobile();
   const [expanded, setExpanded] = useState(false);
@@ -46,7 +45,6 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
     loadPlan,
     planStatus,
     plan,
-    planError,
     canWrite,
     blockedReason,
     applying,
@@ -54,8 +52,7 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
     playerById,
   } = editor;
 
-  const idle = moves.length === 0 && planStatus === "idle";
-  if (idle && !alwaysShow) return null;
+  if (moves.length === 0) return null;
 
   const seen = new Set<string>();
   const errors: MoveError[] = [...moveErrors, ...validation].filter((e) => {
@@ -64,19 +61,15 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
     seen.add(key);
     return true;
   });
-  const canApply = canWrite && moves.length > 0 && validation.length === 0 && !applying;
+  const canApply = canWrite && validation.length === 0 && !applying;
   const showDetails = !isMobile || expanded;
   const summary =
     planStatus === "loading"
       ? "Planning today's moves…"
-      : planStatus === "error"
-        ? "Couldn't plan today's moves"
-        : moves.length > 0
-          ? `${moves.length} move${moves.length === 1 ? "" : "s"} staged`
-          : (plan?.summary ?? "Nothing staged");
+      : `${moves.length} move${moves.length === 1 ? "" : "s"} staged`;
 
-  return (
-    <div className={cn("z-20 max-md:sticky max-md:bottom-0 max-md:-mx-4", className)}>
+  const bar = (
+    <div className={className}>
       <div
         className={cn(
           "border border-border bg-card text-card-foreground",
@@ -108,21 +101,15 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
           >
             {applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             Apply
-            {moves.length > 0 && <span className="font-mono tabular-nums">({moves.length})</span>}
+            <span className="font-mono tabular-nums">({moves.length})</span>
           </Button>
         </div>
 
         {showDetails && (
-        <div className="space-y-2 px-3 py-2.5 max-md:border-t max-md:border-border/60 md:px-4 md:py-3">
+        <div className="space-y-2 px-3 py-2.5 max-md:max-h-[50dvh] max-md:overflow-y-auto max-md:border-t max-md:border-border/60 md:px-4 md:py-3">
           {planStatus === "loading" && (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Planning today&apos;s moves…
-            </p>
-          )}
-          {planStatus === "error" && (
-            <p className="flex items-start gap-1.5 text-xs text-status-loss">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              {userMessage(planError, "Couldn't plan today's moves")}
             </p>
           )}
           {planStatus === "loaded" && plan && (
@@ -141,42 +128,35 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
               ))}
             </div>
           )}
-          {idle && (
-            <p className="text-xs text-muted-foreground">
-              Move a player, or let Court Vision fill today&apos;s open seats.
-            </p>
-          )}
 
-          {moves.length > 0 && (
-            <ul className="space-y-1">
-              {moves.map((m) => {
-                const role = moveRole(m);
-                return (
-                  <li key={m.player_id} className="flex min-h-[28px] items-center gap-2 text-sm">
-                    <span className={cn("w-10 shrink-0 font-mono text-[10px] uppercase", ROLE_CLASS[role])}>
-                      {role}
+          <ul className="space-y-1">
+            {moves.map((m) => {
+              const role = moveRole(m);
+              return (
+                <li key={m.player_id} className="flex min-h-[28px] items-center gap-2 text-sm">
+                  <span className={cn("w-10 shrink-0 font-mono text-[10px] uppercase", ROLE_CLASS[role])}>
+                    {role}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {playerById.get(m.player_id)?.name ?? `Player ${m.player_id}`}
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {" "}
+                      {slotName(m.from_slot_id)} → {slotName(m.to_slot_id)}
                     </span>
-                    <span className="min-w-0 flex-1 truncate">
-                      {playerById.get(m.player_id)?.name ?? `Player ${m.player_id}`}
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {" "}
-                        {slotName(m.from_slot_id)} → {slotName(m.to_slot_id)}
-                      </span>
-                    </span>
-                    <button
-                      type="button"
-                      aria-label={`Undo move for ${playerById.get(m.player_id)?.name ?? "player"}`}
-                      onClick={() => unstage(m.player_id)}
-                      disabled={applying}
-                      className="touch-hit inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Undo move for ${playerById.get(m.player_id)?.name ?? "player"}`}
+                    onClick={() => unstage(m.player_id)}
+                    disabled={applying}
+                    className="touch-hit inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
 
           {errors.length > 0 && (
             <ul className="space-y-0.5" aria-live="polite">
@@ -204,17 +184,15 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
               <span className="max-sm:hidden">Optimize today</span>
               <span className="sm:hidden">Optimize</span>
             </Button>
-            {!idle && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-9 gap-1.5 text-xs text-muted-foreground md:h-8"
-                onClick={reset}
-                disabled={applying}
-              >
-                <RotateCcw className="h-3.5 w-3.5" /> Reset
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 gap-1.5 text-xs text-muted-foreground md:h-8"
+              onClick={reset}
+              disabled={applying}
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Reset
+            </Button>
             <Button
               size="sm"
               className="ml-auto h-9 gap-1.5 text-xs max-md:hidden md:h-8"
@@ -223,10 +201,10 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
             >
               {applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
               Apply on ESPN
-              {moves.length > 0 && <span className="font-mono tabular-nums">({moves.length})</span>}
+              <span className="font-mono tabular-nums">({moves.length})</span>
             </Button>
           </div>
-          {!canWrite && moves.length > 0 && (
+          {!canWrite && (
             <p className="text-[11px] text-muted-foreground">{writeBlockedCopy(blockedReason ?? state.write_blocked_reason)}</p>
           )}
         </div>
@@ -234,4 +212,6 @@ export function LineupApplyBar({ alwaysShow = false, className }: LineupApplyBar
       </div>
     </div>
   );
+
+  return isMobile ? <MobileDockPortal>{bar}</MobileDockPortal> : bar;
 }
