@@ -130,17 +130,30 @@ export function SlideToConfirm({
     if (!draggingRef.current || !travel) return;
     setP(start.current.progress + (e.clientX - start.current.x) / travel);
   };
+  const springBack = () => {
+    progressRef.current = 0;
+    setProgress(0);
+    armed.current = false;
+  };
+  /** A release: past the threshold it confirms, short of it the knob springs back. */
   const onPointerEnd = React.useCallback(() => {
     if (!draggingRef.current) return;
     draggingRef.current = false;
     setDragging(false);
     if (progressRef.current >= THRESHOLD) confirm();
-    else {
-      progressRef.current = 0;
-      setProgress(0);
-      armed.current = false;
-    }
+    else springBack();
   }, [confirm]);
+  /**
+   * An interrupted gesture — the browser took the pointer for a scroll, the
+   * window lost focus, a call came in — never confirms, wherever the knob
+   * was. Only a deliberate release does.
+   */
+  const onPointerAbort = React.useCallback(() => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    setDragging(false);
+    springBack();
+  }, []);
 
   // The drag ends wherever the pointer is let go — off the knob, off the
   // track, outside the window — so the release is heard at the window too.
@@ -152,15 +165,15 @@ export function SlideToConfirm({
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", onPointerEnd);
-    window.addEventListener("pointercancel", onPointerEnd);
-    window.addEventListener("blur", onPointerEnd);
+    window.addEventListener("pointercancel", onPointerAbort);
+    window.addEventListener("blur", onPointerAbort);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", onPointerEnd);
-      window.removeEventListener("pointercancel", onPointerEnd);
-      window.removeEventListener("blur", onPointerEnd);
+      window.removeEventListener("pointercancel", onPointerAbort);
+      window.removeEventListener("blur", onPointerAbort);
     };
-  }, [dragging, travel, onPointerEnd]);
+  }, [dragging, travel, onPointerEnd, onPointerAbort]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (inactive) return;
@@ -244,7 +257,7 @@ export function SlideToConfirm({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerEnd}
-        onPointerCancel={onPointerEnd}
+        onPointerCancel={onPointerAbort}
         className={cn(
           "absolute left-1 top-1 flex h-10 w-10 items-center justify-center rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.35)]",
           tone.knob,

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/drawer";
 import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import { userMessage } from "@/lib/api-error";
-import { gameLabel, occupants, slotCapacity, slotName, swapPartner } from "@/lib/lineup-editor";
+import { eligibleTargets, gameLabel, occupants, slotCapacity, slotName, swapPartner } from "@/lib/lineup-editor";
 import { transactionError } from "@/lib/roster-transaction";
 import { useLineupEditor } from "./LineupEditorProvider";
 
@@ -27,6 +27,14 @@ interface LineupTargetSheetProps {
 }
 
 type Pick = number | "drop" | null;
+
+/**
+ * The picker describes the board as ESPN has it, not as the optimizer has
+ * staged it: `applyMove` writes from the raw board, and the write's re-read
+ * clears any staging, so describing a staged arrangement would promise a
+ * move the send does not make.
+ */
+const UNSTAGED = {} as Parameters<typeof occupants>[1];
 
 /**
  * Phone picker for one player: tap the destination — an eligible slot, who
@@ -57,7 +65,8 @@ export function LineupTargetSheet({
     if (open) setPick(defaultDrop && allowDrop ? "drop" : null);
   }, [open, selected, defaultDrop, allowDrop]);
 
-  const targets = editor?.selectedTargets ?? [];
+  const targets = state && player ? eligibleTargets(state, UNSTAGED, player.player_id) : [];
+  const stagedCount = editor?.moves.length ?? 0;
   const pending = pick === "drop" ? !!editor?.dropping : !!editor?.applying;
   const error =
     pick === "drop"
@@ -69,9 +78,9 @@ export function LineupTargetSheet({
   const describePick = (): { label: string; release: string } => {
     if (!state || !editor || !player || pick === null) return { label: "Pick a destination", release: "" };
     if (pick === "drop") return { label: `Slide to drop ${player.name} on ESPN`, release: "Release to drop" };
-    const holders = occupants(state, editor.staged, pick);
+    const holders = occupants(state, UNSTAGED, pick);
     const seatOpen = holders.length < slotCapacity(state, pick);
-    const partner = seatOpen ? null : swapPartner(state, editor.staged, player.player_id, pick);
+    const partner = seatOpen ? null : swapPartner(state, UNSTAGED, player.player_id, pick);
     return partner
       ? { label: `Slide to swap with ${partner.name}`, release: "Release to swap" }
       : { label: `Slide to move to ${slotName(pick)}`, release: "Release to move" };
@@ -94,9 +103,13 @@ export function LineupTargetSheet({
         <DrawerHeader className="px-4 pb-3 pt-1 text-left">
           <DrawerTitle className="text-sm">Move {player?.name ?? "player"}</DrawerTitle>
           <DrawerDescription className="text-xs">
-            {player && editor
-              ? `${slotName(editor.assignment.get(player.player_id) ?? player.lineup_slot_id)} · ${gameLabel(player)}`
-              : "Pick where he goes."}
+            {player ? `${slotName(player.lineup_slot_id)} · ${gameLabel(player)}` : "Pick where he goes."}
+            {stagedCount > 0 && (
+              <span className="mt-1 block text-status-projected">
+                Your {stagedCount} staged move{stagedCount === 1 ? "" : "s"} {stagedCount === 1 ? "is" : "are"} not
+                part of this and will be cleared.
+              </span>
+            )}
           </DrawerDescription>
         </DrawerHeader>
 
@@ -109,9 +122,9 @@ export function LineupTargetSheet({
             ) : (
               <ul className="divide-y divide-border/50">
                 {targets.map((slot) => {
-                  const holders = occupants(state, editor.staged, slot);
+                  const holders = occupants(state, UNSTAGED, slot);
                   const seatOpen = holders.length < slotCapacity(state, slot);
-                  const partner = seatOpen ? null : swapPartner(state, editor.staged, player.player_id, slot);
+                  const partner = seatOpen ? null : swapPartner(state, UNSTAGED, player.player_id, slot);
                   const checked = pick === slot;
                   return (
                     <li key={slot}>

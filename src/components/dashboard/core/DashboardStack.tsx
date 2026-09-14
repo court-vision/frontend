@@ -99,6 +99,7 @@ export function DashboardStack({ teamKey, widgets }: DashboardStackProps) {
             definitionId={picked.definitionId}
             teamKey={teamKey}
             contentHeight={contentHeightFor(picked)}
+            readOnly
           >
             <DashboardWidgetRenderer definitionId={picked.definitionId} />
           </DashboardWidget>

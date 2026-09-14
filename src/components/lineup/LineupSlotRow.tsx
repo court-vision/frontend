@@ -77,7 +77,10 @@ export function LineupSlotRow({
   const revealWidth = swipeable ? ACTION_W * (swipe!.canDrop ? 2 : 1) : 0;
 
   // Live drag offset (px, 0..revealWidth) while a finger is on the row; null at rest.
+  // The ref carries the same value synchronously: a flick can move and lift
+  // before React paints, and the lift must judge where the finger got to.
   const [drag, setDrag] = useState<number | null>(null);
+  const dragRef = useRef<number | null>(null);
   const touch = useRef<{ x: number; y: number; base: number; axis: "x" | "y" | null } | null>(null);
 
   const onTouchStart = (e: TouchEvent) => {
@@ -97,13 +100,16 @@ export function LineupSlotRow({
       start.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
     }
     if (start.axis !== "x") return;
-    setDrag(Math.min(revealWidth, Math.max(0, start.base - dx)));
+    const next = Math.min(revealWidth, Math.max(0, start.base - dx));
+    dragRef.current = next;
+    setDrag(next);
   };
   const onTouchEnd = () => {
     const start = touch.current;
     touch.current = null;
     if (!start || start.axis !== "x") return;
-    const shift = drag ?? start.base;
+    const shift = dragRef.current ?? start.base;
+    dragRef.current = null;
     setDrag(null);
     swipe!.onReveal(shift > revealWidth / 2);
   };
@@ -129,7 +135,15 @@ export function LineupSlotRow({
   return (
     <li className={cn(swipeable && "relative overflow-hidden")}>
       {swipeable && (
-        <div className="absolute inset-y-0 right-0 flex" aria-hidden={!swipe!.revealed}>
+        <div
+          className={cn(
+            "absolute inset-y-0 right-0 flex",
+            // Out of sight until a swipe moves the row: a dimmed row is
+            // translucent and would otherwise show the strip through itself.
+            shift === 0 && "invisible"
+          )}
+          aria-hidden={!swipe!.revealed}
+        >
           <button
             type="button"
             tabIndex={swipe!.revealed ? 0 : -1}
