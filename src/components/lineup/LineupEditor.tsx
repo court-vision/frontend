@@ -1,9 +1,8 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { CalendarDays, ChevronDown, Info, Loader2, Lock, UserMinus, Wand2 } from "lucide-react";
+import { CalendarDays, ChevronDown, Info, Lock, UserMinus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-error";
@@ -15,6 +14,7 @@ import { writeBlockedCopy } from "@/types/lineup-editor";
 import { useLineupEditor } from "./LineupEditorProvider";
 import { LineupSlotRow } from "./LineupSlotRow";
 import { LineupTargetSheet } from "./LineupTargetSheet";
+import { OptimizeLineupButton } from "./OptimizeLineupButton";
 
 const COLLAPSED_KEY = "cv.lineupEditor.collapsed";
 
@@ -71,8 +71,6 @@ export function LineupEditor({ className }: { className?: string }) {
     tap,
     validation,
     moveErrors,
-    loadPlan,
-    planStatus,
     canWrite,
     blockedReason,
     requestDrop,
@@ -155,21 +153,7 @@ export function LineupEditor({ className }: { className?: string }) {
               </span>
             </HintPopover>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => void loadPlan()}
-            disabled={planStatus === "loading"}
-          >
-            {planStatus === "loading" ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Wand2 className="h-3.5 w-3.5" />
-            )}
-            <span className="max-sm:hidden">Optimize today</span>
-            <span className="sm:hidden">Optimize</span>
-          </Button>
+          <OptimizeLineupButton />
         </div>
       </div>
 

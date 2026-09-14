@@ -16,7 +16,7 @@ import {
   useTeamLineupQuery,
 } from "@/hooks/useLineupEditor";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
-import { ROSTER_MOVE_INVALID, toApiError, type ApiError } from "@/lib/api-error";
+import { ROSTER_MOVE_INVALID, toApiError, userMessage, type ApiError } from "@/lib/api-error";
 import {
   assignment as computeAssignment,
   diff,
@@ -312,16 +312,28 @@ export function LineupEditorProvider({ teamId, mock, children }: LineupEditorPro
     } else {
       const result = await planRefetch();
       if (result.error || !result.data) {
-        setPlanStore({
-          status: "error",
-          plan: null,
-          error: result.error ?? new Error("No plan returned"),
-        });
+        const error = result.error ?? new Error("No plan returned");
+        setPlanStore({ status: "error", plan: null, error });
+        toast.error(userMessage(error, "Couldn't plan today's moves"));
         return;
       }
       plan = result.data;
     }
-    write(() => ({ staged: planToStaged(state, plan), selected: null }));
+    const next = planToStaged(state, plan);
+    // Nothing to stage: a toast, not an apply bar with nothing to apply.
+    // Whatever was already staged stays put.
+    if (diff(state, next).length === 0) {
+      setPlanStore(PLAN_IDLE);
+      const benched = plan.unfilled.map((u) => u.name);
+      toast("Nothing to fill today", {
+        description:
+          benched.length > 0
+            ? `Still on the bench: ${benched.join(", ")} — every slot they fit is full or locked.`
+            : "Your lineup is already set.",
+      });
+      return;
+    }
+    write(() => ({ staged: next, selected: null }));
     setPlanStore({ status: "loaded", plan, error: null });
   }, [state, mock, planRefetch, write]);
 
