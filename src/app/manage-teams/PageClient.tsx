@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { YahooOAuthState } from "@/types/yahoo";
 import { PageHeader } from "@/components/PageHeader";
+import { yahooConnectErrorMessage } from "@/lib/yahoo-connect";
 
 function ManageTeamsContent() {
   const searchParams = useSearchParams();
@@ -28,9 +29,8 @@ function ManageTeamsContent() {
     const connectionId = searchParams.get("yahoo_connection");
 
     if (yahooError) {
-      // Truncate to prevent message injection from crafted URLs
-      const safeError = yahooError.slice(0, 100);
-      toast.error(`Yahoo connection failed: ${safeError}`);
+      // A known code becomes a sentence; anything else is shown as-is, truncated
+      toast.error(yahooConnectErrorMessage(yahooError));
       // Clean URL
       router.replace("/manage-teams");
       return;
