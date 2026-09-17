@@ -107,16 +107,22 @@ export interface DraftRecapResult {
   message: string;
 }
 
+/** Whose rank orders the rows: the server's call for the room, not a toggle. */
+export type RankBasis = NonNullable<DraftBoardMeta["rank_basis"]>;
+
 /**
- * Board sort columns. `cv_rank` is the default: the big board's own order.
+ * Board sort columns. `board_rank` is the default: the board's own order, which
+ * is ESPN's published rank in an ESPN room and CV's rank otherwise
+ * (`meta.rank_basis`).
  *
  * `cat:<key>` sorts by one of the league's own categories, so the set is only
  * known once `meta.categories` arrives — hence the template literal rather
  * than an enumeration. `fit_rank` and the category keys exist only in a
  * category league; `columnsFor` is what decides, and `sortableKey` sends a
- * persisted key that this league has no column for back to `cv_rank`.
+ * persisted key that this league has no column for back to `board_rank`.
  */
 export type BoardSortKey =
+  | "board_rank"
   | "cv_rank"
   | "name"
   | "value"
@@ -143,9 +149,14 @@ export type PickSortKey =
   | "value"
   | "cv_rank"
   | "surplus_cv"
+  | "market_rank"
+  | "surplus_espn"
   | "adp"
   | "surplus_market"
+  | "market_value"
   | "value_over_slot"
+  | "market_value_over_slot"
+  | "market_value_over_bid"
   | "bid";
 
 /** Position filter over a row's ESPN primary position; `all` disables it. */

@@ -113,13 +113,13 @@ export function RecapSeatCards({ seats, picks, gradedBy, selected, onSelect }: R
             </div>
 
             <div className="mt-1.5 space-y-0.5 font-mono text-[10px] text-muted-foreground/70">
-              <div className="truncate" title={best ? `Best pick: ${pickLabel(best)}` : undefined}>
+              <div className="truncate" title={best ? `Best pick: ${pickLabel(best, gradedBy)}` : undefined}>
                 <span className="text-muted-foreground/50">best </span>
-                {pickLabel(best)}
+                {pickLabel(best, gradedBy)}
               </div>
-              <div className="truncate" title={worst ? `Worst pick: ${pickLabel(worst)}` : undefined}>
+              <div className="truncate" title={worst ? `Worst pick: ${pickLabel(worst, gradedBy)}` : undefined}>
                 <span className="text-muted-foreground/50">worst </span>
-                {pickLabel(worst)}
+                {pickLabel(worst, gradedBy)}
               </div>
               <div>
                 {seat.picks} pick{seat.picks === 1 ? "" : "s"}

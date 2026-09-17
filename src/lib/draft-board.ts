@@ -16,12 +16,14 @@ import type {
   DraftBoardMeta,
   DraftBoardRow,
   PositionFilter,
+  RankBasis,
   SortDirection,
 } from "@/types/draft";
 import type { CategoryDef } from "@/types/scoring";
 
 /** Rank-like columns are better ascending; value-like columns descending. */
 export const ASCENDING_BY_NATURE: BoardSortKey[] = [
+  "board_rank",
   "cv_rank",
   "fit_rank",
   "market_rank",
@@ -64,6 +66,8 @@ export function sortValue(row: DraftBoardRow, key: BoardSortKey): number | strin
   switch (key) {
     case "name":
       return row.name.toLowerCase();
+    case "board_rank":
+      return row.board_rank;
     case "cv_rank":
       return row.cv_rank;
     case "fit_rank":
@@ -103,8 +107,10 @@ export function matchesView(row: DraftBoardRow, view: BoardView): boolean {
 }
 
 /**
- * Filter then sort. Ties break on `cv_rank` so equal values keep the big
- * board's own order instead of shuffling between renders.
+ * Filter then sort. Ties break on `cv_rank` so equal values keep a stable
+ * order instead of shuffling between renders — on the board's own column that
+ * is also the server's rule, so two players ESPN ranks the same, or the
+ * unranked tail, read in the same order here as on the wire.
  */
 export function visibleRows(rows: DraftBoardRow[], view: BoardView): DraftBoardRow[] {
   const direction = view.sortDirection === "asc" ? 1 : -1;
@@ -181,24 +187,44 @@ export interface BoardColumn {
   category?: CategoryDef;
 }
 
-/** The columns every league has, in order. `Fit` slots in after `Value`. */
-const BASE_COLUMNS: BoardColumn[] = [
-  { key: "cv_rank", label: "#", className: "w-10", align: "center", sortable: true,
-    title: "CV rank over the full pool — stable all draft long" },
-  { key: "name", label: "Player", className: "flex-[3] min-w-[180px]", align: "left", sortable: true },
-  { key: "value", label: "Value", className: "w-16", align: "right", sortable: true,
-    title: "Per-game value under this league's scoring" },
-  { key: "market_rank", label: "Mkt", className: "w-12", align: "right", sortable: true,
-    title: "ESPN editorial draft rank" },
-  { key: "adp", label: "ADP", className: "w-14", align: "right", sortable: true,
-    title: "Average draft position across real ESPN drafts" },
-  { key: "market_delta", label: "Δ", className: "w-12", align: "right", sortable: true,
-    title: "market rank − CV rank; positive is a bargain" },
-  { key: "availability", label: "Avail", className: "w-16", align: "center", sortable: true,
-    title: "Whether he lasts until your next pick, from ADP against that pick" },
-  { key: "projected_gp", label: "GP", className: "w-12", align: "right", sortable: true,
-    title: "Projected games this season" },
-];
+/** The rank column that is *not* the gutter: the other opinion, beside the name. */
+const OTHER_RANK: Record<RankBasis, BoardColumn> = {
+  espn: { key: "cv_rank", label: "CV", className: "w-12", align: "right", sortable: true,
+    title: "Court Vision's rank over the full pool — stable all draft long" },
+  cv: { key: "market_rank", label: "ESPN", className: "w-12", align: "right", sortable: true,
+    title: "ESPN's published draft rank for this league's format" },
+};
+
+const GUTTER_TITLE: Record<RankBasis, string> = {
+  espn: "ESPN's published rank for this league's format — the board you are drafting off",
+  cv: "CV rank over the full pool — stable all draft long",
+};
+
+/**
+ * The columns every league has, in order. `Fit` slots in after `Value`.
+ *
+ * One rank sits in the gutter and the other beside the name, never the same
+ * number twice: in an ESPN room the gutter is ESPN's published rank and the
+ * column is CV's; in a room CV orders it is the other way round.
+ */
+function baseColumns(basis: RankBasis): BoardColumn[] {
+  return [
+    { key: "board_rank", label: "#", className: "w-10", align: "center", sortable: true,
+      title: GUTTER_TITLE[basis] },
+    { key: "name", label: "Player", className: "flex-[3] min-w-[180px]", align: "left", sortable: true },
+    { key: "value", label: "Value", className: "w-16", align: "right", sortable: true,
+      title: "Per-game value under this league's scoring" },
+    OTHER_RANK[basis],
+    { key: "adp", label: "ADP", className: "w-14", align: "right", sortable: true,
+      title: "Average draft position across real ESPN drafts" },
+    { key: "market_delta", label: "Δ", className: "w-12", align: "right", sortable: true,
+      title: "ESPN rank − CV rank; positive means CV likes him more than ESPN does" },
+    { key: "availability", label: "Avail", className: "w-16", align: "center", sortable: true,
+      title: "Whether he lasts until your next pick, from ADP against that pick" },
+    { key: "projected_gp", label: "GP", className: "w-12", align: "right", sortable: true,
+      title: "Projected games this season" },
+  ];
+}
 
 const FIT_COLUMN: BoardColumn = {
   key: "fit_rank",
@@ -210,7 +236,8 @@ const FIT_COLUMN: BoardColumn = {
 };
 
 export function columnsFor(meta: DraftBoardMeta | null): BoardColumn[] {
-  if (meta?.value_kind !== "cat_value") return BASE_COLUMNS;
+  const base = baseColumns(meta?.rank_basis ?? "cv");
+  if (meta?.value_kind !== "cat_value") return base;
   const punts = new Set(meta.punts ?? []);
   const categories: BoardColumn[] = (meta.categories ?? []).map((def) => ({
     key: `cat:${def.key}` as BoardSortKey,
@@ -224,9 +251,42 @@ export function columnsFor(meta: DraftBoardMeta | null): BoardColumn[] {
     punted: punts.has(def.key),
     category: def,
   }));
-  const withFit = [...BASE_COLUMNS];
-  withFit.splice(BASE_COLUMNS.findIndex((c) => c.key === "value") + 1, 0, FIT_COLUMN);
+  const withFit = [...base];
+  withFit.splice(base.findIndex((c) => c.key === "value") + 1, 0, FIT_COLUMN);
   return [...withFit, ...categories];
+}
+
+/**
+ * What the board's order is, for the filter bar. The gutter number reads as
+ * "the rank" whoever produced it, so the bar says whose, and — when it is not
+ * ESPN's in a room that would normally take ESPN's — why not.
+ */
+export function basisNote(meta: DraftBoardMeta | null): { label: string; title: string } | null {
+  if (!meta) return null;
+  if (meta.rank_basis === "espn") {
+    const board = meta.market_rank_type === "roto" ? "categories" : "points";
+    const asOf = meta.market_as_of ? ` · as of ${meta.market_as_of}` : "";
+    return {
+      label: `ESPN ${board} board${asOf}`,
+      title:
+        "Rows are in ESPN's published draft order for this league's format; " +
+        "Court Vision's rank is the column beside the name",
+    };
+  }
+  switch (meta.rank_basis_reason) {
+    case "no_market_snapshot":
+      return {
+        label: "CV board — no ESPN snapshot yet",
+        title: "No ESPN draft snapshot has been taken for this season, so the rows are in Court Vision's order",
+      };
+    case "provider_not_espn":
+      return {
+        label: "CV board — not an ESPN league",
+        title: "Only ESPN's rankings reach the platform, so a league elsewhere drafts off Court Vision's order",
+      };
+    default:
+      return { label: "CV board", title: "Rows are in Court Vision's order" };
+  }
 }
 
 /**
@@ -236,7 +296,7 @@ export function columnsFor(meta: DraftBoardMeta | null): BoardColumn[] {
  * sorting every row by a null.
  */
 export function sortableKey(key: BoardSortKey, columns: BoardColumn[]): BoardSortKey {
-  return columns.some((column) => column.key === key) ? key : "cv_rank";
+  return columns.some((column) => column.key === key) ? key : "board_rank";
 }
 
 /**
