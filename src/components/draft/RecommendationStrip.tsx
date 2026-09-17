@@ -21,6 +21,11 @@ import type { DraftRecommendation } from "@/types/draft";
  * ESPN" sends it to ESPN over the draft room's own connection and appears only
  * when the room can do that (`onDraft`); it is enabled only while ESPN says it
  * is your turn, with the reason it is not as its tooltip otherwise.
+ *
+ * Under `source: "espn"` the ordering is ESPN's, so their rank leads the card
+ * and the CV score is labelled as the second opinion it is. The components are
+ * rendered either way: the whole point of showing them next to someone else's
+ * ranking is being able to see where the two disagree, and by how much.
  */
 function componentTone(value: number): string {
   if (value > 0) return "text-green-500";
@@ -98,12 +103,27 @@ export function RecommendationStrip({
             </div>
 
             <div className="mt-0.5 flex items-baseline gap-1.5 font-mono text-[10px] text-muted-foreground">
-              <span className="text-sm font-bold tabular-nums text-primary">
-                {rec.score.toFixed(1)}
-              </span>
-              <span>score</span>
-              <span className="text-border">·</span>
-              <span className="tabular-nums">{rec.value.toFixed(1)}/g</span>
+              {rec.source === "espn" ? (
+                <>
+                  <span className="text-sm font-bold tabular-nums text-primary">
+                    {rec.market_rank === null ? "—" : `#${rec.market_rank}`}
+                  </span>
+                  <span>ESPN</span>
+                  <span className="text-border">·</span>
+                  <span className="tabular-nums" title="Court Vision's own score for this player">
+                    cv {rec.score.toFixed(1)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-sm font-bold tabular-nums text-primary">
+                    {rec.score.toFixed(1)}
+                  </span>
+                  <span>score</span>
+                  <span className="text-border">·</span>
+                  <span className="tabular-nums">{rec.value.toFixed(1)}/g</span>
+                </>
+              )}
             </div>
 
             <div className="mt-1.5 space-y-0.5">

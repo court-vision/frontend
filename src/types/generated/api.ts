@@ -308,6 +308,8 @@ export interface paths {
          *
          *     Category leagues also carry `fit_value`/`fit_rank`: the same board re-scored for the caller's own roster, with any `punt` categories weighing zero.
          *
+         *     `market_rank` and `auction_value` come from the ESPN board matching the league's format — STANDARD for points, ROTO for categories — which `meta.market_rank_type` names.
+         *
          *     Stateless: pick state rides in the query params, so there is no slot to count from and rows carry no availability. Use the session board once a draft room is open.
          */
         get: operations["get_draft_board_v1_internal_drafts_board_get"];
@@ -368,6 +370,8 @@ export interface paths {
          *     Category leagues additionally carry `fit_value`/`fit_rank` — the board re-scored for this roster, with the session's `punts` at zero weight — a `category_fit` component on every recommendation, and `meta.category_need`, which says how far the roster trails an average team in each category.
          *
          *     Rows with market data carry `availability` (`likely`/`tossup`/`gone`) for the caller's next pick — the pick after that while the caller is on the clock.
+         *
+         *     `rank_source` chooses what orders the recommendations: ESPN's own board for this league's format (the default), or Court Vision's composite score. Every component is computed either way, so switching views never changes the numbers on a card — only which of the two opinions put it at the top.
          */
         get: operations["get_draft_session_board_v1_internal_drafts__session_id__board_get"];
         put?: never;
@@ -522,57 +526,6 @@ export interface paths {
          *     Idempotent by design: the room's tab posts this on every connect, so a reconnect re-posts the whole snapshot and only the newly-made picks are inserted.
          */
         post: operations["sync_draft_init_v1_internal_drafts__session_id__sync_init_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/internal/espn/get_freeagent_data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Get Free Agents */
-        post: operations["get_free_agents_v1_internal_espn_get_freeagent_data_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/internal/espn/get_roster_data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Get Team Data */
-        post: operations["get_team_data_v1_internal_espn_get_roster_data_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/internal/espn/validate_league": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Validate League */
-        post: operations["validate_league_v1_internal_espn_validate_league_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1494,46 +1447,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/internal/yahoo/get_freeagent_data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Get Free Agents
-         * @description Get available free agents from a Yahoo league.
-         */
-        post: operations["get_free_agents_v1_internal_yahoo_get_freeagent_data_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/internal/yahoo/get_roster_data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Get Roster Data
-         * @description Get roster data for a Yahoo team.
-         */
-        post: operations["get_roster_data_v1_internal_yahoo_get_roster_data_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/internal/yahoo/leagues": {
         parameters: {
             query?: never;
@@ -1574,28 +1487,6 @@ export interface paths {
         get: operations["get_league_teams_v1_internal_yahoo_teams_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/internal/yahoo/validate_league": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Validate Yahoo League
-         * @description Validate Yahoo league credentials.
-         *
-         *     Checks if the provided credentials can access the specified team.
-         */
-        post: operations["validate_yahoo_league_v1_internal_yahoo_validate_league_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2933,6 +2824,13 @@ export interface components {
              */
             market_only_count: number;
             /**
+             * Market Rank Type
+             * @description Which of ESPN's two boards `market_rank` and `auction_value` come from: `standard` for points leagues, `roto` for category leagues. They are separate opinions — over ESPN's own top 150 they disagree by a mean of 28 places.
+             * @default standard
+             * @enum {string}
+             */
+            market_rank_type: "standard" | "roto";
+            /**
              * Pace Source
              * @description What `category_need` was measured against: `seats` reads the opposing rosters in this room, `tier` estimates an average team from the draftable pool (a room with no confirmed slot, or before enough seats have drafted). None for points leagues.
              */
@@ -2963,6 +2861,20 @@ export interface components {
              * @default []
              */
             punts: string[];
+            /**
+             * Rank Source
+             * @description What actually ordered `recommendations` on this response
+             * @default espn
+             * @enum {string}
+             */
+            rank_source: "espn" | "cv";
+            /**
+             * Rank Source Requested
+             * @description What the caller asked for. Differs from `rank_source` only when `espn` was asked for and no market snapshot exists yet, which falls back to `cv`.
+             * @default espn
+             * @enum {string}
+             */
+            rank_source_requested: "espn" | "cv";
             /**
              * Roster Slots
              * @default {}
@@ -3023,12 +2935,12 @@ export interface components {
         DraftBoardRow: {
             /**
              * Adp
-             * @description Average draft position across real ESPN drafts
+             * @description Average draft position across real ESPN drafts. Unlike `market_rank` this is NOT format-specific: ESPN publishes one crowd average, sampled from the reference league's own format (points). A category room should read it as a rough availability signal, not as its own format's ADP.
              */
             adp: number | null;
             /**
              * Auction Value
-             * @description ESPN editorial auction value
+             * @description ESPN editorial auction value from the same board as `market_rank`
              */
             auction_value: number | null;
             /**
@@ -3095,7 +3007,7 @@ export interface components {
             market_delta: number | null;
             /**
              * Market Rank
-             * @description ESPN editorial overall draft rank (latest snapshot)
+             * @description ESPN editorial draft rank from the latest snapshot, taken from the board that matches the league's format — see `meta.market_rank_type`. Falls back to the points board on snapshots written before the category board was captured.
              */
             market_rank: number | null;
             /** Name */
@@ -3140,6 +3052,11 @@ export interface components {
              * @description League-scored per-game value: fantasy points under the league's weights, or the fpts-scale category value. None for a market-only row — a player ESPN ranks but neither a projection nor last season's baseline can value (a rookie, before projections).
              */
             value: number | null;
+            /**
+             * Value Season
+             * @description Set only when a baseline `value` came from an OLDER season than the board's own previous one, e.g. `2024-25` on a 2026-27 board — a player who missed last season entirely is valued off the most recent one he played, and that value is a year staler than every other row. None for everyone valued from last season, and for projection and market-only rows.
+             */
+            value_season: string | null;
             /**
              * Value Source
              * @description projection: ESPN's published per-game projection. baseline: last season's per-game averages. market: no stat line at all — the row exists because ESPN drafts him.
@@ -3568,6 +3485,11 @@ export interface components {
              * @default []
              */
             components: components["schemas"]["RecommendationComponent"][];
+            /**
+             * Market Rank
+             * @description ESPN's draft rank for the league's format; None for a player ESPN does not rank
+             */
+            market_rank: number | null;
             /** Name */
             name: string;
             /** Player Id */
@@ -3581,7 +3503,7 @@ export interface components {
             reason: string;
             /**
              * Score
-             * @description vorp + scarcity + flexibility + injury + category_fit + congestion — the ranking number
+             * @description vorp + scarcity + flexibility + injury + category_fit + congestion. Court Vision's own number, always computed — it only *orders* this list when `source` is `cv`.
              */
             score: number;
             /**
@@ -3589,6 +3511,13 @@ export interface components {
              * @description value x projected games
              */
             season_value: number;
+            /**
+             * Source
+             * @description What ordered the list: `espn` takes the best remaining on ESPN's board for the league's format, `cv` the composite `score`. Under `espn` the score is still returned, as the visible dissenting opinion rather than the ranking key.
+             * @default cv
+             * @enum {string}
+             */
+            source: "cv" | "espn";
             /**
              * Value
              * @description Per-game league-scored value (the board row's `value`)
@@ -6131,6 +6060,8 @@ export interface components {
             avg_blocks: number;
             /** Avg Fg3 Pct */
             avg_fg3_pct: number;
+            /** Avg Fg3M */
+            avg_fg3m: number;
             /** Avg Fg Pct */
             avg_fg_pct: number;
             /** Avg Fpts */
@@ -7954,12 +7885,6 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
-        /** TeamDataReq */
-        TeamDataReq: {
-            /** Fa Count */
-            fa_count: number;
-            league_info: components["schemas"]["LeagueInfo"];
-        };
         /** TeamDataResp */
         TeamDataResp: {
             /** Data */
@@ -8267,24 +8192,6 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
-        };
-        /** ValidateLeagueReq */
-        ValidateLeagueReq: {
-            league_info: components["schemas"]["LeagueInfo"];
-        };
-        /** ValidateLeagueResp */
-        ValidateLeagueResp: {
-            /** Data */
-            data: unknown | null;
-            /** Error Code */
-            error_code: string | null;
-            /** Message */
-            message: string;
-            status: components["schemas"]["ApiStatus"];
-            /** Timestamp */
-            timestamp: string | null;
-            /** Valid */
-            valid: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -8956,6 +8863,8 @@ export interface operations {
                 mine?: number[];
                 /** @description Category keys to concede, e.g. `punt=ft_pct&punt=tov`. They weigh zero in `fit_value`; unknown keys are ignored here (the room stores validated punts on the session instead). No effect on a points league. */
                 punt?: string[];
+                /** @description What orders `recommendations`. `espn` (the default) takes the best remaining on ESPN's own board for this league's format; `cv` uses Court Vision's composite score. Both are computed either way, so an ESPN-ordered pick still carries CV's full breakdown. `espn` falls back to `cv` when no market snapshot exists — `meta.rank_source` says which actually ran. */
+                rank_source?: "espn" | "cv";
                 team_id: number;
             };
             header?: never;
@@ -9121,7 +9030,10 @@ export interface operations {
     };
     get_draft_session_board_v1_internal_drafts__session_id__board_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description What orders `recommendations`. `espn` (the default) takes the best remaining on ESPN's own board for this league's format; `cv` uses Court Vision's composite score. Both are computed either way, so an ESPN-ordered pick still carries CV's full breakdown. `espn` falls back to `cv` when no market snapshot exists — `meta.rank_source` says which actually ran. */
+                rank_source?: "espn" | "cv";
+            };
             header?: never;
             path: {
                 session_id: number;
@@ -9452,105 +9364,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_free_agents_v1_internal_espn_get_freeagent_data_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TeamDataReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamDataResp"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_team_data_v1_internal_espn_get_roster_data_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TeamDataReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamDataResp"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    validate_league_v1_internal_espn_validate_league_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidateLeagueReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidateLeagueResp"];
-                };
             };
             /** @description Validation Error */
             422: {
@@ -11028,72 +10841,6 @@ export interface operations {
             };
         };
     };
-    get_free_agents_v1_internal_yahoo_get_freeagent_data_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TeamDataReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamDataResp"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_roster_data_v1_internal_yahoo_get_roster_data_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TeamDataReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamDataResp"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_user_leagues_v1_internal_yahoo_leagues_get: {
         parameters: {
             query: {
@@ -11147,39 +10894,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["YahooTeamsResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    validate_yahoo_league_v1_internal_yahoo_validate_league_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidateLeagueReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidateLeagueResp"];
                 };
             };
             /** @description Validation Error */

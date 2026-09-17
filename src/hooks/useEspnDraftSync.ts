@@ -24,6 +24,7 @@ import {
   type SyncEvent,
   type SyncState,
 } from "@/lib/espn-draft/sync-state";
+import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
 import {
   draftKeys,
   useDraftInitSyncMutation,
@@ -100,6 +101,7 @@ export interface EspnDraftSync {
 export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
   const { sessionId, expectedLeagueId, bindable, enabled } = input;
   const queryClient = useQueryClient();
+  const rankSource = useDraftRoomStore((state) => state.rankSource);
   const pausedMap = useDraftSyncStore((store) => store.paused);
   const setPausedStore = useDraftSyncStore((store) => store.setPaused);
   const paused = pausedMap[String(sessionId)] ?? false;
@@ -144,9 +146,13 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     () => queryClient.getQueryData<DraftSession>(draftKeys.detail(sessionId)) ?? input.session,
     [queryClient, sessionId, input.session]
   );
+  // The board on screen, not "a" board: the room caches one entry per rank
+  // source, and sync reads it to resolve ESPN's picks against what is showing.
   const cachedBoard = useCallback(
-    () => queryClient.getQueryData<DraftBoardResult>(draftKeys.board(sessionId)) ?? input.board,
-    [queryClient, sessionId, input.board]
+    () =>
+      queryClient.getQueryData<DraftBoardResult>(draftKeys.board(sessionId, rankSource)) ??
+      input.board,
+    [queryClient, sessionId, rankSource, input.board]
   );
 
   // Effects run through a ref so `dispatch` can stay stable (empty deps) while

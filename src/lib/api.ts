@@ -132,6 +132,7 @@ import type {
   DraftPick,
   DraftPickCreate,
   DraftRecommendation,
+  RankSource,
   DraftRosterEntry,
   DraftSession,
   DraftSessionCreate,
@@ -874,6 +875,7 @@ class ApiClient {
   async getDraftBoard(
     getToken: GetTokenFn,
     sessionId: number,
+    rankSource: RankSource = "espn",
     opts?: RequestOptions
   ): Promise<DraftBoardResult> {
     const env = await fetchJson<
@@ -882,7 +884,7 @@ class ApiClient {
         recommendations?: DraftRecommendation[] | null;
         roster?: DraftRosterEntry[] | null;
       }
-    >(`${DRAFTS_API}/${sessionId}/board`, { ...opts, getToken });
+    >(`${DRAFTS_API}/${sessionId}/board?rank_source=${rankSource}`, { ...opts, getToken });
     const { data, message } = unwrapWithMessage(env, []);
     return {
       rows: data,
@@ -903,9 +905,10 @@ class ApiClient {
     teamId: number,
     picked: number[] = [],
     mine: number[] = [],
+    rankSource: RankSource = "espn",
     opts?: RequestOptions
   ): Promise<DraftBoardResult> {
-    const q = new URLSearchParams({ team_id: String(teamId) });
+    const q = new URLSearchParams({ team_id: String(teamId), rank_source: rankSource });
     for (const id of picked) q.append("picked", String(id));
     for (const id of mine) q.append("mine", String(id));
     const env = await fetchJson<
