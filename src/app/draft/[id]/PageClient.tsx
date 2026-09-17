@@ -678,7 +678,6 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
             value={rankSource}
             onChange={setRankSource}
             actual={board?.meta?.rank_source ?? null}
-            rankType={board?.meta?.market_rank_type ?? null}
           />
         </div>
         <RecommendationStrip
@@ -691,6 +690,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
           draftDisabledReason={sync.canDraft.ok ? null : canDraftLabel(sync.canDraft.reason)}
           isDrafting={sync.state.pending !== null}
           pendingPlayerId={pendingRow?.player_id ?? null}
+          leagueSize={board?.meta?.league_size ?? null}
         />
       </Card>
 

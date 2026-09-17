@@ -31,6 +31,7 @@ export const PICK_ASCENDING_BY_NATURE: PickSortKey[] = [
   "player_name",
   "team",
   "cv_rank",
+  "market_rank",
   "adp",
 ];
 
@@ -61,12 +62,22 @@ export function pickSortValue(pick: RecapPick, key: PickSortKey): number | strin
       return pick.cv_rank ?? null;
     case "surplus_cv":
       return pick.surplus_cv ?? null;
+    case "market_rank":
+      return pick.market_rank ?? null;
+    case "surplus_espn":
+      return pick.surplus_espn ?? null;
     case "adp":
       return pick.adp ?? null;
     case "surplus_market":
       return pick.surplus_market ?? null;
+    case "market_value":
+      return pick.market_value ?? null;
     case "value_over_slot":
       return pick.value_over_slot ?? null;
+    case "market_value_over_slot":
+      return pick.market_value_over_slot ?? null;
+    case "market_value_over_bid":
+      return pick.market_value_over_bid ?? null;
     case "bid":
       return pick.bid ?? null;
   }
@@ -108,43 +119,62 @@ export interface PickColumn {
   className: string;
 }
 
-const BASE_PICK_COLUMNS: PickColumn[] = [
-  { key: "overall_pick", label: "#", align: "right", className: "w-10", title: "Overall pick" },
-  { key: "round", label: "Rd", align: "right", className: "w-10", title: "Round" },
-  { key: "slot", label: "Seat", align: "left", className: "w-16", title: "The seat that made the pick" },
-  { key: "player_name", label: "Player", align: "left", className: "min-w-[160px]" },
-  { key: "team", label: "Team", align: "left", className: "w-12", title: "NBA team" },
-  { key: "value", label: "Value", align: "right", className: "w-16",
-    title: "Per-game value under this league's scoring" },
-  { key: "cv_rank", label: "CV", align: "right", className: "w-12",
-    title: "CV rank over the full pool, before the draft" },
-  { key: "surplus_cv", label: "±CV", align: "right", className: "w-14",
-    title: "CV rank − pick number; positive means he went later than his rank" },
-  { key: "adp", label: "ADP", align: "right", className: "w-14",
-    title: "Average draft position across real ESPN drafts" },
-  { key: "surplus_market", label: "±ADP", align: "right", className: "w-14",
-    title: "ADP − pick number; positive means he went later than ESPN's crowd took him" },
-];
+/** "points" or "categories": which of ESPN's two boards the recap's ESPN numbers read. */
+function espnBoard(meta: RecapMeta | null): string {
+  return meta?.market_rank_type === "roto" ? "categories" : "points";
+}
 
-const VOS_COLUMN: PickColumn = {
-  key: "value_over_slot",
-  label: "VOS",
-  align: "right",
-  className: "w-16",
-  title: "Value over slot: his value minus the value of the player CV ranked at this pick number",
-};
+function basePickColumns(meta: RecapMeta | null): PickColumn[] {
+  const board = espnBoard(meta);
+  return [
+    { key: "overall_pick", label: "#", align: "right", className: "w-10", title: "Overall pick" },
+    { key: "round", label: "Rd", align: "right", className: "w-10", title: "Round" },
+    { key: "slot", label: "Seat", align: "left", className: "w-16", title: "The seat that made the pick" },
+    { key: "player_name", label: "Player", align: "left", className: "min-w-[160px]" },
+    { key: "team", label: "Team", align: "left", className: "w-12", title: "NBA team" },
+    { key: "value", label: "Value", align: "right", className: "w-16",
+      title: "Per-game value under this league's scoring" },
+    { key: "cv_rank", label: "CV", align: "right", className: "w-12",
+      title: "CV rank over the full pool, before the draft" },
+    { key: "surplus_cv", label: "±CV", align: "right", className: "w-14",
+      title: "CV rank − pick number; positive means he went later than his rank" },
+    { key: "market_rank", label: "ESPN", align: "right", className: "w-12",
+      title: `ESPN's published ${board}-board rank, before the draft` },
+    { key: "surplus_espn", label: "±ESPN", align: "right", className: "w-14",
+      title: "ESPN rank − pick number; positive means he went later than ESPN ranks him" },
+    { key: "adp", label: "ADP", align: "right", className: "w-14",
+      title: "Average draft position across real ESPN drafts" },
+    { key: "surplus_market", label: "±ADP", align: "right", className: "w-14",
+      title: "ADP − pick number; positive means he went later than ESPN's crowd took him" },
+    { key: "market_value", label: "$ESPN", align: "right", className: "w-14",
+      title: `ESPN's ${board}-board auction value` },
+  ];
+}
 
-const BID_COLUMN: PickColumn = {
-  key: "bid",
-  label: "Bid",
-  align: "right",
-  className: "w-14",
-  title: "What the seat paid",
-};
+function tailColumns(meta: RecapMeta | null): PickColumn[] {
+  const board = espnBoard(meta);
+  if (meta?.draft_type === "auction") {
+    return [
+      { key: "bid", label: "Bid", align: "right", className: "w-14", title: "What the seat paid" },
+      { key: "market_value_over_bid", label: "$−Bid", align: "right", className: "w-16",
+        title: `ESPN's ${board}-board auction value minus what the seat paid` },
+    ];
+  }
+  return [
+    { key: "value_over_slot", label: "VOS", align: "right", className: "w-16",
+      title: "Value over slot: his value minus the value of the player CV ranked at this pick number" },
+    { key: "market_value_over_slot", label: "VOS$", align: "right", className: "w-16",
+      title: `ESPN value over slot: his ESPN ${board}-board auction value minus that of the player ESPN ranked at this pick number` },
+  ];
+}
 
-/** The columns, ending in VOS for a snake and the bid for an auction (which has no ladder to price a pick against). */
+/**
+ * The columns: every pick priced both ways. A snake ends in CV's value over
+ * slot and ESPN's; an auction (which has no ladder to price a pick against)
+ * in the bid and ESPN's value over it.
+ */
 export function pickColumnsFor(meta: RecapMeta | null): PickColumn[] {
-  return [...BASE_PICK_COLUMNS, meta?.draft_type === "auction" ? BID_COLUMN : VOS_COLUMN];
+  return [...basePickColumns(meta), ...tailColumns(meta)];
 }
 
 // ---- seats ---------------------------------------------------------------------
@@ -170,12 +200,29 @@ export function resolvePick(picks: RecapPick[], overall: number | null | undefin
   return picks.find((p) => p.overall_pick === overall) ?? null;
 }
 
-/** "N. Jokić (#1, +8.4)": the player, the pick, and what the pick was worth over its slot. */
-export function pickLabel(pick: RecapPick | null): string {
+/** The quantity a pick was graded on, by what the seats grade on. */
+export function gradedPickValue(
+  pick: Pick<RecapPick, "value_over_slot" | "market_value_over_slot" | "market_value_over_bid">,
+  gradedBy: RecapGradedBy | null | undefined
+): number | null {
+  switch (gradedBy) {
+    case "market_value_over_slot":
+      return pick.market_value_over_slot ?? null;
+    case "market_value_over_bid":
+      return pick.market_value_over_bid ?? null;
+    case "value":
+      return null;
+    default:
+      return pick.value_over_slot ?? null;
+  }
+}
+
+/** "N. Jokić (#1, +8.4)": the player, the pick, and what the pick was worth on the ladder the seats grade on. */
+export function pickLabel(pick: RecapPick | null, gradedBy: RecapGradedBy | null | undefined = null): string {
   if (!pick) return "—";
   const name = pick.player_name ?? `Pick ${pick.overall_pick}`;
-  const vos = pick.value_over_slot;
-  return vos === null || vos === undefined
+  const vos = gradedPickValue(pick, gradedBy);
+  return vos === null
     ? `${name} (#${pick.overall_pick})`
     : `${name} (#${pick.overall_pick}, ${signed(vos)})`;
 }
@@ -224,28 +271,53 @@ export function gradeTone(grade: string | null | undefined): GradeTone {
   }
 }
 
-/** What a seat's headline number is: summed value over slot, or total value in an auction. */
+/**
+ * What a seat's headline number is: summed value over slot (CV's ladder, or
+ * ESPN's in an ESPN room), or in an auction total value (CV) or ESPN value
+ * over the bids.
+ */
 export function gradedTotal(
-  seat: Pick<RecapSeat, "value_over_slot" | "total_value">,
+  seat: Pick<RecapSeat, "value_over_slot" | "total_value" | "market_value_over_slot" | "market_value_over_bid">,
   gradedBy: RecapGradedBy | null | undefined
 ): number | null {
-  if (gradedBy === "value") return seat.total_value;
-  return seat.value_over_slot ?? null;
+  switch (gradedBy) {
+    case "value":
+      return seat.total_value;
+    case "market_value_over_slot":
+      return seat.market_value_over_slot ?? null;
+    case "market_value_over_bid":
+      return seat.market_value_over_bid ?? null;
+    default:
+      return seat.value_over_slot ?? null;
+  }
 }
 
 export function gradedLabel(gradedBy: RecapGradedBy | null | undefined): { short: string; title: string } {
-  if (gradedBy === "value") {
-    return {
-      short: "Σ value",
-      title:
-        "Total value drafted. An auction has no pick ladder to price a pick against, so seats grade on what they bought",
-    };
+  switch (gradedBy) {
+    case "value":
+      return {
+        short: "Σ value",
+        title:
+          "Total value drafted. An auction has no pick ladder to price a pick against, so seats grade on what they bought",
+      };
+    case "market_value_over_slot":
+      return {
+        short: "Σ VOS$",
+        title:
+          "Summed ESPN value over slot: each pick's ESPN auction value minus that of the player ESPN ranked at that pick number",
+      };
+    case "market_value_over_bid":
+      return {
+        short: "Σ $−bid",
+        title: "Summed ESPN auction value minus what the seat paid for each pick",
+      };
+    default:
+      return {
+        short: "Σ VOS",
+        title:
+          "Summed value over slot: what each pick was worth against the player CV ranked at that pick number",
+      };
   }
-  return {
-    short: "Σ VOS",
-    title:
-      "Summed value over slot: what each pick was worth against the player CV ranked at that pick number",
-  };
 }
 
 /** The headline number as text: signed for a surplus, plain for a total, a dash for nothing. */
@@ -334,11 +406,32 @@ export function recapCaveats(meta: RecapMeta | null, seatCount: number): RecapCa
       text: `Graded against the ${seatCount} seat${seatCount === 1 ? "" : "s"} in this room, not the whole league`,
     });
   }
+  if (meta.grade_basis === "espn") {
+    out.push({
+      key: "espn",
+      tone: "info",
+      text: `Graded on ESPN's ${espnBoard(meta)} board; Court Vision's pricing is the column beside it`,
+    });
+  }
+  if (meta.grade_basis_reason === "no_auction_values") {
+    out.push({
+      key: "cv_fallback",
+      tone: "info",
+      text: "ESPN's snapshot prices nobody yet, so seats grade on Court Vision's ladder until it does",
+    });
+  }
   if (meta.graded_by === "value") {
     out.push({
       key: "auction",
       tone: "info",
       text: "An auction has no pick ladder to price a pick against, so seats grade on total value",
+    });
+  }
+  if (meta.graded_by === "market_value_over_bid") {
+    out.push({
+      key: "auction",
+      tone: "info",
+      text: "An auction has no pick ladder to price a pick against, so seats grade on ESPN's auction value over what they paid",
     });
   }
   if (!meta.complete) {

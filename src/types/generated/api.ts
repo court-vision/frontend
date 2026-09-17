@@ -310,6 +310,8 @@ export interface paths {
          *
          *     `market_rank` and `auction_value` come from the ESPN board matching the league's format — STANDARD for points, ROTO for categories — which `meta.market_rank_type` names.
          *
+         *     Rows come back in the order `meta.rank_basis` names: ESPN's published rank in an ESPN room (a league ESPN runs, or a team with no synced league — its market pool is ESPN's anyway), with `board_rank` as each row's place and players ESPN does not rank trailing in CV order; Court Vision's rank for a league elsewhere, or while no snapshot exists.
+         *
          *     Stateless: pick state rides in the query params, so there is no slot to count from and rows carry no availability. Use the session board once a draft room is open.
          */
         get: operations["get_draft_board_v1_internal_drafts_board_get"];
@@ -371,7 +373,9 @@ export interface paths {
          *
          *     Rows with market data carry `availability` (`likely`/`tossup`/`gone`) for the caller's next pick — the pick after that while the caller is on the clock.
          *
-         *     `rank_source` chooses what orders the recommendations: ESPN's own board for this league's format (the default), or Court Vision's composite score. Every component is computed either way, so switching views never changes the numbers on a card — only which of the two opinions put it at the top.
+         *     Rows come back in the order `meta.rank_basis` names: ESPN's published rank for the league's format in an ESPN room (a league ESPN runs, a room with no league, or one following an ESPN draft), with `board_rank` as each row's place and players ESPN does not rank trailing in CV order; Court Vision's rank for a league elsewhere, or while no market snapshot exists. `meta.rank_basis_reason` says which.
+         *
+         *     `rank_source` chooses what orders the recommendations: Court Vision's room-aware pick (the default), or the best remaining on ESPN's board. Every component is computed either way, so switching views never changes the numbers on a card — only which of the two opinions put it at the top.
          */
         get: operations["get_draft_session_board_v1_internal_drafts__session_id__board_get"];
         put?: never;
@@ -2862,19 +2866,33 @@ export interface components {
              */
             punts: string[];
             /**
-             * Rank Source
-             * @description What actually ordered `recommendations` on this response
-             * @default espn
+             * Rank Basis
+             * @description Whose rank orders the rows and fills `board_rank`. `espn` in an ESPN room: a league ESPN runs, a room with no league at all, or one following an ESPN draft. `cv` for a league elsewhere, or while no market snapshot exists. Not a caller's choice — `rank_source` is the recommendations' knob, this is the board's fact.
+             * @default cv
              * @enum {string}
              */
-            rank_source: "espn" | "cv";
+            rank_basis: "espn" | "cv";
+            /**
+             * Rank Basis Reason
+             * @description Why `rank_basis` is what it is, in the words the room shows
+             * @default provider_not_espn
+             * @enum {string}
+             */
+            rank_basis_reason: "espn_league" | "league_less_room" | "linked_espn_draft" | "provider_not_espn" | "no_market_snapshot";
+            /**
+             * Rank Source
+             * @description What actually ordered `recommendations` on this response
+             * @default cv
+             * @enum {string}
+             */
+            rank_source: "cv" | "espn";
             /**
              * Rank Source Requested
              * @description What the caller asked for. Differs from `rank_source` only when `espn` was asked for and no market snapshot exists yet, which falls back to `cv`.
-             * @default espn
+             * @default cv
              * @enum {string}
              */
-            rank_source_requested: "espn" | "cv";
+            rank_source_requested: "cv" | "espn";
             /**
              * Roster Slots
              * @default {}
@@ -2948,6 +2966,11 @@ export interface components {
              * @description Whether the player is likely to survive to the caller's next pick (the pick after that, when the caller is on the clock): `likely`, `tossup` or `gone`, from the gap between ADP (or market rank) and that pick. None without a confirmed slot or market data. Deliberately a bucket, not a probability — ESPN publishes a point estimate, and a percentage would imply a calibration we do not have.
              */
             availability: ("likely" | "tossup" | "gone") | null;
+            /**
+             * Board Rank
+             * @description The row's place on the board `meta.rank_basis` names — ESPN's published rank for the league's format in an ESPN room, `cv_rank` otherwise. Rows come back in this order. None for a player the basis does not rank; those trail every ranked row, ordered by the other opinion, and are never given a number that looks like ESPN's.
+             */
+            board_rank: number | null;
             /**
              * Cap Blocked
              * @description Drafting this player would exceed a hard per-position roster cap (league position_limits vs the caller's current roster). Shown greyed with a CAP badge, never hidden.
@@ -3486,6 +3509,11 @@ export interface components {
              */
             components: components["schemas"]["RecommendationComponent"][];
             /**
+             * Cv Rank
+             * @description Court Vision's rank over the full pool — the board's `cv_rank` for this player
+             */
+            cv_rank: number | null;
+            /**
              * Market Rank
              * @description ESPN's draft rank for the league's format; None for a player ESPN does not rank
              */
@@ -3513,7 +3541,7 @@ export interface components {
             season_value: number;
             /**
              * Source
-             * @description What ordered the list: `espn` takes the best remaining on ESPN's board for the league's format, `cv` the composite `score`. Under `espn` the score is still returned, as the visible dissenting opinion rather than the ranking key.
+             * @description What ordered the list: `cv` (the default) the composite `score`, `espn` the best remaining on ESPN's board for the league's format. The other opinion rides along either way — `market_rank` on a CV card, `score` on an ESPN one — as the visible dissent rather than the ranking key.
              * @default cv
              * @enum {string}
              */
@@ -7099,15 +7127,34 @@ export interface components {
             /** Format */
             format: string;
             /**
-             * Graded By
-             * @description What the seat grades rank on. An auction has no value ladder to price picks against.
+             * Grade Basis
+             * @description Whose board the seats are graded against: ESPN's published board in an ESPN room, Court Vision's otherwise — the same rule as the board's `rank_basis`, plus a fall-back to `cv` when the snapshot carries no auction values to price picks with.
+             * @default cv
              * @enum {string}
              */
-            graded_by: "value_over_slot" | "value";
+            grade_basis: "espn" | "cv";
+            /**
+             * Grade Basis Reason
+             * @description Why `grade_basis` is what it is
+             */
+            grade_basis_reason: ("espn_league" | "league_less_room" | "linked_espn_draft" | "provider_not_espn" | "no_market_snapshot" | "no_auction_values") | null;
+            /**
+             * Graded By
+             * @description What the seat grades rank on. Under `grade_basis: espn` a snake grades on ESPN's auction value over the ESPN-ranked player at each pick and an auction on ESPN value over the bid; under `cv` a snake grades on CV value over slot and an auction, which has no value ladder to price picks against, on total value.
+             * @enum {string}
+             */
+            graded_by: "value_over_slot" | "value" | "market_value_over_slot" | "market_value_over_bid";
             /** League Size */
             league_size: number | null;
             /** Market As Of */
             market_as_of: string | null;
+            /**
+             * Market Rank Type
+             * @description Which of ESPN's two boards `market_rank` and `market_value` come from
+             * @default standard
+             * @enum {string}
+             */
+            market_rank_type: "standard" | "roto";
             /** My Slot */
             my_slot: number | null;
             /** Picks Made */
@@ -7167,6 +7214,21 @@ export interface components {
             espn_player_id: number | null;
             /** Market Rank */
             market_rank: number | null;
+            /**
+             * Market Value
+             * @description ESPN's auction value for the league's format; null for a player ESPN does not price
+             */
+            market_value: number | null;
+            /**
+             * Market Value Over Bid
+             * @description market_value − bid; auctions only, null for a pick ESPN cannot price
+             */
+            market_value_over_bid: number | null;
+            /**
+             * Market Value Over Slot
+             * @description market_value(player) − market_value(the ESPN-ranked player at this pick number); null in an auction, and for a pick ESPN cannot price
+             */
+            market_value_over_slot: number | null;
             /** Overall Pick */
             overall_pick: number;
             /** Player Id */
@@ -7190,6 +7252,11 @@ export interface components {
              * @description cv_rank − overall_pick; positive = taken later than his rank
              */
             surplus_cv: number | null;
+            /**
+             * Surplus Espn
+             * @description market_rank − overall_pick; positive = taken later than ESPN ranks him
+             */
+            surplus_espn: number | null;
             /**
              * Surplus Market
              * @description adp − overall_pick; positive = later than ESPN's crowd
@@ -7227,6 +7294,16 @@ export interface components {
              * @default false
              */
             is_me: boolean;
+            /**
+             * Market Value Over Bid
+             * @description Σ market_value_over_bid over the seat's ESPN-priced picks; auctions only
+             */
+            market_value_over_bid: number | null;
+            /**
+             * Market Value Over Slot
+             * @description Σ market_value_over_slot over the seat's ESPN-priced picks; null in an auction
+             */
+            market_value_over_slot: number | null;
             /** Picks */
             picks: number;
             /**
@@ -7238,6 +7315,12 @@ export interface components {
             slot: number;
             /** Total Value */
             total_value: number;
+            /**
+             * Unpriced
+             * @description Picks ESPN cannot price — listed in `picks`, left out of the ESPN sums
+             * @default 0
+             */
+            unpriced: number;
             /**
              * Unscored
              * @description Picks with no value to price — listed in `picks`, left out of the sums
@@ -8863,8 +8946,8 @@ export interface operations {
                 mine?: number[];
                 /** @description Category keys to concede, e.g. `punt=ft_pct&punt=tov`. They weigh zero in `fit_value`; unknown keys are ignored here (the room stores validated punts on the session instead). No effect on a points league. */
                 punt?: string[];
-                /** @description What orders `recommendations`. `espn` (the default) takes the best remaining on ESPN's own board for this league's format; `cv` uses Court Vision's composite score. Both are computed either way, so an ESPN-ordered pick still carries CV's full breakdown. `espn` falls back to `cv` when no market snapshot exists — `meta.rank_source` says which actually ran. */
-                rank_source?: "espn" | "cv";
+                /** @description What orders `recommendations`. `cv` (the default) is Court Vision's room-aware pick — VORP with scarcity, fit and congestion applied; `espn` takes the best remaining on ESPN's own board for this league's format. Every component is computed either way, so switching never changes a card's numbers, only which opinion put it on top. `espn` falls back to `cv` when no market snapshot exists; `meta.rank_source` says which actually ran. */
+                rank_source?: "cv" | "espn";
                 team_id: number;
             };
             header?: never;
@@ -9031,8 +9114,8 @@ export interface operations {
     get_draft_session_board_v1_internal_drafts__session_id__board_get: {
         parameters: {
             query?: {
-                /** @description What orders `recommendations`. `espn` (the default) takes the best remaining on ESPN's own board for this league's format; `cv` uses Court Vision's composite score. Both are computed either way, so an ESPN-ordered pick still carries CV's full breakdown. `espn` falls back to `cv` when no market snapshot exists — `meta.rank_source` says which actually ran. */
-                rank_source?: "espn" | "cv";
+                /** @description What orders `recommendations`. `cv` (the default) is Court Vision's room-aware pick — VORP with scarcity, fit and congestion applied; `espn` takes the best remaining on ESPN's own board for this league's format. Every component is computed either way, so switching never changes a card's numbers, only which opinion put it on top. `espn` falls back to `cv` when no market snapshot exists; `meta.rank_source` says which actually ran. */
+                rank_source?: "cv" | "espn";
             };
             header?: never;
             path: {

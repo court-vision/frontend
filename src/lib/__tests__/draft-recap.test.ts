@@ -53,6 +53,10 @@ function pick(overrides: Partial<RecapPick> & { overall_pick: number }): RecapPi
     surplus_cv: null,
     surplus_market: null,
     value_over_slot: null,
+    market_value: null,
+    surplus_espn: null,
+    market_value_over_slot: null,
+    market_value_over_bid: null,
     bid: null,
     ...overrides,
   };
@@ -66,6 +70,9 @@ function seat(overrides: Partial<RecapSeat> & { slot: number }): RecapSeat {
     unscored: 0,
     total_value: 0,
     value_over_slot: null,
+    market_value_over_slot: null,
+    market_value_over_bid: null,
+    unpriced: 0,
     grade: null,
     position: null,
     best_pick: null,
@@ -96,6 +103,9 @@ function meta(overrides: Partial<RecapMeta> = {}): RecapMeta {
     format: "points",
     value_kind: "fpts",
     graded_by: "value_over_slot",
+    grade_basis: "cv",
+    grade_basis_reason: null,
+    market_rank_type: "standard",
     standings_basis: "season_value",
     session_id: 1,
     status: "completed",
@@ -165,15 +175,23 @@ describe("sortPicks", () => {
 });
 
 describe("pickColumnsFor", () => {
-  test("a snake ends in value over slot, an auction in the bid", () => {
+  test("a snake ends in CV's and ESPN's value over slot, an auction in the bid and ESPN's value over it", () => {
     const snake = pickColumnsFor(meta()).map((c) => c.key);
     expect(snake[0]).toBe("overall_pick");
-    expect(snake[snake.length - 1]).toBe("value_over_slot");
+    expect(snake.slice(-2)).toEqual(["value_over_slot", "market_value_over_slot"]);
     expect(snake).not.toContain("bid");
+    expect(snake).toEqual(expect.arrayContaining(["market_rank", "surplus_espn", "market_value"]));
     const auction = pickColumnsFor(meta({ draft_type: "auction" })).map((c) => c.key);
-    expect(auction[auction.length - 1]).toBe("bid");
+    expect(auction.slice(-2)).toEqual(["bid", "market_value_over_bid"]);
     expect(auction).not.toContain("value_over_slot");
     expect(pickColumnsFor(null).map((c) => c.key)).toContain("value_over_slot");
+  });
+
+  test("the ESPN columns name the board they read", () => {
+    const roto = pickColumnsFor(meta({ market_rank_type: "roto" })).find((c) => c.key === "market_rank");
+    expect(roto?.title).toContain("categories-board");
+    const std = pickColumnsFor(meta()).find((c) => c.key === "market_value_over_slot");
+    expect(std?.title).toContain("points-board");
   });
 });
 
@@ -213,6 +231,16 @@ describe("resolvePick and pickLabel", () => {
   });
 });
 
+describe("pickLabel on ESPN's ladder", () => {
+  test("a best or worst pick reads the quantity the seats were graded on", () => {
+    const p = pick({ overall_pick: 1, player_name: "N", value_over_slot: 2, market_value_over_slot: 5, market_value_over_bid: -3 });
+    expect(pickLabel(p)).toBe("N (#1, +2.0)");
+    expect(pickLabel(p, "market_value_over_slot")).toBe("N (#1, +5.0)");
+    expect(pickLabel(p, "market_value_over_bid")).toBe("N (#1, -3.0)");
+    expect(pickLabel(p, "value")).toBe("N (#1)");
+  });
+});
+
 describe("ordinal and positionLabel", () => {
   test("ordinals, teens included", () => {
     expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101].map(ordinal)).toEqual([
@@ -245,6 +273,19 @@ describe("grades", () => {
     expect(gradedLabel("value").short).toBe("Σ value");
     expect(gradedLabel("value_over_slot").short).toBe("Σ VOS");
     expect(gradedLabel(null).short).toBe("Σ VOS");
+  });
+
+  test("in an ESPN room the headline is ESPN's value over slot, or over the bids in an auction", () => {
+    const s = seat({
+      slot: 1, total_value: 812.4, value_over_slot: 33.2,
+      market_value_over_slot: 12, market_value_over_bid: -4,
+    });
+    expect(gradedTotal(s, "market_value_over_slot")).toBe(12);
+    expect(gradedTotal(s, "market_value_over_bid")).toBe(-4);
+    expect(gradedLabel("market_value_over_slot").short).toBe("Σ VOS$");
+    expect(gradedLabel("market_value_over_bid").short).toBe("Σ $−bid");
+    expect(formatGradedTotal(12, "market_value_over_slot")).toBe("+12.0");
+    expect(formatGradedTotal(-4, "market_value_over_bid")).toBe("-4.0");
   });
 
   test("the headline is signed for a surplus and plain for a total", () => {
@@ -346,6 +387,25 @@ describe("recapCaveats", () => {
     expect(out.filter((c) => c.tone === "warn").map((c) => c.key)).toEqual([
       "incomplete", "unscored", "unattributed",
     ]);
+  });
+
+  test("an ESPN room says whose board it graded on; a snapshot that prices nobody says so", () => {
+    const espn = recapCaveats(
+      meta({ grade_basis: "espn", grade_basis_reason: "espn_league",
+             graded_by: "market_value_over_slot", market_rank_type: "roto" }),
+      4
+    );
+    expect(espn.map((c) => c.key)).toEqual(["graded", "espn"]);
+    expect(espn[1].text).toContain("ESPN's categories board");
+    const fallback = recapCaveats(meta({ grade_basis: "cv", grade_basis_reason: "no_auction_values" }), 4);
+    expect(fallback.map((c) => c.key)).toEqual(["graded", "cv_fallback"]);
+    const auction = recapCaveats(
+      meta({ grade_basis: "espn", grade_basis_reason: "espn_league",
+             graded_by: "market_value_over_bid", draft_type: "auction" }),
+      4
+    );
+    expect(auction.map((c) => c.key)).toEqual(["graded", "espn", "auction"]);
+    expect(auction[2].text).toContain("over what they paid");
   });
 
   test("a room that stopped early, a room with no seats, no meta", () => {

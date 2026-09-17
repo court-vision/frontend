@@ -108,12 +108,32 @@ export function RecapPickTable({ picks, seats, meta, selectedSlot, onClearFilter
         return pick.cv_rank ?? "—";
       case "surplus_cv":
         return <span className={signTone(pick.surplus_cv)}>{signed(pick.surplus_cv, 0)}</span>;
+      case "market_rank":
+        return pick.market_rank ?? "—";
+      case "surplus_espn":
+        return <span className={signTone(pick.surplus_espn)}>{signed(pick.surplus_espn, 0)}</span>;
       case "adp":
         return num(pick.adp);
       case "surplus_market":
         return <span className={signTone(pick.surplus_market)}>{signed(pick.surplus_market)}</span>;
+      case "market_value":
+        return pick.market_value === null || pick.market_value === undefined
+          ? "—"
+          : `$${pick.market_value.toFixed(0)}`;
       case "value_over_slot":
         return <span className={signTone(pick.value_over_slot)}>{signed(pick.value_over_slot)}</span>;
+      case "market_value_over_slot":
+        return (
+          <span className={signTone(pick.market_value_over_slot)}>
+            {signed(pick.market_value_over_slot)}
+          </span>
+        );
+      case "market_value_over_bid":
+        return (
+          <span className={signTone(pick.market_value_over_bid)}>
+            {signed(pick.market_value_over_bid)}
+          </span>
+        );
       case "bid":
         return pick.bid === null || pick.bid === undefined ? "—" : `$${pick.bid.toFixed(0)}`;
     }
