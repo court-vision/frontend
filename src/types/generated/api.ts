@@ -528,57 +528,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/internal/espn/get_freeagent_data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Get Free Agents */
-        post: operations["get_free_agents_v1_internal_espn_get_freeagent_data_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/internal/espn/get_roster_data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Get Team Data */
-        post: operations["get_team_data_v1_internal_espn_get_roster_data_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/internal/espn/validate_league": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Validate League */
-        post: operations["validate_league_v1_internal_espn_validate_league_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/internal/jobs/lineup/evaluate": {
         parameters: {
             query?: never;
@@ -1494,46 +1443,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/internal/yahoo/get_freeagent_data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Get Free Agents
-         * @description Get available free agents from a Yahoo league.
-         */
-        post: operations["get_free_agents_v1_internal_yahoo_get_freeagent_data_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/internal/yahoo/get_roster_data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Get Roster Data
-         * @description Get roster data for a Yahoo team.
-         */
-        post: operations["get_roster_data_v1_internal_yahoo_get_roster_data_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/internal/yahoo/leagues": {
         parameters: {
             query?: never;
@@ -1574,28 +1483,6 @@ export interface paths {
         get: operations["get_league_teams_v1_internal_yahoo_teams_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/internal/yahoo/validate_league": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Validate Yahoo League
-         * @description Validate Yahoo league credentials.
-         *
-         *     Checks if the provided credentials can access the specified team.
-         */
-        post: operations["validate_yahoo_league_v1_internal_yahoo_validate_league_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6131,6 +6018,8 @@ export interface components {
             avg_blocks: number;
             /** Avg Fg3 Pct */
             avg_fg3_pct: number;
+            /** Avg Fg3M */
+            avg_fg3m: number;
             /** Avg Fg Pct */
             avg_fg_pct: number;
             /** Avg Fpts */
@@ -7954,12 +7843,6 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
-        /** TeamDataReq */
-        TeamDataReq: {
-            /** Fa Count */
-            fa_count: number;
-            league_info: components["schemas"]["LeagueInfo"];
-        };
         /** TeamDataResp */
         TeamDataResp: {
             /** Data */
@@ -8267,24 +8150,6 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
-        };
-        /** ValidateLeagueReq */
-        ValidateLeagueReq: {
-            league_info: components["schemas"]["LeagueInfo"];
-        };
-        /** ValidateLeagueResp */
-        ValidateLeagueResp: {
-            /** Data */
-            data: unknown | null;
-            /** Error Code */
-            error_code: string | null;
-            /** Message */
-            message: string;
-            status: components["schemas"]["ApiStatus"];
-            /** Timestamp */
-            timestamp: string | null;
-            /** Valid */
-            valid: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -9452,105 +9317,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_free_agents_v1_internal_espn_get_freeagent_data_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TeamDataReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamDataResp"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_team_data_v1_internal_espn_get_roster_data_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TeamDataReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamDataResp"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    validate_league_v1_internal_espn_validate_league_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidateLeagueReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidateLeagueResp"];
-                };
             };
             /** @description Validation Error */
             422: {
@@ -11028,72 +10794,6 @@ export interface operations {
             };
         };
     };
-    get_free_agents_v1_internal_yahoo_get_freeagent_data_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TeamDataReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamDataResp"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_roster_data_v1_internal_yahoo_get_roster_data_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TeamDataReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamDataResp"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_user_leagues_v1_internal_yahoo_leagues_get: {
         parameters: {
             query: {
@@ -11147,39 +10847,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["YahooTeamsResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    validate_yahoo_league_v1_internal_yahoo_validate_league_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidateLeagueReq"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidateLeagueResp"];
                 };
             };
             /** @description Validation Error */

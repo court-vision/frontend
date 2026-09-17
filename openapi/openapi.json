@@ -10882,6 +10882,10 @@
             "title": "Avg Fg3 Pct",
             "type": "integer"
           },
+          "avg_fg3m": {
+            "title": "Avg Fg3M",
+            "type": "integer"
+          },
           "avg_fg_pct": {
             "title": "Avg Fg Pct",
             "type": "integer"
@@ -10926,7 +10930,8 @@
           "avg_minutes",
           "avg_fg_pct",
           "avg_fg3_pct",
-          "avg_ft_pct"
+          "avg_ft_pct",
+          "avg_fg3m"
         ],
         "title": "PercentileData",
         "type": "object"
@@ -16137,23 +16142,6 @@
         "title": "TeamAddResp",
         "type": "object"
       },
-      "TeamDataReq": {
-        "properties": {
-          "fa_count": {
-            "title": "Fa Count",
-            "type": "integer"
-          },
-          "league_info": {
-            "$ref": "#/components/schemas/LeagueInfo"
-          }
-        },
-        "required": [
-          "league_info",
-          "fa_count"
-        ],
-        "title": "TeamDataReq",
-        "type": "object"
-      },
       "TeamDataResp": {
         "properties": {
           "data": {
@@ -17015,74 +17003,6 @@
           "timestamp"
         ],
         "title": "UserUpdateResp",
-        "type": "object"
-      },
-      "ValidateLeagueReq": {
-        "properties": {
-          "league_info": {
-            "$ref": "#/components/schemas/LeagueInfo"
-          }
-        },
-        "required": [
-          "league_info"
-        ],
-        "title": "ValidateLeagueReq",
-        "type": "object"
-      },
-      "ValidateLeagueResp": {
-        "properties": {
-          "data": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data"
-          },
-          "error_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Code"
-          },
-          "message": {
-            "title": "Message",
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/ApiStatus"
-          },
-          "timestamp": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Timestamp"
-          },
-          "valid": {
-            "title": "Valid",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "status",
-          "message",
-          "data",
-          "error_code",
-          "timestamp",
-          "valid"
-        ],
-        "title": "ValidateLeagueResp",
         "type": "object"
       },
       "ValidationError": {
@@ -18850,144 +18770,6 @@
         "summary": "Reconcile a session with the ESPN draft room's INIT frame",
         "tags": [
           "Drafts"
-        ]
-      }
-    },
-    "/v1/internal/espn/get_freeagent_data": {
-      "post": {
-        "operationId": "get_free_agents_v1_internal_espn_get_freeagent_data_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TeamDataReq"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TeamDataResp"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Get Free Agents",
-        "tags": [
-          "ESPN data"
-        ]
-      }
-    },
-    "/v1/internal/espn/get_roster_data": {
-      "post": {
-        "operationId": "get_team_data_v1_internal_espn_get_roster_data_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TeamDataReq"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TeamDataResp"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Get Team Data",
-        "tags": [
-          "ESPN data"
-        ]
-      }
-    },
-    "/v1/internal/espn/validate_league": {
-      "post": {
-        "operationId": "validate_league_v1_internal_espn_validate_league_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ValidateLeagueReq"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidateLeagueResp"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Validate League",
-        "tags": [
-          "ESPN data"
         ]
       }
     },
@@ -21271,100 +21053,6 @@
         ]
       }
     },
-    "/v1/internal/yahoo/get_freeagent_data": {
-      "post": {
-        "description": "Get available free agents from a Yahoo league.",
-        "operationId": "get_free_agents_v1_internal_yahoo_get_freeagent_data_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TeamDataReq"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TeamDataResp"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Get Free Agents",
-        "tags": [
-          "Yahoo Fantasy"
-        ]
-      }
-    },
-    "/v1/internal/yahoo/get_roster_data": {
-      "post": {
-        "description": "Get roster data for a Yahoo team.",
-        "operationId": "get_roster_data_v1_internal_yahoo_get_roster_data_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TeamDataReq"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TeamDataResp"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Get Roster Data",
-        "tags": [
-          "Yahoo Fantasy"
-        ]
-      }
-    },
     "/v1/internal/yahoo/leagues": {
       "get": {
         "description": "Get all Yahoo fantasy basketball leagues for the authenticated user.\n\nTakes the connection id issued by the callback rather than the access token\nitself, so no Yahoo credential ever appears in a URL. A rejected token is a\n403 PROVIDER_AUTH_EXPIRED; a Yahoo outage a 502/504.",
@@ -21471,48 +21159,6 @@
           }
         ],
         "summary": "Get League Teams",
-        "tags": [
-          "Yahoo Fantasy"
-        ]
-      }
-    },
-    "/v1/internal/yahoo/validate_league": {
-      "post": {
-        "description": "Validate Yahoo league credentials.\n\nChecks if the provided credentials can access the specified team.",
-        "operationId": "validate_yahoo_league_v1_internal_yahoo_validate_league_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ValidateLeagueReq"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidateLeagueResp"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Validate Yahoo League",
         "tags": [
           "Yahoo Fantasy"
         ]
