@@ -875,7 +875,7 @@ class ApiClient {
   async getDraftBoard(
     getToken: GetTokenFn,
     sessionId: number,
-    rankSource: RankSource = "espn",
+    rankSource: RankSource = "cv",
     opts?: RequestOptions
   ): Promise<DraftBoardResult> {
     const env = await fetchJson<
@@ -905,7 +905,7 @@ class ApiClient {
     teamId: number,
     picked: number[] = [],
     mine: number[] = [],
-    rankSource: RankSource = "espn",
+    rankSource: RankSource = "cv",
     opts?: RequestOptions
   ): Promise<DraftBoardResult> {
     const q = new URLSearchParams({ team_id: String(teamId), rank_source: rankSource });

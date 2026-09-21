@@ -22,8 +22,11 @@ import type { DraftRecommendation } from "@/types/draft";
  * when the room can do that (`onDraft`); it is enabled only while ESPN says it
  * is your turn, with the reason it is not as its tooltip otherwise.
  *
- * Under `source: "espn"` the ordering is ESPN's, so their rank leads the card
- * and the CV score is labelled as the second opinion it is. The components are
+ * The board is ESPN's, so every card leads with ESPN's rank — the number the
+ * drafter is looking at — and says where CV has him. Under `source: "cv"` (the
+ * default) CV's order put the card here and its rank is toned when the two
+ * disagree by more than a round; under `source: "espn"` ESPN's order did, and
+ * the CV score is labelled as the second opinion it is. The components are
  * rendered either way: the whole point of showing them next to someone else's
  * ranking is being able to see where the two disagree, and by how much.
  */
@@ -48,6 +51,17 @@ interface RecommendationStripProps {
   isDrafting?: boolean;
   /** The NBA player id of a pick sent to ESPN and not yet answered. */
   pendingPlayerId?: number | null;
+  /** Seats in the draft: a disagreement wider than a round is worth a tone. */
+  leagueSize?: number | null;
+}
+
+/** ESPN and CV more than a round apart — the card is a real dissent, not noise. */
+export function disagrees(
+  rec: Pick<DraftRecommendation, "market_rank" | "cv_rank">,
+  leagueSize: number | null | undefined
+): boolean {
+  if (rec.market_rank === null || rec.cv_rank === null || rec.cv_rank === undefined) return false;
+  return Math.abs(rec.market_rank - rec.cv_rank) > (leagueSize ?? 12);
 }
 
 export function RecommendationStrip({
@@ -60,6 +74,7 @@ export function RecommendationStrip({
   draftDisabledReason = null,
   isDrafting = false,
   pendingPlayerId = null,
+  leagueSize = null,
 }: RecommendationStripProps) {
   if (isLoading) {
     return (
@@ -116,12 +131,24 @@ export function RecommendationStrip({
                 </>
               ) : (
                 <>
-                  <span className="text-sm font-bold tabular-nums text-primary">
+                  <span
+                    className="text-sm font-bold tabular-nums text-primary"
+                    title="ESPN's published rank for this league's format"
+                  >
+                    {rec.market_rank === null ? "—" : `#${rec.market_rank}`}
+                  </span>
+                  <span>ESPN</span>
+                  <span className="text-border">·</span>
+                  <span
+                    className={cn("tabular-nums", disagrees(rec, leagueSize) && "text-amber-500")}
+                    title="Court Vision's rank over the full pool"
+                  >
+                    cv #{rec.cv_rank ?? "—"}
+                  </span>
+                  <span className="text-border">·</span>
+                  <span className="tabular-nums" title="Court Vision's score: the terms below, summed">
                     {rec.score.toFixed(1)}
                   </span>
-                  <span>score</span>
-                  <span className="text-border">·</span>
-                  <span className="tabular-nums">{rec.value.toFixed(1)}/g</span>
                 </>
               )}
             </div>

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  basisNote,
   columnsFor,
   countCapped,
   matchesView,
@@ -27,6 +28,7 @@ function row(overrides: Partial<DraftBoardRow> & { player_id: number }): DraftBo
     positions: ["C", "UT"],
     injury_status: null,
     cv_rank: overrides.player_id,
+    board_rank: overrides.player_id,
     value: 50,
     value_source: "baseline",
     value_season: null,
@@ -48,11 +50,12 @@ function row(overrides: Partial<DraftBoardRow> & { player_id: number }): DraftBo
   };
 }
 
-/** A rookie ESPN ranks that nothing can value yet. */
+/** A rookie ESPN ranks that nothing can value yet; on ESPN's board his rank is his place. */
 function marketOnly(player_id: number, market_rank: number): DraftBoardRow {
   return row({
     player_id,
     cv_rank: null,
+    board_rank: market_rank,
     value: null,
     fpts_avg: null,
     value_source: "market",
@@ -63,7 +66,7 @@ function marketOnly(player_id: number, market_rank: number): DraftBoardRow {
 }
 
 const VIEW: BoardView = {
-  sortKey: "cv_rank",
+  sortKey: "board_rank",
   sortDirection: "asc",
   positionFilter: "all",
   hideCapped: false,
@@ -84,9 +87,11 @@ function meta(overrides: Partial<DraftBoardMeta> = {}): DraftBoardMeta {
     market_only_count: 0,
     projections_as_of: null,
     market_as_of: null,
-    rank_source: "espn",
-    rank_source_requested: "espn",
+    rank_source: "cv",
+    rank_source_requested: "cv",
     market_rank_type: "roto",
+    rank_basis: "espn",
+    rank_basis_reason: "espn_league",
     session_id: 1,
     league_size: 12,
     roster_slots: {},
@@ -121,6 +126,7 @@ function need(overrides: Partial<CategoryNeed> & { key: string }): CategoryNeed 
 
 describe("naturalDirection", () => {
   test("rank-like columns open ascending, value-like descending", () => {
+    expect(naturalDirection("board_rank")).toBe("asc");
     expect(naturalDirection("cv_rank")).toBe("asc");
     expect(naturalDirection("market_rank")).toBe("asc");
     expect(naturalDirection("adp")).toBe("asc");
@@ -190,6 +196,7 @@ describe("visibleRows", () => {
 
   test("missing values land last in either sort direction", () => {
     const cases = [
+      { sortKey: "board_rank", populated: [1, 2, 3, 9], missing: [] },
       { sortKey: "cv_rank", populated: [1, 2, 3], missing: [9] },
       { sortKey: "market_rank", populated: [1, 2, 9], missing: [3] },
       { sortKey: "adp", populated: [1, 2], missing: [3, 9] },
@@ -206,6 +213,21 @@ describe("visibleRows", () => {
         expect(ids.slice(populated.length).sort()).toEqual([...missing].sort());
       }
     }
+  });
+
+  test("on the board's own column a ranked rookie sits at his rank and the unranked trail", () => {
+    const board = [
+      row({ player_id: 3, cv_rank: 1, board_rank: 3 }),
+      row({ player_id: 1, cv_rank: 2, board_rank: 1 }),
+      row({ player_id: 8, cv_rank: 3, board_rank: null }),
+      marketOnly(9, 2),
+    ];
+    expect(visibleRows(board, { ...VIEW, sortKey: "board_rank" }).map((r) => r.player_id))
+      .toEqual([1, 9, 3, 8]);
+    // Flipped, the unranked still trail: no number is never "the biggest number".
+    expect(
+      visibleRows(board, { ...VIEW, sortKey: "board_rank", sortDirection: "desc" }).map((r) => r.player_id)
+    ).toEqual([3, 9, 1, 8]);
   });
 
   test("sorting by value descending outranks the big board's own order", () => {
@@ -358,7 +380,35 @@ describe("columnsFor", () => {
   });
 
   test("no meta at all still yields a usable board", () => {
-    expect(columnsFor(null).map((c) => c.key)).toContain("cv_rank");
+    expect(columnsFor(null).map((c) => c.key)).toContain("board_rank");
+  });
+
+  test("one rank in the gutter and the other beside the name, never the same number twice", () => {
+    const espn = columnsFor(meta({ rank_basis: "espn" })).map((c) => c.key);
+    expect(espn[0]).toBe("board_rank");
+    expect(espn).toContain("cv_rank");
+    expect(espn).not.toContain("market_rank");
+    const cv = columnsFor(meta({ rank_basis: "cv", rank_basis_reason: "provider_not_espn" })).map((c) => c.key);
+    expect(cv[0]).toBe("board_rank");
+    expect(cv).toContain("market_rank");
+    expect(cv).not.toContain("cv_rank");
+  });
+});
+
+describe("basisNote", () => {
+  test("an ESPN room names ESPN's board for the format and the snapshot date", () => {
+    expect(basisNote(meta({ market_rank_type: "roto", market_as_of: "2026-09-16" }))?.label)
+      .toBe("ESPN categories board · as of 2026-09-16");
+    expect(basisNote(meta({ market_rank_type: "standard", market_as_of: null }))?.label)
+      .toBe("ESPN points board");
+  });
+
+  test("a CV board says why it is not ESPN's", () => {
+    expect(basisNote(meta({ rank_basis: "cv", rank_basis_reason: "no_market_snapshot" }))?.label)
+      .toBe("CV board — no ESPN snapshot yet");
+    expect(basisNote(meta({ rank_basis: "cv", rank_basis_reason: "provider_not_espn" }))?.label)
+      .toBe("CV board — not an ESPN league");
+    expect(basisNote(null)).toBeNull();
   });
 });
 
@@ -368,9 +418,12 @@ describe("sortableKey", () => {
     // a fit sort chosen in a category league must not strand a points league
     // sorting every row by a null.
     const points = columnsFor(meta({ value_kind: "fpts", categories: [] }));
-    expect(sortableKey("fit_rank", points)).toBe("cv_rank");
-    expect(sortableKey("cat:reb", points)).toBe("cv_rank");
+    expect(sortableKey("fit_rank", points)).toBe("board_rank");
+    expect(sortableKey("cat:reb", points)).toBe("board_rank");
     expect(sortableKey("adp", points)).toBe("adp");
+    // A CV-ordered room has no CV column beside the name (the gutter is it).
+    const cv = columnsFor(meta({ rank_basis: "cv", rank_basis_reason: "provider_not_espn" }));
+    expect(sortableKey("cv_rank", cv)).toBe("board_rank");
   });
 
   test("a category sort survives in a league that still scores that category", () => {

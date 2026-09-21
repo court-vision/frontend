@@ -1,16 +1,17 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { DraftBoardMeta, RankSource } from "@/types/draft";
+import type { RankSource } from "@/types/draft";
 
 /**
- * Whose board the room drafts off.
+ * What orders the recommendation strip.
  *
- * ESPN is the default and Court Vision is the opt-in, which is deliberate: a
- * projection nobody can validate until the season is over should not quietly
- * drive someone's draft. CV's value is what you consult when you want the
- * room-aware view — punt/push fit and lineup congestion — not the thing you get
- * by not choosing.
+ * The board itself is ESPN's in an ESPN room — that is the server's call, not
+ * this toggle's — so the strip is where Court Vision's opinion lives, and it
+ * opens on CV's picks: value over replacement with scarcity, roster fit and
+ * lineup congestion applied, each card naming ESPN's rank beside it. "ESPN
+ * next" is the opt-in: the best still available on ESPN's own board, for a
+ * drafter who wants none of our opinion in the pick.
  *
  * `actual` is what the server actually ordered by. It differs from `value` only
  * when ESPN was asked for and no market snapshot exists yet, and the toggle
@@ -18,31 +19,25 @@ import type { DraftBoardMeta, RankSource } from "@/types/draft";
  */
 const OPTIONS: { key: RankSource; label: string; title: string }[] = [
   {
-    key: "espn",
-    label: "ESPN",
-    title: "Best available on ESPN's own board for this league's format",
+    key: "cv",
+    label: "CV picks",
+    title: "Court Vision's pick: value over replacement, with scarcity, roster fit and lineup congestion applied",
   },
   {
-    key: "cv",
-    label: "CV",
-    title: "Court Vision's value, adjusted for this roster's needs and its lineup congestion",
+    key: "espn",
+    label: "ESPN next",
+    title: "The best still available on ESPN's own board for this league's format",
   },
 ];
-
-const RANK_TYPE_LABEL: Record<NonNullable<DraftBoardMeta["market_rank_type"]>, string> = {
-  standard: "points",
-  roto: "categories",
-};
 
 interface RankSourceToggleProps {
   value: RankSource;
   onChange: (source: RankSource) => void;
   /** What the server ordered by; null before the board has loaded. */
   actual: RankSource | null;
-  rankType: DraftBoardMeta["market_rank_type"] | null;
 }
 
-export function RankSourceToggle({ value, onChange, actual, rankType }: RankSourceToggleProps) {
+export function RankSourceToggle({ value, onChange, actual }: RankSourceToggleProps) {
   const fellBack = value === "espn" && actual === "cv";
 
   return (
@@ -53,11 +48,6 @@ export function RankSourceToggle({ value, onChange, actual, rankType }: RankSour
           title="No ESPN draft snapshot has been taken for this season yet, so the board is ordered by Court Vision's value."
         >
           no ESPN board yet
-        </span>
-      )}
-      {!fellBack && value === "espn" && rankType && (
-        <span className="normal-case tracking-normal text-muted-foreground/70">
-          {RANK_TYPE_LABEL[rankType]} board
         </span>
       )}
       <div className="flex overflow-hidden rounded border border-border/60">

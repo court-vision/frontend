@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, type KeyboardEvent, type RefObject } from "
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, Table } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { columnsFor, countAtRisk, countCapped, sortableKey, type BoardColumn } from "@/lib/draft-board";
+import { basisNote, columnsFor, countAtRisk, countCapped, sortableKey, type BoardColumn } from "@/lib/draft-board";
 import { formatCategoryValue } from "@/lib/category-format";
 import { useVisibleRows } from "@/hooks/useBoardView";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ const AVAILABILITY_BADGE: Record<
  * positional so the header and the body cells pin the same two.
  */
 const STICKY: Partial<Record<string, string>> = {
-  cv_rank: "sticky left-0",
+  board_rank: "sticky left-0",
   name: "sticky left-10",
 };
 
@@ -94,6 +94,8 @@ function Cell({ column, row }: { column: BoardColumn; row: DraftBoardRow }) {
   }
 
   switch (column.key) {
+    case "board_rank":
+      return <div className={cn(base, "text-muted-foreground")}>{row.board_rank ?? "—"}</div>;
     case "cv_rank":
       return <div className={cn(base, "text-muted-foreground")}>{row.cv_rank ?? "—"}</div>;
     case "value":
@@ -249,6 +251,7 @@ export function DraftBoardTable({
   // One definition of the columns, read by the header, the body and the sort.
   // A points league has no Fit and no categories, so the set follows the meta.
   const columns = useMemo(() => columnsFor(meta), [meta]);
+  const basis = useMemo(() => basisNote(meta), [meta]);
   // The store remembers the last sort across rooms; a fit or category column
   // this league does not have would otherwise sort every row by a null.
   const activeSort = sortableKey(sortKey, columns);
@@ -400,6 +403,20 @@ export function DraftBoardTable({
           </span>
         )}
 
+        {/* Whose rank the gutter is. The number reads as "the rank" whoever
+            produced it, so the bar says — and says why when it is not ESPN's. */}
+        {basis && (
+          <span
+            title={basis.title}
+            className={cn(
+              "hidden lg:inline shrink-0 font-mono text-[10px]",
+              meta?.rank_basis === "espn" ? "text-muted-foreground/60" : "text-amber-500/80"
+            )}
+          >
+            {basis.label}
+          </span>
+        )}
+
         {/* Only offered on a board that can answer it: without a slot or a
             market snapshot every row's availability is null, and the filter
             would empty the board rather than sharpen it. */}
@@ -505,8 +522,8 @@ export function DraftBoardTable({
                   row.cap_blocked && "opacity-50"
                 )}
               >
-                <div className={cn("w-10 shrink-0 py-1.5 px-1 text-center text-muted-foreground", STICKY.cv_rank, "z-10", rowBg)}>
-                  {row.cv_rank ?? "—"}
+                <div className={cn("w-10 shrink-0 py-1.5 px-1 text-center text-muted-foreground", STICKY.board_rank, "z-10", rowBg)}>
+                  {row.board_rank ?? "—"}
                 </div>
 
                 <div className={cn("flex-[3] min-w-[180px] shrink-0 py-1.5 px-1", STICKY.name, "z-10", rowBg)}>
@@ -559,7 +576,7 @@ export function DraftBoardTable({
                 </div>
 
                 {columns
-                  .filter((col) => col.key !== "cv_rank" && col.key !== "name")
+                  .filter((col) => col.key !== "board_rank" && col.key !== "name")
                   .map((col) => (
                     <Cell key={col.key} column={col} row={row} />
                   ))}
