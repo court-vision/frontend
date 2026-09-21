@@ -2336,6 +2336,16 @@
             "title": "Market Only Count",
             "type": "integer"
           },
+          "market_rank_type": {
+            "default": "standard",
+            "description": "Which of ESPN's two boards `market_rank` and `auction_value` come from: `standard` for points leagues, `roto` for category leagues. They are separate opinions \u2014 over ESPN's own top 150 they disagree by a mean of 28 places.",
+            "enum": [
+              "standard",
+              "roto"
+            ],
+            "title": "Market Rank Type",
+            "type": "string"
+          },
           "pace_source": {
             "anyOf": [
               {
@@ -2399,6 +2409,26 @@
             },
             "title": "Punts",
             "type": "array"
+          },
+          "rank_source": {
+            "default": "espn",
+            "description": "What actually ordered `recommendations` on this response",
+            "enum": [
+              "espn",
+              "cv"
+            ],
+            "title": "Rank Source",
+            "type": "string"
+          },
+          "rank_source_requested": {
+            "default": "espn",
+            "description": "What the caller asked for. Differs from `rank_source` only when `espn` was asked for and no market snapshot exists yet, which falls back to `cv`.",
+            "enum": [
+              "espn",
+              "cv"
+            ],
+            "title": "Rank Source Requested",
+            "type": "string"
           },
           "roster_slots": {
             "additionalProperties": {
@@ -2469,6 +2499,9 @@
           "market_only_count",
           "projections_as_of",
           "market_as_of",
+          "rank_source",
+          "rank_source_requested",
+          "market_rank_type",
           "session_id",
           "league_size",
           "roster_slots",
@@ -2577,7 +2610,7 @@
                 "type": "null"
               }
             ],
-            "description": "Average draft position across real ESPN drafts",
+            "description": "Average draft position across real ESPN drafts. Unlike `market_rank` this is NOT format-specific: ESPN publishes one crowd average, sampled from the reference league's own format (points). A category room should read it as a rough availability signal, not as its own format's ADP.",
             "title": "Adp"
           },
           "auction_value": {
@@ -2589,7 +2622,7 @@
                 "type": "null"
               }
             ],
-            "description": "ESPN editorial auction value",
+            "description": "ESPN editorial auction value from the same board as `market_rank`",
             "title": "Auction Value"
           },
           "availability": {
@@ -2756,7 +2789,7 @@
                 "type": "null"
               }
             ],
-            "description": "ESPN editorial overall draft rank (latest snapshot)",
+            "description": "ESPN editorial draft rank from the latest snapshot, taken from the board that matches the league's format \u2014 see `meta.market_rank_type`. Falls back to the points board on snapshots written before the category board was captured.",
             "title": "Market Rank"
           },
           "name": {
@@ -2855,6 +2888,18 @@
             "description": "League-scored per-game value: fantasy points under the league's weights, or the fpts-scale category value. None for a market-only row \u2014 a player ESPN ranks but neither a projection nor last season's baseline can value (a rookie, before projections).",
             "title": "Value"
           },
+          "value_season": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set only when a baseline `value` came from an OLDER season than the board's own previous one, e.g. `2024-25` on a 2026-27 board \u2014 a player who missed last season entirely is valued off the most recent one he played, and that value is a year staler than every other row. None for everyone valued from last season, and for projection and market-only rows.",
+            "title": "Value Season"
+          },
           "value_source": {
             "description": "projection: ESPN's published per-game projection. baseline: last season's per-game averages. market: no stat line at all \u2014 the row exists because ESPN drafts him.",
             "enum": [
@@ -2878,6 +2923,7 @@
           "cv_rank",
           "value",
           "value_source",
+          "value_season",
           "last_season_gp",
           "projected_gp",
           "fpts_avg",
@@ -3833,6 +3879,18 @@
             "title": "Components",
             "type": "array"
           },
+          "market_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN's draft rank for the league's format; None for a player ESPN does not rank",
+            "title": "Market Rank"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -3858,7 +3916,7 @@
             "type": "string"
           },
           "score": {
-            "description": "vorp + scarcity + flexibility + injury + category_fit + congestion \u2014 the ranking number",
+            "description": "vorp + scarcity + flexibility + injury + category_fit + congestion. Court Vision's own number, always computed \u2014 it only *orders* this list when `source` is `cv`.",
             "title": "Score",
             "type": "number"
           },
@@ -3866,6 +3924,16 @@
             "description": "value x projected games",
             "title": "Season Value",
             "type": "number"
+          },
+          "source": {
+            "default": "cv",
+            "description": "What ordered the list: `espn` takes the best remaining on ESPN's board for the league's format, `cv` the composite `score`. Under `espn` the score is still returned, as the visible dissenting opinion rather than the ranking key.",
+            "enum": [
+              "cv",
+              "espn"
+            ],
+            "title": "Source",
+            "type": "string"
           },
           "value": {
             "description": "Per-game league-scored value (the board row's `value`)",
@@ -3886,6 +3954,8 @@
           "season_value",
           "vorp",
           "score",
+          "source",
+          "market_rank",
           "components",
           "reason"
         ],
@@ -18117,7 +18187,7 @@
     },
     "/v1/internal/drafts/board": {
       "get": {
-        "description": "Every draftable player, valued by the scoring settings of the league this team belongs to (point weights, or the fpts-scale category value for a category league), from ESPN's published projections where available and last season's per-game baseline otherwise. Rows carry the latest ESPN market rank/ADP and a `market_rank \u2212 cv_rank` delta, and are flagged `cap_blocked` when the league's hard position caps leave no room for them on the caller's roster.\n\n`cv_rank` is computed over the full pool before `picked`/`mine` are removed, so it stays stable and market-comparable throughout a draft.\n\nCategory leagues also carry `fit_value`/`fit_rank`: the same board re-scored for the caller's own roster, with any `punt` categories weighing zero.\n\nStateless: pick state rides in the query params, so there is no slot to count from and rows carry no availability. Use the session board once a draft room is open.",
+        "description": "Every draftable player, valued by the scoring settings of the league this team belongs to (point weights, or the fpts-scale category value for a category league), from ESPN's published projections where available and last season's per-game baseline otherwise. Rows carry the latest ESPN market rank/ADP and a `market_rank \u2212 cv_rank` delta, and are flagged `cap_blocked` when the league's hard position caps leave no room for them on the caller's roster.\n\n`cv_rank` is computed over the full pool before `picked`/`mine` are removed, so it stays stable and market-comparable throughout a draft.\n\nCategory leagues also carry `fit_value`/`fit_rank`: the same board re-scored for the caller's own roster, with any `punt` categories weighing zero.\n\n`market_rank` and `auction_value` come from the ESPN board matching the league's format \u2014 STANDARD for points, ROTO for categories \u2014 which `meta.market_rank_type` names.\n\nStateless: pick state rides in the query params, so there is no slot to count from and rows carry no availability. Use the session board once a draft room is open.",
         "operationId": "get_draft_board_v1_internal_drafts_board_get",
         "parameters": [
           {
@@ -18163,6 +18233,22 @@
               },
               "title": "Punt",
               "type": "array"
+            }
+          },
+          {
+            "description": "What orders `recommendations`. `espn` (the default) takes the best remaining on ESPN's own board for this league's format; `cv` uses Court Vision's composite score. Both are computed either way, so an ESPN-ordered pick still carries CV's full breakdown. `espn` falls back to `cv` when no market snapshot exists \u2014 `meta.rank_source` says which actually ran.",
+            "in": "query",
+            "name": "rank_source",
+            "required": false,
+            "schema": {
+              "default": "espn",
+              "description": "What orders `recommendations`. `espn` (the default) takes the best remaining on ESPN's own board for this league's format; `cv` uses Court Vision's composite score. Both are computed either way, so an ESPN-ordered pick still carries CV's full breakdown. `espn` falls back to `cv` when no market snapshot exists \u2014 `meta.rank_source` says which actually ran.",
+              "enum": [
+                "espn",
+                "cv"
+              ],
+              "title": "Rank Source",
+              "type": "string"
             }
           },
           {
@@ -18363,7 +18449,7 @@
     },
     "/v1/internal/drafts/{session_id}/board": {
       "get": {
-        "description": "The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick \u2014 every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`, `category_fit`).\n\nPlayers the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.\n\n`roster` lists the caller's drafted players with primary position, eligible slots and NBA team \u2014 what the roster zone needs to fill lineup slots, count caps and flag stacking.\n\nCategory leagues additionally carry `fit_value`/`fit_rank` \u2014 the board re-scored for this roster, with the session's `punts` at zero weight \u2014 a `category_fit` component on every recommendation, and `meta.category_need`, which says how far the roster trails an average team in each category.\n\nRows with market data carry `availability` (`likely`/`tossup`/`gone`) for the caller's next pick \u2014 the pick after that while the caller is on the clock.",
+        "description": "The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick \u2014 every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`, `category_fit`).\n\nPlayers the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.\n\n`roster` lists the caller's drafted players with primary position, eligible slots and NBA team \u2014 what the roster zone needs to fill lineup slots, count caps and flag stacking.\n\nCategory leagues additionally carry `fit_value`/`fit_rank` \u2014 the board re-scored for this roster, with the session's `punts` at zero weight \u2014 a `category_fit` component on every recommendation, and `meta.category_need`, which says how far the roster trails an average team in each category.\n\nRows with market data carry `availability` (`likely`/`tossup`/`gone`) for the caller's next pick \u2014 the pick after that while the caller is on the clock.\n\n`rank_source` chooses what orders the recommendations: ESPN's own board for this league's format (the default), or Court Vision's composite score. Every component is computed either way, so switching views never changes the numbers on a card \u2014 only which of the two opinions put it at the top.",
         "operationId": "get_draft_session_board_v1_internal_drafts__session_id__board_get",
         "parameters": [
           {
@@ -18373,6 +18459,22 @@
             "schema": {
               "title": "Session Id",
               "type": "integer"
+            }
+          },
+          {
+            "description": "What orders `recommendations`. `espn` (the default) takes the best remaining on ESPN's own board for this league's format; `cv` uses Court Vision's composite score. Both are computed either way, so an ESPN-ordered pick still carries CV's full breakdown. `espn` falls back to `cv` when no market snapshot exists \u2014 `meta.rank_source` says which actually ran.",
+            "in": "query",
+            "name": "rank_source",
+            "required": false,
+            "schema": {
+              "default": "espn",
+              "description": "What orders `recommendations`. `espn` (the default) takes the best remaining on ESPN's own board for this league's format; `cv` uses Court Vision's composite score. Both are computed either way, so an ESPN-ordered pick still carries CV's full breakdown. `espn` falls back to `cv` when no market snapshot exists \u2014 `meta.rank_source` says which actually ran.",
+              "enum": [
+                "espn",
+                "cv"
+              ],
+              "title": "Rank Source",
+              "type": "string"
             }
           }
         ],

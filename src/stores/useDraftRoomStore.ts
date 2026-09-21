@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { naturalDirection } from "@/lib/draft-board";
-import type { BoardSortKey, PositionFilter, SortDirection } from "@/types/draft";
+import type { BoardSortKey, PositionFilter, RankSource, SortDirection } from "@/types/draft";
 
 /**
  * How the room's board is being looked at — sort, position filter, and the
@@ -13,8 +13,15 @@ import type { BoardSortKey, PositionFilter, SortDirection } from "@/types/draft"
  * cap-blocked player is shown greyed with a CAP badge so the user can see *why*
  * he is unpickable. ESPN's own draft room hides them, so the toggle exists —
  * but transparency is the default.
+ *
+ * `rankSource` picks whose board the room is drafting off: ESPN's ranking for
+ * the league's format (the default) or Court Vision's own value. It is sent to
+ * the API — it changes what comes back, not just how it is displayed — and
+ * moves the sort to that source's column, because a board ordered by one
+ * opinion while recommending from the other is the confusing half of both.
  */
 interface DraftRoomStore {
+  rankSource: RankSource;
   sortKey: BoardSortKey;
   sortDirection: SortDirection;
   positionFilter: PositionFilter;
@@ -24,6 +31,8 @@ interface DraftRoomStore {
   /** The row keyboard actions apply to; null means "the first visible row". */
   highlightId: number | null;
 
+  /** Switching source re-sorts the board onto that source's own rank column. */
+  setRankSource: (rankSource: RankSource) => void;
   /** Sorting the current column flips it; a new column starts on its natural side. */
   toggleSort: (key: BoardSortKey) => void;
   setPositionFilter: (position: PositionFilter) => void;
@@ -34,8 +43,15 @@ interface DraftRoomStore {
   resetView: () => void;
 }
 
+/** The column each source ranks by, and so the one its board opens on. */
+const SORT_KEY_FOR: Record<RankSource, BoardSortKey> = {
+  espn: "market_rank",
+  cv: "cv_rank",
+};
+
 const DEFAULT_VIEW = {
-  sortKey: "cv_rank" as BoardSortKey,
+  rankSource: "espn" as RankSource,
+  sortKey: SORT_KEY_FOR.espn,
   sortDirection: "asc" as SortDirection,
   positionFilter: "all" as PositionFilter,
   hideCapped: false,
@@ -49,6 +65,12 @@ export const useDraftRoomStore = create<DraftRoomStore>()(
     (set) => ({
       ...DEFAULT_VIEW,
 
+      setRankSource: (rankSource) =>
+        set({
+          rankSource,
+          sortKey: SORT_KEY_FOR[rankSource],
+          sortDirection: naturalDirection(SORT_KEY_FOR[rankSource]),
+        }),
       toggleSort: (key) =>
         set((state) =>
           state.sortKey === key
@@ -71,6 +93,7 @@ export const useDraftRoomStore = create<DraftRoomStore>()(
       // with no market data has no `gone` rows at all, so a remembered filter
       // would open an empty room.
       partialize: (state) => ({
+        rankSource: state.rankSource,
         sortKey: state.sortKey,
         sortDirection: state.sortDirection,
         positionFilter: state.positionFilter,
