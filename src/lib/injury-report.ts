@@ -21,6 +21,8 @@ export function formatReportAge(
   }
   const [year, month, day] = report.report_date?.split("-").map(Number) ?? [];
   if (!year || !month || !day || !MONTHS[month - 1]) return null;
+  // A day the month does not have ("2026-02-31") is not a date. Day 0 of the next month is this month's last.
+  if (day > new Date(Date.UTC(year, month, 0)).getUTCDate()) return null;
   // Read the parts directly: new Date("2026-04-12") is UTC midnight, the 11th in the US.
   // The year stays in: last September's report must not read as this September's.
   return `${MONTHS[month - 1]} ${day}, ${year}`;

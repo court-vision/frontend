@@ -22,4 +22,11 @@ describe("formatReportAge", () => {
     expect(formatReportAge({ report_date: null })).toBeNull();
     expect(formatReportAge({ report_date: "not-a-date" })).toBeNull();
   });
+
+  test("a day the month does not have is not a date", () => {
+    expect(formatReportAge({ report_date: "2026-02-31" })).toBeNull();
+    expect(formatReportAge({ report_date: "2026-02-29" })).toBeNull();
+    expect(formatReportAge({ report_date: "2028-02-29" })).toBe("Feb 29, 2028");
+    expect(formatReportAge({ report_date: "2026-04-30" })).toBe("Apr 30, 2026");
+  });
 });
