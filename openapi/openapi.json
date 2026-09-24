@@ -166,6 +166,81 @@
         "title": "AdvancedStatsData",
         "type": "object"
       },
+      "AiToolCall": {
+        "description": "One Court Vision lookup the model made while answering.",
+        "properties": {
+          "input": {
+            "additionalProperties": true,
+            "description": "Arguments the model passed",
+            "title": "Input",
+            "type": "object"
+          },
+          "is_error": {
+            "description": "True when the lookup failed or was refused",
+            "title": "Is Error",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "Tool name, e.g. get_player_stats",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "input",
+          "is_error"
+        ],
+        "title": "AiToolCall",
+        "type": "object"
+      },
+      "AiUsage": {
+        "description": "Token spend for one request, summed over its model calls.",
+        "properties": {
+          "cache_creation_input_tokens": {
+            "title": "Cache Creation Input Tokens",
+            "type": "integer"
+          },
+          "cache_read_input_tokens": {
+            "title": "Cache Read Input Tokens",
+            "type": "integer"
+          },
+          "fallback": {
+            "description": "True when a refusal was re-served by a fallback model",
+            "title": "Fallback",
+            "type": "boolean"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model": {
+            "description": "Model that produced the final answer",
+            "title": "Model",
+            "type": "string"
+          },
+          "model_calls": {
+            "description": "Messages API calls made",
+            "title": "Model Calls",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model",
+          "model_calls",
+          "input_tokens",
+          "output_tokens",
+          "cache_read_input_tokens",
+          "cache_creation_input_tokens",
+          "fallback"
+        ],
+        "title": "AiUsage",
+        "type": "object"
+      },
       "ApiKeyListItem": {
         "description": "Single API key item for list responses (never includes the raw key or hash).",
         "properties": {
@@ -433,6 +508,102 @@
           "timestamp"
         ],
         "title": "ApplyLineupMovesResp",
+        "type": "object"
+      },
+      "AskData": {
+        "properties": {
+          "answer": {
+            "description": "The model's answer",
+            "title": "Answer",
+            "type": "string"
+          },
+          "tool_calls": {
+            "items": {
+              "$ref": "#/components/schemas/AiToolCall"
+            },
+            "title": "Tool Calls",
+            "type": "array"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/AiUsage"
+          }
+        },
+        "required": [
+          "answer",
+          "tool_calls",
+          "usage"
+        ],
+        "title": "AskData",
+        "type": "object"
+      },
+      "AskReq": {
+        "description": "Body for POST /v1/internal/ai/ask.",
+        "properties": {
+          "question": {
+            "description": "A question about NBA players, in plain language",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "AskReq",
+        "type": "object"
+      },
+      "AskResp": {
+        "description": "Response for POST /v1/internal/ai/ask.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AskData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AskResp",
         "type": "object"
       },
       "AvgStats": {
@@ -18027,6 +18198,58 @@
         "summary": "Get games on a date",
         "tags": [
           "Games"
+        ]
+      }
+    },
+    "/v1/internal/ai/ask": {
+      "post": {
+        "description": "Answers by looking players up through Court Vision's own services; every number in the answer comes from one of those lookups, listed in `tool_calls`. Each caller has a daily allowance of questions, and the route is off unless AI_ENABLED is set.",
+        "operationId": "ask_v1_internal_ai_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Invalid question, or the assistant declined it (AI_DECLINED)"
+          },
+          "429": {
+            "description": "The caller's daily allowance is used up (AI_QUOTA_EXCEEDED)"
+          },
+          "502": {
+            "description": "The model provider failed (AI_UNAVAILABLE, AI_BUSY, AI_INCOMPLETE)"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED) or today's global budget is spent (AI_DAILY_BUDGET_REACHED)"
+          },
+          "504": {
+            "description": "The assistant took too long (AI_TIMEOUT)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask the assistant a question about NBA players",
+        "tags": [
+          "AI"
         ]
       }
     },

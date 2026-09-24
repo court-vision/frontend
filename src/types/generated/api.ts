@@ -115,6 +115,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask the assistant a question about NBA players
+         * @description Answers by looking players up through Court Vision's own services; every number in the answer comes from one of those lookups, listed in `tool_calls`. Each caller has a daily allowance of questions, and the route is off unless AI_ENABLED is set.
+         */
+        post: operations["ask_v1_internal_ai_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/api-keys/": {
         parameters: {
             query?: never;
@@ -2091,6 +2111,58 @@ export interface components {
             usg_pct: number | null;
         };
         /**
+         * AiToolCall
+         * @description One Court Vision lookup the model made while answering.
+         */
+        AiToolCall: {
+            /**
+             * Input
+             * @description Arguments the model passed
+             */
+            input: {
+                [key: string]: unknown;
+            };
+            /**
+             * Is Error
+             * @description True when the lookup failed or was refused
+             */
+            is_error: boolean;
+            /**
+             * Name
+             * @description Tool name, e.g. get_player_stats
+             */
+            name: string;
+        };
+        /**
+         * AiUsage
+         * @description Token spend for one request, summed over its model calls.
+         */
+        AiUsage: {
+            /** Cache Creation Input Tokens */
+            cache_creation_input_tokens: number;
+            /** Cache Read Input Tokens */
+            cache_read_input_tokens: number;
+            /**
+             * Fallback
+             * @description True when a refusal was re-served by a fallback model
+             */
+            fallback: boolean;
+            /** Input Tokens */
+            input_tokens: number;
+            /**
+             * Model
+             * @description Model that produced the final answer
+             */
+            model: string;
+            /**
+             * Model Calls
+             * @description Messages API calls made
+             */
+            model_calls: number;
+            /** Output Tokens */
+            output_tokens: number;
+        };
+        /**
          * ApiKeyListItem
          * @description Single API key item for list responses (never includes the raw key or hash).
          */
@@ -2160,6 +2232,42 @@ export interface components {
         /** ApplyLineupMovesResp */
         ApplyLineupMovesResp: {
             data: components["schemas"]["ApplyLineupMovesData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** AskData */
+        AskData: {
+            /**
+             * Answer
+             * @description The model's answer
+             */
+            answer: string;
+            /** Tool Calls */
+            tool_calls: components["schemas"]["AiToolCall"][];
+            usage: components["schemas"]["AiUsage"];
+        };
+        /**
+         * AskReq
+         * @description Body for POST /v1/internal/ai/ask.
+         */
+        AskReq: {
+            /**
+             * Question
+             * @description A question about NBA players, in plain language
+             */
+            question: string;
+        };
+        /**
+         * AskResp
+         * @description Response for POST /v1/internal/ai/ask.
+         */
+        AskResp: {
+            data: components["schemas"]["AskData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -8663,6 +8771,65 @@ export interface operations {
             };
             /** @description Rate limit exceeded */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ask_v1_internal_ai_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskResp"];
+                };
+            };
+            /** @description Invalid question, or the assistant declined it (AI_DECLINED) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's daily allowance is used up (AI_QUOTA_EXCEEDED) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The model provider failed (AI_UNAVAILABLE, AI_BUSY, AI_INCOMPLETE) */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) or today's global budget is spent (AI_DAILY_BUDGET_REACHED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The assistant took too long (AI_TIMEOUT) */
+            504: {
                 headers: {
                     [name: string]: unknown;
                 };
