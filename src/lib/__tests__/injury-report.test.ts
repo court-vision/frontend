@@ -9,8 +9,13 @@ describe("formatReportAge", () => {
   });
 
   test("without an age, shows the report's date rather than implying it is current", () => {
-    expect(formatReportAge({ report_date: "2026-04-12" })).toBe("Apr 12");
-    expect(formatReportAge({ report_date: "2026-12-01", report_age_days: null })).toBe("Dec 1");
+    expect(formatReportAge({ report_date: "2026-04-12" })).toBe("Apr 12, 2026");
+    expect(formatReportAge({ report_date: "2026-12-01", report_age_days: null })).toBe("Dec 1, 2026");
+  });
+
+  test("the fallback keeps the year, so last season is not this season", () => {
+    expect(formatReportAge({ report_date: "2025-09-24" })).toBe("Sep 24, 2025");
+    expect(formatReportAge({ report_date: "2026-09-24" })).toBe("Sep 24, 2026");
   });
 
   test("nothing to say without a date or an age", () => {
