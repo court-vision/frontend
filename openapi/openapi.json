@@ -1574,6 +1574,7 @@
               {
                 "enum": [
                   "provider_not_supported",
+                  "provider_read_only",
                   "no_credentials",
                   "writes_disabled",
                   "no_scoring_period",
@@ -8094,6 +8095,7 @@
               {
                 "enum": [
                   "provider_not_supported",
+                  "provider_read_only",
                   "no_credentials",
                   "writes_disabled",
                   "no_scoring_period",
@@ -12607,6 +12609,10 @@
             ],
             "title": "Injury Type"
           },
+          "report_age_days": {
+            "title": "Report Age Days",
+            "type": "integer"
+          },
           "report_date": {
             "anyOf": [
               {
@@ -12635,7 +12641,8 @@
           "injury_type",
           "injury_detail",
           "expected_return",
-          "report_date"
+          "report_date",
+          "report_age_days"
         ],
         "title": "PlayerStatusData",
         "type": "object"
@@ -13349,6 +13356,70 @@
           "ft_pct"
         ],
         "title": "ProjectionStats",
+        "type": "object"
+      },
+      "ProviderCapabilitiesResp": {
+        "description": "What this team's provider can do for it (services.providers.capabilities).\n\nThe client reads these instead of branching on the provider name: a\nfeature is offered when its capability is true and renders the empty state\nwith `write_blocked_reason` otherwise.",
+        "properties": {
+          "account_teams": {
+            "title": "Account Teams",
+            "type": "boolean"
+          },
+          "daily_lineups": {
+            "title": "Daily Lineups",
+            "type": "boolean"
+          },
+          "draft_import": {
+            "title": "Draft Import",
+            "type": "boolean"
+          },
+          "draft_sync": {
+            "title": "Draft Sync",
+            "type": "boolean"
+          },
+          "lineup_read": {
+            "title": "Lineup Read",
+            "type": "boolean"
+          },
+          "lineup_write": {
+            "title": "Lineup Write",
+            "type": "boolean"
+          },
+          "live_totals": {
+            "title": "Live Totals",
+            "type": "boolean"
+          },
+          "position_limits": {
+            "title": "Position Limits",
+            "type": "boolean"
+          },
+          "transactions": {
+            "title": "Transactions",
+            "type": "boolean"
+          },
+          "waiver_claims": {
+            "title": "Waiver Claims",
+            "type": "boolean"
+          },
+          "write_scope": {
+            "title": "Write Scope",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lineup_read",
+          "lineup_write",
+          "transactions",
+          "waiver_claims",
+          "position_limits",
+          "live_totals",
+          "daily_lineups",
+          "account_teams",
+          "draft_sync",
+          "draft_import",
+          "write_scope"
+        ],
+        "title": "ProviderCapabilitiesResp",
         "type": "object"
       },
       "ProviderConnectionDeleteData": {
@@ -16712,6 +16783,9 @@
       "TeamResponse": {
         "description": "Team data response model",
         "properties": {
+          "capabilities": {
+            "$ref": "#/components/schemas/ProviderCapabilitiesResp"
+          },
           "league": {
             "anyOf": [
               {
@@ -16733,7 +16807,8 @@
         "required": [
           "team_id",
           "league_info",
-          "league"
+          "league",
+          "capabilities"
         ],
         "title": "TeamResponse",
         "type": "object"
@@ -22503,7 +22578,7 @@
     },
     "/v1/players/{player_id}/status": {
       "get": {
-        "description": "Get the most recent injury status for a player.",
+        "description": "Get a player's current injury status. Only reports from the last 7 days count; a player whose latest report is older has no current status and `data` is null.",
         "operationId": "get_player_status_v1_players__player_id__status_get",
         "parameters": [
           {

@@ -1804,7 +1804,7 @@ export interface paths {
         };
         /**
          * Get player injury status
-         * @description Get the most recent injury status for a player.
+         * @description Get a player's current injury status. Only reports from the last 7 days count; a player whose latest report is older has no current status and `data` is null.
          */
         get: operations["get_player_status_v1_players__player_id__status_get"];
         put?: never;
@@ -2609,7 +2609,7 @@ export interface components {
              */
             value_kind: "fpts" | "cat_value";
             /** Write Blocked Reason */
-            write_blocked_reason: ("provider_not_supported" | "no_credentials" | "writes_disabled" | "no_scoring_period" | "not_team_owner" | "team_id_unresolved") | null;
+            write_blocked_reason: ("provider_not_supported" | "provider_read_only" | "no_credentials" | "writes_disabled" | "no_scoring_period" | "not_team_owner" | "team_id_unresolved") | null;
         };
         /** DailyActionsResp */
         DailyActionsResp: {
@@ -5095,7 +5095,7 @@ export interface components {
             /** Team Name */
             team_name: string;
             /** Write Blocked Reason */
-            write_blocked_reason: ("provider_not_supported" | "no_credentials" | "writes_disabled" | "no_scoring_period" | "not_team_owner" | "team_id_unresolved") | null;
+            write_blocked_reason: ("provider_not_supported" | "provider_read_only" | "no_credentials" | "writes_disabled" | "no_scoring_period" | "not_team_owner" | "team_id_unresolved") | null;
         };
         /** LineupStateResp */
         LineupStateResp: {
@@ -6653,6 +6653,8 @@ export interface components {
             injury_detail: string | null;
             /** Injury Type */
             injury_type: string | null;
+            /** Report Age Days */
+            report_age_days: number;
             /** Report Date */
             report_date: string | null;
             /** Status */
@@ -6872,6 +6874,38 @@ export interface components {
             stl: number | null;
             /** Tov */
             tov: number | null;
+        };
+        /**
+         * ProviderCapabilitiesResp
+         * @description What this team's provider can do for it (services.providers.capabilities).
+         *
+         *     The client reads these instead of branching on the provider name: a
+         *     feature is offered when its capability is true and renders the empty state
+         *     with `write_blocked_reason` otherwise.
+         */
+        ProviderCapabilitiesResp: {
+            /** Account Teams */
+            account_teams: boolean;
+            /** Daily Lineups */
+            daily_lineups: boolean;
+            /** Draft Import */
+            draft_import: boolean;
+            /** Draft Sync */
+            draft_sync: boolean;
+            /** Lineup Read */
+            lineup_read: boolean;
+            /** Lineup Write */
+            lineup_write: boolean;
+            /** Live Totals */
+            live_totals: boolean;
+            /** Position Limits */
+            position_limits: boolean;
+            /** Transactions */
+            transactions: boolean;
+            /** Waiver Claims */
+            waiver_claims: boolean;
+            /** Write Scope */
+            write_scope: boolean;
         };
         /** ProviderConnectionDeleteData */
         ProviderConnectionDeleteData: {
@@ -8053,6 +8087,7 @@ export interface components {
          * @description Team data response model
          */
         TeamResponse: {
+            capabilities: components["schemas"]["ProviderCapabilitiesResp"];
             league: components["schemas"]["LeagueSummary"] | null;
             league_info: components["schemas"]["LeagueInfoPublic"];
             /** Team Id */

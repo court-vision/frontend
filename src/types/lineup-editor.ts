@@ -59,6 +59,7 @@ export const WRITE_BLOCKED_COPY: Record<WriteBlockedReason, string> = {
   not_team_owner: "The stored ESPN login doesn't own this team.",
   no_scoring_period: "ESPN hasn't opened today's lineup yet.",
   provider_not_supported: "Lineup editing is available for ESPN teams.",
+  provider_read_only: "This Yahoo connection is read-only, so make lineup changes on Yahoo.",
   team_id_unresolved:
     "Couldn't match this team on ESPN — check the team name in Manage Teams.",
 };
