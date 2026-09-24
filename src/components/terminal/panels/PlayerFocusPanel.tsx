@@ -11,6 +11,7 @@ import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
 import { useRankingsQuery } from "@/hooks/useRankings";
 import { StatCell } from "../shared";
 import { calculateRecentFormTrend } from "@/lib/chart-utils";
+import { formatReportAge } from "@/lib/injury-report";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-error";
 import type { StatWindow } from "@/types/terminal";
@@ -127,6 +128,7 @@ export function PlayerFocusPanel() {
   const injuryStatus = statusData?.status;
   const showInjuryBadge =
     injuryStatus && injuryStatus !== "Available" && injuryStatus in INJURY_ABBREV;
+  const injuryReportAge = statusData ? formatReportAge(statusData) : null;
 
   const rank = rankingEntry?.rank ?? null;
   const ownership = ownershipData?.current_ownership ?? null;
@@ -144,9 +146,13 @@ export function PlayerFocusPanel() {
                   "inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold border shrink-0",
                   INJURY_BADGE_STYLES[injuryStatus!]
                 )}
+                title={statusData?.report_date ? `Injury report of ${statusData.report_date}` : undefined}
               >
                 <AlertTriangle className="h-2 w-2" />
                 {INJURY_ABBREV[injuryStatus!]}
+                {injuryReportAge && (
+                  <span className="font-normal opacity-75">· {injuryReportAge}</span>
+                )}
               </span>
             )}
           </div>

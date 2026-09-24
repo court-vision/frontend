@@ -98,6 +98,8 @@ export interface PlayerStatusData {
   injury_detail: string | null;
   expected_return: string | null;
   report_date: string | null;
+  /** Days since report_date; the backend never returns a report older than 7 days. */
+  report_age_days?: number | null;
 }
 
 export interface PlayerOwnershipData {
