@@ -115,6 +115,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask the assistant a question about NBA players
+         * @description Answers by looking players up through Court Vision's own services; every number in the answer comes from one of those lookups, listed in `tool_calls`. Each caller has a daily allowance of questions, and the route is off unless AI_ENABLED is set.
+         */
+        post: operations["ask_v1_internal_ai_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/api-keys/": {
         parameters: {
             query?: never;
@@ -1804,7 +1824,7 @@ export interface paths {
         };
         /**
          * Get player injury status
-         * @description Get the most recent injury status for a player.
+         * @description Get a player's current injury status. Only reports from the last 7 days count; a player whose latest report is older has no current status and `data` is null.
          */
         get: operations["get_player_status_v1_players__player_id__status_get"];
         put?: never;
@@ -2091,6 +2111,58 @@ export interface components {
             usg_pct: number | null;
         };
         /**
+         * AiToolCall
+         * @description One Court Vision lookup the model made while answering.
+         */
+        AiToolCall: {
+            /**
+             * Input
+             * @description Arguments the model passed
+             */
+            input: {
+                [key: string]: unknown;
+            };
+            /**
+             * Is Error
+             * @description True when the lookup failed or was refused
+             */
+            is_error: boolean;
+            /**
+             * Name
+             * @description Tool name, e.g. get_player_stats
+             */
+            name: string;
+        };
+        /**
+         * AiUsage
+         * @description Token spend for one request, summed over its model calls.
+         */
+        AiUsage: {
+            /** Cache Creation Input Tokens */
+            cache_creation_input_tokens: number;
+            /** Cache Read Input Tokens */
+            cache_read_input_tokens: number;
+            /**
+             * Fallback
+             * @description True when a refusal was re-served by a fallback model
+             */
+            fallback: boolean;
+            /** Input Tokens */
+            input_tokens: number;
+            /**
+             * Model
+             * @description Model that produced the final answer
+             */
+            model: string;
+            /**
+             * Model Calls
+             * @description Messages API calls made
+             */
+            model_calls: number;
+            /** Output Tokens */
+            output_tokens: number;
+        };
+        /**
          * ApiKeyListItem
          * @description Single API key item for list responses (never includes the raw key or hash).
          */
@@ -2160,6 +2232,42 @@ export interface components {
         /** ApplyLineupMovesResp */
         ApplyLineupMovesResp: {
             data: components["schemas"]["ApplyLineupMovesData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** AskData */
+        AskData: {
+            /**
+             * Answer
+             * @description The model's answer
+             */
+            answer: string;
+            /** Tool Calls */
+            tool_calls: components["schemas"]["AiToolCall"][];
+            usage: components["schemas"]["AiUsage"];
+        };
+        /**
+         * AskReq
+         * @description Body for POST /v1/internal/ai/ask.
+         */
+        AskReq: {
+            /**
+             * Question
+             * @description A question about NBA players, in plain language
+             */
+            question: string;
+        };
+        /**
+         * AskResp
+         * @description Response for POST /v1/internal/ai/ask.
+         */
+        AskResp: {
+            data: components["schemas"]["AskData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -2609,7 +2717,7 @@ export interface components {
              */
             value_kind: "fpts" | "cat_value";
             /** Write Blocked Reason */
-            write_blocked_reason: ("provider_not_supported" | "no_credentials" | "writes_disabled" | "no_scoring_period" | "not_team_owner" | "team_id_unresolved") | null;
+            write_blocked_reason: ("provider_not_supported" | "provider_read_only" | "no_credentials" | "writes_disabled" | "no_scoring_period" | "not_team_owner" | "team_id_unresolved") | null;
         };
         /** DailyActionsResp */
         DailyActionsResp: {
@@ -5095,7 +5203,7 @@ export interface components {
             /** Team Name */
             team_name: string;
             /** Write Blocked Reason */
-            write_blocked_reason: ("provider_not_supported" | "no_credentials" | "writes_disabled" | "no_scoring_period" | "not_team_owner" | "team_id_unresolved") | null;
+            write_blocked_reason: ("provider_not_supported" | "provider_read_only" | "no_credentials" | "writes_disabled" | "no_scoring_period" | "not_team_owner" | "team_id_unresolved") | null;
         };
         /** LineupStateResp */
         LineupStateResp: {
@@ -6653,6 +6761,8 @@ export interface components {
             injury_detail: string | null;
             /** Injury Type */
             injury_type: string | null;
+            /** Report Age Days */
+            report_age_days: number;
             /** Report Date */
             report_date: string | null;
             /** Status */
@@ -6872,6 +6982,38 @@ export interface components {
             stl: number | null;
             /** Tov */
             tov: number | null;
+        };
+        /**
+         * ProviderCapabilitiesResp
+         * @description What this team's provider can do for it (services.providers.capabilities).
+         *
+         *     The client reads these instead of branching on the provider name: a
+         *     feature is offered when its capability is true and renders the empty state
+         *     with `write_blocked_reason` otherwise.
+         */
+        ProviderCapabilitiesResp: {
+            /** Account Teams */
+            account_teams: boolean;
+            /** Daily Lineups */
+            daily_lineups: boolean;
+            /** Draft Import */
+            draft_import: boolean;
+            /** Draft Sync */
+            draft_sync: boolean;
+            /** Lineup Read */
+            lineup_read: boolean;
+            /** Lineup Write */
+            lineup_write: boolean;
+            /** Live Totals */
+            live_totals: boolean;
+            /** Position Limits */
+            position_limits: boolean;
+            /** Transactions */
+            transactions: boolean;
+            /** Waiver Claims */
+            waiver_claims: boolean;
+            /** Write Scope */
+            write_scope: boolean;
         };
         /** ProviderConnectionDeleteData */
         ProviderConnectionDeleteData: {
@@ -8053,6 +8195,7 @@ export interface components {
          * @description Team data response model
          */
         TeamResponse: {
+            capabilities: components["schemas"]["ProviderCapabilitiesResp"];
             league: components["schemas"]["LeagueSummary"] | null;
             league_info: components["schemas"]["LeagueInfoPublic"];
             /** Team Id */
@@ -8628,6 +8771,65 @@ export interface operations {
             };
             /** @description Rate limit exceeded */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ask_v1_internal_ai_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskResp"];
+                };
+            };
+            /** @description Invalid question, or the assistant declined it (AI_DECLINED) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's daily allowance is used up (AI_QUOTA_EXCEEDED) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The model provider failed (AI_UNAVAILABLE, AI_BUSY, AI_INCOMPLETE) */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) or today's global budget is spent (AI_DAILY_BUDGET_REACHED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The assistant took too long (AI_TIMEOUT) */
+            504: {
                 headers: {
                     [name: string]: unknown;
                 };

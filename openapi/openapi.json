@@ -166,6 +166,81 @@
         "title": "AdvancedStatsData",
         "type": "object"
       },
+      "AiToolCall": {
+        "description": "One Court Vision lookup the model made while answering.",
+        "properties": {
+          "input": {
+            "additionalProperties": true,
+            "description": "Arguments the model passed",
+            "title": "Input",
+            "type": "object"
+          },
+          "is_error": {
+            "description": "True when the lookup failed or was refused",
+            "title": "Is Error",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "Tool name, e.g. get_player_stats",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "input",
+          "is_error"
+        ],
+        "title": "AiToolCall",
+        "type": "object"
+      },
+      "AiUsage": {
+        "description": "Token spend for one request, summed over its model calls.",
+        "properties": {
+          "cache_creation_input_tokens": {
+            "title": "Cache Creation Input Tokens",
+            "type": "integer"
+          },
+          "cache_read_input_tokens": {
+            "title": "Cache Read Input Tokens",
+            "type": "integer"
+          },
+          "fallback": {
+            "description": "True when a refusal was re-served by a fallback model",
+            "title": "Fallback",
+            "type": "boolean"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model": {
+            "description": "Model that produced the final answer",
+            "title": "Model",
+            "type": "string"
+          },
+          "model_calls": {
+            "description": "Messages API calls made",
+            "title": "Model Calls",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model",
+          "model_calls",
+          "input_tokens",
+          "output_tokens",
+          "cache_read_input_tokens",
+          "cache_creation_input_tokens",
+          "fallback"
+        ],
+        "title": "AiUsage",
+        "type": "object"
+      },
       "ApiKeyListItem": {
         "description": "Single API key item for list responses (never includes the raw key or hash).",
         "properties": {
@@ -433,6 +508,102 @@
           "timestamp"
         ],
         "title": "ApplyLineupMovesResp",
+        "type": "object"
+      },
+      "AskData": {
+        "properties": {
+          "answer": {
+            "description": "The model's answer",
+            "title": "Answer",
+            "type": "string"
+          },
+          "tool_calls": {
+            "items": {
+              "$ref": "#/components/schemas/AiToolCall"
+            },
+            "title": "Tool Calls",
+            "type": "array"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/AiUsage"
+          }
+        },
+        "required": [
+          "answer",
+          "tool_calls",
+          "usage"
+        ],
+        "title": "AskData",
+        "type": "object"
+      },
+      "AskReq": {
+        "description": "Body for POST /v1/internal/ai/ask.",
+        "properties": {
+          "question": {
+            "description": "A question about NBA players, in plain language",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "AskReq",
+        "type": "object"
+      },
+      "AskResp": {
+        "description": "Response for POST /v1/internal/ai/ask.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AskData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AskResp",
         "type": "object"
       },
       "AvgStats": {
@@ -1574,6 +1745,7 @@
               {
                 "enum": [
                   "provider_not_supported",
+                  "provider_read_only",
                   "no_credentials",
                   "writes_disabled",
                   "no_scoring_period",
@@ -8094,6 +8266,7 @@
               {
                 "enum": [
                   "provider_not_supported",
+                  "provider_read_only",
                   "no_credentials",
                   "writes_disabled",
                   "no_scoring_period",
@@ -12607,6 +12780,10 @@
             ],
             "title": "Injury Type"
           },
+          "report_age_days": {
+            "title": "Report Age Days",
+            "type": "integer"
+          },
           "report_date": {
             "anyOf": [
               {
@@ -12635,7 +12812,8 @@
           "injury_type",
           "injury_detail",
           "expected_return",
-          "report_date"
+          "report_date",
+          "report_age_days"
         ],
         "title": "PlayerStatusData",
         "type": "object"
@@ -13349,6 +13527,70 @@
           "ft_pct"
         ],
         "title": "ProjectionStats",
+        "type": "object"
+      },
+      "ProviderCapabilitiesResp": {
+        "description": "What this team's provider can do for it (services.providers.capabilities).\n\nThe client reads these instead of branching on the provider name: a\nfeature is offered when its capability is true and renders the empty state\nwith `write_blocked_reason` otherwise.",
+        "properties": {
+          "account_teams": {
+            "title": "Account Teams",
+            "type": "boolean"
+          },
+          "daily_lineups": {
+            "title": "Daily Lineups",
+            "type": "boolean"
+          },
+          "draft_import": {
+            "title": "Draft Import",
+            "type": "boolean"
+          },
+          "draft_sync": {
+            "title": "Draft Sync",
+            "type": "boolean"
+          },
+          "lineup_read": {
+            "title": "Lineup Read",
+            "type": "boolean"
+          },
+          "lineup_write": {
+            "title": "Lineup Write",
+            "type": "boolean"
+          },
+          "live_totals": {
+            "title": "Live Totals",
+            "type": "boolean"
+          },
+          "position_limits": {
+            "title": "Position Limits",
+            "type": "boolean"
+          },
+          "transactions": {
+            "title": "Transactions",
+            "type": "boolean"
+          },
+          "waiver_claims": {
+            "title": "Waiver Claims",
+            "type": "boolean"
+          },
+          "write_scope": {
+            "title": "Write Scope",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lineup_read",
+          "lineup_write",
+          "transactions",
+          "waiver_claims",
+          "position_limits",
+          "live_totals",
+          "daily_lineups",
+          "account_teams",
+          "draft_sync",
+          "draft_import",
+          "write_scope"
+        ],
+        "title": "ProviderCapabilitiesResp",
         "type": "object"
       },
       "ProviderConnectionDeleteData": {
@@ -16712,6 +16954,9 @@
       "TeamResponse": {
         "description": "Team data response model",
         "properties": {
+          "capabilities": {
+            "$ref": "#/components/schemas/ProviderCapabilitiesResp"
+          },
           "league": {
             "anyOf": [
               {
@@ -16733,7 +16978,8 @@
         "required": [
           "team_id",
           "league_info",
-          "league"
+          "league",
+          "capabilities"
         ],
         "title": "TeamResponse",
         "type": "object"
@@ -17952,6 +18198,58 @@
         "summary": "Get games on a date",
         "tags": [
           "Games"
+        ]
+      }
+    },
+    "/v1/internal/ai/ask": {
+      "post": {
+        "description": "Answers by looking players up through Court Vision's own services; every number in the answer comes from one of those lookups, listed in `tool_calls`. Each caller has a daily allowance of questions, and the route is off unless AI_ENABLED is set.",
+        "operationId": "ask_v1_internal_ai_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Invalid question, or the assistant declined it (AI_DECLINED)"
+          },
+          "429": {
+            "description": "The caller's daily allowance is used up (AI_QUOTA_EXCEEDED)"
+          },
+          "502": {
+            "description": "The model provider failed (AI_UNAVAILABLE, AI_BUSY, AI_INCOMPLETE)"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED) or today's global budget is spent (AI_DAILY_BUDGET_REACHED)"
+          },
+          "504": {
+            "description": "The assistant took too long (AI_TIMEOUT)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask the assistant a question about NBA players",
+        "tags": [
+          "AI"
         ]
       }
     },
@@ -22503,7 +22801,7 @@
     },
     "/v1/players/{player_id}/status": {
       "get": {
-        "description": "Get the most recent injury status for a player.",
+        "description": "Get a player's current injury status. Only reports from the last 7 days count; a player whose latest report is older has no current status and `data` is null.",
         "operationId": "get_player_status_v1_players__player_id__status_get",
         "parameters": [
           {

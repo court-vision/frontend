@@ -38,6 +38,7 @@ import {
 import { usePlayerStatusQuery } from "@/hooks/usePlayerStatus";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { calculateMovingAverage, calculateRecentFormTrend } from "@/lib/chart-utils";
+import { formatReportAge } from "@/lib/injury-report";
 import { cn } from "@/lib/utils";
 import type {
   AdvancedStatsData,
@@ -333,14 +334,25 @@ function WindowSwitch({
 
 /** Injury status only: a player with no report gets no badge rather than an inferred "Healthy". */
 function StatusBadge({ status }: { status: PlayerStatusData | null | undefined }) {
-  const label = status?.status;
-  if (!label || /^(available|active|healthy)$/i.test(label)) return null;
+  if (!status?.status || /^(available|active|healthy)$/i.test(status.status)) return null;
+  const label = status.status;
   const variant = /^(out|doubtful|suspended)/i.test(label) ? "loss" : "projected";
-  const detail = status?.injury_detail ?? status?.injury_type ?? undefined;
+  const detail = status.injury_detail ?? status.injury_type ?? undefined;
+  const age = formatReportAge(status);
   return (
-    <Badge variant={variant} title={detail}>
-      {label}
-    </Badge>
+    <>
+      <Badge variant={variant} title={detail}>
+        {label}
+      </Badge>
+      {age && (
+        <span
+          className="font-mono text-[11px] text-muted-foreground"
+          title={`Injury report of ${status.report_date}`}
+        >
+          reported {age}
+        </span>
+      )}
+    </>
   );
 }
 
