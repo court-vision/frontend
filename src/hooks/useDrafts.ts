@@ -18,7 +18,7 @@ import type {
   DraftSession,
   DraftSessionCreate,
   DraftSessionUpdate,
-  RankSource,
+  BoardSource,
 } from "@/types/draft";
 
 // Query keys
@@ -28,12 +28,12 @@ export const draftKeys = {
   details: () => [...draftKeys.all, "detail"] as const,
   detail: (sessionId: number) => [...draftKeys.details(), sessionId] as const,
   boards: () => [...draftKeys.all, "board"] as const,
-  // `rankSource` is the last segment so `board(sessionId)` still prefix-matches
+  // `boardSource` is the last segment so `board(sessionId)` still prefix-matches
   // every source: an invalidation after a pick must clear both boards, while a
   // read or an optimistic write has to name the one on screen.
-  board: (sessionId: number, rankSource?: RankSource) =>
-    rankSource
-      ? ([...draftKeys.boards(), sessionId, rankSource] as const)
+  board: (sessionId: number, boardSource?: BoardSource) =>
+    boardSource
+      ? ([...draftKeys.boards(), sessionId, boardSource] as const)
       : ([...draftKeys.boards(), sessionId] as const),
   recaps: () => [...draftKeys.all, "recap"] as const,
   recap: (sessionId: number) => [...draftKeys.recaps(), sessionId] as const,
@@ -43,7 +43,7 @@ export const draftKeys = {
     teamId: number | null,
     picked: number[],
     mine: number[],
-    rankSource: RankSource
+    boardSource: BoardSource
   ) =>
     [
       ...draftKeys.boards(),
@@ -51,7 +51,7 @@ export const draftKeys = {
       teamId,
       [...picked].sort((a, b) => a - b).join(","),
       [...mine].sort((a, b) => a - b).join(","),
-      rankSource,
+      boardSource,
     ] as const,
 };
 
@@ -83,11 +83,11 @@ export function useDraftSessionQuery(sessionId: number | null) {
  */
 export function useDraftBoardQuery(sessionId: number | null) {
   const { getToken, isSignedIn } = useAuth();
-  const rankSource = useDraftRoomStore((state) => state.rankSource);
+  const boardSource = useDraftRoomStore((state) => state.boardSource);
 
   return useQuery<DraftBoardResult>({
-    queryKey: draftKeys.board(sessionId!, rankSource),
-    queryFn: ({ signal }) => apiClient.getDraftBoard(getToken, sessionId!, rankSource, { signal }),
+    queryKey: draftKeys.board(sessionId!, boardSource),
+    queryFn: ({ signal }) => apiClient.getDraftBoard(getToken, sessionId!, boardSource, { signal }),
     enabled: !!sessionId && isSignedIn === true,
     staleTime: 1000 * 30,
   });
@@ -100,12 +100,12 @@ export function useTeamDraftBoardQuery(
   mine: number[] = []
 ) {
   const { getToken, isSignedIn } = useAuth();
-  const rankSource = useDraftRoomStore((state) => state.rankSource);
+  const boardSource = useDraftRoomStore((state) => state.boardSource);
 
   return useQuery<DraftBoardResult>({
-    queryKey: draftKeys.teamBoard(teamId, picked, mine, rankSource),
+    queryKey: draftKeys.teamBoard(teamId, picked, mine, boardSource),
     queryFn: ({ signal }) =>
-      apiClient.getTeamDraftBoard(getToken, teamId!, picked, mine, rankSource, { signal }),
+      apiClient.getTeamDraftBoard(getToken, teamId!, picked, mine, boardSource, { signal }),
     enabled: !!teamId && isSignedIn === true,
     staleTime: 1000 * 60 * 5,
   });
@@ -251,7 +251,7 @@ interface PickContext {
 export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean } = {}) {
   const queryClient = useQueryClient();
   const { getToken } = useAuth();
-  const rankSource = useDraftRoomStore((state) => state.rankSource);
+  const boardSource = useDraftRoomStore((state) => state.boardSource);
 
   return useMutation<DraftPick, Error, DraftPickCreate, PickContext>({
     mutationKey: ["drafts", "pick", sessionId],
@@ -262,7 +262,7 @@ export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean
     meta: opts.silent ? { toast: false } : undefined,
 
     onMutate: async (pick) => {
-      const boardKey = draftKeys.board(sessionId, rankSource);
+      const boardKey = draftKeys.board(sessionId, boardSource);
       const sessionKey = draftKeys.detail(sessionId);
       // Both, or an in-flight refetch lands on top of the optimistic state.
       await queryClient.cancelQueries({ queryKey: boardKey });
@@ -326,7 +326,7 @@ export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean
       // A snapshot of `undefined` means nothing was cached — leave it alone
       // rather than writing undefined over a query that has since loaded.
       if (context?.board !== undefined) {
-        queryClient.setQueryData(draftKeys.board(sessionId, rankSource), context.board);
+        queryClient.setQueryData(draftKeys.board(sessionId, boardSource), context.board);
       }
       if (context?.session !== undefined) {
         queryClient.setQueryData(draftKeys.detail(sessionId), context.session);

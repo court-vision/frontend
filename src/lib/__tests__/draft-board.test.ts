@@ -92,6 +92,7 @@ function meta(overrides: Partial<DraftBoardMeta> = {}): DraftBoardMeta {
     market_rank_type: "roto",
     rank_basis: "espn",
     rank_basis_reason: "espn_league",
+    rank_basis_requested: "espn",
     session_id: 1,
     league_size: 12,
     roster_slots: {},
@@ -401,6 +402,11 @@ describe("basisNote", () => {
       .toBe("ESPN categories board · as of 2026-09-16");
     expect(basisNote(meta({ market_rank_type: "standard", market_as_of: null }))?.label)
       .toBe("ESPN points board");
+  });
+
+  test("a chosen Court Vision board is named as a choice, not a fallback", () => {
+    expect(basisNote(meta({ rank_basis: "cv", rank_basis_reason: "caller_chose_cv", rank_basis_requested: "cv" }))?.label)
+      .toBe("Court Vision board");
   });
 
   test("a CV board says why it is not ESPN's", () => {

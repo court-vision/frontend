@@ -32,6 +32,13 @@ export type PickSource = DraftPick["source"];
  */
 export type RankSource = NonNullable<DraftBoardMeta["rank_source"]>;
 
+/**
+ * Whose rankings the drafter asked to order the board: ESPN's published rank
+ * (the default) or Court Vision's. Sent to the API as `board`; `meta.rank_basis`
+ * says what actually ran.
+ */
+export type BoardSource = NonNullable<DraftBoardMeta["rank_basis_requested"]>;
+
 /** Where the caller's roster stands in one category, and what fit does about it. */
 export type CategoryNeed = S["CategoryNeedResp"];
 /** Whether a player is likely to survive to the caller's next pick. */

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { naturalDirection } from "@/lib/draft-board";
-import type { BoardSortKey, PositionFilter, RankSource, SortDirection } from "@/types/draft";
+import type { BoardSortKey, BoardSource, PositionFilter, SortDirection } from "@/types/draft";
 
 /**
  * How the room's board is being looked at — sort, position filter, and the
@@ -14,15 +14,15 @@ import type { BoardSortKey, PositionFilter, RankSource, SortDirection } from "@/
  * he is unpickable. ESPN's own draft room hides them, so the toggle exists —
  * but transparency is the default.
  *
- * `rankSource` picks what orders the recommendation strip: Court Vision's
- * room-aware picks (the default) or the best still available on ESPN's board.
- * It is sent to the API — it changes what comes back, not just how it is
- * displayed. The board's own order is not its business: the server decides
- * whose rank fills the gutter (`meta.rank_basis`), and the sort opens on that
- * column whichever opinion the strip is showing.
+ * `boardSource` is whose rankings order the board: ESPN's published rank (the
+ * default — the order an ESPN draft room shows) or Court Vision's, the opt-in.
+ * It is sent to the API as `board` — it changes what comes back, not just how
+ * it is displayed — and the sort opens on the gutter whichever is up. The
+ * recommendation strip is not its business: that is always CV's picks, with
+ * ESPN's rank on every card.
  */
 interface DraftRoomStore {
-  rankSource: RankSource;
+  boardSource: BoardSource;
   sortKey: BoardSortKey;
   sortDirection: SortDirection;
   positionFilter: PositionFilter;
@@ -32,7 +32,7 @@ interface DraftRoomStore {
   /** The row keyboard actions apply to; null means "the first visible row". */
   highlightId: number | null;
 
-  setRankSource: (rankSource: RankSource) => void;
+  setBoardSource: (boardSource: BoardSource) => void;
   /** Sorting the current column flips it; a new column starts on its natural side. */
   toggleSort: (key: BoardSortKey) => void;
   setPositionFilter: (position: PositionFilter) => void;
@@ -44,7 +44,7 @@ interface DraftRoomStore {
 }
 
 const DEFAULT_VIEW = {
-  rankSource: "cv" as RankSource,
+  boardSource: "espn" as BoardSource,
   sortKey: "board_rank" as BoardSortKey,
   sortDirection: "asc" as SortDirection,
   positionFilter: "all" as PositionFilter,
@@ -57,11 +57,11 @@ const DEFAULT_VIEW = {
 /** What survives a reload: the view preferences, never the transient state. */
 type PersistedView = Pick<
   DraftRoomStore,
-  "rankSource" | "sortKey" | "sortDirection" | "positionFilter" | "hideCapped"
+  "boardSource" | "sortKey" | "sortDirection" | "positionFilter" | "hideCapped"
 >;
 
 const PERSISTED_DEFAULTS: PersistedView = {
-  rankSource: DEFAULT_VIEW.rankSource,
+  boardSource: DEFAULT_VIEW.boardSource,
   sortKey: DEFAULT_VIEW.sortKey,
   sortDirection: DEFAULT_VIEW.sortDirection,
   positionFilter: DEFAULT_VIEW.positionFilter,
@@ -73,7 +73,7 @@ export const useDraftRoomStore = create<DraftRoomStore>()(
     (set) => ({
       ...DEFAULT_VIEW,
 
-      setRankSource: (rankSource) => set({ rankSource }),
+      setBoardSource: (boardSource) => set({ boardSource }),
       toggleSort: (key) =>
         set((state) =>
           state.sortKey === key
@@ -89,15 +89,22 @@ export const useDraftRoomStore = create<DraftRoomStore>()(
     }),
     {
       name: "draft-room-store",
-      // v1: the strip opens on CV's picks and the sort on the board's own
-      // gutter. Anyone who persisted the earlier ESPN-toggle state (source
-      // `espn`, sort `market_rank`) lands on the new defaults; every other
-      // preference survives.
-      version: 1,
+      // v1 moved the sort onto the board's own gutter; v2 replaced the strip's
+      // `rankSource` with the board's `boardSource`. Either way an older state
+      // lands on the defaults (ESPN's board, gutter sort) and every other
+      // preference survives; the stale key is simply not carried over.
+      version: 2,
       migrate: (persisted, version): PersistedView => {
-        const state: PersistedView = { ...PERSISTED_DEFAULTS, ...((persisted ?? {}) as Partial<PersistedView>) };
+        const { rankSource: _stale, ...rest } = ((persisted ?? {}) as Partial<PersistedView> & {
+          rankSource?: unknown;
+        });
+        void _stale;
+        const state: PersistedView = { ...PERSISTED_DEFAULTS, ...rest };
         if (version < 1) {
-          return { ...state, rankSource: "cv", sortKey: "board_rank", sortDirection: "asc" };
+          return { ...state, sortKey: "board_rank", sortDirection: "asc", boardSource: "espn" };
+        }
+        if (version < 2) {
+          return { ...state, boardSource: "espn" };
         }
         return state;
       },
@@ -108,7 +115,7 @@ export const useDraftRoomStore = create<DraftRoomStore>()(
       // with no market data has no `gone` rows at all, so a remembered filter
       // would open an empty room.
       partialize: (state) => ({
-        rankSource: state.rankSource,
+        boardSource: state.boardSource,
         sortKey: state.sortKey,
         sortDirection: state.sortDirection,
         positionFilter: state.positionFilter,

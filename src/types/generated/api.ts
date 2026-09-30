@@ -330,7 +330,7 @@ export interface paths {
          *
          *     `market_rank` and `auction_value` come from the ESPN board matching the league's format — STANDARD for points, ROTO for categories — which `meta.market_rank_type` names.
          *
-         *     Rows come back in the order `meta.rank_basis` names: ESPN's published rank in an ESPN room (a league ESPN runs, or a team with no synced league — its market pool is ESPN's anyway), with `board_rank` as each row's place and players ESPN does not rank trailing in CV order; Court Vision's rank for a league elsewhere, or while no snapshot exists.
+         *     Rows come back in the order `meta.rank_basis` names — `board` asks for one, the meta says what ran: ESPN's published rank in an ESPN room (a league ESPN runs, or a team with no synced league — its market pool is ESPN's anyway), with `board_rank` as each row's place and players ESPN does not rank trailing in CV order; Court Vision's rank for a league elsewhere, or while no snapshot exists.
          *
          *     Stateless: pick state rides in the query params, so there is no slot to count from and rows carry no availability. Use the session board once a draft room is open.
          */
@@ -2975,7 +2975,7 @@ export interface components {
             punts: string[];
             /**
              * Rank Basis
-             * @description Whose rank orders the rows and fills `board_rank`. `espn` in an ESPN room: a league ESPN runs, a room with no league at all, or one following an ESPN draft. `cv` for a league elsewhere, or while no market snapshot exists. Not a caller's choice — `rank_source` is the recommendations' knob, this is the board's fact.
+             * @description Whose rank orders the rows and fills `board_rank`. `espn` in an ESPN room: a league ESPN runs, a room with no league at all, or one following an ESPN draft. `cv` when the caller asked for Court Vision's rankings (`board=cv`), for a league elsewhere, or while no market snapshot exists. `board` asks; this is what ran.
              * @default cv
              * @enum {string}
              */
@@ -2986,7 +2986,14 @@ export interface components {
              * @default provider_not_espn
              * @enum {string}
              */
-            rank_basis_reason: "espn_league" | "league_less_room" | "linked_espn_draft" | "provider_not_espn" | "no_market_snapshot";
+            rank_basis_reason: "espn_league" | "league_less_room" | "linked_espn_draft" | "caller_chose_cv" | "provider_not_espn" | "no_market_snapshot";
+            /**
+             * Rank Basis Requested
+             * @description What the caller asked `board` for. Differs from `rank_basis` only when `espn` was asked for and the room cannot have it: a league elsewhere, or no market snapshot yet.
+             * @default espn
+             * @enum {string}
+             */
+            rank_basis_requested: "espn" | "cv";
             /**
              * Rank Source
              * @description What actually ordered `recommendations` on this response
@@ -9148,6 +9155,8 @@ export interface operations {
                 mine?: number[];
                 /** @description Category keys to concede, e.g. `punt=ft_pct&punt=tov`. They weigh zero in `fit_value`; unknown keys are ignored here (the room stores validated punts on the session instead). No effect on a points league. */
                 punt?: string[];
+                /** @description Whose rankings order the rows. `espn` (the default) is ESPN's published draft rank for this league's format — the order an ESPN draft room shows — wherever the room can have it; `cv` is Court Vision's ranking, the opt-in. `meta.rank_basis` says which actually ran and `meta.rank_basis_reason` why. */
+                board?: "espn" | "cv";
                 /** @description What orders `recommendations`. `cv` (the default) is Court Vision's room-aware pick — VORP with scarcity, fit and congestion applied; `espn` takes the best remaining on ESPN's own board for this league's format. Every component is computed either way, so switching never changes a card's numbers, only which opinion put it on top. `espn` falls back to `cv` when no market snapshot exists; `meta.rank_source` says which actually ran. */
                 rank_source?: "cv" | "espn";
                 team_id: number;
@@ -9316,6 +9325,8 @@ export interface operations {
     get_draft_session_board_v1_internal_drafts__session_id__board_get: {
         parameters: {
             query?: {
+                /** @description Whose rankings order the rows. `espn` (the default) is ESPN's published draft rank for this league's format — the order an ESPN draft room shows — wherever the room can have it; `cv` is Court Vision's ranking, the opt-in. `meta.rank_basis` says which actually ran and `meta.rank_basis_reason` why. */
+                board?: "espn" | "cv";
                 /** @description What orders `recommendations`. `cv` (the default) is Court Vision's room-aware pick — VORP with scarcity, fit and congestion applied; `espn` takes the best remaining on ESPN's own board for this league's format. Every component is computed either way, so switching never changes a card's numbers, only which opinion put it on top. `espn` falls back to `cv` when no market snapshot exists; `meta.rank_source` says which actually ran. */
                 rank_source?: "cv" | "espn";
             };

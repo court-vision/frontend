@@ -29,7 +29,7 @@ import { DraftBoardTable } from "@/components/draft/DraftBoardTable";
 import { DraftSyncChip } from "@/components/draft/DraftSyncChip";
 import { KeeperEditor } from "@/components/draft/KeeperEditor";
 import { SlotEditor } from "@/components/draft/SlotEditor";
-import { RankSourceToggle } from "@/components/draft/RankSourceToggle";
+import { BoardSourceToggle } from "@/components/draft/BoardSourceToggle";
 import { RecommendationStrip } from "@/components/draft/RecommendationStrip";
 import { RosterZone } from "@/components/draft/RosterZone";
 import { useDraftRoomHotkeys } from "@/hooks/useDraftRoomHotkeys";
@@ -96,7 +96,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   const [recordingKeepers, setRecordingKeepers] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
 
-  const { highlightId, rankSource, setSearch, setHighlight, setRankSource, toggleSort } =
+  const { highlightId, boardSource, setSearch, setHighlight, setBoardSource, toggleSort } =
     useDraftRoomStore();
   const rows = useMemo(() => board?.rows ?? [], [board]);
   // Shared with the table, so a keystroke can never act on a row the user is
@@ -674,10 +674,11 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
               set your slot to see whose turn it is
             </button>
           )}
-          <RankSourceToggle
-            value={rankSource}
-            onChange={setRankSource}
-            actual={board?.meta?.rank_source ?? null}
+          <BoardSourceToggle
+            value={boardSource}
+            onChange={setBoardSource}
+            actual={board?.meta?.rank_basis ?? null}
+            reason={board?.meta?.rank_basis_reason ?? null}
           />
         </div>
         <RecommendationStrip
