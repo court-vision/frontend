@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Users, TrendingUp, TrendingDown, Minus, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { windowGames } from "@/lib/statWindow";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { useFocusPlayer } from "@/hooks/useFocusPlayer";
 import { useTeamInsightsQuery } from "@/hooks/useTeams";
@@ -18,12 +19,12 @@ const POSITION_COLORS: Record<string, string> = {
   C: "text-red-400 bg-red-400/10",
 };
 
-// Map a stat window to the nearest available L-window field
+// Roster rows only carry L7 / L14 / L30 averages, so a window maps to the nearest
+// of those -- and says which, rather than claiming the exact N it was asked for.
 function getWindowFpts(player: EnrichedRosterPlayer, statWindow: string): number {
   if (statWindow === "season") return player.avg_points;
-  const match = statWindow.match(/^l(\d+)$/i);
-  if (!match) return player.avg_fpts_l14 ?? player.avg_points;
-  const n = parseInt(match[1], 10);
+  const n = windowGames(statWindow);
+  if (n === null) return player.avg_fpts_l14 ?? player.avg_points;
   if (n <= 8) return player.avg_fpts_l7 ?? player.avg_fpts_l14 ?? player.avg_points;
   if (n <= 17) return player.avg_fpts_l14 ?? player.avg_fpts_l7 ?? player.avg_points;
   return player.avg_fpts_l30 ?? player.avg_fpts_l14 ?? player.avg_points;
@@ -31,9 +32,8 @@ function getWindowFpts(player: EnrichedRosterPlayer, statWindow: string): number
 
 function getWindowLabel(statWindow: string): string {
   if (statWindow === "season") return "SEASON";
-  const match = statWindow.match(/^l(\d+)$/i);
-  if (!match) return "L14";
-  const n = parseInt(match[1], 10);
+  const n = windowGames(statWindow);
+  if (n === null) return "L14";
   if (n <= 8) return "L7";
   if (n <= 17) return "L14";
   return "L30";
