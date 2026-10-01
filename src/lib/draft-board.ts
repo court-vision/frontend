@@ -191,7 +191,7 @@ export interface BoardColumn {
 const OTHER_RANK: Record<RankBasis, BoardColumn> = {
   espn: { key: "cv_rank", label: "CV", className: "w-12", align: "right", sortable: true,
     title: "Court Vision's rank over the full pool — stable all draft long" },
-  cv: { key: "market_rank", label: "ESPN", className: "w-12", align: "right", sortable: true,
+  cv: { key: "market_rank", label: "ESPN", className: "w-14", align: "right", sortable: true,
     title: "ESPN's published draft rank for this league's format" },
 };
 
@@ -274,6 +274,11 @@ export function basisNote(meta: DraftBoardMeta | null): { label: string; title: 
     };
   }
   switch (meta.rank_basis_reason) {
+    case "caller_chose_cv":
+      return {
+        label: "Court Vision board",
+        title: "You chose Court Vision's rankings; ESPN's rank is the column beside the name",
+      };
     case "no_market_snapshot":
       return {
         label: "CV board — no ESPN snapshot yet",

@@ -135,6 +135,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/questions/{question_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rate a routed answer
+         * @description Thumbs up or down on one of the caller's own routed questions; null clears it.
+         */
+        post: operations["question_feedback_v1_internal_ai_questions__question_id__feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route a question to the place that answers it
+         * @description Returns one of three kinds. `show`: a Court Vision view, as a terminal or page `target` the client applies. `statmuse`: an NBA stat question no view covers, with a server-built `statmuse_url` the user opens. `cannot`: neither covers it, with `suggestions`. Every ID in a target has been checked, and a fantasy team is always one of the caller's. Shares the daily allowance with /ai/ask and is off unless AI_ENABLED is set.
+         */
+        post: operations["route_v1_internal_ai_route_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/api-keys/": {
         parameters: {
             query?: never;
@@ -330,7 +370,7 @@ export interface paths {
          *
          *     `market_rank` and `auction_value` come from the ESPN board matching the league's format — STANDARD for points, ROTO for categories — which `meta.market_rank_type` names.
          *
-         *     Rows come back in the order `meta.rank_basis` names: ESPN's published rank in an ESPN room (a league ESPN runs, or a team with no synced league — its market pool is ESPN's anyway), with `board_rank` as each row's place and players ESPN does not rank trailing in CV order; Court Vision's rank for a league elsewhere, or while no snapshot exists.
+         *     Rows come back in the order `meta.rank_basis` names — `board` asks for one, the meta says what ran: ESPN's published rank in an ESPN room (a league ESPN runs, or a team with no synced league — its market pool is ESPN's anyway), with `board_rank` as each row's place and players ESPN does not rank trailing in CV order; Court Vision's rank for a league elsewhere, or while no snapshot exists.
          *
          *     Stateless: pick state rides in the query params, so there is no slot to count from and rows carry no availability. Use the session board once a draft room is open.
          */
@@ -2111,6 +2151,77 @@ export interface components {
             usg_pct: number | null;
         };
         /**
+         * AiContext
+         * @description Where the user is when they ask. IDs only -- never names from league data,
+         *     so the context adds no prompt-injection surface.
+         */
+        AiContext: {
+            /**
+             * Compare Ids
+             * @description NBA player IDs
+             */
+            compare_ids?: number[];
+            /**
+             * Mode
+             * @description Terminal mode, when on the terminal
+             */
+            mode?: ("overview" | "player" | "team" | "nba_team") | null;
+            /**
+             * Nba Team
+             * @description Focused NBA team abbreviation
+             */
+            nba_team?: string | null;
+            /**
+             * Page
+             * @description Current route, e.g. 'terminal'
+             */
+            page?: string | null;
+            /**
+             * Player Id
+             * @description Focused NBA player ID
+             */
+            player_id?: number | null;
+            /**
+             * Team Id
+             * @description Selected fantasy team ID
+             */
+            team_id?: number | null;
+            /**
+             * Window
+             * @description Terminal stat window
+             */
+            window?: string | null;
+        };
+        /** AiFeedbackData */
+        AiFeedbackData: {
+            /** Feedback */
+            feedback: ("up" | "down") | null;
+            /** Question Id */
+            question_id: number;
+        };
+        /** AiFeedbackReq */
+        AiFeedbackReq: {
+            /**
+             * Feedback
+             * @description null clears earlier feedback
+             */
+            feedback: ("up" | "down") | null;
+        };
+        /**
+         * AiFeedbackResp
+         * @description Response for POST /v1/internal/ai/questions/{question_id}/feedback.
+         */
+        AiFeedbackResp: {
+            data: components["schemas"]["AiFeedbackData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
          * AiToolCall
          * @description One Court Vision lookup the model made while answering.
          */
@@ -2975,7 +3086,7 @@ export interface components {
             punts: string[];
             /**
              * Rank Basis
-             * @description Whose rank orders the rows and fills `board_rank`. `espn` in an ESPN room: a league ESPN runs, a room with no league at all, or one following an ESPN draft. `cv` for a league elsewhere, or while no market snapshot exists. Not a caller's choice — `rank_source` is the recommendations' knob, this is the board's fact.
+             * @description Whose rank orders the rows and fills `board_rank`. `espn` in an ESPN room: a league ESPN runs, a room with no league at all, or one following an ESPN draft. `cv` when the caller asked for Court Vision's rankings (`board=cv`), for a league elsewhere, or while no market snapshot exists. `board` asks; this is what ran.
              * @default cv
              * @enum {string}
              */
@@ -2986,7 +3097,14 @@ export interface components {
              * @default provider_not_espn
              * @enum {string}
              */
-            rank_basis_reason: "espn_league" | "league_less_room" | "linked_espn_draft" | "provider_not_espn" | "no_market_snapshot";
+            rank_basis_reason: "espn_league" | "league_less_room" | "linked_espn_draft" | "caller_chose_cv" | "provider_not_espn" | "no_market_snapshot";
+            /**
+             * Rank Basis Requested
+             * @description What the caller asked `board` for. Differs from `rank_basis` only when `espn` was asked for and the room cannot have it: a league elsewhere, or no market snapshot yet.
+             * @default espn
+             * @enum {string}
+             */
+            rank_basis_requested: "espn" | "cv";
             /**
              * Rank Source
              * @description What actually ordered `recommendations` on this response
@@ -6188,6 +6306,29 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /**
+         * PageTarget
+         * @description Navigate to a page, optionally selecting one of the caller's teams first.
+         */
+        PageTarget: {
+            /**
+             * Page
+             * @enum {string}
+             */
+            page: "rankings" | "streamers" | "matchup" | "lineup-generation" | "your-teams" | "draft" | "playoffs";
+            /** @description Only when page is rankings */
+            rankings: components["schemas"]["RankingsParams"] | null;
+            /**
+             * Team Id
+             * @description Set as the selected team before navigating
+             */
+            team_id: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "page";
+        };
         /** PercentileData */
         PercentileData: {
             /** Avg Assists */
@@ -7124,6 +7265,28 @@ export interface components {
             /** Window */
             window: number | null;
         };
+        /**
+         * RankingsParams
+         * @description URL parameters for /rankings (frontend lib/rankings-params.ts).
+         */
+        RankingsParams: {
+            /**
+             * Cats
+             * @description Category keys, e.g. ['blk', 'stl']
+             */
+            cats: string[];
+            /** Format */
+            format: ("points" | "categories") | null;
+            /** Min Games */
+            min_games: number | null;
+            /** Scope */
+            scope: ("global" | "league") | null;
+            /**
+             * Window
+             * @description Days; null means season
+             */
+            window: (7 | 14 | 30) | null;
+        };
         /** RankingsPlayer */
         RankingsPlayer: {
             /** Avg Fpts */
@@ -7626,6 +7789,82 @@ export interface components {
         /** RosterTransactionResp */
         RosterTransactionResp: {
             data: components["schemas"]["RosterTransactionData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** RouteData */
+        RouteData: {
+            /**
+             * Gap
+             * @description Why a question could not be answered in Court Vision
+             */
+            gap: ("no_view" | "no_data" | "out_of_scope" | "invalid_target") | null;
+            /**
+             * Kind
+             * @description show: open `target` · statmuse: link out · cannot: say so
+             * @enum {string}
+             */
+            kind: "show" | "statmuse" | "cannot";
+            /**
+             * Question Id
+             * @description For feedback; null if the question could not be logged
+             */
+            question_id: number | null;
+            /**
+             * Sources
+             * @description Lookups the router made
+             */
+            sources: components["schemas"]["AiToolCall"][];
+            /**
+             * Statmuse Query
+             * @description The question restated in full, when kind is statmuse
+             */
+            statmuse_query: string | null;
+            /**
+             * Statmuse Url
+             * @description Built by the server from statmuse_query
+             */
+            statmuse_url: string | null;
+            /**
+             * Suggestions
+             * @description Questions it can answer, when kind is cannot
+             */
+            suggestions: string[];
+            /**
+             * Target
+             * @description Where to go, when kind is show
+             */
+            target: (components["schemas"]["TerminalTarget"] | components["schemas"]["PageTarget"]) | null;
+            /**
+             * Text
+             * @description One line for the user
+             */
+            text: string;
+            usage: components["schemas"]["AiUsage"];
+        };
+        /**
+         * RouteReq
+         * @description Body for POST /v1/internal/ai/route.
+         */
+        RouteReq: {
+            context?: components["schemas"]["AiContext"];
+            /**
+             * Question
+             * @description The question, in plain language
+             */
+            question: string;
+        };
+        /**
+         * RouteResp
+         * @description Response for POST /v1/internal/ai/route.
+         */
+        RouteResp: {
+            data: components["schemas"]["RouteData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -8270,6 +8509,47 @@ export interface components {
             timestamp: string | null;
         };
         /**
+         * TerminalTarget
+         * @description Open the terminal in a mode, focused on a subject.
+         */
+        TerminalTarget: {
+            /**
+             * Compare Ids
+             * @description NBA player IDs, at most 4; player mode only
+             */
+            compare_ids: number[];
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "overview" | "player" | "team" | "nba_team";
+            /**
+             * Nba Team
+             * @description NBA team abbreviation; required for nba_team mode
+             */
+            nba_team: string | null;
+            /**
+             * Player Id
+             * @description NBA player ID; required for player mode
+             */
+            player_id: number | null;
+            /**
+             * Team Id
+             * @description The caller's fantasy team; required for team mode
+             */
+            team_id: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "terminal";
+            /**
+             * Window
+             * @description `season` or `lN`
+             */
+            window: string | null;
+        };
+        /**
          * TopPerformer
          * @description Top performer in a game.
          */
@@ -8421,6 +8701,10 @@ export interface components {
         };
         /** ValidationError */
         ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
@@ -8837,6 +9121,107 @@ export interface operations {
             };
         };
     };
+    question_feedback_v1_internal_ai_questions__question_id__feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiFeedbackReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiFeedbackResp"];
+                };
+            };
+            /** @description No such question for this caller (AI_QUESTION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    route_v1_internal_ai_route_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RouteReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouteResp"];
+                };
+            };
+            /** @description Invalid question or context, or the assistant declined it (AI_DECLINED) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's daily allowance is used up (AI_QUOTA_EXCEEDED) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The model provider failed (AI_UNAVAILABLE, AI_BUSY, AI_INCOMPLETE) */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) or today's global budget is spent (AI_DAILY_BUDGET_REACHED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The assistant took too long (AI_TIMEOUT) */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_api_keys_v1_internal_api_keys__get: {
         parameters: {
             query?: never;
@@ -9148,6 +9533,8 @@ export interface operations {
                 mine?: number[];
                 /** @description Category keys to concede, e.g. `punt=ft_pct&punt=tov`. They weigh zero in `fit_value`; unknown keys are ignored here (the room stores validated punts on the session instead). No effect on a points league. */
                 punt?: string[];
+                /** @description Whose rankings order the rows. `espn` (the default) is ESPN's published draft rank for this league's format — the order an ESPN draft room shows — wherever the room can have it; `cv` is Court Vision's ranking, the opt-in. `meta.rank_basis` says which actually ran and `meta.rank_basis_reason` why. */
+                board?: "espn" | "cv";
                 /** @description What orders `recommendations`. `cv` (the default) is Court Vision's room-aware pick — VORP with scarcity, fit and congestion applied; `espn` takes the best remaining on ESPN's own board for this league's format. Every component is computed either way, so switching never changes a card's numbers, only which opinion put it on top. `espn` falls back to `cv` when no market snapshot exists; `meta.rank_source` says which actually ran. */
                 rank_source?: "cv" | "espn";
                 team_id: number;
@@ -9316,6 +9703,8 @@ export interface operations {
     get_draft_session_board_v1_internal_drafts__session_id__board_get: {
         parameters: {
             query?: {
+                /** @description Whose rankings order the rows. `espn` (the default) is ESPN's published draft rank for this league's format — the order an ESPN draft room shows — wherever the room can have it; `cv` is Court Vision's ranking, the opt-in. `meta.rank_basis` says which actually ran and `meta.rank_basis_reason` why. */
+                board?: "espn" | "cv";
                 /** @description What orders `recommendations`. `cv` (the default) is Court Vision's room-aware pick — VORP with scarcity, fit and congestion applied; `espn` takes the best remaining on ESPN's own board for this league's format. Every component is computed either way, so switching never changes a card's numbers, only which opinion put it on top. `espn` falls back to `cv` when no market snapshot exists; `meta.rank_source` says which actually ran. */
                 rank_source?: "cv" | "espn";
             };

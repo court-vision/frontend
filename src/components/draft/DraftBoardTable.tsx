@@ -410,7 +410,11 @@ export function DraftBoardTable({
             title={basis.title}
             className={cn(
               "hidden lg:inline shrink-0 font-mono text-[10px]",
-              meta?.rank_basis === "espn" ? "text-muted-foreground/60" : "text-amber-500/80"
+              // Amber only when the room asked for ESPN and could not have it;
+              // a chosen Court Vision board is a choice, not a fallback.
+              meta?.rank_basis === "cv" && meta.rank_basis_requested !== "cv"
+                ? "text-amber-500/80"
+                : "text-muted-foreground/60"
             )}
           >
             {basis.label}

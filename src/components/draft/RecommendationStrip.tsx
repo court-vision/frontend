@@ -22,11 +22,12 @@ import type { DraftRecommendation } from "@/types/draft";
  * when the room can do that (`onDraft`); it is enabled only while ESPN says it
  * is your turn, with the reason it is not as its tooltip otherwise.
  *
- * The board is ESPN's, so every card leads with ESPN's rank — the number the
- * drafter is looking at — and says where CV has him. Under `source: "cv"` (the
- * default) CV's order put the card here and its rank is toned when the two
- * disagree by more than a round; under `source: "espn"` ESPN's order did, and
- * the CV score is labelled as the second opinion it is. The components are
+ * Every card leads with ESPN's rank — the number a drafter sees in ESPN's own
+ * room — and says where CV has him. The room always asks for CV's picks
+ * (`source: "cv"`): CV's order put the card here and its rank is toned when
+ * the two disagree by more than a round. The API can still order the strip by
+ * ESPN (`source: "espn"`), in which case the CV score is labelled as the
+ * second opinion it is. The components are
  * rendered either way: the whole point of showing them next to someone else's
  * ranking is being able to see where the two disagree, and by how much.
  */
