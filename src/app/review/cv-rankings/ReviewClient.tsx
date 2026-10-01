@@ -41,6 +41,8 @@ type ReviewPlayer = {
   po_light: number | null;
   po_weeks: number[] | null;
   adj: boolean;
+  /** Ranks on the snapshot before this revision; null for a player it did not list. */
+  prev: { cat: number | null; pts: number | null } | null;
 };
 
 type ReviewAdjustment = {
@@ -54,6 +56,9 @@ type ReviewAdjustment = {
   rates: Record<string, number> | null;
   note: string;
   source_url: string | null;
+  /** Set when this revision added the adjustment or changed its numbers. */
+  rev?: "new" | "changed" | null;
+  was?: Partial<Pick<ReviewAdjustment, "minutes" | "games" | "return_date" | "usage" | "rates">>;
 };
 
 export type ReviewSnapshot = {
@@ -71,6 +76,7 @@ export type ReviewSnapshot = {
   };
   players: ReviewPlayer[];
   adjustments: ReviewAdjustment[];
+  revision?: { number: number; date: string; notes: string[] };
 };
 
 type Format = "cat" | "pts";
@@ -121,6 +127,15 @@ function changeSummary(a: ReviewAdjustment): string[] {
   return parts;
 }
 
+function wasSummary(was: NonNullable<ReviewAdjustment["was"]>): string[] {
+  const parts: string[] = [];
+  if (was.minutes != null) parts.push(`${was.minutes} min`);
+  if (was.games != null) parts.push(`${was.games} games`);
+  if (was.return_date) parts.push(`back ${shortDate(was.return_date)}`);
+  if (was.usage != null) parts.push(`usage ×${was.usage.toFixed(2)}`);
+  return parts.length ? parts : ["no change to these fields"];
+}
+
 function hostOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -142,6 +157,17 @@ function moved(r: FormatRanks | undefined): number | null {
   return r.before - r.cv;
 }
 
+/** Places moved since the previous snapshot: positive = up the board. */
+function sinceLast(p: ReviewPlayer, format: Format): number | null {
+  const now = p[format].cv;
+  const before = p.prev?.[format];
+  if (now == null || before == null) return null;
+  return before - now;
+}
+
+// A move this size since the last snapshot is worth a second look.
+const MOVED = 5;
+
 function Move({ delta }: { delta: number | null }) {
   if (!delta) return null;
   return (
@@ -154,7 +180,7 @@ function Move({ delta }: { delta: number | null }) {
 
 // ---- rankings tab -----------------------------------------------------------------------
 
-type Filter = "all" | "adjusted" | "gaps";
+type Filter = "all" | "adjusted" | "gaps" | "moved";
 type Sort = "cv" | "espn" | "gap";
 
 function RankingRow({
@@ -280,6 +306,11 @@ function RowDetail({ p, format, adjustment }: { p: ReviewPlayer; format: Format;
           ))}
         </div>
       )}
+      {sinceLast(p, format) !== null && sinceLast(p, format) !== 0 && (
+        <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
+          last snapshot: #{p.prev?.[format]} <Move delta={sinceLast(p, format)} />
+        </p>
+      )}
       {adjustment && <AdjustmentNote a={adjustment} p={p} />}
       {!adjustment && p.src !== "projection" && (
         <p className="text-xs text-muted-foreground">
@@ -306,10 +337,18 @@ function AdjustmentNote({ a, p }: { a: ReviewAdjustment; p?: ReviewPlayer }) {
     <div className="rounded-md border border-dashed px-2.5 py-2">
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge variant="secondary" className="text-[10px]">{KIND_LABELS[a.kind] ?? a.kind}</Badge>
+        {a.rev && (
+          <Badge variant="projected" className="text-[10px]">{a.rev === "new" ? "new" : "revised"}</Badge>
+        )}
         {changeSummary(a).map((c) => (
           <span key={c} className="font-mono text-xs tabular-nums">{c}</span>
         ))}
       </div>
+      {a.rev === "changed" && a.was && (
+        <p className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">
+          was: {wasSummary(a.was).join(" · ")}
+        </p>
+      )}
       {before && p && (
         <p className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">
           unadjusted: {num(before.games, 0)} g · {num(before.min)} min · 9-cat #{p.cat.before ?? "—"} · points #{p.pts.before ?? "—"}
@@ -342,6 +381,7 @@ function RankingsTab({
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("cv");
   const [open, setOpen] = useState<number | null>(null);
+  const hasPrevious = useMemo(() => players.some((p) => p.prev), [players]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -351,6 +391,7 @@ function RankingsTab({
       if (q && !p.name.toLowerCase().includes(q) && !(p.team ?? "").toLowerCase().includes(q)) return false;
       if (filter === "adjusted" && !p.adj) return false;
       if (filter === "gaps" && (r.espn === null || Math.abs(r.espn - r.cv) < GAP)) return false;
+      if (filter === "moved" && Math.abs(sinceLast(p, format) ?? 0) < MOVED) return false;
       return true;
     });
     const gap = (p: ReviewPlayer) => {
@@ -384,6 +425,7 @@ function RankingsTab({
             ["all", "All"],
             ["adjusted", "Adjusted"],
             ["gaps", `±${GAP} vs ESPN`],
+            ...(hasPrevious ? ([["moved", "Moved since last"]] as [Filter, string][]) : []),
           ]}
         />
         <Chips<Sort>
@@ -443,8 +485,11 @@ function AdjustmentsTab({
   const kinds = useMemo(() => Array.from(new Set(adjustments.map((a) => a.kind))), [adjustments]);
   const [kind, setKind] = useState<string>("all");
   const [order, setOrder] = useState<"board" | "move">("board");
+  const revised = useMemo(() => adjustments.filter((a) => a.rev).length, [adjustments]);
   const list = useMemo(() => {
-    const shown = adjustments.filter((a) => kind === "all" || a.kind === kind);
+    const shown = adjustments.filter((a) =>
+      kind === "all" ? true : kind === "revised" ? Boolean(a.rev) : a.kind === kind,
+    );
     // Board order by default: the player's better 9-cat rank of the two, so
     // the adjustments that decide early rounds are read first. Ranks spread
     // out deep in the pool, so "biggest move" favours the bench — an option.
@@ -462,7 +507,11 @@ function AdjustmentsTab({
         <Chips<string>
           value={kind}
           onChange={setKind}
-          options={[["all", `All ${adjustments.length}`], ...kinds.map((k) => [k, KIND_LABELS[k] ?? k] as [string, string])]}
+          options={[
+            ["all", `All ${adjustments.length}`],
+            ...(revised > 0 ? ([["revised", `Revised ${revised}`]] as [string, string][]) : []),
+            ...kinds.map((k) => [k, KIND_LABELS[k] ?? k] as [string, string]),
+          ]}
         />
         <Chips<"board" | "move">
           value={order}
@@ -499,6 +548,11 @@ function AdjustmentsTab({
                       pts #{p.pts.before ?? "—"} → #{p.pts.cv ?? "—"} <Move delta={moved(p.pts)} />
                     </div>
                     <div className="text-muted-foreground">ESPN #{p.cat.espn ?? "—"} / #{p.pts.espn ?? "—"}</div>
+                    {a.rev && p.prev && (
+                      <div className="text-muted-foreground">
+                        last snapshot #{p.prev.cat ?? "—"} / #{p.prev.pts ?? "—"}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -554,10 +608,22 @@ export default function ReviewClient({ snapshot }: { snapshot: ReviewSnapshot })
       <header className="space-y-1">
         <h1 className="font-display text-2xl font-bold tracking-tight">Court Vision base rankings — review</h1>
         <p className="text-sm text-muted-foreground">
-          {snapshot.season} · snapshot {snapshot.market_as_of ?? snapshot.generated_at.slice(0, 10)} ·{" "}
-          {snapshot.adjustments.length} draft adjustments pending review
+          {snapshot.season} · snapshot {snapshot.market_as_of ?? snapshot.generated_at.slice(0, 10)}
+          {snapshot.revision && ` · revision ${snapshot.revision.number}`} · {snapshot.adjustments.length} draft
+          adjustments pending review
         </p>
       </header>
+
+      {snapshot.revision && (
+        <details open className="rounded-lg border bg-card px-3 py-2 text-sm [&_summary]:cursor-pointer">
+          <summary className="font-medium">What changed in revision {snapshot.revision.number}</summary>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+            {snapshot.revision.notes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       <details className="rounded-lg border bg-card px-3 py-2 text-sm [&_summary]:cursor-pointer">
         <summary className="font-medium">How these were built</summary>
