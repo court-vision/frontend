@@ -237,6 +237,9 @@ function rosterEntryOf(row: DraftBoardRow): DraftRosterEntry {
 interface PickContext {
   board: DraftBoardResult | undefined;
   session: DraftSession | undefined;
+  // The key the board snapshot was read from: the room can switch boards
+  // while a pick is pending, and a rollback belongs to the board it came from.
+  boardKey: ReturnType<typeof draftKeys.board>;
 }
 
 /**
@@ -318,7 +321,7 @@ export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean
         });
       }
 
-      return { board, session };
+      return { board, session, boardKey };
     },
 
     onError: (error, _pick, context) => {
@@ -326,7 +329,7 @@ export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean
       // A snapshot of `undefined` means nothing was cached — leave it alone
       // rather than writing undefined over a query that has since loaded.
       if (context?.board !== undefined) {
-        queryClient.setQueryData(draftKeys.board(sessionId, boardSource), context.board);
+        queryClient.setQueryData(context.boardKey, context.board);
       }
       if (context?.session !== undefined) {
         queryClient.setQueryData(draftKeys.detail(sessionId), context.session);
