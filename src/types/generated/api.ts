@@ -135,6 +135,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/questions/{question_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rate a routed answer
+         * @description Thumbs up or down on one of the caller's own routed questions; null clears it.
+         */
+        post: operations["question_feedback_v1_internal_ai_questions__question_id__feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route a question to the place that answers it
+         * @description Returns one of three kinds. `show`: a Court Vision view, as a terminal or page `target` the client applies. `statmuse`: an NBA stat question no view covers, with a server-built `statmuse_url` the user opens. `cannot`: neither covers it, with `suggestions`. Every ID in a target has been checked, and a fantasy team is always one of the caller's. Shares the daily allowance with /ai/ask and is off unless AI_ENABLED is set.
+         */
+        post: operations["route_v1_internal_ai_route_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/api-keys/": {
         parameters: {
             query?: never;
@@ -2109,6 +2149,77 @@ export interface components {
             tov_pct: number | null;
             /** Usg Pct */
             usg_pct: number | null;
+        };
+        /**
+         * AiContext
+         * @description Where the user is when they ask. IDs only -- never names from league data,
+         *     so the context adds no prompt-injection surface.
+         */
+        AiContext: {
+            /**
+             * Compare Ids
+             * @description NBA player IDs
+             */
+            compare_ids?: number[];
+            /**
+             * Mode
+             * @description Terminal mode, when on the terminal
+             */
+            mode?: ("overview" | "player" | "team" | "nba_team") | null;
+            /**
+             * Nba Team
+             * @description Focused NBA team abbreviation
+             */
+            nba_team?: string | null;
+            /**
+             * Page
+             * @description Current route, e.g. 'terminal'
+             */
+            page?: string | null;
+            /**
+             * Player Id
+             * @description Focused NBA player ID
+             */
+            player_id?: number | null;
+            /**
+             * Team Id
+             * @description Selected fantasy team ID
+             */
+            team_id?: number | null;
+            /**
+             * Window
+             * @description Terminal stat window
+             */
+            window?: string | null;
+        };
+        /** AiFeedbackData */
+        AiFeedbackData: {
+            /** Feedback */
+            feedback: ("up" | "down") | null;
+            /** Question Id */
+            question_id: number;
+        };
+        /** AiFeedbackReq */
+        AiFeedbackReq: {
+            /**
+             * Feedback
+             * @description null clears earlier feedback
+             */
+            feedback: ("up" | "down") | null;
+        };
+        /**
+         * AiFeedbackResp
+         * @description Response for POST /v1/internal/ai/questions/{question_id}/feedback.
+         */
+        AiFeedbackResp: {
+            data: components["schemas"]["AiFeedbackData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /**
          * AiToolCall
@@ -6195,6 +6306,29 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /**
+         * PageTarget
+         * @description Navigate to a page, optionally selecting one of the caller's teams first.
+         */
+        PageTarget: {
+            /**
+             * Page
+             * @enum {string}
+             */
+            page: "rankings" | "streamers" | "matchup" | "lineup-generation" | "your-teams" | "draft" | "playoffs";
+            /** @description Only when page is rankings */
+            rankings: components["schemas"]["RankingsParams"] | null;
+            /**
+             * Team Id
+             * @description Set as the selected team before navigating
+             */
+            team_id: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "page";
+        };
         /** PercentileData */
         PercentileData: {
             /** Avg Assists */
@@ -7131,6 +7265,28 @@ export interface components {
             /** Window */
             window: number | null;
         };
+        /**
+         * RankingsParams
+         * @description URL parameters for /rankings (frontend lib/rankings-params.ts).
+         */
+        RankingsParams: {
+            /**
+             * Cats
+             * @description Category keys, e.g. ['blk', 'stl']
+             */
+            cats: string[];
+            /** Format */
+            format: ("points" | "categories") | null;
+            /** Min Games */
+            min_games: number | null;
+            /** Scope */
+            scope: ("global" | "league") | null;
+            /**
+             * Window
+             * @description Days; null means season
+             */
+            window: (7 | 14 | 30) | null;
+        };
         /** RankingsPlayer */
         RankingsPlayer: {
             /** Avg Fpts */
@@ -7633,6 +7789,82 @@ export interface components {
         /** RosterTransactionResp */
         RosterTransactionResp: {
             data: components["schemas"]["RosterTransactionData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** RouteData */
+        RouteData: {
+            /**
+             * Gap
+             * @description Why a question could not be answered in Court Vision
+             */
+            gap: ("no_view" | "no_data" | "out_of_scope" | "invalid_target") | null;
+            /**
+             * Kind
+             * @description show: open `target` · statmuse: link out · cannot: say so
+             * @enum {string}
+             */
+            kind: "show" | "statmuse" | "cannot";
+            /**
+             * Question Id
+             * @description For feedback; null if the question could not be logged
+             */
+            question_id: number | null;
+            /**
+             * Sources
+             * @description Lookups the router made
+             */
+            sources: components["schemas"]["AiToolCall"][];
+            /**
+             * Statmuse Query
+             * @description The question restated in full, when kind is statmuse
+             */
+            statmuse_query: string | null;
+            /**
+             * Statmuse Url
+             * @description Built by the server from statmuse_query
+             */
+            statmuse_url: string | null;
+            /**
+             * Suggestions
+             * @description Questions it can answer, when kind is cannot
+             */
+            suggestions: string[];
+            /**
+             * Target
+             * @description Where to go, when kind is show
+             */
+            target: (components["schemas"]["TerminalTarget"] | components["schemas"]["PageTarget"]) | null;
+            /**
+             * Text
+             * @description One line for the user
+             */
+            text: string;
+            usage: components["schemas"]["AiUsage"];
+        };
+        /**
+         * RouteReq
+         * @description Body for POST /v1/internal/ai/route.
+         */
+        RouteReq: {
+            context?: components["schemas"]["AiContext"];
+            /**
+             * Question
+             * @description The question, in plain language
+             */
+            question: string;
+        };
+        /**
+         * RouteResp
+         * @description Response for POST /v1/internal/ai/route.
+         */
+        RouteResp: {
+            data: components["schemas"]["RouteData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -8277,6 +8509,47 @@ export interface components {
             timestamp: string | null;
         };
         /**
+         * TerminalTarget
+         * @description Open the terminal in a mode, focused on a subject.
+         */
+        TerminalTarget: {
+            /**
+             * Compare Ids
+             * @description NBA player IDs, at most 4; player mode only
+             */
+            compare_ids: number[];
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "overview" | "player" | "team" | "nba_team";
+            /**
+             * Nba Team
+             * @description NBA team abbreviation; required for nba_team mode
+             */
+            nba_team: string | null;
+            /**
+             * Player Id
+             * @description NBA player ID; required for player mode
+             */
+            player_id: number | null;
+            /**
+             * Team Id
+             * @description The caller's fantasy team; required for team mode
+             */
+            team_id: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "terminal";
+            /**
+             * Window
+             * @description `season` or `lN`
+             */
+            window: string | null;
+        };
+        /**
          * TopPerformer
          * @description Top performer in a game.
          */
@@ -8428,6 +8701,10 @@ export interface components {
         };
         /** ValidationError */
         ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
@@ -8808,6 +9085,107 @@ export interface operations {
                 };
             };
             /** @description Invalid question, or the assistant declined it (AI_DECLINED) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's daily allowance is used up (AI_QUOTA_EXCEEDED) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The model provider failed (AI_UNAVAILABLE, AI_BUSY, AI_INCOMPLETE) */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) or today's global budget is spent (AI_DAILY_BUDGET_REACHED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The assistant took too long (AI_TIMEOUT) */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    question_feedback_v1_internal_ai_questions__question_id__feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiFeedbackReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiFeedbackResp"];
+                };
+            };
+            /** @description No such question for this caller (AI_QUESTION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    route_v1_internal_ai_route_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RouteReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouteResp"];
+                };
+            };
+            /** @description Invalid question or context, or the assistant declined it (AI_DECLINED) */
             422: {
                 headers: {
                     [name: string]: unknown;

@@ -166,6 +166,217 @@
         "title": "AdvancedStatsData",
         "type": "object"
       },
+      "AiContext": {
+        "description": "Where the user is when they ask. IDs only -- never names from league data,\nso the context adds no prompt-injection surface.",
+        "properties": {
+          "compare_ids": {
+            "description": "NBA player IDs",
+            "items": {
+              "exclusiveMinimum": 0.0,
+              "maximum": 2147483647.0,
+              "type": "integer"
+            },
+            "maxItems": 4,
+            "title": "Compare Ids",
+            "type": "array"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "overview",
+                  "player",
+                  "team",
+                  "nba_team"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Terminal mode, when on the terminal",
+            "title": "Mode"
+          },
+          "nba_team": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{2,3}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Focused NBA team abbreviation",
+            "title": "Nba Team"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Current route, e.g. 'terminal'",
+            "title": "Page"
+          },
+          "player_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 2147483647.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Focused NBA player ID",
+            "title": "Player Id"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 2147483647.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Selected fantasy team ID",
+            "title": "Team Id"
+          },
+          "window": {
+            "anyOf": [
+              {
+                "pattern": "^(season|l([1-9]|[1-7][0-9]|8[0-2]))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Terminal stat window",
+            "title": "Window"
+          }
+        },
+        "title": "AiContext",
+        "type": "object"
+      },
+      "AiFeedbackData": {
+        "properties": {
+          "feedback": {
+            "anyOf": [
+              {
+                "enum": [
+                  "up",
+                  "down"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "question_id",
+          "feedback"
+        ],
+        "title": "AiFeedbackData",
+        "type": "object"
+      },
+      "AiFeedbackReq": {
+        "properties": {
+          "feedback": {
+            "anyOf": [
+              {
+                "enum": [
+                  "up",
+                  "down"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null clears earlier feedback",
+            "title": "Feedback"
+          }
+        },
+        "required": [
+          "feedback"
+        ],
+        "title": "AiFeedbackReq",
+        "type": "object"
+      },
+      "AiFeedbackResp": {
+        "description": "Response for POST /v1/internal/ai/questions/{question_id}/feedback.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiFeedbackData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiFeedbackResp",
+        "type": "object"
+      },
       "AiToolCall": {
         "description": "One Court Vision lookup the model made while answering.",
         "properties": {
@@ -543,6 +754,7 @@
             "description": "A question about NBA players, in plain language",
             "maxLength": 500,
             "minLength": 1,
+            "pattern": "^[^\\x00]*$",
             "title": "Question",
             "type": "string"
           }
@@ -11174,6 +11386,61 @@
         "title": "OwnershipTrendingResp",
         "type": "object"
       },
+      "PageTarget": {
+        "description": "Navigate to a page, optionally selecting one of the caller's teams first.",
+        "properties": {
+          "page": {
+            "enum": [
+              "rankings",
+              "streamers",
+              "matchup",
+              "lineup-generation",
+              "your-teams",
+              "draft",
+              "playoffs"
+            ],
+            "title": "Page",
+            "type": "string"
+          },
+          "rankings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RankingsParams"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only when page is rankings"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set as the selected team before navigating",
+            "title": "Team Id"
+          },
+          "type": {
+            "const": "page",
+            "default": "page",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "page",
+          "team_id",
+          "rankings"
+        ],
+        "title": "PageTarget",
+        "type": "object"
+      },
       "PercentileData": {
         "properties": {
           "avg_assists": {
@@ -13984,6 +14251,88 @@
         "title": "RankingsMeta",
         "type": "object"
       },
+      "RankingsParams": {
+        "description": "URL parameters for /rankings (frontend lib/rankings-params.ts).",
+        "properties": {
+          "cats": {
+            "description": "Category keys, e.g. ['blk', 'stl']",
+            "items": {
+              "type": "string"
+            },
+            "title": "Cats",
+            "type": "array"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "points",
+                  "categories"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "min_games": {
+            "anyOf": [
+              {
+                "maximum": 82.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Games"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "enum": [
+                  "global",
+                  "league"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "window": {
+            "anyOf": [
+              {
+                "enum": [
+                  7,
+                  14,
+                  30
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Days; null means season",
+            "title": "Window"
+          }
+        },
+        "required": [
+          "scope",
+          "format",
+          "window",
+          "cats",
+          "min_games"
+        ],
+        "title": "RankingsParams",
+        "type": "object"
+      },
       "RankingsPlayer": {
         "properties": {
           "avg_fpts": {
@@ -15393,6 +15742,212 @@
           "timestamp"
         ],
         "title": "RosterTransactionResp",
+        "type": "object"
+      },
+      "RouteData": {
+        "properties": {
+          "gap": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_view",
+                  "no_data",
+                  "out_of_scope",
+                  "invalid_target"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why a question could not be answered in Court Vision",
+            "title": "Gap"
+          },
+          "kind": {
+            "description": "show: open `target` \u00b7 statmuse: link out \u00b7 cannot: say so",
+            "enum": [
+              "show",
+              "statmuse",
+              "cannot"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "question_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For feedback; null if the question could not be logged",
+            "title": "Question Id"
+          },
+          "sources": {
+            "description": "Lookups the router made",
+            "items": {
+              "$ref": "#/components/schemas/AiToolCall"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "statmuse_query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The question restated in full, when kind is statmuse",
+            "title": "Statmuse Query"
+          },
+          "statmuse_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Built by the server from statmuse_query",
+            "title": "Statmuse Url"
+          },
+          "suggestions": {
+            "description": "Questions it can answer, when kind is cannot",
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "page": "#/components/schemas/PageTarget",
+                    "terminal": "#/components/schemas/TerminalTarget"
+                  },
+                  "propertyName": "type"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/TerminalTarget"
+                  },
+                  {
+                    "$ref": "#/components/schemas/PageTarget"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where to go, when kind is show",
+            "title": "Target"
+          },
+          "text": {
+            "description": "One line for the user",
+            "title": "Text",
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/AiUsage"
+          }
+        },
+        "required": [
+          "kind",
+          "text",
+          "target",
+          "statmuse_query",
+          "statmuse_url",
+          "suggestions",
+          "gap",
+          "question_id",
+          "sources",
+          "usage"
+        ],
+        "title": "RouteData",
+        "type": "object"
+      },
+      "RouteReq": {
+        "description": "Body for POST /v1/internal/ai/route.",
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/AiContext"
+          },
+          "question": {
+            "description": "The question, in plain language",
+            "maxLength": 500,
+            "minLength": 1,
+            "pattern": "^[^\\x00]*$",
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "RouteReq",
+        "type": "object"
+      },
+      "RouteResp": {
+        "description": "Response for POST /v1/internal/ai/route.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "RouteResp",
         "type": "object"
       },
       "SaveLineupReq": {
@@ -17163,6 +17718,95 @@
         "title": "TeamUpdateResp",
         "type": "object"
       },
+      "TerminalTarget": {
+        "description": "Open the terminal in a mode, focused on a subject.",
+        "properties": {
+          "compare_ids": {
+            "description": "NBA player IDs, at most 4; player mode only",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Compare Ids",
+            "type": "array"
+          },
+          "mode": {
+            "enum": [
+              "overview",
+              "player",
+              "team",
+              "nba_team"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "nba_team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA team abbreviation; required for nba_team mode",
+            "title": "Nba Team"
+          },
+          "player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA player ID; required for player mode",
+            "title": "Player Id"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The caller's fantasy team; required for team mode",
+            "title": "Team Id"
+          },
+          "type": {
+            "const": "terminal",
+            "default": "terminal",
+            "title": "Type",
+            "type": "string"
+          },
+          "window": {
+            "anyOf": [
+              {
+                "pattern": "^(season|l([1-9]|[1-7][0-9]|8[0-2]))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`season` or `lN`",
+            "title": "Window"
+          }
+        },
+        "required": [
+          "type",
+          "mode",
+          "player_id",
+          "compare_ids",
+          "team_id",
+          "nba_team",
+          "window"
+        ],
+        "title": "TerminalTarget",
+        "type": "object"
+      },
       "TopPerformer": {
         "description": "Top performer in a game.",
         "properties": {
@@ -17516,6 +18160,13 @@
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [
@@ -18260,6 +18911,120 @@
           }
         ],
         "summary": "Ask the assistant a question about NBA players",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/questions/{question_id}/feedback": {
+      "post": {
+        "description": "Thumbs up or down on one of the caller's own routed questions; null clears it.",
+        "operationId": "question_feedback_v1_internal_ai_questions__question_id__feedback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Question Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiFeedbackReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiFeedbackResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "No such question for this caller (AI_QUESTION_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rate a routed answer",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/route": {
+      "post": {
+        "description": "Returns one of three kinds. `show`: a Court Vision view, as a terminal or page `target` the client applies. `statmuse`: an NBA stat question no view covers, with a server-built `statmuse_url` the user opens. `cannot`: neither covers it, with `suggestions`. Every ID in a target has been checked, and a fantasy team is always one of the caller's. Shares the daily allowance with /ai/ask and is off unless AI_ENABLED is set.",
+        "operationId": "route_v1_internal_ai_route_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Invalid question or context, or the assistant declined it (AI_DECLINED)"
+          },
+          "429": {
+            "description": "The caller's daily allowance is used up (AI_QUOTA_EXCEEDED)"
+          },
+          "502": {
+            "description": "The model provider failed (AI_UNAVAILABLE, AI_BUSY, AI_INCOMPLETE)"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED) or today's global budget is spent (AI_DAILY_BUDGET_REACHED)"
+          },
+          "504": {
+            "description": "The assistant took too long (AI_TIMEOUT)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Route a question to the place that answers it",
         "tags": [
           "AI"
         ]
