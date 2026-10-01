@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Table, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { lastGames, windowLabel } from "@/lib/statWindow";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { usePlayerStatsQuery } from "@/hooks/usePlayer";
 import { useLivePlayerToday } from "@/hooks/useLiveStats";
@@ -92,16 +93,8 @@ export function GameLogPanel() {
   const sortedLogs = useMemo(() => {
     if (!playerStats?.game_logs) return [];
 
-    let logs = [...playerStats.game_logs];
-
-    // Filter by stat window
-    if (statWindow === "l5") {
-      logs = logs.slice(-5);
-    } else if (statWindow === "l10") {
-      logs = logs.slice(-10);
-    } else if (statWindow === "l20") {
-      logs = logs.slice(-20);
-    }
+    // The window's games: any "last N", not just 5, 10 and 20. A copy, so sorting is safe.
+    const logs = lastGames(playerStats.game_logs, statWindow);
 
     // Sort
     logs.sort((a, b) => {
@@ -288,7 +281,7 @@ export function GameLogPanel() {
       {/* Footer */}
       <div className="shrink-0 px-2 py-1 border-t border-border/50 bg-muted/20 text-[10px] text-muted-foreground">
         {sortedLogs.length} games
-        {statWindow !== "season" && ` (${statWindow.toUpperCase()})`}
+        {statWindow !== "season" && ` (${windowLabel(statWindow)})`}
       </div>
     </div>
   );
