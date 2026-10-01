@@ -423,17 +423,17 @@ export interface paths {
         };
         /**
          * Get the draft board for a session
-         * @description The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick — every component of the score visible (`season_value`, `vorp`, `scarcity`, `flexibility`, `injury`, `category_fit`).
+         * @description The room's board: the same valuation as `/drafts/board`, with pick state taken from the session rather than the query string, and with recommendations for the caller's next pick — every component of the score visible (`season_value`, `vorp`, `punts`, `injury`, `congestion`), all in season-value points. Every row the caller can still draft carries the same number as `room_score`, and its place by it as `room_rank`; `board=my_team` returns the rows in that order.
          *
          *     Players the league's hard position caps have made undraftable for the caller are flagged `cap_blocked` (shown greyed, never hidden) and are excluded from the recommendations.
          *
          *     `roster` lists the caller's drafted players with primary position, eligible slots and NBA team — what the roster zone needs to fill lineup slots, count caps and flag stacking.
          *
-         *     Category leagues additionally carry `fit_value`/`fit_rank` — the board re-scored for this roster, with the session's `punts` at zero weight — a `category_fit` component on every recommendation, and `meta.category_need`, which says how far the roster trails an average team in each category.
+         *     Category leagues additionally carry `fit_value`/`fit_rank` — the board re-scored for this roster's needs, with the session's `punts` at zero weight — and `meta.category_need`, which says how far the roster trails an average team in each category. The punts are part of the score (`punts`); the needs are shown on every recommendation as `category_fit` and deliberately left out of it.
          *
          *     Rows with market data carry `availability` (`likely`/`tossup`/`gone`) for the caller's next pick — the pick after that while the caller is on the clock.
          *
-         *     Rows come back in the order `meta.rank_basis` names: ESPN's published rank for the league's format in an ESPN room (a league ESPN runs, a room with no league, or one following an ESPN draft), with `board_rank` as each row's place and players ESPN does not rank trailing in CV order; Court Vision's rank for a league elsewhere, or while no market snapshot exists. `meta.rank_basis_reason` says which.
+         *     Rows come back in the order `meta.rank_basis` names: ESPN's published rank for the league's format in an ESPN room (a league ESPN runs, a room with no league, or one following an ESPN draft), with `board_rank` as each row's place and players ESPN does not rank trailing in CV order; Court Vision's rank for a league elsewhere, or while no market snapshot exists; `room_rank` when `board=my_team` asked for it. `meta.rank_basis_reason` says which.
          *
          *     `rank_source` chooses what orders the recommendations: Court Vision's room-aware pick (the default), or the best remaining on ESPN's board. Every component is computed either way, so switching views never changes the numbers on a card — only which of the two opinions put it at the top.
          */
@@ -613,6 +613,33 @@ export interface paths {
          *     Business outcomes are reported in `data.outcome`, never raised.
          */
         post: operations["evaluate_lineup_v1_internal_jobs_lineup_evaluate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/jobs/valuation/standard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Value Standard League
+         * @description Rank a set of projections in the standard league, in points and in 9-cat.
+         *
+         *     Called by data-platform's projections editor, which holds the projections
+         *     (and the edit being previewed) and has no valuation of its own. The ranks
+         *     are the `cv_rank` a room with no league would show for the same
+         *     projections: ESPN's default points weights or the standard nine categories,
+         *     twelve teams, thirteen rounds, the default fantasy-playoff weeks. Nothing
+         *     is read from or written to the database.
+         */
+        post: operations["value_standard_league_v1_internal_jobs_valuation_standard_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3058,6 +3085,8 @@ export interface components {
              * @description What `category_need` was measured against: `seats` reads the opposing rosters in this room, `tier` estimates an average team from the draftable pool (a room with no confirmed slot, or before enough seats have drafted). None for points leagues.
              */
             pace_source: ("seats" | "tier") | null;
+            /** @description The fantasy-playoff weeks behind every row's `playoff_games`, and the weight the CV value gives them. None in roto leagues and when the season calendar is unavailable. */
+            playoffs: components["schemas"]["DraftPlayoffsResp"] | null;
             /** Pool Size */
             pool_size: number;
             /**
@@ -3076,6 +3105,11 @@ export interface components {
             position_source: "espn" | "coarse" | "none";
             /** Projection Count */
             projection_count: number;
+            /**
+             * Projection Source
+             * @description Whose projection the `projection` rows were valued from: `cv` (Court Vision's own — three seasons of history, ESPN's line and curated adjustments) once the cv-projection pipeline has published, `espn` until then. None when no projection exists yet.
+             */
+            projection_source: ("cv" | "espn") | null;
             /** Projections As Of */
             projections_as_of: string | null;
             /**
@@ -3086,25 +3120,25 @@ export interface components {
             punts: string[];
             /**
              * Rank Basis
-             * @description Whose rank orders the rows and fills `board_rank`. `espn` in an ESPN room: a league ESPN runs, a room with no league at all, or one following an ESPN draft. `cv` when the caller asked for Court Vision's rankings (`board=cv`), for a league elsewhere, or while no market snapshot exists. `board` asks; this is what ran.
+             * @description Whose rank orders the rows and fills `board_rank`. `espn` in an ESPN room: a league ESPN runs, a room with no league at all, or one following an ESPN draft. `cv` when the caller asked for Court Vision's rankings (`board=cv`), for a league elsewhere, or while no market snapshot exists. `my_team` when the caller asked for those rankings re-ordered for their own roster (`board=my_team`): rows in `room_rank` order. `board` asks; this is what ran.
              * @default cv
              * @enum {string}
              */
-            rank_basis: "espn" | "cv";
+            rank_basis: "espn" | "cv" | "my_team";
             /**
              * Rank Basis Reason
              * @description Why `rank_basis` is what it is, in the words the room shows
              * @default provider_not_espn
              * @enum {string}
              */
-            rank_basis_reason: "espn_league" | "league_less_room" | "linked_espn_draft" | "caller_chose_cv" | "provider_not_espn" | "no_market_snapshot";
+            rank_basis_reason: "espn_league" | "league_less_room" | "linked_espn_draft" | "caller_chose_cv" | "caller_chose_my_team" | "provider_not_espn" | "no_market_snapshot";
             /**
              * Rank Basis Requested
              * @description What the caller asked `board` for. Differs from `rank_basis` only when `espn` was asked for and the room cannot have it: a league elsewhere, or no market snapshot yet.
              * @default espn
              * @enum {string}
              */
-            rank_basis_requested: "espn" | "cv";
+            rank_basis_requested: "espn" | "cv" | "my_team";
             /**
              * Rank Source
              * @description What actually ordered `recommendations` on this response
@@ -3194,7 +3228,7 @@ export interface components {
             availability: ("likely" | "tossup" | "gone") | null;
             /**
              * Board Rank
-             * @description The row's place on the board `meta.rank_basis` names — ESPN's published rank for the league's format in an ESPN room, `cv_rank` otherwise. Rows come back in this order. None for a player the basis does not rank; those trail every ranked row, ordered by the other opinion, and are never given a number that looks like ESPN's.
+             * @description The row's place on the board `meta.rank_basis` names — ESPN's published rank for the league's format in an ESPN room, `cv_rank` on Court Vision's board, `room_rank` on `my_team`. Rows come back in this order. None for a player the basis does not rank; those trail every ranked row, ordered by the other opinion, and are never given a number that looks like ESPN's.
              */
             board_rank: number | null;
             /**
@@ -3212,7 +3246,7 @@ export interface components {
             } | null;
             /**
              * Category Z
-             * @description Signed z-score per category over the full pool (positive is always good; TOV is inverted)
+             * @description Signed contribution per category (positive is always good; TOV is inverted): the player's expected weekly total, games included, against the league's draftable cohort, with each category's week-to-week noise in the denominator (G-score). Roto uses season totals and no noise term.
              */
             category_z: {
                 [key: string]: number;
@@ -3267,6 +3301,21 @@ export interface components {
              */
             player_id: number;
             /**
+             * Playoff Games
+             * @description Games his current NBA team plays in the league's fantasy-playoff weeks (`meta.playoffs.weeks`). None when his team or the season calendar is unknown, and in roto leagues, which have no playoffs.
+             */
+            playoff_games: number | null;
+            /**
+             * Playoff Games By Week
+             * @description `playoff_games` split by playoff week, in `meta.playoffs.weeks` order
+             */
+            playoff_games_by_week: number[] | null;
+            /**
+             * Playoff Light Games
+             * @description Of `playoff_games`, those on light nights — 7 or fewer NBA games — when a daily-lineup manager can nearly always start him.
+             */
+            playoff_light_games: number | null;
+            /**
              * Position
              * @description NBA-style position (G, F, C, F-C, ...)
              */
@@ -3287,10 +3336,25 @@ export interface components {
              */
             projected_gp: number | null;
             /**
+             * Room Rank
+             * @description Rank by `room_score` among the players the caller can still draft — the `my_team` board's order. Like `fit_rank` and unlike `cv_rank`, it moves with every pick.
+             */
+            room_rank: number | null;
+            /**
+             * Room Score
+             * @description Court Vision's value for *this roster*, in season-value points: value over the league's replacement level, plus what the room's punts add, minus the starts this roster could not use (lineup congestion). The number the recommendation cards decompose, on every row it was computed for. None for drafted, cap-blocked and market-only rows.
+             */
+            room_score: number | null;
+            /**
              * Score
-             * @description Sum of category z-scores; what `value` is mapped from
+             * @description Sum of `category_z`; what `value` is mapped from and `cv_rank` is ordered by
              */
             score: number | null;
+            /**
+             * Season Games
+             * @description The games Court Vision's value is built on: projected games (65 when nothing projects him) spread over his team's schedule, with games in the league's fantasy-playoff weeks counted `meta.playoffs.weight` times and games after the fantasy season not at all, renormalized so the league-average player keeps his games. Roto counts every game once.
+             */
+            season_games: number | null;
             /**
              * Team
              * @description Current NBA team abbreviation (nba.player_profiles), falling back to last season's stats team; None when neither knows him (a rookie before his profile syncs)
@@ -3308,7 +3372,7 @@ export interface components {
             value_season: string | null;
             /**
              * Value Source
-             * @description projection: ESPN's published per-game projection. baseline: last season's per-game averages. market: no stat line at all — the row exists because ESPN drafts him.
+             * @description projection: a per-game projection for the coming season (`meta.projection_source` says whose). baseline: last season's per-game averages. market: no stat line at all — the row exists because ESPN drafts him.
              * @enum {string}
              */
             value_source: "projection" | "baseline" | "market";
@@ -3316,8 +3380,8 @@ export interface components {
         /**
          * DraftCongestionResp
          * @description Lineup congestion on the caller's roster: starter value that would sit on
-         *     nights more rostered players play than the league can start, measured on a
-         *     sample of the season's calendar. A friction estimate, not a projection.
+         *     nights more rostered players play than the league can start, measured on
+         *     every week of the calendar the league scores.
          */
         DraftCongestionResp: {
             /**
@@ -3332,7 +3396,7 @@ export interface components {
             benched_season: number;
             /**
              * Evaluated
-             * @description Candidates the congestion term was measured for (the top 25 by pre-congestion score); the rest carry 0
+             * @description Candidates the congestion term was measured for: everyone the caller can still draft, or 0 when there is no lineup or calendar to measure against
              * @default 0
              */
             evaluated: number;
@@ -3344,13 +3408,13 @@ export interface components {
             no_team: number[];
             /**
              * Sample Weeks
-             * @description Fantasy week numbers sampled; empty when no calendar could be read
+             * @description Fantasy week numbers measured — every week the league scores, so the weeks after its playoffs are left out; empty when no calendar could be read
              * @default []
              */
             sample_weeks: number[];
             /**
              * Season Weeks
-             * @description Weeks the sample is scaled to; 0 when no calendar could be read
+             * @description Weeks `benched_season` covers (the measured weeks); 0 when no calendar could be read
              * @default 0
              */
             season_weeks: number;
@@ -3696,6 +3760,58 @@ export interface components {
             timestamp: string | null;
         };
         /**
+         * DraftPlayoffsResp
+         * @description The league's fantasy-playoff weeks and how much the CV value weighs them.
+         */
+        DraftPlayoffsResp: {
+            /**
+             * Games Max
+             * @description Most playoff-week games any NBA team plays
+             */
+            games_max: number;
+            /**
+             * Games Mean
+             * @description Average playoff-week games across the 30 teams
+             */
+            games_mean: number;
+            /**
+             * Games Min
+             * @description Fewest playoff-week games any NBA team plays
+             */
+            games_min: number;
+            /**
+             * Label
+             * @description Human label, e.g. `weeks 20-23`
+             */
+            label: string;
+            /**
+             * Rounds
+             * @description The weeks of each playoff round
+             */
+            rounds: number[][];
+            /**
+             * Source
+             * @description league: read from the league's synced schedule settings. espn_default: the league has none (league-less room, unsynced league), so ESPN's default shape — two two-week rounds ending the week before the NBA's last. yahoo_weeks_assumed: Yahoo's playoff start week, read as this calendar's week number.
+             * @enum {string}
+             */
+            source: "league" | "espn_default" | "yahoo_weeks_assumed";
+            /**
+             * Weeks
+             * @description Calendar week numbers of the playoffs, in order
+             */
+            weeks: number[];
+            /**
+             * Weight
+             * @description λ: how many regular-season games one playoff-week game counts as
+             */
+            weight: number;
+            /**
+             * Weights
+             * @description The weights the caller may ask for (`playoff_weight`)
+             */
+            weights: number[];
+        };
+        /**
          * DraftRecapResp
          * @description The finished draft: every pick priced, every seat graded, standings projected.
          */
@@ -3757,7 +3873,7 @@ export interface components {
             reason: string;
             /**
              * Score
-             * @description vorp + scarcity + flexibility + injury + category_fit + congestion. Court Vision's own number, always computed — it only *orders* this list when `source` is `cv`.
+             * @description vorp + punts + injury + congestion, every term in season-value points — the board row's `room_score`. Court Vision's own number, always computed — it only *orders* this list when `source` is `cv`.
              */
             score: number;
             /**
@@ -3779,7 +3895,7 @@ export interface components {
             value: number;
             /**
              * Vorp
-             * @description season_value minus the replacement level at the player's position
+             * @description season_value minus the replacement level: the league's last starter still to be filled, or the lower level at a position whose own lineup seats the league cannot fill
              */
             vorp: number;
         };
@@ -7685,14 +7801,14 @@ export interface components {
             detail: string | null;
             /**
              * In Score
-             * @description Whether this term is summed into `score`. `season_value` is the base the other terms are computed from and is shown for context, not added on top of `vorp`.
+             * @description Whether this term is summed into `score`. `season_value` is the base the other terms are computed from and is shown for context, not added on top of `vorp`. `category_fit` (category leagues) is what weighting categories by this roster's needs would add: information for the drafter, deliberately not part of the score. `punts` (category leagues) is how the room's conceded categories move his value over replacement.
              */
             in_score: boolean;
             /**
              * Key
              * @enum {string}
              */
-            key: "season_value" | "vorp" | "scarcity" | "flexibility" | "injury" | "category_fit" | "congestion";
+            key: "season_value" | "vorp" | "punts" | "injury" | "congestion" | "category_fit";
             /** Label */
             label: string;
             /** Value */
@@ -8142,6 +8258,89 @@ export interface components {
              * @description Team name cannot be empty
              */
             Team: string;
+        };
+        /** StandardRankResp */
+        StandardRankResp: {
+            /**
+             * Category Rank
+             * @description Place among the players sent, standard 9-cat
+             */
+            category_rank: number;
+            /**
+             * Category Score
+             * @description Summed per-category score the index is mapped from
+             */
+            category_score: number;
+            /**
+             * Category Value
+             * @description The 9-cat value index
+             */
+            category_value: number;
+            /**
+             * Games
+             * @description Effective games: expected games weighted by when his team plays them
+             */
+            games: number;
+            /** Player Id */
+            player_id: number;
+            /**
+             * Points Rank
+             * @description Place among the players sent, standard points league
+             */
+            points_rank: number;
+            /**
+             * Points Season
+             * @description points_value x effective games: what points_rank is ordered by
+             */
+            points_season: number;
+            /**
+             * Points Value
+             * @description Fantasy points per game under ESPN's default weights
+             */
+            points_value: number;
+        };
+        /** StandardValuationData */
+        StandardValuationData: {
+            /** League Size */
+            league_size: number;
+            /**
+             * Players
+             * @description One entry per player sent, in the order sent
+             */
+            players: components["schemas"]["StandardRankResp"][];
+            /**
+             * Playoff Weeks
+             * @description The fantasy-playoff weeks weighted; empty when the season calendar is unavailable
+             */
+            playoff_weeks: number[];
+            /** Playoff Weight */
+            playoff_weight: number;
+            /** Rounds */
+            rounds: number;
+        };
+        /** StandardValuationReq */
+        StandardValuationReq: {
+            /**
+             * Players
+             * @description The whole pool to value together: a rank is a place among these players, and the category values are measured against the draftable cohort among them.
+             */
+            players: components["schemas"]["ValuationPlayer"][];
+            /**
+             * Playoff Weight
+             * @description How many regular-season games one fantasy-playoff game counts as. Default 2.
+             */
+            playoff_weight?: number | null;
+        };
+        /** StandardValuationResp */
+        StandardValuationResp: {
+            data: components["schemas"]["StandardValuationData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /**
          * StreamerData
@@ -8711,6 +8910,44 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * ValuationPlayer
+         * @description One player's projection: a per-game line and the games it is expected over.
+         */
+        ValuationPlayer: {
+            /**
+             * Dd Rate
+             * @description Double-doubles per game
+             */
+            dd_rate?: number | null;
+            /**
+             * Games
+             * @description Expected games this season. Omit when nothing projects them (valued at 65).
+             */
+            games?: number | null;
+            /**
+             * Line
+             * @description Per-game stats by canonical key (pts, reb, ast, stl, blk, tov, fgm, fga, fg3m, fg3a, ftm, fta, min). Unknown keys are ignored; percentages are derived from makes and attempts.
+             */
+            line: {
+                [key: string]: number;
+            };
+            /**
+             * Player Id
+             * @description NBA player id (nba.players.id)
+             */
+            player_id: number;
+            /**
+             * Td Rate
+             * @description Triple-doubles per game
+             */
+            td_rate?: number | null;
+            /**
+             * Team
+             * @description Current NBA team tricode, for his schedule around the fantasy playoffs
+             */
+            team?: string | null;
         };
         /** WeekResult */
         WeekResult: {
@@ -9533,10 +9770,12 @@ export interface operations {
                 mine?: number[];
                 /** @description Category keys to concede, e.g. `punt=ft_pct&punt=tov`. They weigh zero in `fit_value`; unknown keys are ignored here (the room stores validated punts on the session instead). No effect on a points league. */
                 punt?: string[];
-                /** @description Whose rankings order the rows. `espn` (the default) is ESPN's published draft rank for this league's format — the order an ESPN draft room shows — wherever the room can have it; `cv` is Court Vision's ranking, the opt-in. `meta.rank_basis` says which actually ran and `meta.rank_basis_reason` why. */
-                board?: "espn" | "cv";
-                /** @description What orders `recommendations`. `cv` (the default) is Court Vision's room-aware pick — VORP with scarcity, fit and congestion applied; `espn` takes the best remaining on ESPN's own board for this league's format. Every component is computed either way, so switching never changes a card's numbers, only which opinion put it on top. `espn` falls back to `cv` when no market snapshot exists; `meta.rank_source` says which actually ran. */
+                /** @description Whose rankings order the rows. `espn` (the default) is ESPN's published draft rank for this league's format — the order an ESPN draft room shows — wherever the room can have it; `cv` is Court Vision's ranking, the opt-in; `my_team` is that ranking re-ordered for the caller's roster (`room_rank`: value over replacement under the room's punts, less the starts the roster could not use), which moves with every pick. `meta.rank_basis` says which actually ran and `meta.rank_basis_reason` why. */
+                board?: "espn" | "cv" | "my_team";
+                /** @description What orders `recommendations`. `cv` (the default) is Court Vision's room-aware pick — value over replacement with the room's punts and lineup congestion applied; `espn` takes the best remaining on ESPN's own board for this league's format. Every component is computed either way, so switching never changes a card's numbers, only which opinion put it on top. `espn` falls back to `cv` when no market snapshot exists; `meta.rank_source` says which actually ran. */
                 rank_source?: "cv" | "espn";
+                /** @description How many regular-season games one game in the league's fantasy-playoff weeks counts as in Court Vision's value: 1 (playoffs weigh nothing extra) to 4, snapped to 1, 1.5, 2, 3 or 4. Default 2. Moves `cv_rank`, `season_games` and the recommendations; ESPN's order never moves with it. `meta.playoffs` names the weeks and echoes the weight used. */
+                playoff_weight?: number | null;
                 team_id: number;
             };
             header?: never;
@@ -9703,10 +9942,12 @@ export interface operations {
     get_draft_session_board_v1_internal_drafts__session_id__board_get: {
         parameters: {
             query?: {
-                /** @description Whose rankings order the rows. `espn` (the default) is ESPN's published draft rank for this league's format — the order an ESPN draft room shows — wherever the room can have it; `cv` is Court Vision's ranking, the opt-in. `meta.rank_basis` says which actually ran and `meta.rank_basis_reason` why. */
-                board?: "espn" | "cv";
-                /** @description What orders `recommendations`. `cv` (the default) is Court Vision's room-aware pick — VORP with scarcity, fit and congestion applied; `espn` takes the best remaining on ESPN's own board for this league's format. Every component is computed either way, so switching never changes a card's numbers, only which opinion put it on top. `espn` falls back to `cv` when no market snapshot exists; `meta.rank_source` says which actually ran. */
+                /** @description Whose rankings order the rows. `espn` (the default) is ESPN's published draft rank for this league's format — the order an ESPN draft room shows — wherever the room can have it; `cv` is Court Vision's ranking, the opt-in; `my_team` is that ranking re-ordered for the caller's roster (`room_rank`: value over replacement under the room's punts, less the starts the roster could not use), which moves with every pick. `meta.rank_basis` says which actually ran and `meta.rank_basis_reason` why. */
+                board?: "espn" | "cv" | "my_team";
+                /** @description What orders `recommendations`. `cv` (the default) is Court Vision's room-aware pick — value over replacement with the room's punts and lineup congestion applied; `espn` takes the best remaining on ESPN's own board for this league's format. Every component is computed either way, so switching never changes a card's numbers, only which opinion put it on top. `espn` falls back to `cv` when no market snapshot exists; `meta.rank_source` says which actually ran. */
                 rank_source?: "cv" | "espn";
+                /** @description How many regular-season games one game in the league's fantasy-playoff weeks counts as in Court Vision's value: 1 (playoffs weigh nothing extra) to 4, snapped to 1, 1.5, 2, 3 or 4. Default 2. Moves `cv_rank`, `season_games` and the recommendations; ESPN's order never moves with it. `meta.playoffs` names the weeks and echoes the weight used. */
+                playoff_weight?: number | null;
             };
             header?: never;
             path: {
@@ -10070,6 +10311,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LineupEvaluationResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    value_standard_league_v1_internal_jobs_valuation_standard_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StandardValuationReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardValuationResp"];
                 };
             };
             /** @description Validation Error */
