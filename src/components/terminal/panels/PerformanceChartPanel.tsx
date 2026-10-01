@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { LineChart as LineChartIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { lastGames } from "@/lib/statWindow";
 import { useTerminalStore } from "@/stores/useTerminalStore";
 import { usePlayerStatsQuery } from "@/hooks/usePlayer";
 import {
@@ -55,23 +56,9 @@ export function PerformanceChartPanel() {
   const chartData = useMemo(() => {
     if (!playerStats?.game_logs) return [];
 
-    let logs = playerStats.game_logs;
-
-    // Filter by stat window
-    if (statWindow === "l5") {
-      logs = logs.slice(-5);
-    } else if (statWindow === "l10") {
-      logs = logs.slice(-10);
-    } else if (statWindow === "l20") {
-      logs = logs.slice(-20);
-    } else {
-      try {
-        const n = Number(statWindow.slice(1)); // "l15" -> 15
-        logs = logs.slice(-n);
-      } catch (error) {
-        logs = logs;
-      }
-    }
+    // The window's games. (The old fallback only covered "season" by accident:
+    // Number("eason") is NaN, and slice(-NaN) happens to return everything.)
+    const logs = lastGames(playerStats.game_logs, statWindow);
 
     if (showMovingAvg) {
       return calculateMovingAverage(logs, movingAvgWindow);

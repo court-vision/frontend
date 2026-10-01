@@ -14,14 +14,7 @@ import { calculateRecentFormTrend } from "@/lib/chart-utils";
 import { formatReportAge } from "@/lib/injury-report";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-error";
-import type { StatWindow } from "@/types/terminal";
-
-const WINDOW_LABELS: Record<StatWindow, string> = {
-  season: "Season",
-  l5: "L5",
-  l10: "L10",
-  l20: "L20",
-};
+import { windowLabel } from "@/lib/statWindow";
 
 const INJURY_BADGE_STYLES: Record<string, string> = {
   Out: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -184,7 +177,7 @@ export function PlayerFocusPanel() {
         <div className="flex items-center justify-between">
           <div>
             <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
-              Fantasy Pts{isWindowed && <span className="ml-1 text-primary/70">({WINDOW_LABELS[statWindow]})</span>}
+              Fantasy Pts{isWindowed && <span className="ml-1 text-primary/70">({windowLabel(statWindow)})</span>}
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-xl font-mono font-bold text-primary tabular-nums">
