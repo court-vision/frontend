@@ -7919,7 +7919,7 @@ export interface components {
              * Gap
              * @description Why a question could not be answered in Court Vision
              */
-            gap: ("no_view" | "no_data" | "out_of_scope" | "invalid_target") | null;
+            gap: ("no_view" | "no_data" | "out_of_scope" | "invalid_target" | "ambiguous") | null;
             /**
              * Kind
              * @description show: open `target` · statmuse: link out · cannot: say so
