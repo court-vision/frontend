@@ -96,7 +96,7 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
   const [recordingKeepers, setRecordingKeepers] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
 
-  const { highlightId, boardSource, setSearch, setHighlight, setBoardSource, toggleSort } =
+  const { highlightId, boardSource, setSearch, setHighlight, setBoardSource, setPlayoffWeight, toggleSort } =
     useDraftRoomStore();
   const rows = useMemo(() => board?.rows ?? [], [board]);
   // Shared with the table, so a keystroke can never act on a row the user is
@@ -679,6 +679,8 @@ export default function DraftRoom({ sessionId }: { sessionId: number }) {
             onChange={setBoardSource}
             actual={board?.meta?.rank_basis ?? null}
             reason={board?.meta?.rank_basis_reason ?? null}
+            playoffs={board?.meta?.playoffs ?? null}
+            onPlayoffWeightChange={setPlayoffWeight}
           />
         </div>
         <RecommendationStrip

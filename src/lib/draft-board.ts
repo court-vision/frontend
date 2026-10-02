@@ -15,6 +15,7 @@ import type {
   CategoryNeed,
   DraftBoardMeta,
   DraftBoardRow,
+  DraftPlayoffs,
   PositionFilter,
   RankBasis,
   SortDirection,
@@ -84,6 +85,8 @@ export function sortValue(row: DraftBoardRow, key: BoardSortKey): number | strin
       return row.availability === null ? null : AVAILABILITY_ORDER[row.availability];
     case "projected_gp":
       return row.projected_gp ?? row.last_season_gp;
+    case "playoff_games":
+      return row.playoff_games;
     default: {
       // `cat:<key>`, the only remaining shape the union allows. A player the
       // pool cannot score has no categories at all, and sorts last like every
@@ -187,34 +190,50 @@ export interface BoardColumn {
   category?: CategoryDef;
 }
 
-/** The rank column that is *not* the gutter: the other opinion, beside the name. */
-const OTHER_RANK: Record<RankBasis, BoardColumn> = {
-  espn: { key: "cv_rank", label: "CV", className: "w-12", align: "right", sortable: true,
-    title: "Court Vision's rank over the full pool — stable all draft long" },
-  cv: { key: "market_rank", label: "ESPN", className: "w-14", align: "right", sortable: true,
-    title: "ESPN's published draft rank for this league's format" },
+const CV_RANK: BoardColumn = {
+  key: "cv_rank", label: "CV", className: "w-12", align: "right", sortable: true,
+  title: "Court Vision's rank over the full pool — stable all draft long",
+};
+const ESPN_RANK: BoardColumn = {
+  key: "market_rank", label: "ESPN", className: "w-14", align: "right", sortable: true,
+  title: "ESPN's published draft rank for this league's format",
+};
+
+/** The ranks that are *not* the gutter: the other opinions, beside the name. */
+const OTHER_RANKS: Record<RankBasis, BoardColumn[]> = {
+  espn: [CV_RANK],
+  cv: [ESPN_RANK],
+  // The gutter is this roster's own order, so both pool-wide opinions sit beside it.
+  my_team: [CV_RANK, ESPN_RANK],
 };
 
 const GUTTER_TITLE: Record<RankBasis, string> = {
   espn: "ESPN's published rank for this league's format — the board you are drafting off",
   cv: "CV rank over the full pool — stable all draft long",
+  my_team:
+    "Court Vision's rank for your roster: value over replacement under your punts, " +
+    "less the starts your lineup could not use. It moves with every pick",
 };
 
 /**
  * The columns every league has, in order. `Fit` slots in after `Value`.
  *
- * One rank sits in the gutter and the other beside the name, never the same
+ * One rank sits in the gutter and the others beside the name, never the same
  * number twice: in an ESPN room the gutter is ESPN's published rank and the
- * column is CV's; in a room CV orders it is the other way round.
+ * column is CV's; in a room CV orders it is the other way round; on the
+ * `my_team` board the gutter is this roster's own order and both sit beside it.
+ *
+ * `PO` — his team's games in the league's fantasy-playoff weeks — is there
+ * whenever the league has playoff weeks to count (a roto league has none).
  */
-function baseColumns(basis: RankBasis): BoardColumn[] {
-  return [
+function baseColumns(basis: RankBasis, playoffs: DraftPlayoffs | null): BoardColumn[] {
+  const columns: BoardColumn[] = [
     { key: "board_rank", label: "#", className: "w-10", align: "center", sortable: true,
       title: GUTTER_TITLE[basis] },
     { key: "name", label: "Player", className: "flex-[3] min-w-[180px]", align: "left", sortable: true },
     { key: "value", label: "Value", className: "w-16", align: "right", sortable: true,
       title: "Per-game value under this league's scoring" },
-    OTHER_RANK[basis],
+    ...OTHER_RANKS[basis],
     { key: "adp", label: "ADP", className: "w-14", align: "right", sortable: true,
       title: "Average draft position across real ESPN drafts" },
     { key: "market_delta", label: "Δ", className: "w-12", align: "right", sortable: true,
@@ -224,6 +243,59 @@ function baseColumns(basis: RankBasis): BoardColumn[] {
     { key: "projected_gp", label: "GP", className: "w-12", align: "right", sortable: true,
       title: "Projected games this season" },
   ];
+  if (playoffs) {
+    columns.push({
+      key: "playoff_games", label: "PO", className: "w-12", align: "right", sortable: true,
+      title:
+        `Games his team plays in your fantasy playoffs (${playoffs.label}). ` +
+        `Teams play ${playoffs.games_min}–${playoffs.games_max}; the average is ${playoffs.games_mean}`,
+    });
+  }
+  return columns;
+}
+
+/** "2×", "1.5×": a playoff weight as the control shows it. */
+export function playoffWeightLabel(weight: number): string {
+  return `${Number.isInteger(weight) ? weight : weight.toFixed(1)}×`;
+}
+
+/**
+ * How a player's playoff schedule compares with the league's: a game or more
+ * above the average team's is `high`, a game or more below is `low`. Null in
+ * between, and whenever there is nothing to compare — a tint has to mean
+ * something.
+ */
+export function playoffTone(
+  games: number | null | undefined,
+  playoffs: DraftPlayoffs | null | undefined
+): "high" | "low" | null {
+  if (games == null || !playoffs || playoffs.games_max === playoffs.games_min) return null;
+  if (games >= playoffs.games_mean + 1) return "high";
+  if (games <= playoffs.games_mean - 1) return "low";
+  return null;
+}
+
+/**
+ * The playoff cell's tooltip: the games week by week, and how many fall on
+ * light nights — seven or fewer NBA games, when a daily-lineup manager can
+ * nearly always start him.
+ */
+export function playoffDetail(
+  row: Pick<DraftBoardRow, "team" | "playoff_games" | "playoff_light_games" | "playoff_games_by_week">,
+  playoffs: DraftPlayoffs | null | undefined
+): string | null {
+  if (row.playoff_games == null || !playoffs) return null;
+  const weeks = row.playoff_games_by_week ?? [];
+  const byWeek =
+    weeks.length === playoffs.weeks.length && weeks.length > 0
+      ? `: ${playoffs.weeks.map((week, i) => `wk ${week} · ${weeks[i]}`).join(", ")}`
+      : "";
+  const light =
+    row.playoff_light_games != null ? ` ${row.playoff_light_games} on light nights.` : "";
+  return (
+    `${row.team ?? "His team"} plays ${row.playoff_games} in the fantasy playoffs${byWeek}.` +
+    `${light} League average ${playoffs.games_mean}.`
+  );
 }
 
 const FIT_COLUMN: BoardColumn = {
@@ -236,7 +308,7 @@ const FIT_COLUMN: BoardColumn = {
 };
 
 export function columnsFor(meta: DraftBoardMeta | null): BoardColumn[] {
-  const base = baseColumns(meta?.rank_basis ?? "cv");
+  const base = baseColumns(meta?.rank_basis ?? "cv", meta?.playoffs ?? null);
   if (meta?.value_kind !== "cat_value") return base;
   const punts = new Set(meta.punts ?? []);
   const categories: BoardColumn[] = (meta.categories ?? []).map((def) => ({
@@ -271,6 +343,14 @@ export function basisNote(meta: DraftBoardMeta | null): { label: string; title: 
       title:
         "Rows are in ESPN's published draft order for this league's format; " +
         "Court Vision's rank is the column beside the name",
+    };
+  }
+  if (meta.rank_basis === "my_team") {
+    return {
+      label: "CV board for your team",
+      title:
+        "Court Vision's rankings re-ordered for your roster: value over replacement under your " +
+        "punts, less the starts your lineup could not use. Its own and ESPN's ranks are beside the name",
     };
   }
   switch (meta.rank_basis_reason) {

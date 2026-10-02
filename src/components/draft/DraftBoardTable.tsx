@@ -4,7 +4,16 @@ import { useEffect, useMemo, useRef, type KeyboardEvent, type RefObject } from "
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, Table } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { basisNote, columnsFor, countAtRisk, countCapped, sortableKey, type BoardColumn } from "@/lib/draft-board";
+import {
+  basisNote,
+  columnsFor,
+  countAtRisk,
+  countCapped,
+  playoffDetail,
+  playoffTone,
+  sortableKey,
+  type BoardColumn,
+} from "@/lib/draft-board";
 import { formatCategoryValue } from "@/lib/category-format";
 import { useVisibleRows } from "@/hooks/useBoardView";
 import { Input } from "@/components/ui/input";
@@ -12,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
 import { POSITION_FILTERS } from "@/types/draft";
-import type { DraftBoardMeta, DraftBoardRow, SortDirection } from "@/types/draft";
+import type { DraftBoardMeta, DraftBoardRow, DraftPlayoffs, SortDirection } from "@/types/draft";
 
 /** The sort-state glyph a column header carries; the recap pick table reuses it. */
 export function SortIcon({ active, direction }: { active: boolean; direction?: SortDirection }) {
@@ -76,7 +85,15 @@ function zTint(z: number | undefined): string {
  * availability means "no basis to say", and a bucket the user reads as a claim
  * must not be invented from silence.
  */
-function Cell({ column, row }: { column: BoardColumn; row: DraftBoardRow }) {
+function Cell({
+  column,
+  row,
+  playoffs,
+}: {
+  column: BoardColumn;
+  row: DraftBoardRow;
+  playoffs: DraftPlayoffs | null;
+}) {
   const base = cn(
     "py-1.5 px-1 shrink-0",
     column.className,
@@ -171,6 +188,23 @@ function Cell({ column, row }: { column: BoardColumn; row: DraftBoardRow }) {
           )}
         </div>
       );
+    case "playoff_games": {
+      // Tinted only when the schedule is a game or more off the league's
+      // average: most teams sit within one, and a board of green and red
+      // numbers that mean "about the same" teaches the eye to ignore them.
+      const tone = playoffTone(row.playoff_games, playoffs);
+      return (
+        <div
+          title={playoffDetail(row, playoffs) ?? undefined}
+          className={cn(
+            base,
+            tone === "high" ? "text-green-500" : tone === "low" ? "text-red-500" : "text-muted-foreground"
+          )}
+        >
+          {row.playoff_games ?? "—"}
+        </div>
+      );
+    }
     default:
       return null;   // `name` is rendered inline; it carries the badges.
   }
@@ -412,7 +446,7 @@ export function DraftBoardTable({
               "hidden lg:inline shrink-0 font-mono text-[10px]",
               // Amber only when the room asked for ESPN and could not have it;
               // a chosen Court Vision board is a choice, not a fallback.
-              meta?.rank_basis === "cv" && meta.rank_basis_requested !== "cv"
+              meta?.rank_basis === "cv" && meta.rank_basis_requested === "espn"
                 ? "text-amber-500/80"
                 : "text-muted-foreground/60"
             )}
@@ -582,7 +616,7 @@ export function DraftBoardTable({
                 {columns
                   .filter((col) => col.key !== "board_rank" && col.key !== "name")
                   .map((col) => (
-                    <Cell key={col.key} column={col} row={row} />
+                    <Cell key={col.key} column={col} row={row} playoffs={meta?.playoffs ?? null} />
                   ))}
 
                 {onPick && (
@@ -660,7 +694,13 @@ export function DraftBoardTable({
             {visible.length} of {meta.available} available
           </span>
           <span className="text-border">·</span>
-          <span title="Rows valued from ESPN's published projections vs last season's baseline">
+          <span
+            title={
+              meta.projection_source === "cv"
+                ? "Rows valued from Court Vision's projection vs last season's baseline"
+                : "Rows valued from ESPN's published projections vs last season's baseline"
+            }
+          >
             {meta.projection_count} proj / {meta.baseline_count} base
             {meta.market_only_count > 0 && ` / ${meta.market_only_count} mkt`}
           </span>

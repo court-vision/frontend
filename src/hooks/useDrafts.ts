@@ -28,12 +28,13 @@ export const draftKeys = {
   details: () => [...draftKeys.all, "detail"] as const,
   detail: (sessionId: number) => [...draftKeys.details(), sessionId] as const,
   boards: () => [...draftKeys.all, "board"] as const,
-  // `boardSource` is the last segment so `board(sessionId)` still prefix-matches
-  // every source: an invalidation after a pick must clear both boards, while a
-  // read or an optimistic write has to name the one on screen.
-  board: (sessionId: number, boardSource?: BoardSource) =>
+  // The view — whose board, and at what playoff weight — is the last segment,
+  // so `board(sessionId)` still prefix-matches every view: an invalidation
+  // after a pick must clear them all, while a read or an optimistic write has
+  // to name the one on screen.
+  board: (sessionId: number, boardSource?: BoardSource, playoffWeight: number | null = null) =>
     boardSource
-      ? ([...draftKeys.boards(), sessionId, boardSource] as const)
+      ? ([...draftKeys.boards(), sessionId, boardSource, playoffWeight] as const)
       : ([...draftKeys.boards(), sessionId] as const),
   recaps: () => [...draftKeys.all, "recap"] as const,
   recap: (sessionId: number) => [...draftKeys.recaps(), sessionId] as const,
@@ -43,7 +44,8 @@ export const draftKeys = {
     teamId: number | null,
     picked: number[],
     mine: number[],
-    boardSource: BoardSource
+    boardSource: BoardSource,
+    playoffWeight: number | null = null
   ) =>
     [
       ...draftKeys.boards(),
@@ -52,6 +54,7 @@ export const draftKeys = {
       [...picked].sort((a, b) => a - b).join(","),
       [...mine].sort((a, b) => a - b).join(","),
       boardSource,
+      playoffWeight,
     ] as const,
 };
 
@@ -84,10 +87,17 @@ export function useDraftSessionQuery(sessionId: number | null) {
 export function useDraftBoardQuery(sessionId: number | null) {
   const { getToken, isSignedIn } = useAuth();
   const boardSource = useDraftRoomStore((state) => state.boardSource);
+  const playoffWeight = useDraftRoomStore((state) => state.playoffWeight);
 
   return useQuery<DraftBoardResult>({
-    queryKey: draftKeys.board(sessionId!, boardSource),
-    queryFn: ({ signal }) => apiClient.getDraftBoard(getToken, sessionId!, boardSource, { signal }),
+    queryKey: draftKeys.board(sessionId!, boardSource, playoffWeight),
+    queryFn: ({ signal }) =>
+      apiClient.getDraftBoard(getToken, sessionId!, boardSource, playoffWeight, { signal }),
+    // Switching the board or the playoff weight is a new key. The board on
+    // screen stays there while the next one loads: a skeleton would take the
+    // room's scroll position and the highlighted row with it.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[2] === sessionId ? previous : undefined,
     enabled: !!sessionId && isSignedIn === true,
     staleTime: 1000 * 30,
   });
@@ -101,11 +111,12 @@ export function useTeamDraftBoardQuery(
 ) {
   const { getToken, isSignedIn } = useAuth();
   const boardSource = useDraftRoomStore((state) => state.boardSource);
+  const playoffWeight = useDraftRoomStore((state) => state.playoffWeight);
 
   return useQuery<DraftBoardResult>({
-    queryKey: draftKeys.teamBoard(teamId, picked, mine, boardSource),
+    queryKey: draftKeys.teamBoard(teamId, picked, mine, boardSource, playoffWeight),
     queryFn: ({ signal }) =>
-      apiClient.getTeamDraftBoard(getToken, teamId!, picked, mine, boardSource, { signal }),
+      apiClient.getTeamDraftBoard(getToken, teamId!, picked, mine, boardSource, playoffWeight, { signal }),
     enabled: !!teamId && isSignedIn === true,
     staleTime: 1000 * 60 * 5,
   });
@@ -255,6 +266,7 @@ export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean
   const queryClient = useQueryClient();
   const { getToken } = useAuth();
   const boardSource = useDraftRoomStore((state) => state.boardSource);
+  const playoffWeight = useDraftRoomStore((state) => state.playoffWeight);
 
   return useMutation<DraftPick, Error, DraftPickCreate, PickContext>({
     mutationKey: ["drafts", "pick", sessionId],
@@ -265,7 +277,7 @@ export function useDraftPickMutation(sessionId: number, opts: { silent?: boolean
     meta: opts.silent ? { toast: false } : undefined,
 
     onMutate: async (pick) => {
-      const boardKey = draftKeys.board(sessionId, boardSource);
+      const boardKey = draftKeys.board(sessionId, boardSource, playoffWeight);
       const sessionKey = draftKeys.detail(sessionId);
       // Both, or an in-flight refetch lands on top of the optimistic state.
       await queryClient.cancelQueries({ queryKey: boardKey });

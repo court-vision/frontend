@@ -13,6 +13,7 @@ import {
   startableSlots,
   teamStacks,
   type RosterPlayer,
+  weekSpan,
 } from "../draft-roster";
 import type { DraftCongestion, DraftKeeperOut, DraftPick, DraftRosterEntry } from "../../types/draft";
 
@@ -55,12 +56,12 @@ function congestion(overrides: Partial<DraftCongestion> = {}): DraftCongestion {
   return {
     benched_per_week: 0,
     benched_season: 0,
-    sample_weeks: [3, 9, 16],
-    season_weeks: 24,
+    sample_weeks: Array.from({ length: 23 }, (_, i) => i + 1),
+    season_weeks: 23,
     slots: 10,
     stacks: [],
     no_team: [],
-    evaluated: 25,
+    evaluated: 380,
     ...overrides,
   };
 }
@@ -236,20 +237,26 @@ describe("congestionSummary", () => {
     expect(noSlots?.tone).toBe("muted");
     expect(noSlots?.title).toContain("sync its settings");
     const noWeeks = congestionSummary(congestion({ sample_weeks: [] }));
-    expect(noWeeks?.label).toBe("no schedule sampled");
+    expect(noWeeks?.label).toBe("no season calendar");
     expect(noWeeks?.tone).toBe("muted");
   });
 
-  test("a measured roster reads per week, with the season and the sample in the title", () => {
-    const line = congestionSummary(
-      congestion({ benched_per_week: 41.4, benched_season: 993.6, evaluated: 25 })
-    );
-    expect(line?.label).toBe("~41/week benched");
+  test("a measured roster reads per week, with the season and the weeks measured in the title", () => {
+    const line = congestionSummary(congestion({ benched_per_week: 9.6, benched_season: 220.8 }));
+    expect(line?.label).toBe("~10/week benched");
     expect(line?.tone).toBe("normal");
-    expect(line?.title).toContain("~994 of starter value");
-    expect(line?.title).toContain("over 24 weeks");
-    expect(line?.title).toContain("weeks 3, 9, 16");
-    expect(line?.title).toContain("top 25 candidates");
+    expect(line?.title).toBe(
+      "~221 of starter value would ride the bench over 23 weeks, from your lineup on the game " +
+        "nights of weeks 1–23; every one of the 380 players you can still draft is charged for what he would add"
+    );
+  });
+
+  test("the weeks measured read as a range when they are one, and as a list when they are not", () => {
+    expect(weekSpan([1, 2, 3, 4, 5])).toBe("weeks 1–5");
+    expect(weekSpan([3, 9, 16])).toBe("weeks 3, 9, 16");
+    expect(weekSpan([20, 21])).toBe("weeks 20, 21");
+    expect(weekSpan([7])).toBe("week 7");
+    expect(weekSpan([])).toBe("no weeks");
   });
 
   test("a roster that benches nothing is muted, not hidden", () => {

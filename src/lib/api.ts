@@ -876,15 +876,19 @@ class ApiClient {
     getToken: GetTokenFn,
     sessionId: number,
     boardSource: BoardSource = "espn",
+    playoffWeight: number | null = null,
     opts?: RequestOptions
   ): Promise<DraftBoardResult> {
+    const q = new URLSearchParams({ board: boardSource });
+    // Omitted, the server uses its default; sent, it is snapped to an offered step.
+    if (playoffWeight !== null) q.set("playoff_weight", String(playoffWeight));
     const env = await fetchJson<
       BaseApiResponse<DraftBoardRow[]> & {
         meta?: DraftBoardMeta | null;
         recommendations?: DraftRecommendation[] | null;
         roster?: DraftRosterEntry[] | null;
       }
-    >(`${DRAFTS_API}/${sessionId}/board?board=${boardSource}`, { ...opts, getToken });
+    >(`${DRAFTS_API}/${sessionId}/board?${q.toString()}`, { ...opts, getToken });
     const { data, message } = unwrapWithMessage(env, []);
     return {
       rows: data,
@@ -906,9 +910,11 @@ class ApiClient {
     picked: number[] = [],
     mine: number[] = [],
     boardSource: BoardSource = "espn",
+    playoffWeight: number | null = null,
     opts?: RequestOptions
   ): Promise<DraftBoardResult> {
     const q = new URLSearchParams({ team_id: String(teamId), board: boardSource });
+    if (playoffWeight !== null) q.set("playoff_weight", String(playoffWeight));
     for (const id of picked) q.append("picked", String(id));
     for (const id of mine) q.append("mine", String(id));
     const env = await fetchJson<
