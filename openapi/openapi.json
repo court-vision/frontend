@@ -15945,7 +15945,8 @@
                   "no_view",
                   "no_data",
                   "out_of_scope",
-                  "invalid_target"
+                  "invalid_target",
+                  "ambiguous"
                 ],
                 "type": "string"
               },
