@@ -102,6 +102,7 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
   const { sessionId, expectedLeagueId, bindable, enabled } = input;
   const queryClient = useQueryClient();
   const boardSource = useDraftRoomStore((state) => state.boardSource);
+  const playoffWeight = useDraftRoomStore((state) => state.playoffWeight);
   const pausedMap = useDraftSyncStore((store) => store.paused);
   const setPausedStore = useDraftSyncStore((store) => store.setPaused);
   const paused = pausedMap[String(sessionId)] ?? false;
@@ -146,13 +147,15 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     () => queryClient.getQueryData<DraftSession>(draftKeys.detail(sessionId)) ?? input.session,
     [queryClient, sessionId, input.session]
   );
-  // The board on screen, not "a" board: the room caches one entry per board
-  // source, and sync reads it to resolve ESPN's picks against what is showing.
+  // The board on screen, not "a" board: the room caches one entry per view
+  // (board source and playoff weight), and sync reads it to resolve ESPN's
+  // picks against what is showing.
   const cachedBoard = useCallback(
     () =>
-      queryClient.getQueryData<DraftBoardResult>(draftKeys.board(sessionId, boardSource)) ??
-      input.board,
-    [queryClient, sessionId, boardSource, input.board]
+      queryClient.getQueryData<DraftBoardResult>(
+        draftKeys.board(sessionId, boardSource, playoffWeight)
+      ) ?? input.board,
+    [queryClient, sessionId, boardSource, playoffWeight, input.board]
   );
 
   // Effects run through a ref so `dispatch` can stay stable (empty deps) while

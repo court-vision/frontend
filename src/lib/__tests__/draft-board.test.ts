@@ -8,6 +8,9 @@ import {
   needBar,
   needsByUrgency,
   paceLabel,
+  playoffDetail,
+  playoffTone,
+  playoffWeightLabel,
   sortableKey,
   sortValue,
   stepHighlight,
@@ -15,7 +18,7 @@ import {
   visibleRows,
   type BoardView,
 } from "../draft-board";
-import type { CategoryNeed, DraftBoardMeta, DraftBoardRow } from "../../types/draft";
+import type { CategoryNeed, DraftBoardMeta, DraftBoardRow, DraftPlayoffs } from "../../types/draft";
 import { DEFAULT_9CAT } from "../category-format";
 
 function row(overrides: Partial<DraftBoardRow> & { player_id: number }): DraftBoardRow {
@@ -29,11 +32,17 @@ function row(overrides: Partial<DraftBoardRow> & { player_id: number }): DraftBo
     injury_status: null,
     cv_rank: overrides.player_id,
     board_rank: overrides.player_id,
+    room_rank: overrides.player_id,
+    room_score: 100,
     value: 50,
     value_source: "baseline",
     value_season: null,
     last_season_gp: 70,
     projected_gp: null,
+    season_games: 65,
+    playoff_games: null,
+    playoff_light_games: null,
+    playoff_games_by_week: null,
     fpts_avg: 50,
     market_rank: null,
     adp: null,
@@ -56,6 +65,8 @@ function marketOnly(player_id: number, market_rank: number): DraftBoardRow {
     player_id,
     cv_rank: null,
     board_rank: market_rank,
+    room_rank: null,
+    room_score: null,
     value: null,
     fpts_avg: null,
     value_source: "market",
@@ -86,6 +97,7 @@ function meta(overrides: Partial<DraftBoardMeta> = {}): DraftBoardMeta {
     baseline_count: 100,
     market_only_count: 0,
     projections_as_of: null,
+    projection_source: null,
     market_as_of: null,
     rank_source: "cv",
     rank_source_requested: "cv",
@@ -104,8 +116,25 @@ function meta(overrides: Partial<DraftBoardMeta> = {}): DraftBoardMeta {
     pace_source: null,
     seats_drafted: 0,
     congestion: null,
+    playoffs: null,
     settings_synced: true,
     unsupported: [],
+    ...overrides,
+  };
+}
+
+/** ESPN's default playoff shape on the 2026-27 calendar: weeks 20-23, teams play 13 to 16. */
+function playoffs(overrides: Partial<DraftPlayoffs> = {}): DraftPlayoffs {
+  return {
+    weeks: [20, 21, 22, 23],
+    rounds: [[20, 21], [22, 23]],
+    label: "weeks 20-23",
+    source: "espn_default",
+    weight: 2,
+    weights: [1, 1.5, 2, 3, 4],
+    games_min: 13,
+    games_max: 16,
+    games_mean: 14.3,
     ...overrides,
   };
 }
@@ -394,6 +423,77 @@ describe("columnsFor", () => {
     expect(cv).toContain("market_rank");
     expect(cv).not.toContain("cv_rank");
   });
+
+  test("on the my-team board the gutter is the roster's own order, with both opinions beside it", () => {
+    const columns = columnsFor(meta({ rank_basis: "my_team", rank_basis_reason: "caller_chose_my_team" }));
+    const keys = columns.map((c) => c.key);
+    expect(keys[0]).toBe("board_rank");
+    expect(keys.indexOf("cv_rank")).toBe(keys.indexOf("value") + 2);       // after Fit
+    expect(keys.indexOf("market_rank")).toBe(keys.indexOf("cv_rank") + 1);
+    expect(columns[0].title).toContain("for your roster");
+    expect(columns[0].title).toContain("moves with every pick");
+  });
+
+  test("the playoff column is there when the league has playoff weeks, after games, and says which", () => {
+    expect(columnsFor(meta()).map((c) => c.key)).not.toContain("playoff_games");      // roto, or no calendar
+
+    const columns = columnsFor(meta({ value_kind: "fpts", categories: [], playoffs: playoffs() }));
+    const keys = columns.map((c) => c.key);
+    expect(keys.indexOf("playoff_games")).toBe(keys.indexOf("projected_gp") + 1);
+    const column = columns.find((c) => c.key === "playoff_games")!;
+    expect(column.label).toBe("PO");
+    expect(column.title).toBe(
+      "Games his team plays in your fantasy playoffs (weeks 20-23). Teams play 13–16; the average is 14.3"
+    );
+    // In a category league it still comes before the categories.
+    const cats = columnsFor(meta({ playoffs: playoffs() })).map((c) => c.key);
+    expect(cats.indexOf("playoff_games")).toBeLessThan(cats.findIndex((k) => k.startsWith("cat:")));
+    expect(sortableKey("playoff_games", columns)).toBe("playoff_games");
+    expect(sortableKey("playoff_games", columnsFor(meta()))).toBe("board_rank");
+  });
+});
+
+describe("playoff games", () => {
+  test("sort by them like any number, most first, unknown teams last", () => {
+    expect(naturalDirection("playoff_games")).toBe("desc");
+    const rows = [
+      row({ player_id: 1, playoff_games: 13 }),
+      row({ player_id: 2, playoff_games: null }),
+      row({ player_id: 3, playoff_games: 16 }),
+    ];
+    const sorted = visibleRows(rows, { ...VIEW, sortKey: "playoff_games", sortDirection: "desc" });
+    expect(sorted.map((r) => r.player_id)).toEqual([3, 1, 2]);
+    expect(sortValue(rows[1], "playoff_games")).toBeNull();
+  });
+
+  test("only a schedule a game or more off the league's average is toned", () => {
+    const league = playoffs();                           // mean 14.3
+    expect(playoffTone(16, league)).toBe("high");
+    expect(playoffTone(15, league)).toBeNull();          // 0.7 above: about the same
+    expect(playoffTone(14, league)).toBeNull();
+    expect(playoffTone(13, league)).toBe("low");
+    expect(playoffTone(null, league)).toBeNull();
+    expect(playoffTone(16, null)).toBeNull();
+    // Every team playing the same number is no information, whatever the average says.
+    expect(playoffTone(12, playoffs({ games_min: 12, games_max: 12, games_mean: 12 }))).toBeNull();
+  });
+
+  test("the tooltip gives the games week by week and how many fall on light nights", () => {
+    const phx = row({ player_id: 1, team: "PHX", playoff_games: 16, playoff_light_games: 6, playoff_games_by_week: [4, 4, 4, 4] });
+    expect(playoffDetail(phx, playoffs())).toBe(
+      "PHX plays 16 in the fantasy playoffs: wk 20 · 4, wk 21 · 4, wk 22 · 4, wk 23 · 4. " +
+        "6 on light nights. League average 14.3."
+    );
+    // A split that does not line up with the weeks is left out rather than mislabelled.
+    const odd = row({ player_id: 2, team: null, playoff_games: 14, playoff_light_games: null, playoff_games_by_week: [7, 7] });
+    expect(playoffDetail(odd, playoffs())).toBe("His team plays 14 in the fantasy playoffs. League average 14.3.");
+    expect(playoffDetail(row({ player_id: 3 }), playoffs())).toBeNull();
+    expect(playoffDetail(phx, null)).toBeNull();
+  });
+
+  test("a weight reads as a multiple", () => {
+    expect([1, 1.5, 2, 3, 4].map(playoffWeightLabel)).toEqual(["1×", "1.5×", "2×", "3×", "4×"]);
+  });
 });
 
 describe("basisNote", () => {
@@ -407,6 +507,15 @@ describe("basisNote", () => {
   test("a chosen Court Vision board is named as a choice, not a fallback", () => {
     expect(basisNote(meta({ rank_basis: "cv", rank_basis_reason: "caller_chose_cv", rank_basis_requested: "cv" }))?.label)
       .toBe("Court Vision board");
+  });
+
+  test("the my-team board says whose order it is and what moves it", () => {
+    const note = basisNote(meta({
+      rank_basis: "my_team", rank_basis_reason: "caller_chose_my_team", rank_basis_requested: "my_team",
+    }));
+    expect(note?.label).toBe("CV board for your team");
+    expect(note?.title).toContain("your punts");
+    expect(note?.title).toContain("the starts your lineup could not use");
   });
 
   test("a CV board says why it is not ESPN's", () => {

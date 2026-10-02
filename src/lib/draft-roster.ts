@@ -284,7 +284,7 @@ export function congestionSummary(
   }
   if (congestion.sample_weeks.length === 0) {
     return {
-      label: "no schedule sampled",
+      label: "no season calendar",
       title: "No season calendar could be read, so nothing was benched",
       tone: "muted",
     };
@@ -295,10 +295,23 @@ export function congestionSummary(
     label: `~${perWeek}/week benched`,
     title:
       `~${season} of starter value would ride the bench over ${congestion.season_weeks} weeks, ` +
-      `from your lineup on the game nights of weeks ${congestion.sample_weeks.join(", ")}; ` +
-      `congestion is charged to the top ${congestion.evaluated} candidates`,
+      `from your lineup on the game nights of ${weekSpan(congestion.sample_weeks)}; ` +
+      `every one of the ${congestion.evaluated} players you can still draft is charged for what he would add`,
     tone: perWeek > 0 ? "normal" : "muted",
   };
+}
+
+/**
+ * The weeks a number was measured on, as a reader says them: a run is a range
+ * ("weeks 1–23", the whole scored season) and anything else is a list.
+ */
+export function weekSpan(weeks: number[]): string {
+  if (weeks.length === 0) return "no weeks";
+  if (weeks.length === 1) return `week ${weeks[0]}`;
+  const run = weeks.every((week, i) => i === 0 || week === weeks[i - 1] + 1);
+  return run && weeks.length > 2
+    ? `weeks ${weeks[0]}–${weeks[weeks.length - 1]}`
+    : `weeks ${weeks.join(", ")}`;
 }
 
 /**

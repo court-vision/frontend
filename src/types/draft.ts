@@ -34,10 +34,14 @@ export type RankSource = NonNullable<DraftBoardMeta["rank_source"]>;
 
 /**
  * Whose rankings the drafter asked to order the board: ESPN's published rank
- * (the default) or Court Vision's. Sent to the API as `board`; `meta.rank_basis`
- * says what actually ran.
+ * (the default), Court Vision's, or Court Vision's re-ordered for the
+ * drafter's own roster (`my_team`). Sent to the API as `board`;
+ * `meta.rank_basis` says what actually ran.
  */
 export type BoardSource = NonNullable<DraftBoardMeta["rank_basis_requested"]>;
+
+/** The league's fantasy-playoff weeks, and how much Court Vision's value weighs them. */
+export type DraftPlayoffs = NonNullable<DraftBoardMeta["playoffs"]>;
 
 /** Where the caller's roster stands in one category, and what fit does about it. */
 export type CategoryNeed = S["CategoryNeedResp"];
@@ -119,8 +123,8 @@ export type RankBasis = NonNullable<DraftBoardMeta["rank_basis"]>;
 
 /**
  * Board sort columns. `board_rank` is the default: the board's own order, which
- * is ESPN's published rank in an ESPN room and CV's rank otherwise
- * (`meta.rank_basis`).
+ * is ESPN's published rank in an ESPN room, CV's rank on Court Vision's board,
+ * and CV's rank for this roster on `my_team` (`meta.rank_basis`).
  *
  * `cat:<key>` sorts by one of the league's own categories, so the set is only
  * known once `meta.categories` arrives — hence the template literal rather
@@ -139,6 +143,7 @@ export type BoardSortKey =
   | "market_delta"
   | "availability"
   | "projected_gp"
+  | "playoff_games"
   | `cat:${string}`;
 
 export type SortDirection = "asc" | "desc";

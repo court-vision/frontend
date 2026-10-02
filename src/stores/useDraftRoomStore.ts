@@ -19,10 +19,16 @@ import type { BoardSortKey, BoardSource, PositionFilter, SortDirection } from "@
  * It is sent to the API as `board` — it changes what comes back, not just how
  * it is displayed — and the sort opens on the gutter whichever is up. The
  * recommendation strip is not its business: that is always CV's picks, with
- * ESPN's rank on every card.
+ * ESPN's rank on every card. `my_team` is Court Vision's board re-ordered for
+ * the drafter's own roster.
+ *
+ * `playoffWeight` is how many regular-season games one fantasy-playoff game
+ * counts as in Court Vision's value. Null leaves it to the server's default,
+ * so a drafter who never touches the control follows that default if it moves.
  */
 interface DraftRoomStore {
   boardSource: BoardSource;
+  playoffWeight: number | null;
   sortKey: BoardSortKey;
   sortDirection: SortDirection;
   positionFilter: PositionFilter;
@@ -33,6 +39,7 @@ interface DraftRoomStore {
   highlightId: number | null;
 
   setBoardSource: (boardSource: BoardSource) => void;
+  setPlayoffWeight: (playoffWeight: number | null) => void;
   /** Sorting the current column flips it; a new column starts on its natural side. */
   toggleSort: (key: BoardSortKey) => void;
   setPositionFilter: (position: PositionFilter) => void;
@@ -45,6 +52,7 @@ interface DraftRoomStore {
 
 const DEFAULT_VIEW = {
   boardSource: "espn" as BoardSource,
+  playoffWeight: null as number | null,
   sortKey: "board_rank" as BoardSortKey,
   sortDirection: "asc" as SortDirection,
   positionFilter: "all" as PositionFilter,
@@ -57,11 +65,12 @@ const DEFAULT_VIEW = {
 /** What survives a reload: the view preferences, never the transient state. */
 type PersistedView = Pick<
   DraftRoomStore,
-  "boardSource" | "sortKey" | "sortDirection" | "positionFilter" | "hideCapped"
+  "boardSource" | "playoffWeight" | "sortKey" | "sortDirection" | "positionFilter" | "hideCapped"
 >;
 
 const PERSISTED_DEFAULTS: PersistedView = {
   boardSource: DEFAULT_VIEW.boardSource,
+  playoffWeight: DEFAULT_VIEW.playoffWeight,
   sortKey: DEFAULT_VIEW.sortKey,
   sortDirection: DEFAULT_VIEW.sortDirection,
   positionFilter: DEFAULT_VIEW.positionFilter,
@@ -74,6 +83,7 @@ export const useDraftRoomStore = create<DraftRoomStore>()(
       ...DEFAULT_VIEW,
 
       setBoardSource: (boardSource) => set({ boardSource }),
+      setPlayoffWeight: (playoffWeight) => set({ playoffWeight }),
       toggleSort: (key) =>
         set((state) =>
           state.sortKey === key
@@ -116,6 +126,7 @@ export const useDraftRoomStore = create<DraftRoomStore>()(
       // would open an empty room.
       partialize: (state) => ({
         boardSource: state.boardSource,
+        playoffWeight: state.playoffWeight,
         sortKey: state.sortKey,
         sortDirection: state.sortDirection,
         positionFilter: state.positionFilter,

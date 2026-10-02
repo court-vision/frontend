@@ -12,10 +12,12 @@ import type { DraftRecommendation } from "@/types/draft";
  * The top of the room: who to take next, and why — decomposed.
  *
  * `season_value` is the base the rest are measured from and is shown for
- * context (`in_score: false`); the terms that carry `in_score` sum to `score`.
- * Rendering them is the point of the feature, so a component whose value is 0
- * is still shown rather than hidden — "scarcity contributed nothing" is
- * information.
+ * context (`in_score: false`); the terms that carry `in_score` sum to `score`,
+ * every one of them in season-value points. Rendering them is the point of the
+ * feature, so a component whose value is 0 is still shown rather than hidden —
+ * "congestion cost nothing" is information. In a category league `category_fit`
+ * is shown and deliberately not summed: it says what the roster's needs would
+ * add, and stays dim so it never reads as part of the score.
  *
  * Two actions per card. "Mine" records the pick in this room only. "Draft on
  * ESPN" sends it to ESPN over the draft room's own connection and appears only
@@ -175,13 +177,14 @@ export function RecommendationStrip({
                         component.in_score ? componentTone(component.value) : "text-muted-foreground/50"
                       )}
                     >
-                      {component.in_score ? signed(component.value) : component.value.toFixed(1)}
+                      {/* The base is a quantity; everything else is a change, summed or not. */}
+                      {component.key === "season_value" ? component.value.toFixed(1) : signed(component.value)}
                     </span>
                   </div>
                   {/* Every other component's detail is a sentence and stays on
                       hover; six of them would bury the numbers. Fit's names the
-                      categories that moved the pick — the thing actually being
-                      decided — so it reads without hovering. */}
+                      categories the roster is short of — what the drafter weighs
+                      for themselves — so it reads without hovering. */}
                   {component.key === "category_fit" && component.detail && (
                     <div className="pl-1 text-[9px] leading-snug text-muted-foreground/60">
                       {component.detail}
