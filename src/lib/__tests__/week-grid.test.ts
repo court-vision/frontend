@@ -56,7 +56,8 @@ describe("buildWeekGrid on the demo week", () => {
     const grid = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today });
     expect(grid.rows[0].slot).toBe("PG");
     expect(grid.rows[0].player?.name).toBe("Tyrese Maxey");
-    expect(grid.rows.map((r) => r.slot).slice(-3)).toEqual(["BE", "BE", "BE"]);
+    expect(grid.rows.map((r) => r.slot).slice(-4)).toEqual(["BE", "BE", "BE", "IR"]);
+    expect(grid.rows[grid.rows.length - 1].kind).toBe("open");
   });
 
   test("a bench player with a game today is flagged and does not count", () => {

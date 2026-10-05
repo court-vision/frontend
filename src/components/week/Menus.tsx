@@ -7,6 +7,7 @@ import { Repeat2 } from "lucide-react";
 import { slotName } from "@/lib/lineup-editor";
 import type { SourcePlayer, WeekDay } from "@/lib/week-grid";
 import type { StreamerPlayer } from "@/types/streamer";
+import { Headshot } from "./Headshot";
 import { pts, signed } from "./format";
 import s from "./week.module.css";
 
@@ -64,10 +65,13 @@ export function MoveMenu({ player, currentSlot, targets, blocked, onPick, onRepl
   return (
     <Shell {...shell}>
       <Command ref={ref} loop label={`Move ${player.name}`} style={{ outline: "none" }}>
-        <div className={s.menuHead}>
-          <span className={s.menuTitle}>{player.name}</span>
-          <span className={s.sub}>
-            {currentSlot} · {player.team} · {pts(player.avg)} proj
+        <div className={s.menuHead} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Headshot nbaId={player.nbaId} name={player.name} size={34} />
+          <span className={s.who}>
+            <span className={s.menuTitle}>{player.name}</span>
+            <span className={s.sub}>
+              {currentSlot} · {player.team} · {pts(player.avg)} proj
+            </span>
           </span>
         </div>
         <Command.List className={s.menuList}>
@@ -162,6 +166,7 @@ export function ReplaceMenu({
                 className={s.menuItem}
                 onSelect={() => onPick(fa)}
               >
+                <Headshot nbaId={fa.nba_player_id} name={fa.name} size={28} />
                 <span className={s.who}>
                   <span className={s.name}>{fa.name}</span>
                   <span className={s.meta}>

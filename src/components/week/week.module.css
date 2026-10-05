@@ -528,26 +528,6 @@
   cursor: default;
 }
 
-.slot {
-  flex: 0 0 30px;
-  font-family: var(--tt-mono), ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: var(--text-3);
-}
-
-.slotActive {
-  color: var(--text-2);
-}
-
-.slotStaged {
-  color: var(--warn);
-}
-
-.slotIn {
-  color: var(--preview);
-}
-
 .who {
   display: flex;
   flex-direction: column;
@@ -861,6 +841,189 @@ button.headCell:hover {
   inset: 0;
   pointer-events: none;
   background: var(--up);
+}
+
+/* ---------------------------------------------------------------- faces */
+
+.face {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+.face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.faceInitials {
+  align-self: center;
+  font-family: var(--tt-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+/* ---------------------------------------------------------------- groups */
+
+/* Slot chips: active slots are solid, the bench is dashed, IR is red. */
+.slotChip {
+  flex: 0 0 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  font-family: var(--tt-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+.slotChip[data-group="bench"] {
+  border-style: dashed;
+  background: transparent;
+  color: var(--text-3);
+}
+
+.slotChip[data-group="ir"] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--down) 55%, transparent);
+  background: transparent;
+  color: var(--down);
+}
+
+.slotChip[data-staged="true"] {
+  border-color: var(--warn);
+  color: var(--warn);
+  border-style: solid;
+}
+
+.slotChip[data-in="true"] {
+  border-color: var(--preview);
+  color: var(--preview);
+  border-style: solid;
+  background: transparent;
+}
+
+/* Bench and IR rows read as "not in the lineup": hatched roster cell, quieter name and face. */
+.row[data-group="bench"] .rosterCell,
+.row[data-group="ir"] .rosterCell {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 7px,
+    color-mix(in srgb, var(--text) 3.5%, transparent) 7px 8px
+  );
+}
+
+.row[data-group="bench"] .name,
+.row[data-group="ir"] .name {
+  color: var(--text-2);
+  font-weight: 400;
+}
+
+.row[data-group="bench"] .face,
+.row[data-group="ir"] .face {
+  opacity: 0.6;
+  filter: grayscale(0.7);
+}
+
+.groupRow {
+  display: grid;
+  grid-template-columns: var(--cols);
+  height: 30px;
+  border-top: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.groupLabel {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  background: var(--surface);
+  border-right: 1px solid var(--line-2);
+  white-space: nowrap;
+}
+
+.groupFill {
+  grid-column: 2 / -1;
+}
+
+/* ---------------------------------------------------------------- drag */
+
+.rosterCell[data-draggable="true"] {
+  cursor: grab;
+  touch-action: none;
+}
+
+.row[data-drop="source"] {
+  opacity: 0.4;
+}
+
+.row[data-drop="invalid"] {
+  opacity: 0.35;
+}
+
+.row[data-drop="valid"] .rosterCell,
+.row[data-drop="valid"] .cell,
+.row[data-drop="valid"] .weekCell {
+  background-color: color-mix(in srgb, var(--accent) 7%, var(--bg));
+}
+
+.row[data-drop="valid"] .slotChip {
+  border-color: var(--accent);
+  color: var(--accent);
+  border-style: solid;
+}
+
+.row[data-drop="over"] .rosterCell,
+.row[data-drop="over"] .cell,
+.row[data-drop="over"] .weekCell {
+  background-color: color-mix(in srgb, var(--accent) 17%, var(--bg));
+}
+
+.row[data-drop="over"] .rosterCell {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.row[data-drop="over"] .slotChip {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.dragChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 300px;
+  padding: 8px 12px 8px 8px;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow), 0 0 0 1.5px var(--accent);
+  color: var(--text);
+  cursor: grabbing;
+}
+
+.dropHint {
+  font-family: var(--tt-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--accent);
+  white-space: nowrap;
 }
 
 /* ---------------------------------------------------------------- dock */

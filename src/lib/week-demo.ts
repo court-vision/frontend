@@ -93,7 +93,7 @@ const MINE: MineSpec[] = [
   { id: 4397002, nbaId: 1630530, name: "Trey Murphy III", team: "NOP", slot: UT, eligible: [SF, PF, F, UT], avg: 34.0, line: { mon: 37.5 } },
   { id: 4278073, nbaId: 1628404, name: "Josh Hart", team: "NYK", slot: UT, eligible: [PG, SG, SF, G, F, UT], avg: 32.5, line: { mon: 33.5 } },
   { id: 3078576, nbaId: 1628401, name: "Derrick White", team: "BOS", slot: BE, eligible: [PG, SG, G, UT], avg: 33.5 },
-  { id: 4433136, nbaId: 1631098, name: "Walker Kessler", team: "UTA", slot: BE, eligible: [C, UT], avg: 28.0 },
+  { id: 4433136, nbaId: 1631117, name: "Walker Kessler", team: "UTA", slot: BE, eligible: [C, UT], avg: 28.0 },
   { id: 4594327, nbaId: 1631099, name: "Keegan Murray", team: "SAC", slot: BE, eligible: [SF, PF, F, UT], avg: 26.0 },
 ];
 
@@ -248,14 +248,14 @@ export function demoSource(roster: MineSpec[] = MINE): WeekSource {
 interface FaSpec { id: number; nbaId: number; name: string; team: string; positions: string[]; avg: number; season: number; score: number }
 
 const FREE_AGENTS: FaSpec[] = [
-  { id: 4683749, nbaId: 1641734, name: "Toumani Camara", team: "POR", positions: ["SF", "PF", "F", "UT"], avg: 30.2, season: 28.9, score: 88 },
+  { id: 4683749, nbaId: 1641739, name: "Toumani Camara", team: "POR", positions: ["SF", "PF", "F", "UT"], avg: 30.2, season: 28.9, score: 88 },
   { id: 4869342, nbaId: 1630700, name: "Dyson Daniels", team: "ATL", positions: ["PG", "SG", "G", "UT"], avg: 33.0, season: 31.4, score: 84 },
   { id: 4683678, nbaId: 1641709, name: "Ausar Thompson", team: "DET", positions: ["SG", "SF", "G", "F", "UT"], avg: 31.0, season: 29.6, score: 71 },
   { id: 4066372, nbaId: 1630230, name: "Naji Marshall", team: "DAL", positions: ["SF", "F", "UT"], avg: 28.0, season: 26.8, score: 66 },
-  { id: 4278052, nbaId: 1629597, name: "Jay Huff", team: "IND", positions: ["C", "UT"], avg: 27.5, season: 25.2, score: 61 },
+  { id: 4278052, nbaId: 1630643, name: "Jay Huff", team: "IND", positions: ["C", "UT"], avg: 27.5, season: 25.2, score: 61 },
   { id: 3448, nbaId: 201572, name: "Brook Lopez", team: "LAC", positions: ["C", "UT"], avg: 27.0, season: 26.1, score: 58 },
-  { id: 3934721, nbaId: 1628964, name: "Goga Bitadze", team: "ORL", positions: ["C", "UT"], avg: 24.0, season: 23.0, score: 49 },
-  { id: 4592410, nbaId: 1630215, name: "Keon Ellis", team: "SAC", positions: ["SG", "G", "UT"], avg: 22.0, season: 21.3, score: 44 },
+  { id: 3934721, nbaId: 1629048, name: "Goga Bitadze", team: "ORL", positions: ["C", "UT"], avg: 24.0, season: 23.0, score: 49 },
+  { id: 4592410, nbaId: 1631165, name: "Keon Ellis", team: "SAC", positions: ["SG", "G", "UT"], avg: 22.0, season: 21.3, score: 44 },
 ];
 
 /** Remaining game days from today, as the streamer search reports them (today's included). */

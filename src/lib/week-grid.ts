@@ -340,7 +340,10 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay }: Grid
     for (const r of slotRows(board, staged)) {
       const p = r.player ? byId.get(r.player.player_id) : undefined;
       if (r.player && p) rows.push(rowFor(p, "player", r.slot_id, r.slot));
-      else if (!r.player && isActiveSlot(r.slot_id)) rows.push(openRow(r.slot_id, r.ordinal, days.length));
+      // Empty active slots (and an empty IR spot) stay as rows, so they can be dropped onto.
+      else if (!r.player && (isActiveSlot(r.slot_id) || r.slot_id === IR_SLOT_ID)) {
+        rows.push(openRow(r.slot_id, r.ordinal, days.length));
+      }
     }
     // Rostered players the board doesn't list (it re-read before the week did).
     for (const p of roster) {

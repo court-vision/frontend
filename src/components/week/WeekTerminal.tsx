@@ -4,14 +4,26 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLineupEditor } from "@/components/lineup/LineupEditorProvider";
 import { userMessage } from "@/lib/api-error";
-import { slotName, stage as stagePure, swapPartner, type Staged } from "@/lib/lineup-editor";
+import {
+  BENCH_SLOT_ID,
+  IR_SLOT_ID,
+  assignment as boardAssignment,
+  isInjured,
+  slotCapacity,
+  slotName,
+  stage as stagePure,
+  stageMoves as stageMovesPure,
+  swapPartner,
+  type Staged,
+} from "@/lib/lineup-editor";
+import type { LineupPlayer } from "@/types/lineup-editor";
 import { writeBlockedCopy } from "@/types/lineup-editor";
 import { buildWeekGrid, viewableDays, type Incoming } from "@/lib/week-grid";
 import { sourceFromStreamer } from "@/lib/week-source";
 import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar } from "./Chrome";
 import { ConfirmDialog, Dock, type PendingSwap } from "./Dock";
 import { MoveMenu, ReplaceMenu, type MoveTarget, type ReplaceOption } from "./Menus";
-import { WeekGrid, type Cursor } from "./WeekGrid";
+import { WeekGrid, type Cursor, type DragApi, type DropTarget } from "./WeekGrid";
 import type { TerminalData } from "./WeekPage";
 import { shortName, signed } from "./format";
 import s from "./week.module.css";
@@ -178,6 +190,61 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
       })
       .sort((a, b) => b.gain - a.gain);
   }, [menu, menuPlayer, source, gridNoPreview, data.streamers, board, staged, viewDay]);
+
+  // ---- drag to rearrange today's lineup ----
+  const editorStageMoves = editor?.stageMoves;
+  const drag = useMemo<DragApi | null>(() => {
+    if (!editorStageMoves || !board || !source || !grid || !gridNoPreview || todayIndex == null || viewDay !== todayIndex) {
+      return null;
+    }
+    type Planned = DropTarget & { moves: Array<{ player_id: number; to_slot_id: number }> };
+    let last: { key: string; targets: Map<string, Planned> } | null = null;
+
+    const targetsFor = (fromKey: string): Map<string, Planned> | null => {
+      const from = grid.rows.find((r) => r.key === fromKey);
+      const mover = from?.player ? boardById.get(from.player.id) : undefined;
+      if (!mover || mover.locked || from?.kind !== "player") return null;
+      const assign = boardAssignment(board, staged);
+      const current = assign.get(mover.player_id) ?? mover.lineup_slot_id;
+      const base = gridNoPreview.you[todayIndex].projected ?? 0;
+      const out = new Map<string, Planned>();
+      for (const row of grid.rows) {
+        if (row.key === fromKey || row.slotId == null || row.kind === "incoming") continue;
+        const slot = row.slotId;
+        if (slot === current || !canSit(mover, slot)) continue;
+        const holders = board.players.filter((p) => assign.get(p.player_id) === slot).length;
+        const spare = holders < slotCapacity(board, slot);
+        const other = row.player ? boardById.get(row.player.id) : undefined;
+        let moves: Planned["moves"];
+        if (!other || spare) moves = [{ player_id: mover.player_id, to_slot_id: slot }];
+        else if (!other.locked && canSit(other, current)) {
+          // Dropped on a specific player: he is the one who swaps back.
+          moves = [
+            { player_id: mover.player_id, to_slot_id: slot },
+            { player_id: other.player_id, to_slot_id: current },
+          ];
+        } else continue;
+        const next = stageMovesPure(board, staged, moves);
+        const g = buildWeekGrid({ source, board, staged: next, incoming: null, viewDay });
+        out.set(row.key, {
+          slotId: slot,
+          swapWith: moves.length > 1 && other ? other.name : null,
+          delta: (g.you[todayIndex].projected ?? 0) - base,
+          moves,
+        });
+      }
+      last = { key: fromKey, targets: out };
+      return out;
+    };
+
+    return {
+      targetsFor,
+      onDrop: (fromKey, toKey) => {
+        const plan = last?.key === fromKey ? last.targets.get(toKey) : targetsFor(fromKey)?.get(toKey);
+        if (plan) editorStageMoves(plan.moves);
+      },
+    };
+  }, [editorStageMoves, board, source, grid, gridNoPreview, todayIndex, viewDay, boardById, staged]);
 
   // ---- writes ----
   const autoslot = useCallback(() => {
@@ -396,6 +463,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
           onViewDay={setViewDay}
           onMove={openMove}
           onReplace={openReplace}
+          drag={drag}
         />
         <Dock
           moves={editor?.moves ?? []}
@@ -524,4 +592,14 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
       />
     </div>
   );
+}
+
+/**
+ * ESPN's seat rule, as the lineup editor applies it: the bench takes anyone,
+ * any other slot must be in the player's list, and IR needs an injured player.
+ */
+function canSit(player: LineupPlayer, slot: number): boolean {
+  if (slot === BENCH_SLOT_ID) return true;
+  if (!player.eligible_slot_ids.includes(slot)) return false;
+  return slot !== IR_SLOT_ID || isInjured(player);
 }
