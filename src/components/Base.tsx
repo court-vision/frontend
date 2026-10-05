@@ -64,6 +64,9 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   // Terminal and dashboard pages manage their own full-height layout
   const isFullHeightPage = pathname === "/terminal" || pathname === "/";
 
+  // The /week prototype brings its own shell (bar, status line, theme).
+  if (pathname === "/week") return <>{children}</>;
+
   return (
     <MobileDockProvider value={dock}>
     <div
