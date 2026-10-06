@@ -69,6 +69,8 @@ function board(players: LineupPlayer[], overrides: Partial<LineupState> = {}): L
     espn_team_id: 1,
     nba_date: "2026-10-20",
     scoring_period_id: 1,
+    current_scoring_period_id: 1,
+    final_scoring_period_id: 167,
     scoring_period_source: "provider",
     first_game_time_et: "19:00",
     position_limits: {},

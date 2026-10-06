@@ -8566,6 +8566,17 @@
             "title": "Can Write",
             "type": "boolean"
           },
+          "current_scoring_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Scoring Period Id"
+          },
           "espn_team_id": {
             "anyOf": [
               {
@@ -8580,6 +8591,17 @@
           "fetched_at": {
             "title": "Fetched At",
             "type": "string"
+          },
+          "final_scoring_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Scoring Period Id"
           },
           "first_game_time_et": {
             "anyOf": [
@@ -8706,6 +8728,8 @@
           "nba_date",
           "scoring_period_id",
           "scoring_period_source",
+          "current_scoring_period_id",
+          "final_scoring_period_id",
           "first_game_time_et",
           "slot_counts",
           "slots",
@@ -22494,7 +22518,7 @@
     },
     "/v1/internal/teams/{team_id}/lineup": {
       "get": {
-        "description": "Slots, eligibility, locks and game times for the team's current ESPN day.",
+        "description": "Slots, eligibility, locks and game times for the team's current ESPN day, or a later one.",
         "operationId": "get_lineup_v1_internal_teams__team_id__lineup_get",
         "parameters": [
           {
@@ -22504,6 +22528,25 @@
             "schema": {
               "title": "Team Id",
               "type": "integer"
+            }
+          },
+          {
+            "description": "A later ESPN day to read; its board is writable like today's (POST .../moves with expected_scoring_period_id = this day). Omit for today. 400 SCORING_PERIOD_OUT_OF_RANGE before today or past the season's last day.",
+            "in": "query",
+            "name": "scoring_period_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A later ESPN day to read; its board is writable like today's (POST .../moves with expected_scoring_period_id = this day). Omit for today. 400 SCORING_PERIOD_OUT_OF_RANGE before today or past the season's last day.",
+              "title": "Scoring Period Id"
             }
           }
         ],
@@ -22542,7 +22585,7 @@
     },
     "/v1/internal/teams/{team_id}/lineup/moves": {
       "post": {
-        "description": "Send slot moves to ESPN as one transaction, then return the re-read board.",
+        "description": "Send slot moves to ESPN as one transaction for the board's day (`expected_scoring_period_id`,\ntoday or later), then return the re-read board.",
         "operationId": "apply_lineup_moves_v1_internal_teams__team_id__lineup_moves_post",
         "parameters": [
           {

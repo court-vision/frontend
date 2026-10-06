@@ -1353,7 +1353,7 @@ export interface paths {
         };
         /**
          * Get Lineup
-         * @description Slots, eligibility, locks and game times for the team's current ESPN day.
+         * @description Slots, eligibility, locks and game times for the team's current ESPN day, or a later one.
          */
         get: operations["get_lineup_v1_internal_teams__team_id__lineup_get"];
         put?: never;
@@ -1375,7 +1375,8 @@ export interface paths {
         put?: never;
         /**
          * Apply Lineup Moves
-         * @description Send slot moves to ESPN as one transaction, then return the re-read board.
+         * @description Send slot moves to ESPN as one transaction for the board's day (`expected_scoring_period_id`,
+         *     today or later), then return the re-read board.
          */
         post: operations["apply_lineup_moves_v1_internal_teams__team_id__lineup_moves_post"];
         delete?: never;
@@ -5389,10 +5390,14 @@ export interface components {
              * @default false
              */
             can_write: boolean;
+            /** Current Scoring Period Id */
+            current_scoring_period_id: number | null;
             /** Espn Team Id */
             espn_team_id: number | null;
             /** Fetched At */
             fetched_at: string;
+            /** Final Scoring Period Id */
+            final_scoring_period_id: number | null;
             /** First Game Time Et */
             first_game_time_et: string | null;
             /** Lock Type */
@@ -11500,7 +11505,10 @@ export interface operations {
     };
     get_lineup_v1_internal_teams__team_id__lineup_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description A later ESPN day to read; its board is writable like today's (POST .../moves with expected_scoring_period_id = this day). Omit for today. 400 SCORING_PERIOD_OUT_OF_RANGE before today or past the season's last day. */
+                scoring_period_id?: number | null;
+            };
             header?: never;
             path: {
                 team_id: number;

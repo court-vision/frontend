@@ -258,13 +258,16 @@ class ApiClient {
     });
   }
 
-  // Today's ESPN lineup (manual editor). Yahoo teams answer 200 with `data: null`.
+  // An ESPN lineup: today's, or a later day's when `scoringPeriodId` (ESPN's day
+  // number, 1 = opening night) is given. Yahoo teams answer 200 with `data: null`.
   async getTeamLineup(
     getToken: GetTokenFn,
     teamId: number,
-    opts?: RequestOptions
+    opts?: RequestOptions,
+    scoringPeriodId?: number
   ): Promise<LineupState | null> {
-    const env = await fetchJson<LineupStateResponse>(`${TEAMS_API}/${teamId}/lineup`, {
+    const query = scoringPeriodId != null ? `?scoring_period_id=${scoringPeriodId}` : "";
+    const env = await fetchJson<LineupStateResponse>(`${TEAMS_API}/${teamId}/lineup${query}`, {
       ...opts,
       getToken,
     });
