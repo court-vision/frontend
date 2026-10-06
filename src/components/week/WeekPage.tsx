@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { LineupEditorProvider, type LineupEditorMock } from "@/components/lineup/LineupEditorProvider";
 import { useLiveMatchupQuery, useMatchupQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
@@ -11,21 +10,25 @@ import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
 import { useUIStore } from "@/stores/useUIStore";
 import { userMessage } from "@/lib/api-error";
 import { staleLineup } from "@/lib/lineup-editor";
-import { sourceFromApi } from "@/lib/week-source";
+import { sourceFromApi, weekDaysFromApi } from "@/lib/week-source";
 import {
+  DEMO_DAYS,
   DEMO_ROSTER,
   DEMO_STREAMERS,
-  demoApply,
+  DEMO_TODAY,
+  demoAssignment,
   demoBoard,
+  demoPeriod,
   demoPlan,
   demoSchedule,
   demoSource,
   demoTransact,
 } from "@/lib/week-demo";
-import type { LineupState } from "@/types/lineup-editor";
+import type { LineupMove, LineupState } from "@/types/lineup-editor";
 import type { ScheduleGame } from "@/types/games";
 import type { StreamerPlayer } from "@/types/streamer";
 import type { WeekSource } from "@/lib/week-grid";
+import { useDayBoards, type DayLineups } from "./useDayBoards";
 import { WeekTerminal } from "./WeekTerminal";
 
 export type TerminalStatus = "ready" | "loading" | "signed-out" | "no-team" | "error" | "empty";
@@ -36,7 +39,7 @@ export interface TeamOption {
   tag: string;
 }
 
-/** Everything the terminal needs from outside: data, and the two writes that aren't lineup moves. */
+/** Everything the terminal needs from outside: data, each day's lineup, and the writes. */
 export interface TerminalData {
   demo: boolean;
   status: TerminalStatus;
@@ -44,8 +47,10 @@ export interface TerminalData {
   teamId: number | null;
   teams: TeamOption[];
   selectTeam: (id: number) => void;
-  /** The week, once today's board (from the lineup editor) is known. */
+  /** The week, given today's ESPN lineup. */
   makeSource: (board: LineupState | null) => WeekSource | null;
+  /** Each day's ESPN lineup and the lineup writes (ESPN teams). */
+  lineup: DayLineups;
   updatedAt: number | null;
   refetch: () => void;
   streamers: StreamerPlayer[];
@@ -69,33 +74,65 @@ export function WeekPage({ demo }: { demo: boolean }) {
 // Demo: a made-up week, writes applied locally
 // ---------------------------------------------------------------------------
 
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 function DemoWeek() {
   const [roster, setRoster] = useState(DEMO_ROSTER);
+  // Each day's own edit (where everyone sits), ESPN's carry-forward applied on read.
+  const edits = useRef<Record<number, Record<number, number>>>({});
   const [version, setVersion] = useState(1);
+  const [applying, setApplying] = useState(false);
   const [scheduleTeam, setScheduleTeam] = useState<string | null>(null);
   const [transacting, setTransacting] = useState(false);
 
-  const board = useMemo(() => demoBoard(roster, `demo-${version}`), [roster, version]);
-  const source = useMemo(() => demoSource(roster), [roster]);
-  const mock = useMemo<LineupEditorMock>(
-    () => ({ state: board, plan: demoPlan(board), apply: demoApply }),
-    [board]
-  );
-
-  const transact = useCallback(
-    async (add: number | null, drop: number | null) => {
-      setTransacting(true);
-      await new Promise((r) => setTimeout(r, 450));
-      setRoster((r) => demoTransact(r, add, drop));
-      setVersion((v) => v + 10);
-      setTransacting(false);
-      return "ok" as const;
-    },
+  const boardFor = useCallback(
+    (r: typeof roster, day: number, v: number) =>
+      demoBoard(r, `demo-${v}-${day}`, day, demoAssignment(r, edits.current, day)),
     []
   );
+  const boards = useMemo(
+    () => DEMO_DAYS.map((d) => (d.index >= DEMO_TODAY ? boardFor(roster, d.index, version) : undefined)),
+    [roster, version, boardFor]
+  );
+  const source = useMemo(() => demoSource(roster), [roster]);
+  const makeSource = useCallback(() => source, [source]);
+
+  const apply = useCallback(
+    async (day: number, board: LineupState, moves: LineupMove[]) => {
+      setApplying(true);
+      await wait(350);
+      const next: Record<number, number> = Object.fromEntries(board.players.map((p) => [p.player_id, p.lineup_slot_id]));
+      for (const m of moves) next[m.player_id] = m.to_slot_id;
+      edits.current = { ...edits.current, [day]: next };
+      // Functional: several days can be written in one send, each must re-render.
+      setVersion((v) => v + 1);
+      setApplying(false);
+      return boardFor(roster, day, Date.now());
+    },
+    [roster, boardFor]
+  );
+
+  const lineup: DayLineups = {
+    boards,
+    todayDay: DEMO_TODAY,
+    periodOf: (day) => demoPeriod(day),
+    loading: false,
+    apply,
+    refresh: async (day) => (day >= DEMO_TODAY ? boardFor(roster, day, Date.now()) : null),
+    planToday: async () => demoPlan(boards[DEMO_TODAY]!),
+    applying,
+  };
+
+  const transact = useCallback(async (add: number | null, drop: number | null) => {
+    setTransacting(true);
+    await wait(450);
+    setRoster((r) => demoTransact(r, add, drop));
+    setVersion((v) => v + 10);
+    setTransacting(false);
+    return "ok" as const;
+  }, []);
 
   const rosterIds = useMemo(() => new Set(roster.map((r) => r.id)), [roster]);
-  const makeSource = useCallback(() => source, [source]);
   const data: TerminalData = {
     demo: true,
     status: "ready",
@@ -104,6 +141,7 @@ function DemoWeek() {
     teams: [{ id: 1, name: "Paint Beasts", tag: "ESPN · PTS" }],
     selectTeam: () => {},
     makeSource,
+    lineup,
     updatedAt: null,
     refetch: () => {},
     streamers: DEMO_STREAMERS.filter((s) => !rosterIds.has(s.player_id)),
@@ -117,12 +155,7 @@ function DemoWeek() {
     clearTransactError: () => {},
   };
 
-  // A new board version remounts the editor, as a re-read board drops staging.
-  return (
-    <LineupEditorProvider key={board.roster_version} teamId={1} mock={mock}>
-      <WeekTerminal data={data} />
-    </LineupEditorProvider>
-  );
+  return <WeekTerminal data={data} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -138,6 +171,8 @@ function LiveWeek() {
   const week = useWeeklyMatchupQuery(teamId);
   const live = useLiveMatchupQuery(teamId);
   const matchup = useMatchupQuery(teamId);
+  const weekDays = useMemo(() => (week.data ? weekDaysFromApi(week.data) : null), [week.data]);
+  const lineup = useDayBoards(teamId, selected.provider, weekDays);
 
   const [wantStreamers, setWantStreamers] = useState(false);
   const streamers = useStreamersQuery(wantStreamers ? teamId : null, {
@@ -204,6 +239,7 @@ function LiveWeek() {
     teams,
     selectTeam: (id) => setSelectedTeam(id),
     makeSource,
+    lineup,
     updatedAt: Math.max(week.dataUpdatedAt || 0, live.dataUpdatedAt || 0) || null,
     refetch: () => {
       void week.refetch();
@@ -221,12 +257,5 @@ function LiveWeek() {
     clearTransactError: transaction.reset,
   };
 
-  if (teamId != null && selected.provider === "espn") {
-    return (
-      <LineupEditorProvider teamId={teamId}>
-        <WeekTerminal data={data} />
-      </LineupEditorProvider>
-    );
-  }
   return <WeekTerminal data={data} />;
 }

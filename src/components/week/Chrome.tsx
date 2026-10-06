@@ -206,6 +206,8 @@ interface ToolbarProps {
   todayIndex: number | null;
   onViewDay: (d: number) => void;
   canAutoslot: boolean;
+  /** The day autoslot acts on, e.g. "Thu 11/12". */
+  autoslotLabel: string;
   autoslotting: boolean;
   onAutoslot: () => void;
   heat: boolean;
@@ -226,6 +228,7 @@ export function Toolbar({
   todayIndex,
   onViewDay,
   canAutoslot,
+  autoslotLabel,
   autoslotting,
   onAutoslot,
   heat,
@@ -316,8 +319,8 @@ export function Toolbar({
       <span className={s.divider} />
         </>
       ) : null}
-      <button type="button" className={s.btn} onClick={onAutoslot} disabled={!canAutoslot || autoslotting} title="Fill today's lineup (A)">
-        {autoslotting ? "Planning…" : "Autoslot"}
+      <button type="button" className={s.btn} onClick={onAutoslot} disabled={!canAutoslot || autoslotting} title="Fill that day's lineup: the best lineup for its games (A)">
+        {autoslotting ? "Planning…" : `Autoslot ${autoslotLabel}`}
         <span className={s.kbd}>A</span>
       </button>
       <button type="button" className={`${s.btn} ${heat ? s.toggleOn : ""}`} onClick={onHeat} aria-pressed={heat} title="Shade cells by points (H)">

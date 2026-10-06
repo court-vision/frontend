@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   buildWeekGrid,
+  healthOf,
   liveClock,
   planDay,
   slotsFromPositions,
@@ -179,6 +180,41 @@ describe("daily lineups", () => {
   });
 });
 
+describe("each day's own ESPN lineup", () => {
+  const source = demoSource();
+  const today = source.todayIndex!;
+  const board = demoBoard();
+  const white = board.players.find((p) => p.name === "Derrick White")!.player_id;
+  const maxey = board.players.find((p) => p.name === "Tyrese Maxey")!.player_id;
+  const name = (seat: { player: { name: string } } | null) => seat?.player.name ?? null;
+  // Thursday already has its own edit on ESPN: White starts at PG.
+  const thursday = demoBoard(undefined, "demo-1-3", 3, { [white]: 0, [maxey]: 12 });
+  const wednesday = demoBoard(undefined, "demo-1-2", 2);
+
+  test("a day shows its own lineup; a day not read carries the day before", () => {
+    const dayBoards = [null, { board, staged: {} }, { board: wednesday, staged: {} }, { board: thursday, staged: {} }];
+    const { lineups } = buildWeekGrid({ source, board, staged: {}, dayBoards, incoming: null, viewDay: today });
+    expect(name(lineups.seats[2][0])).toBe("Tyrese Maxey");
+    expect(name(lineups.seats[3][0])).toBe("Derrick White");
+    expect(name(lineups.seats[4][0])).toBe("Derrick White"); // Friday not read: Thursday carries
+    expect(lineups.editable.slice(1, 5)).toEqual([true, true, true, false]);
+  });
+
+  test("a move staged today carries to days that match it, and stops at a day with its own edit", () => {
+    const hart = board.players.find((p) => p.name === "Josh Hart")!.player_id;
+    const kessler = board.players.find((p) => p.name === "Walker Kessler")!.player_id;
+    const staged = { [kessler]: 11, [hart]: 12 }; // Kessler UT, Hart to the bench
+    const dayBoards = [null, { board, staged }, { board: wednesday, staged: {} }, { board: thursday, staged: {} }];
+    const { lineups } = buildWeekGrid({ source, board, staged, dayBoards, incoming: null, viewDay: today });
+    const benchOn = (d: number) =>
+      lineups.slots.map((s, i) => (s.group === "bench" ? name(lineups.seats[d][i]) : null)).filter(Boolean);
+    expect(benchOn(2)).toContain("Josh Hart"); // Wednesday matched today, so it inherits
+    expect(benchOn(3)).not.toContain("Josh Hart"); // Thursday has its own edit
+    const wedHart = lineups.seats[2].find((s) => s?.player.name === "Josh Hart");
+    expect(wedHart?.staged).toBe(true);
+  });
+});
+
 describe("buildWeekGrid without a board", () => {
   const g = (avg: number): DayGame => ({ opp: "vs X", time: "19:00", status: "scheduled", fpts: null, clock: null, remaining: 1, out: false });
   const player = (id: number, avg: number): SourcePlayer => ({
@@ -210,6 +246,12 @@ describe("helpers", () => {
   test("liveClock reads the NBA's ISO clock", () => {
     expect(liveClock(3, "PT04M12.00S")).toEqual({ label: "Q3 4:12", remaining: expect.closeTo(0.337, 2) });
     expect(liveClock(5, "PT02M00.00S").label).toBe("OT 2:00");
+  });
+
+  test("healthOf: active is green, day-to-day yellow, out and suspended red", () => {
+    expect([null, "ACTIVE", ""].map(healthOf)).toEqual(["ok", "ok", "ok"]);
+    expect(["DAY_TO_DAY", "QUESTIONABLE", "DTD"].map(healthOf)).toEqual(["dtd", "dtd", "dtd"]);
+    expect(["OUT", "SUSPENSION", "INJURY_RESERVE"].map(healthOf)).toEqual(["out", "out", "out"]);
   });
 
   test("slotsFromPositions adds G, F and UT", () => {

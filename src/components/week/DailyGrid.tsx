@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useRef, useState } from "react";
 import { LayoutGroup, motion } from "motion/react";
 import {
   DndContext,
@@ -17,25 +17,37 @@ import {
 } from "@dnd-kit/core";
 import { Lock } from "lucide-react";
 import { slotName } from "@/lib/lineup-editor";
-import { isOutStatus, type Seat, type SlotRowDef, type WeekGrid as Grid } from "@/lib/week-grid";
-import type { LineupPlayer } from "@/types/lineup-editor";
+import {
+  healthOf,
+  type GridCell,
+  type Seat,
+  type SlotRowDef,
+  type StatLine,
+  type WeekGrid as Grid,
+} from "@/lib/week-grid";
+import type { LineupState } from "@/types/lineup-editor";
 import { Headshot } from "./Headshot";
-import { DayCell, type Cursor, type DropTarget } from "./WeekGrid";
-import { monthDay, oppShort, pts, shortName, signed } from "./format";
+import { type Cursor, type DropTarget } from "./WeekGrid";
+import { monthDay, oppShort, pts, shortName, signed, tip } from "./format";
 import s from "./week.module.css";
 
-/** Rearranging the board day's lineup: one day column takes drags and drops. */
+/** Rearranging a day's ESPN lineup: every editable day column takes drags and drops. */
 export interface SeatDragApi {
-  day: number;
-  /** Valid drop spots (slot row keys) for the player in `rowKey` that day. */
-  targetsFor: (rowKey: string) => Map<string, DropTarget> | null;
-  onDrop: (fromKey: string, toKey: string) => void;
+  /** Per day index: whether that day's lineup can be changed. */
+  editable: boolean[];
+  /** Valid drop spots (slot row keys) on `day` for the player in `rowKey`. */
+  targetsFor: (day: number, rowKey: string) => Map<string, DropTarget> | null;
+  onDrop: (day: number, fromKey: string, toKey: string) => void;
 }
 
 interface DailyGridProps {
   grid: Grid;
   todayIndex: number | null;
-  boardById: ReadonlyMap<number, LineupPlayer>;
+  /** Each day's ESPN lineup (locks are per day). */
+  boards: ReadonlyArray<LineupState | undefined>;
+  /** The day shown in full: whole names and the box score. */
+  focusDay: number;
+  onFocusDay: (day: number) => void;
   /** `key` is a slot row, `col` a day index. */
   cursor: Cursor | null;
   onCursor: (c: Cursor) => void;
@@ -46,14 +58,40 @@ interface DailyGridProps {
   drag: SeatDragApi | null;
 }
 
+/** The focused day's box score, in this order. */
+const STATS: Array<{ key: string; label: string; width: number; get: (l: StatLine) => string }> = [
+  { key: "min", label: "MIN", width: 28, get: (l) => (l.min != null ? String(l.min) : "—") },
+  { key: "pts", label: "P", width: 24, get: (l) => String(l.pts) },
+  { key: "reb", label: "R", width: 24, get: (l) => String(l.reb) },
+  { key: "ast", label: "A", width: 24, get: (l) => String(l.ast) },
+  { key: "blk", label: "BLK", width: 28, get: (l) => String(l.blk) },
+  { key: "stl", label: "STL", width: 28, get: (l) => String(l.stl) },
+  { key: "fg", label: "FG", width: 40, get: (l) => `${l.fgm}/${l.fga}` },
+  { key: "ft", label: "FT", width: 36, get: (l) => `${l.ftm}/${l.fta}` },
+  { key: "3pm", label: "3PM", width: 30, get: (l) => String(l.fg3m) },
+  { key: "tov", label: "TO", width: 24, get: (l) => String(l.tov) },
+];
+const FPTS_WIDTH = 46;
+const STAT_GAP = 6;
+const STAT_TRACKS = `${STATS.map((x) => `${x.width}px`).join(" ")} ${FPTS_WIDTH}px`;
+const STAT_WIDTH = STATS.reduce((n, x) => n + x.width, 0) + FPTS_WIDTH + STAT_GAP * STATS.length + 14;
+const FOCUS_NAME_MIN = 156;
+const DAY_NAME_MIN = 76;
+const DAY_VALUE = 58;
+
 const SEAT_SPRING = { type: "spring", stiffness: 520, damping: 44, mass: 0.7 } as const;
 const dndId = (day: number, rowKey: string) => `${day}:${rowKey}`;
-const rowOf = (id: string) => id.split(":")[1].split("#")[0];
+const parseId = (id: string) => {
+  const [day, rest] = id.split(":");
+  return { day: Number(day), key: rest.split("#")[0] };
+};
 
 export function DailyGrid({
   grid,
   todayIndex,
-  boardById,
+  boards,
+  focusDay,
+  onFocusDay,
   cursor,
   onCursor,
   heat,
@@ -66,38 +104,45 @@ export function DailyGrid({
   const days = grid.days;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [hotDay, setHotDay] = useState<number | null>(null);
-  // Fixed minimums, so the week fits the screen instead of growing to its longest name.
-  const cols = `56px repeat(${days.length}, minmax(108px, 1.35fr) minmax(60px, 0.8fr))`;
-  const minWidth = 56 + days.length * (108 + 60);
+  // The focused day takes the room: a whole name and the box score. Every other day stays narrow.
+  const cols = `56px ${days
+    .map((_, i) =>
+      i === focusDay ? `minmax(${FOCUS_NAME_MIN}px, 1fr) ${STAT_WIDTH}px` : `minmax(${DAY_NAME_MIN}px, 104px) ${DAY_VALUE}px`
+    )
+    .join(" ")}`;
+  const minWidth = 56 + (days.length - 1) * (DAY_NAME_MIN + DAY_VALUE) + FOCUS_NAME_MIN + STAT_WIDTH;
   const peak = Math.max(1, ...seats.flatMap((day) => day.map((st) => (st?.cell.counts ? st.cell.value ?? 0 : 0))));
 
   // ---- drag ----
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-  const [dragKey, setDragKey] = useState<string | null>(null);
+  const [dragAt, setDragAt] = useState<{ day: number; key: string } | null>(null);
   const [overKey, setOverKey] = useState<string | null>(null);
   const [targets, setTargets] = useState<Map<string, DropTarget> | null>(null);
-  const dragSeat = drag && dragKey ? seats[drag.day][slots.findIndex((r) => r.key === dragKey)] : null;
+  const dragSeat = dragAt ? seats[dragAt.day]?.[slots.findIndex((r) => r.key === dragAt.key)] ?? null : null;
   const overTarget = overKey && targets ? targets.get(overKey) ?? null : null;
 
   const onDragStart = (e: DragStartEvent) => {
-    const key = rowOf(String(e.active.id));
-    setDragKey(key);
-    setTargets(drag?.targetsFor(key) ?? new Map());
+    const at = parseId(String(e.active.id));
+    setDragAt(at);
+    setTargets(drag?.targetsFor(at.day, at.key) ?? new Map());
   };
-  const onDragOver = (e: DragOverEvent) => setOverKey(e.over ? rowOf(String(e.over.id)) : null);
+  const onDragOver = (e: DragOverEvent) => {
+    const over = e.over ? parseId(String(e.over.id)) : null;
+    setOverKey(over && dragAt && over.day === dragAt.day ? over.key : null);
+  };
   const endDrag = () => {
-    setDragKey(null);
+    setDragAt(null);
     setOverKey(null);
     setTargets(null);
   };
   const onDragEnd = (e: DragEndEvent) => {
-    const to = e.over ? rowOf(String(e.over.id)) : null;
-    if (dragKey && to && targets?.has(to)) drag?.onDrop(dragKey, to);
+    const over = e.over ? parseId(String(e.over.id)) : null;
+    if (dragAt && over && over.day === dragAt.day && targets?.has(over.key)) drag?.onDrop(dragAt.day, dragAt.key, over.key);
     endDrag();
   };
   const dropState = (day: number, key: string) => {
-    if (!dragKey || !drag || day !== drag.day) return undefined;
-    if (key === dragKey) return "source";
+    if (!dragAt || day !== dragAt.day) return undefined;
+    if (key === dragAt.key) return "source";
     if (!targets?.has(key)) return "invalid";
     return key === overKey ? "over" : "valid";
   };
@@ -144,34 +189,53 @@ export function DailyGrid({
             <div className={s.slotCell} role="columnheader">
               <span className={s.label}>Slot</span>
             </div>
-            {days.map((d, i) => (
-              <div
-                key={d.date}
-                className={s.dayHead}
-                role="columnheader"
-                data-today={d.index === todayIndex}
-                data-hotcol={hotDay === i}
-                data-board={drag?.day === i}
-                onMouseEnter={() => setHotDay(i)}
-                title={
-                  dayStats[i].past
-                    ? "ESPN lineups for past days aren't recorded, so the spots show today's lineup"
-                    : drag?.day === i
-                      ? "Drag players in this column to change your ESPN lineup; later days follow it"
-                      : undefined
-                }
-              >
-                <span className={s.headDow}>
-                  {d.index === todayIndex ? <span className={s.todayTag}>TODAY </span> : null}
-                  {d.dow.toUpperCase()} {monthDay(d.date)}
-                </span>
-                <span className={s.headSub}>
-                  {dayStats[i].past
-                    ? `${dayStats[i].playing} played`
-                    : `${dayStats[i].playing} playing${dayStats[i].idle ? ` · ${dayStats[i].idle} idle` : ""}`}
-                </span>
-              </div>
-            ))}
+            {days.map((d, i) => {
+              const focused = i === focusDay;
+              const stats = dayStats[i];
+              const sub = stats.past
+                ? `${stats.playing} played`
+                : focused
+                  ? `${stats.playing} playing${stats.idle ? ` · ${stats.idle} idle` : ""}`
+                  : `${stats.playing} on${stats.idle ? ` · ${stats.idle} idle` : ""}`;
+              return (
+                <Fragment key={d.date}>
+                  <button
+                    type="button"
+                    className={s.dayHead}
+                    data-focus={focused}
+                    data-today={d.index === todayIndex}
+                    data-hotcol={hotDay === i}
+                    data-editable={!!drag?.editable[i]}
+                    onMouseEnter={() => setHotDay(i)}
+                    onClick={() => onFocusDay(i)}
+                    aria-pressed={focused}
+                    title={
+                      stats.past
+                        ? "ESPN lineups for past days aren't recorded, so the spots show today's lineup"
+                        : drag?.editable[i]
+                          ? "Drag players to change this day's ESPN lineup; it carries into later days until one has its own edit"
+                          : undefined
+                    }
+                  >
+                    <span className={s.headDow}>
+                      {d.index === todayIndex ? <span className={s.todayTag}>TODAY </span> : null}
+                      {d.dow.toUpperCase()} {monthDay(d.date)}
+                    </span>
+                    <span className={s.headSub}>{sub}</span>
+                  </button>
+                  {focused ? (
+                    <div className={s.statHead} role="columnheader" data-today={d.index === todayIndex}>
+                      <span className={s.statRow} style={{ gridTemplateColumns: STAT_TRACKS }}>
+                        {STATS.map((x) => (
+                          <span key={x.key}>{x.label}</span>
+                        ))}
+                        <span>FPTS</span>
+                      </span>
+                    </div>
+                  ) : null}
+                </Fragment>
+              );
+            })}
           </div>
 
           <LayoutGroup>
@@ -205,14 +269,14 @@ export function DailyGrid({
                         def={def}
                         seat={seats[i][r]}
                         day={i}
+                        focused={i === focusDay}
                         today={d.index === todayIndex}
                         hot={hotDay === i}
                         cursor={cursor?.key === def.key && cursor.col === i}
                         heat={heat}
                         peak={peak}
-                        board={seats[i][r] ? boardById.get(seats[i][r]!.player.id) : undefined}
-                        draggable={!!drag && drag.day === i}
-                        droppable={!!drag && drag.day === i}
+                        locked={!!seats[i][r] && !!boards[i]?.players.find((p) => p.player_id === seats[i][r]!.player.id)?.locked}
+                        dnd={!!drag?.editable[i]}
                         drop={dropState(i, def.key)}
                         onHot={setHotDay}
                         onCursor={onCursor}
@@ -281,56 +345,58 @@ export function DailyGrid({
 }
 
 // ---------------------------------------------------------------------------
-// One day's spot: who sits there, and his points
+// One day's spot: who sits there, and his game
 // ---------------------------------------------------------------------------
 
 interface SeatPairProps {
   def: SlotRowDef;
   seat: Seat | null;
   day: number;
+  focused: boolean;
   today: boolean;
   hot: boolean;
   cursor: boolean;
   heat: boolean;
   peak: number;
-  board: LineupPlayer | undefined;
-  draggable: boolean;
-  droppable: boolean;
+  locked: boolean;
+  /** This day's lineup takes drags and drops. */
+  dnd: boolean;
   drop: string | undefined;
   onHot: (day: number) => void;
   onCursor: (c: Cursor) => void;
   onSeat: (playerId: number, day: number, el: HTMLElement) => void;
 }
 
-function SeatPair({
+const EMPTY_CELL: GridCell = { state: "none", value: null, opp: null, note: null, counts: false, tag: null };
+
+const SeatPair = memo(function SeatPair({
   def,
   seat,
   day,
+  focused,
   today,
   hot,
   cursor,
   heat,
   peak,
-  board,
-  draggable,
-  droppable,
+  locked,
+  dnd,
   drop,
   onHot,
   onCursor,
   onSeat,
 }: SeatPairProps) {
   const p = seat?.player ?? null;
-  const locked = today && !!board?.locked;
-  const canDrag = draggable && !!p && !!board && !locked && !seat?.incoming;
+  const canDrag = dnd && !!p && !locked && !seat?.incoming;
   const nameRef = useRef<HTMLDivElement | null>(null);
-  const drag = useDraggable({
+  const dragger = useDraggable({
     id: dndId(day, def.key),
     disabled: !canDrag,
     attributes: { role: "gridcell", tabIndex: -1, roleDescription: "draggable player" },
   });
-  const dropName = useDroppable({ id: dndId(day, def.key), disabled: !droppable });
-  const dropValue = useDroppable({ id: `${dndId(day, def.key)}#v`, disabled: !droppable });
-  const { setNodeRef: setDragRef } = drag;
+  const dropName = useDroppable({ id: dndId(day, def.key), disabled: !dnd });
+  const dropValue = useDroppable({ id: `${dndId(day, def.key)}#v`, disabled: !dnd });
+  const { setNodeRef: setDragRef } = dragger;
   const { setNodeRef: setDropRef } = dropName;
   // Stable refs: a new callback each render would hand the drag library null mid-drag.
   const nameRefCb = useCallback(
@@ -341,16 +407,20 @@ function SeatPair({
     },
     [setDragRef, setDropRef]
   );
-  const cell = seat?.cell ?? { state: "none" as const, value: null, opp: null, note: null, counts: false, tag: null };
+  const cell = seat?.cell ?? EMPTY_CELL;
+  const health = p ? healthOf(p.injury) : undefined;
+  const statusTitle = p?.injury ? p.injury.replace(/_/g, " ").toLowerCase() : "active";
+  const heatLevel = heat && cell.counts && cell.value != null ? Math.min(0.32, (cell.value / peak) * 0.32) : 0;
 
   return (
     <>
       <div
         ref={nameRefCb}
-        {...drag.attributes}
-        {...(canDrag ? drag.listeners : {})}
+        {...dragger.attributes}
+        {...(canDrag ? dragger.listeners : {})}
         className={s.seatName}
         data-day={day}
+        data-focus={focused}
         data-today={today}
         data-hotcol={hot}
         data-cursor={cursor}
@@ -358,33 +428,29 @@ function SeatPair({
         data-incoming={seat?.incoming}
         data-draggable={canDrag}
         data-drop={drop}
+        data-health={health}
         onMouseEnter={() => onHot(day)}
         onClick={() => {
           onCursor({ key: def.key, col: day });
           if (p && nameRef.current && !seat?.incoming) onSeat(p.id, day, nameRef.current);
         }}
-        title={p ? `${p.name} · ${p.team}` : undefined}
+        title={p ? `${p.name} · ${p.team} · ${statusTitle}` : undefined}
       >
         {p ? (
           // Keyed by day and player, so a move slides him to his new spot in that day's column.
-          <motion.span
-            layoutId={`seat-${day}-${p.id}`}
-            transition={SEAT_SPRING}
-            style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}
-          >
-            <Headshot nbaId={p.nbaId} name={p.name} size={22} />
+          <motion.span layoutId={`seat-${day}-${p.id}`} transition={SEAT_SPRING} className={s.seatWho}>
+            {focused ? <Headshot nbaId={p.nbaId} name={p.name} size={24} /> : null}
             <span className={s.who}>
-              <span className={s.seatNameText}>{shortName(p.name)}</span>
-              <span className={s.seatSub}>
-                <span>
-                  {p.team}
-                  {cell.opp ? ` ${oppShort(cell.opp)}` : ""}
+              <span className={s.seatNameText}>{focused ? p.name : shortName(p.name)}</span>
+              {focused ? (
+                <span className={s.seatSub}>
+                  <span>{p.team}</span>
+                  {cell.opp ? <span>{oppShort(cell.opp)}</span> : null}
+                  {cell.state === "live" ? <span style={{ color: "var(--live)" }}>{cell.note}</span> : null}
+                  {cell.state === "upcoming" && cell.note ? <span>{tip(cell.note)}</span> : null}
+                  {seat?.incoming ? <span style={{ color: "var(--preview)" }}>FREE AGENT</span> : null}
                 </span>
-                {p.injury ? (
-                  <span className={`${s.inj} ${isOutStatus(p.injury) ? "" : s.injSoft}`}>{p.injury.replace("_", " ")}</span>
-                ) : null}
-                {seat?.incoming ? <span style={{ color: "var(--preview)" }}>IN</span> : null}
-              </span>
+              ) : null}
             </span>
             {locked ? <Lock size={11} className={s.lock} aria-label="Locked: his game has started" /> : null}
           </motion.span>
@@ -394,21 +460,113 @@ function SeatPair({
           <span className={s.sub}>—</span>
         )}
       </div>
-      <DayCell
-        cell={cell}
-        col={day}
-        incoming={!!seat?.incoming}
-        today={today}
-        hot={hot}
-        cursor={false}
-        heat={heat && cell.counts && cell.value != null ? Math.min(0.32, (cell.value / peak) * 0.32) : 0}
-        onEnter={onHot}
-        onClick={() => onCursor({ key: def.key, col: day })}
-        className={s.seatValue}
-        hideOpp
-        drop={drop}
-        cellRef={dropValue.setNodeRef}
-      />
+      {focused ? (
+        <div
+          ref={dropValue.setNodeRef}
+          className={s.statCell}
+          data-day={day}
+          data-today={today}
+          data-hotcol={hot}
+          data-state={cell.state}
+          data-counts={cell.counts}
+          data-tag={cell.tag ?? undefined}
+          data-drop={drop}
+          data-incoming={seat?.incoming}
+          onMouseEnter={() => onHot(day)}
+          onClick={() => onCursor({ key: def.key, col: day })}
+          title={cellTitle(cell)}
+        >
+          {heatLevel > 0 ? <span className={s.heat} style={{ opacity: heatLevel }} /> : null}
+          <FocusStats cell={cell} hasPlayer={!!p} />
+        </div>
+      ) : (
+        <div
+          ref={dropValue.setNodeRef}
+          className={`${s.cell} ${s.seatValue}`}
+          role="gridcell"
+          data-day={day}
+          data-state={cell.state}
+          data-counts={cell.counts}
+          data-tag={cell.tag ?? undefined}
+          data-today={today}
+          data-hotcol={hot}
+          data-drop={drop}
+          onMouseEnter={() => onHot(day)}
+          onClick={() => onCursor({ key: def.key, col: day })}
+          title={cellTitle(cell)}
+        >
+          {heatLevel > 0 ? <span className={s.heat} style={{ opacity: heatLevel }} /> : null}
+          <CompactValue cell={cell} />
+        </div>
+      )}
     </>
+  );
+});
+
+/** What a cell's styling means, for the tooltip (the grid itself carries no status words). */
+function cellTitle(cell: GridCell): string | undefined {
+  if (cell.tag === "BENCH") return "On the bench: this game doesn't count";
+  if (cell.tag === "SITS") return "No room in the best lineup that day";
+  if (cell.tag === "IR") return "On IR";
+  if (cell.tag === "DROP") return "Being replaced in the preview";
+  if (cell.state === "out") return "Out for this game";
+  if (cell.state === "dnp") return "Didn't play";
+  return undefined;
+}
+
+/** A narrow day: points if the game has started, else the opponent and tip. */
+function CompactValue({ cell }: { cell: GridCell }) {
+  switch (cell.state) {
+    case "none":
+      return <span className={s.cellMain} style={{ textAlign: "center", opacity: 0.5 }}>·</span>;
+    case "out":
+    case "dnp":
+      return <span className={s.cellMain} style={{ color: "var(--text-3)" }}>—</span>;
+    case "upcoming":
+      return (
+        <span className={s.upcoming}>
+          <span>{oppShort(cell.opp)}</span>
+          <span className={s.sub}>{tip(cell.note)}</span>
+        </span>
+      );
+    case "live":
+      return (
+        <span className={s.cellMain} style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5 }}>
+          <span className={s.liveDot} style={{ width: 5, height: 5 }} />
+          {pts(cell.value)}
+        </span>
+      );
+    default:
+      return <span className={s.cellMain}>{pts(cell.value)}</span>;
+  }
+}
+
+/** The focused day: the box score so far, or the matchup and projection ahead. */
+function FocusStats({ cell, hasPlayer }: { cell: GridCell; hasPlayer: boolean }) {
+  if (!hasPlayer) return null;
+  if (cell.state === "none") return <span className={s.statNote}>no game</span>;
+  if (cell.state === "out") return <span className={s.statNote}>out</span>;
+  if (cell.state === "dnp") return <span className={s.statNote}>didn&apos;t play</span>;
+  if (cell.state === "upcoming") {
+    return (
+      <span className={s.statRow} style={{ gridTemplateColumns: STAT_TRACKS }}>
+        <span className={s.statAhead} style={{ gridColumn: `1 / ${STATS.length + 1}` }}>
+          {cell.opp} · {tip(cell.note)} · projected
+        </span>
+        <span className={s.statFpts}>{pts(cell.value)}</span>
+      </span>
+    );
+  }
+  const line = cell.line;
+  return (
+    <span className={s.statRow} style={{ gridTemplateColumns: STAT_TRACKS }}>
+      {STATS.map((x) => (
+        <span key={x.key}>{line ? x.get(line) : "—"}</span>
+      ))}
+      <span className={s.statFpts}>
+        {cell.state === "live" ? <span className={s.liveDot} style={{ width: 5, height: 5 }} /> : null}
+        {pts(cell.value)}
+      </span>
+    </span>
   );
 }

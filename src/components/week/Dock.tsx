@@ -7,6 +7,14 @@ import type { StreamerPlayer } from "@/types/streamer";
 import { shortName, signed } from "./format";
 import s from "./week.module.css";
 
+/** One day's staged moves and the problems they'd hit at ESPN. */
+export interface PendingDay {
+  day: number;
+  label: string;
+  moves: LineupMove[];
+  problems: MoveError[];
+}
+
 export interface PendingSwap {
   fa: StreamerPlayer;
   out: { id: number; name: string };
@@ -16,10 +24,9 @@ export interface PendingSwap {
 }
 
 interface DockProps {
-  moves: LineupMove[];
+  pending: PendingDay[];
   playerById: ReadonlyMap<number, LineupPlayer>;
   stagedDelta: number;
-  problems: MoveError[];
   canSendMoves: boolean;
   movesBlocked: string | null;
   onDiscardMoves: () => void;
@@ -30,10 +37,9 @@ interface DockProps {
 }
 
 export function Dock({
-  moves,
+  pending,
   playerById,
   stagedDelta,
-  problems,
   canSendMoves,
   movesBlocked,
   onDiscardMoves,
@@ -42,26 +48,30 @@ export function Dock({
   onCancelSwap,
   onReviewSwap,
 }: DockProps) {
-  if (moves.length === 0 && !swap) return null;
+  const problems = pending.flatMap((p) => p.problems.map((e) => `${p.label}: ${e.message}`));
+  if (pending.length === 0 && !swap) return null;
   return (
     <div className={s.dock} role="region" aria-label="Pending changes">
-      {moves.length > 0 ? (
+      {pending.length > 0 ? (
         <div className={s.dockGroup}>
           <span className={s.label}>ESPN lineup</span>
           <span className={s.dockItems}>
-            {moves.map((m) => (
-              <span key={m.player_id} className={`${s.pill} ${s.pillWarn}`}>
-                {shortName(playerById.get(m.player_id)?.name ?? `#${m.player_id}`)}
-                <span className={s.arrow}>
-                  {slotName(m.from_slot_id)} → {slotName(m.to_slot_id)}
+            {pending.flatMap((p) =>
+              p.moves.map((m) => (
+                <span key={`${p.day}-${m.player_id}`} className={`${s.pill} ${s.pillWarn}`}>
+                  <span className={s.arrow}>{p.label.split(" ")[0]}</span>
+                  {shortName(playerById.get(m.player_id)?.name ?? `#${m.player_id}`)}
+                  <span className={s.arrow}>
+                    {slotName(m.from_slot_id)} → {slotName(m.to_slot_id)}
+                  </span>
                 </span>
-              </span>
-            ))}
+              ))
+            )}
           </span>
           <span className={`${s.chip} ${stagedDelta > 0.05 ? s.up : stagedDelta < -0.05 ? s.down : s.flat}`}>
             {signed(stagedDelta)}
           </span>
-          {problems.length ? <span className={s.error}>{problems[0].message}</span> : null}
+          {problems.length ? <span className={s.error}>{problems[0]}</span> : null}
           {movesBlocked ? <span className={s.note}>{movesBlocked}</span> : null}
           <button type="button" className={s.btn} onClick={onDiscardMoves}>
             Discard

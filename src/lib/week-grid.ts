@@ -24,6 +24,7 @@ import {
   IR_SLOT_ID,
   assignment as boardAssignment,
   isActiveSlot,
+  normalize,
   slotName,
   slotRows,
   type Staged,
@@ -46,6 +47,22 @@ export interface WeekDay {
 
 export type GameStatus = "scheduled" | "live" | "final";
 
+/** One game's box score (final or so far). */
+export interface StatLine {
+  min: number | null;
+  pts: number;
+  reb: number;
+  ast: number;
+  stl: number;
+  blk: number;
+  tov: number;
+  fgm: number;
+  fga: number;
+  ftm: number;
+  fta: number;
+  fg3m: number;
+}
+
 export interface DayGame {
   /** "@ LAL" / "vs HOU", when known. */
   opp: string | null;
@@ -60,6 +77,8 @@ export interface DayGame {
   remaining: number;
   /** Ruled out for this game. */
   out: boolean;
+  /** The box score so far, when the game has one. */
+  line?: StatLine | null;
 }
 
 export interface SourcePlayer {
@@ -178,6 +197,8 @@ export type CellTag = "BENCH" | "SITS" | "IR" | "DROP" | null;
 
 export interface GridCell {
   state: CellState;
+  /** The box score (final and live games). */
+  line?: StatLine | null;
   /** Points (final / live) or the projection (upcoming). */
   value: number | null;
   opp: string | null;
@@ -239,8 +260,10 @@ export interface Seat {
 export interface DailyLineups {
   slots: SlotRowDef[];
   seats: Array<Array<Seat | null>>;
-  /** The day whose lineup is the ESPN board (today, or the first day before the period). */
+  /** ESPN's today, when it falls in this week (day 1 of the season before it starts). */
   boardDay: number | null;
+  /** Days whose lineup can be changed: the ones with an ESPN lineup read for them. */
+  editable: boolean[];
 }
 
 export interface WeekGrid {
@@ -258,11 +281,23 @@ export interface WeekGrid {
 /** How days ahead are lined up: as set on ESPN (carried forward) or the best fit for each day's games. */
 export type LineupMode = "espn" | "best";
 
+/** One day's ESPN lineup and the moves staged on it. */
+export interface DayBoard {
+  board: LineupState;
+  staged: Staged;
+}
+
 export interface GridInput {
   source: WeekSource;
   /** Today's ESPN board, when the team has one. */
   board: LineupState | null;
   staged: Staged;
+  /**
+   * Each day's own ESPN lineup (by day index), when it has been read. A day
+   * without one carries the day before forward, as ESPN does. Without this,
+   * `board` + `staged` stand for the day their `nba_date` names.
+   */
+  dayBoards?: ReadonlyArray<DayBoard | null | undefined>;
   incoming: Incoming | null;
   /** The day the roster column describes. */
   viewDay: number;
@@ -278,14 +313,72 @@ export function viewableDays(source: WeekSource): number[] {
   return source.days.filter((d) => d.index >= from).map((d) => d.index);
 }
 
-export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode = "espn" }: GridInput): WeekGrid {
+export function buildWeekGrid({
+  source,
+  board,
+  staged,
+  dayBoards: dayBoardsIn,
+  incoming,
+  viewDay,
+  mode = "espn",
+}: GridInput): WeekGrid {
   const { days, todayIndex } = source;
   const asSet = mode === "espn" && board != null;
-  // The roster column follows the ESPN board on every day it applies to.
-  const boardRows = board != null && (asSet || viewDay === todayIndex);
   const slots = activeSlots(board, source.activeSlotCount);
   const boardById = new Map((board?.players ?? []).map((p) => [p.player_id, p]));
   const todayAssign = board ? boardAssignment(board, staged) : null;
+
+  // Each day's ESPN lineup: the ones read for it, else `board` on the day it names.
+  const boardDayIndex = board?.nba_date ? days.findIndex((d) => d.date === board.nba_date) : -1;
+  const dayBoards: Array<DayBoard | null> = days.map((d) => {
+    const own = dayBoardsIn?.[d.index];
+    if (own) return own;
+    if (board && (d.index === boardDayIndex || (boardDayIndex < 0 && d.index === todayIndex))) return { board, staged };
+    return null;
+  });
+  // The lineup as it will stand each day: its own (with its staged moves); a day
+  // with no staging of its own that matches the day before inherits that day's
+  // staged moves too (ESPN carries an edit forward); a day not read carries the
+  // day before. Past days are unknown.
+  const asSetByDay: Array<Map<number, number> | null> = [];
+  // What ESPN holds for each day right now (a day not read: the day before's).
+  const rawByDay: Array<Map<number, number> | null> = [];
+  {
+    let prevRaw: Map<number, number> | null = null;
+    let prevEff: Map<number, number> | null = null;
+    for (const d of days) {
+      const db = dayBoards[d.index];
+      if (d.kind === "past") {
+        asSetByDay.push(null);
+        rawByDay.push(null);
+        continue;
+      }
+      if (db) {
+        const raw = boardAssignment(db.board, {});
+        const ownStaging = Object.keys(normalize(db.board, db.staged)).length > 0;
+        const eff: Map<number, number> =
+          !ownStaging && prevRaw && prevEff && sameAssignment(raw, prevRaw)
+            ? new Map(prevEff)
+            : boardAssignment(db.board, db.staged);
+        prevRaw = raw;
+        prevEff = eff;
+        asSetByDay.push(eff);
+        rawByDay.push(raw);
+      } else {
+        asSetByDay.push(prevEff ? new Map(prevEff) : todayAssign ? new Map(todayAssign) : null);
+        rawByDay.push(prevRaw ? new Map(prevRaw) : board ? boardAssignment(board, {}) : null);
+      }
+    }
+  }
+  const viewBoard = dayBoards[viewDay] ?? null;
+  /** A pending change on `day`: the player sits somewhere other than where ESPN has him (staged there or carried in). */
+  const pendingOn = (day: number, id: number) => {
+    const raw = rawByDay[day];
+    const eff = asSetByDay[day];
+    return !!raw && !!eff && raw.has(id) && raw.get(id) !== eff.get(id);
+  };
+  // The roster column follows an ESPN lineup on every day it applies to.
+  const boardRows = viewBoard != null && (asSet || viewDay === todayIndex);
   const irIds = new Set(
     (board?.players ?? []).filter((p) => p.lineup_slot_id === IR_SLOT_ID).map((p) => p.player_id)
   );
@@ -303,8 +396,9 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode =
   // Who is in which slot, per day (past days: unknown).
   const dayAssign: Array<Map<number, number> | null> = days.map((d) => {
     if (d.kind === "past") return null;
-    if (todayAssign && (d.kind === "today" || asSet)) {
-      const m = new Map(todayAssign);
+    const setLineup = asSetByDay[d.index];
+    if (setLineup && (d.kind === "today" || asSet)) {
+      const m = new Map(setLineup);
       if (incoming) seatIncomingToday(m, incoming, eligibleOf(incoming.player), slots);
       return m;
     }
@@ -325,7 +419,7 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode =
   const cellFor = (p: SourcePlayer, d: WeekDay): GridCell => {
     const g = p.games[d.index];
     if (!g) return { state: "none", value: null, opp: null, note: null, counts: false, tag: null };
-    const base = { opp: g.opp, note: g.time };
+    const base = { opp: g.opp, note: g.time, line: g.line ?? null };
     if (d.kind === "past") {
       return g.fpts != null
         ? { ...base, state: "final", value: g.fpts, counts: true, tag: null }
@@ -360,7 +454,7 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode =
         ? days.reduce((sum, d, i) => sum + (cells[i].tag === "DROP" ? cells[i].value ?? 0 : expected(cells[i], p, d)), 0)
         : days.reduce((sum, d, i) => sum + expected(cells[i], p, d), 0);
     const b = boardById.get(p.id);
-    const isStaged = !!b && staged[p.id] !== undefined && boardRows;
+    const isStaged = !!b && boardRows && pendingOn(viewDay, p.id);
     return {
       key: `${kind}-${p.id}`,
       kind,
@@ -377,8 +471,8 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode =
   // ---- rows, in the selected day's slot order ----
   const byId = new Map(pool.map((p) => [p.id, p]));
   const rows: GridRow[] = [];
-  if (boardRows && board) {
-    for (const r of slotRows(board, staged)) {
+  if (boardRows && viewBoard) {
+    for (const r of slotRows(viewBoard.board, viewBoard.staged)) {
       const p = r.player ? byId.get(r.player.player_id) : undefined;
       if (r.player && p) rows.push(rowFor(p, "player", r.slot_id, r.slot));
       // Empty active slots (and an empty IR spot) stay as rows, so they can be dropped onto.
@@ -489,15 +583,23 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode =
   });
 
   // ---- every day's lineup, spot by spot ----
-  const boardOrder = new Map<number, number>();
-  if (board) slotRows(board, staged).forEach((r, i) => r.player && boardOrder.set(r.player.player_id, i));
-  // A previewed free agent who takes the replaced player's seat takes his place in the order too.
-  if (inId != null && replaced != null && boardOrder.has(replaced)) boardOrder.set(inId, boardOrder.get(replaced)!);
+  // Order inside a slot: the day's own ESPN lineup order (or the nearest earlier one).
+  const orderOf = (dayIndex: number): Map<number, number> => {
+    const order = new Map<number, number>();
+    let db: DayBoard | null = null;
+    for (let i = dayIndex; i >= 0 && !db; i--) db = dayBoards[i];
+    db ??= dayBoards.find((x) => x) ?? null;
+    if (db) slotRows(db.board, db.staged).forEach((r, i) => r.player && order.set(r.player.player_id, i));
+    // A previewed free agent who takes the replaced player's seat takes his place in the order too.
+    if (inId != null && replaced != null && order.has(replaced)) order.set(inId, order.get(replaced)!);
+    return order;
+  };
   const fallbackAssign = todayAssign ?? dayAssign.find((m) => m) ?? new Map<number, number>();
   const byDay = days.map((d) => {
     const assign = dayAssign[d.index] ?? fallbackAssign;
-    // Board days keep the board's order inside a slot; planned days go by projection.
+    // Lineups as set keep ESPN's order inside a slot; planned days go by projection.
     const fromBoard = !!todayAssign && (d.kind !== "future" || asSet);
+    const boardOrder = fromBoard ? orderOf(d.index) : new Map<number, number>();
     const players = (d.kind === "past" ? roster : pool).filter((p) => d.kind === "past" || p.id !== replaced);
     const groups = new Map<number, SourcePlayer[]>();
     for (const p of players) {
@@ -537,13 +639,16 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode =
     slotDefs.map((def): Seat | null => {
       const p = byDay[i].get(def.slotId)?.[ordinalOf(def)];
       if (!p) return null;
-      const onBoard = !!boardById.get(p.id) && staged[p.id] !== undefined && (d.kind !== "future" || asSet);
-      return { player: p, cell: cellFor(p, d), staged: onBoard, incoming: p.id === inId };
+      const isStaged = (d.kind !== "future" || asSet) && pendingOn(d.index, p.id);
+      return { player: p, cell: cellFor(p, d), staged: isStaged, incoming: p.id === inId };
     })
   );
-  const boardDay = board
-    ? todayIndex ?? (asSet ? days.find((d) => d.kind === "future")?.index ?? null : null)
-    : null;
+  const boardDay = board ? (boardDayIndex >= 0 ? boardDayIndex : todayIndex) : null;
+  // A day can be rearranged when its ESPN lineup is on screen as set: today in
+  // either view, later days only in the as-set view.
+  const editable = days.map(
+    (d) => d.kind !== "past" && !!dayBoards[d.index] && (asSet || d.index === boardDay)
+  );
 
   // Now = the provider's official score; the finish adds what is still to play.
   const nowYou =
@@ -564,7 +669,7 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode =
     days,
     viewDay,
     rows,
-    lineups: { slots: slotDefs, seats, boardDay },
+    lineups: { slots: slotDefs, seats, boardDay, editable },
     you,
     opp,
     now: { you: round1(nowYou), opp: round1(nowOpp) },
@@ -574,6 +679,12 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode =
       opp: opp.reduce((s, t) => s + t.starts, 0),
     },
   };
+}
+
+function sameAssignment(a: Map<number, number>, b: Map<number, number>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [k, v] of a) if (b.get(k) !== v) return false;
+  return true;
 }
 
 function openRow(slotId: number, ordinal: number, dayCount: number): GridRow {
@@ -647,6 +758,16 @@ export function slotsFromPositions(names: readonly string[]): number[] {
 }
 
 const OUT_STATUSES = new Set(["OUT", "O", "IL", "IL+", "SUSPENSION", "INJURY_RESERVE"]);
+const ACTIVE_STATUSES = new Set(["", "ACTIVE", "HEALTHY", "NORMAL"]);
+
+/** A player's status as a strip colour: active, day-to-day (or questionable), or out / suspended. */
+export type Health = "ok" | "dtd" | "out";
+
+export function healthOf(status: string | null | undefined): Health {
+  const s = (status ?? "").toUpperCase().trim();
+  if (ACTIVE_STATUSES.has(s)) return "ok";
+  return OUT_STATUSES.has(s) ? "out" : "dtd";
+}
 
 export function isOutStatus(status: string | null | undefined): boolean {
   return !!status && OUT_STATUSES.has(status.toUpperCase());

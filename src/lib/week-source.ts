@@ -28,6 +28,7 @@ import {
   liveClock,
   slotsFromPositions,
   type DayGame,
+  type StatLine,
   type SourceOpponent,
   type SourcePlayer,
   type WeekDay,
@@ -48,6 +49,25 @@ function rosterOf(day: WeeklyMatchupData["days"][number], side: "your_team" | "o
   return day[side].roster as DayEntry[];
 }
 
+/** A past day's box score, when the player has one. */
+function pastLine(p: DailyMatchupPlayerStats): StatLine | null {
+  if (p.fpts == null) return null;
+  return {
+    min: p.min ?? null,
+    pts: p.pts ?? 0,
+    reb: p.reb ?? 0,
+    ast: p.ast ?? 0,
+    stl: p.stl ?? 0,
+    blk: p.blk ?? 0,
+    tov: p.tov ?? 0,
+    fgm: p.fgm ?? 0,
+    fga: p.fga ?? 0,
+    ftm: p.ftm ?? 0,
+    fta: p.fta ?? 0,
+    fg3m: p.fg3m ?? 0,
+  };
+}
+
 /** Live overlay for today, when the player's game has a live row. */
 function liveGame(p: LiveMatchupPlayer | undefined, opp: string | null, time: string | null, out: boolean): DayGame | null {
   const live = p?.live;
@@ -62,6 +82,23 @@ function liveGame(p: LiveMatchupPlayer | undefined, opp: string | null, time: st
     clock: clock?.label ?? null,
     remaining: status === "final" ? 0 : status === "live" ? clock!.remaining : 1,
     out: status === "scheduled" && out,
+    line:
+      status === "scheduled"
+        ? null
+        : {
+            min: live.live_min,
+            pts: live.live_pts,
+            reb: live.live_reb,
+            ast: live.live_ast,
+            stl: live.live_stl,
+            blk: live.live_blk,
+            tov: live.live_tov,
+            fgm: live.live_fgm,
+            fga: live.live_fga,
+            ftm: live.live_ftm,
+            fta: live.live_fta,
+            fg3m: live.live_fg3m,
+          },
   };
 }
 
@@ -72,14 +109,21 @@ export interface SourceInputs {
   board: LineupState | null | undefined;
 }
 
+/** The period's days, in order. */
+export function weekDaysFromApi(week: WeeklyMatchupData): WeekDay[] {
+  return [...week.days]
+    .sort((a, b) => a.day_index - b.day_index)
+    .map((d, i) => ({
+      index: i,
+      date: d.date,
+      dow: d.day_of_week,
+      kind: d.day_type === "past" || d.day_type === "today" ? d.day_type : "future",
+    }));
+}
+
 export function sourceFromApi({ week, live, matchup, board }: SourceInputs): WeekSource {
   const sortedDays = [...week.days].sort((a, b) => a.day_index - b.day_index);
-  const days: WeekDay[] = sortedDays.map((d, i) => ({
-    index: i,
-    date: d.date,
-    dow: d.day_of_week,
-    kind: d.day_type === "past" || d.day_type === "today" ? d.day_type : "future",
-  }));
+  const days = weekDaysFromApi(week);
   const todayIndex = days.find((d) => d.kind === "today")?.index ?? null;
   const n = days.length;
 
@@ -106,7 +150,8 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
     if (!hasGame) return null;
     const fpts = entry && isPast(entry) ? entry.fpts : null;
     if (fpts != null) {
-      return { opp, time, status: "final", fpts, clock: null, remaining: 0, out: false };
+      const line = entry && isPast(entry) ? pastLine(entry) : null;
+      return { opp, time, status: "final", fpts, clock: null, remaining: 0, out: false, line };
     }
     return { opp, time, status: "scheduled", fpts: null, clock: null, remaining: 1, out };
   };
@@ -124,7 +169,16 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
       if (!entry) return null;
       if (isPast(entry)) {
         if (!entry.had_game) return null;
-        return { opp: null, time: null, status: "final", fpts: entry.fpts, clock: null, remaining: 0, out: false };
+        return {
+          opp: null,
+          time: null,
+          status: "final",
+          fpts: entry.fpts,
+          clock: null,
+          remaining: 0,
+          out: false,
+          line: pastLine(entry),
+        };
       }
       if (!entry.has_game) return null;
       return {

@@ -10,7 +10,7 @@
 import type { LineupPlanData, LineupPlayer, LineupState } from "@/types/lineup-editor";
 import type { StreamerPlayer } from "@/types/streamer";
 import type { ScheduleGame } from "@/types/games";
-import type { DayGame, SourceOpponent, SourcePlayer, WeekDay, WeekSource } from "./week-grid";
+import type { DayGame, SourceOpponent, SourcePlayer, StatLine, WeekDay, WeekSource } from "./week-grid";
 import { SLOT_NAMES, assignment, type Staged } from "./lineup-editor";
 
 const PG = 0, SG = 1, SF = 2, PF = 3, C = 4, G = 5, F = 6, UT = 11, BE = 12, IR = 13;
@@ -52,6 +52,30 @@ function gameOn(team: string, day: number): { opp: string; time: string } | null
   return null;
 }
 
+/**
+ * A plausible box score for `fpts` (made up: shares of the total, rounded).
+ * `share` < 1 is a game in progress.
+ */
+function demoLine(fpts: number, share = 1): StatLine {
+  const pts = Math.round(fpts * 0.52);
+  const fga = Math.max(1, Math.round(pts / 2.15));
+  const fta = Math.round(pts * 0.22);
+  return {
+    min: Math.round(34 * share),
+    pts,
+    reb: Math.round(fpts * 0.21),
+    ast: Math.round(fpts * 0.12),
+    stl: Math.round(fpts / 30),
+    blk: Math.round(fpts / 38),
+    tov: Math.max(0, Math.round(fpts / 22)),
+    fgm: Math.round(fga * 0.49),
+    fga,
+    ftm: Math.round(fta * 0.8),
+    fta,
+    fg3m: Math.round(pts * 0.09),
+  };
+}
+
 /** Points a player scored on a played day, and today's live state. */
 interface Line {
   mon?: number;
@@ -63,13 +87,18 @@ function games(team: string, line: Line, out: boolean): Array<DayGame | null> {
     const g = gameOn(team, d.index);
     if (!g) return null;
     if (d.kind === "past") {
-      return { opp: g.opp, time: g.time, status: "final", fpts: line.mon ?? null, clock: null, remaining: 0, out: false };
+      const fpts = line.mon ?? null;
+      return {
+        opp: g.opp, time: g.time, status: "final", fpts, clock: null, remaining: 0, out: false,
+        line: fpts != null ? demoLine(fpts) : null,
+      };
     }
     if (d.kind === "today" && line.tue) {
       const t = line.tue;
+      const remaining = t.status === "final" ? 0 : t.remaining ?? 0.5;
       return {
         opp: g.opp, time: g.time, status: t.status, fpts: t.fpts,
-        clock: t.clock ?? null, remaining: t.status === "final" ? 0 : t.remaining ?? 0.5, out: false,
+        clock: t.clock ?? null, remaining, out: false, line: demoLine(t.fpts, 1 - remaining),
       };
     }
     return { opp: g.opp, time: g.time, status: "scheduled", fpts: null, clock: null, remaining: 1, out };
@@ -117,9 +146,9 @@ const OPP: OppSpec[] = [
   { id: 4066336, name: "Lauri Markkanen", team: "UTA", avg: 35.5, active: false },
 ];
 
-function lineupPlayer(s: MineSpec, slot: number = s.slot): LineupPlayer {
-  const g = gameOn(s.team, TODAY);
-  const started = !!s.line?.tue;
+function lineupPlayer(s: MineSpec, slot: number = s.slot, day: number = TODAY): LineupPlayer {
+  const g = gameOn(s.team, day);
+  const started = day === TODAY && !!s.line?.tue;
   const out = s.injury === "OUT";
   const eligible = [...s.eligible, BE, ...(out ? [IR] : [])];
   return {
@@ -147,13 +176,27 @@ function lineupPlayer(s: MineSpec, slot: number = s.slot): LineupPlayer {
   };
 }
 
-export function demoBoard(roster: MineSpec[] = MINE, version = "demo-1"): LineupState {
+/** ESPN day number of a demo day (Tuesday, today, is day 23 of the season). */
+export const demoPeriod = (day: number) => 22 + day;
+
+/**
+ * The demo team's ESPN lineup for `day` (today or later). `slots` overrides
+ * where players sit (an edit); otherwise everyone is where the roster spec says.
+ */
+export function demoBoard(
+  roster: MineSpec[] = MINE,
+  version = "demo-1",
+  day: number = TODAY,
+  slots?: Readonly<Record<number, number>>
+): LineupState {
   return {
     provider: "espn",
     team_name: "Paint Beasts",
     espn_team_id: 1,
-    nba_date: DATES[TODAY],
-    scoring_period_id: 23,
+    nba_date: DATES[day],
+    scoring_period_id: demoPeriod(day),
+    current_scoring_period_id: demoPeriod(TODAY),
+    final_scoring_period_id: 167,
     scoring_period_source: "provider",
     first_game_time_et: "19:00",
     slot_counts: { "0": 1, "1": 1, "2": 1, "3": 1, "4": 1, "5": 1, "6": 1, "7": 0, "8": 0, "9": 0, "10": 0, "11": 3, "12": 3, "13": 1 },
@@ -166,7 +209,7 @@ export function demoBoard(roster: MineSpec[] = MINE, version = "demo-1"): Lineup
       { slot_id: BE, slot: "BE", count: 3 }, { slot_id: IR, slot: "IR", count: 1 },
     ],
     lock_type: "INDIVIDUAL_GAME",
-    players: roster.map((s) => lineupPlayer(s)),
+    players: roster.map((s) => lineupPlayer(s, slots?.[s.id] ?? s.slot, day)),
     can_write: true,
     write_blocked_reason: null,
     roster_version: version,
@@ -194,6 +237,25 @@ export function demoPlan(board: LineupState): LineupPlanData {
     scoring_period_id: board.scoring_period_id,
   };
 }
+
+/**
+ * Where everyone sits on `day`, ESPN's way: the latest day at or before it
+ * that has its own edit wins; with none, the roster spec's slots.
+ */
+export function demoAssignment(
+  roster: MineSpec[],
+  edits: Readonly<Record<number, Readonly<Record<number, number>>>>,
+  day: number
+): Record<number, number> {
+  const out: Record<number, number> = Object.fromEntries(roster.map((s) => [s.id, s.slot]));
+  for (let d = TODAY; d <= day; d++) {
+    const edit = edits[d];
+    if (edit) for (const s of roster) if (edit[s.id] !== undefined) out[s.id] = edit[s.id];
+  }
+  return out;
+}
+
+export { TODAY as DEMO_TODAY };
 
 /** The board as the server would re-read it after the staged moves. */
 export function demoApply(state: LineupState, staged: Staged): LineupState {

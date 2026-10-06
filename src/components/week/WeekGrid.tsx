@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/core";
 import { ArrowLeftRight, Lock, Repeat2 } from "lucide-react";
 import { BENCH_SLOT_ID, IR_SLOT_ID, isActiveSlot, slotName } from "@/lib/lineup-editor";
-import { isOutStatus, type GridCell, type GridRow, type LineupMode, type WeekGrid as Grid } from "@/lib/week-grid";
+import { healthOf, type GridCell, type GridRow, type LineupMode, type WeekGrid as Grid } from "@/lib/week-grid";
 import type { LineupPlayer } from "@/types/lineup-editor";
 import { Headshot } from "./Headshot";
 import { monthDay, oppShort, pts, signed, tip } from "./format";
@@ -519,7 +519,6 @@ const RosterCell = memo(function RosterCell({ row, group, board, isToday, dragga
     .filter((id) => id <= 4)
     .map(slotName)
     .join("/");
-  const injury = p.injury;
   const locked = isToday && !!board?.locked;
 
   return (
@@ -531,6 +530,8 @@ const RosterCell = memo(function RosterCell({ row, group, board, isToday, dragga
       data-col={0}
       data-cursor={cursor}
       data-draggable={draggable}
+      data-health={healthOf(p.injury)}
+      title={`${p.name} · ${p.injury ? p.injury.replace(/_/g, " ").toLowerCase() : "active"}`}
       onClick={(e) => {
         onFocus();
         if ((e.target as HTMLElement).closest("button")) return;
@@ -544,9 +545,6 @@ const RosterCell = memo(function RosterCell({ row, group, board, isToday, dragga
         <span className={s.meta}>
           <span>{p.team}</span>
           {positions ? <span>{positions}</span> : null}
-          {injury ? (
-            <span className={`${s.inj} ${isOutStatus(injury) ? "" : s.injSoft}`}>{injury.replace("_", " ")}</span>
-          ) : null}
           {row.kind === "incoming" ? <span style={{ color: "var(--preview)" }}>FREE AGENT</span> : null}
         </span>
       </span>
@@ -603,11 +601,13 @@ interface DayCellProps {
   hideOpp?: boolean;
 }
 
-const TAG_CLASS: Record<string, string> = {
-  BENCH: s.tagBench,
-  SITS: s.tagSits,
-  IR: s.tagIr,
-  DROP: s.tagDrop,
+const CELL_TITLES: Record<string, string | undefined> = {
+  BENCH: "On the bench: this game doesn't count",
+  SITS: "No room in the best lineup that day",
+  IR: "On IR",
+  DROP: "Being replaced in the preview",
+  out: "Out for this game",
+  dnp: "Didn't play",
 };
 
 export const DayCell = memo(function DayCell({
@@ -641,18 +641,16 @@ export const DayCell = memo(function DayCell({
       main = "·";
       break;
     case "out":
-      main = "OUT";
-      break;
     case "dnp":
-      main = "DNP";
+      main = "—";
       break;
     default:
       main = pts(cell.value);
   }
 
+  // Status is carried by styling (the bench outline, strike-throughs, the row's strip), not words.
   let right: React.ReactNode = null;
-  if (cell.tag) right = <span className={TAG_CLASS[cell.tag]}>{cell.tag}</span>;
-  else if (cell.state === "live")
+  if (cell.state === "live")
     right = (
       <span className={s.clock}>
         <span className={s.liveDot} style={{ width: 5, height: 5 }} />
@@ -675,6 +673,7 @@ export const DayCell = memo(function DayCell({
       data-today={today}
       data-hotcol={hot}
       data-cursor={cursor}
+      title={CELL_TITLES[cell.tag ?? cell.state]}
       onMouseEnter={() => onEnter(col)}
       onClick={onClick}
     >
