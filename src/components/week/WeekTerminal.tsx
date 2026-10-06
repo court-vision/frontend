@@ -117,10 +117,17 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
   const [viewDayPick, setViewDay] = useState<number | null>(null);
   const viewDay = viewDayPick != null && viewable.has(viewDayPick) ? viewDayPick : viewableList[0] ?? 0;
   const todayIndex = source?.todayIndex ?? null;
-  // The daily view's expanded day: any day, past ones included; today (or ESPN's day) by default.
-  const [focusPick, setFocusDay] = useState<number | null>(null);
+  // The daily view's expanded day: any day, past ones included; today (or ESPN's day) by
+  // default. "none" collapses every day (clicking the focused day again).
+  const [focusPick, setFocusPick] = useState<number | "none" | null>(null);
   const dayCount = source?.days.length ?? 0;
-  const focusDay = focusPick != null && focusPick < dayCount ? focusPick : todayIndex ?? todayDay ?? viewDay;
+  const defaultFocus = todayIndex ?? todayDay ?? viewDay;
+  const focusDay: number | null =
+    focusPick === "none" ? null : focusPick != null && focusPick < dayCount ? focusPick : defaultFocus;
+  const onFocusDay = useCallback(
+    (day: number) => setFocusPick(day === focusDay ? "none" : day),
+    [focusDay]
+  );
 
   // ---- free-agent preview: a highlighted one (in the menu) wins over a kept one ----
   const [hover, setHover] = useState<PreviewRef | null>(null);
@@ -411,7 +418,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
 
   // ---- autoslot ----
   const [autoslotting, setAutoslotting] = useState(false);
-  const autoslotDay = view === "daily" ? focusDay : viewDay;
+  const autoslotDay = view === "daily" ? focusDay ?? defaultFocus : viewDay;
   const autoslot = useCallback(async () => {
     const day = autoslotDay;
     const b = boards[day];
@@ -538,13 +545,14 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
         const { slots, seats } = grid.lineups;
         const lastDay = grid.days.length - 1;
         const at = cursor ? Math.max(0, slots.findIndex((d) => d.key === cursor.key)) : -1;
-        const day = cursor?.col ?? focusDay;
+        const day = cursor?.col ?? focusDay ?? defaultFocus;
         const go = (r: number, c: number) => {
           const def = slots[Math.min(slots.length - 1, Math.max(0, r))];
           if (!def) return;
           const col = Math.min(lastDay, Math.max(0, c));
           setCursor({ key: def.key, col });
-          setFocusDay(col);
+          // The expanded day follows the cursor, unless every day is collapsed.
+          if (focusDay != null) setFocusPick(col);
         };
         const seatHere = () => (cursor ? seats[cursor.col]?.[slots.findIndex((d) => d.key === cursor.key)] ?? null : null);
         const seatEl = () =>
@@ -567,10 +575,10 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
             go(Math.max(0, at), day - 1);
             return;
           case "[":
-            setFocusDay(Math.max(0, focusDay - 1));
+            setFocusPick(Math.max(0, (focusDay ?? defaultFocus) - 1));
             return;
           case "]":
-            setFocusDay(Math.min(lastDay, focusDay + 1));
+            setFocusPick(Math.min(lastDay, (focusDay ?? defaultFocus) + 1));
             return;
           case "Enter":
           case "m": {
@@ -640,7 +648,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
@@ -735,7 +743,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
             todayIndex={todayIndex}
             boards={boards}
             focusDay={focusDay}
-            onFocusDay={setFocusDay}
+            onFocusDay={onFocusDay}
             cursor={cursor}
             onCursor={setCursor}
             heat={heat}

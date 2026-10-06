@@ -1601,16 +1601,15 @@ button.dayHead:hover {
 .statHead {
   display: flex;
   align-items: flex-end;
-  justify-content: flex-end;
-  padding: 0 12px 9px 0;
+  padding: 0 8px 9px;
   background: var(--today-head);
 }
 
 .statRow {
   display: grid;
-  column-gap: 6px;
+  width: 100%;
   align-items: center;
-  justify-items: end;
+  justify-items: center;
   font-family: var(--tt-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   font-size: 12px;
@@ -1627,8 +1626,7 @@ button.dayHead:hover {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: 0 12px 0 4px;
+  padding: 0 8px;
   background: var(--today);
   min-width: 0;
 }
@@ -1645,8 +1643,8 @@ button.dayHead:hover {
 .statCell[data-tag="BENCH"]::after {
   content: "";
   position: absolute;
-  inset: 5px 8px 5px auto;
-  width: 54px;
+  inset: 5px 6px 5px auto;
+  width: 40px;
   border: 1px dashed color-mix(in srgb, var(--warn) 80%, transparent);
   border-radius: 4px;
   pointer-events: none;

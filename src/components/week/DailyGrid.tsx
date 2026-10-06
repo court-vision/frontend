@@ -45,8 +45,8 @@ interface DailyGridProps {
   todayIndex: number | null;
   /** Each day's ESPN lineup (locks are per day). */
   boards: ReadonlyArray<LineupState | undefined>;
-  /** The day shown in full: whole names and the box score. */
-  focusDay: number;
+  /** The day shown in full (whole names and the box score); null = every day collapsed. */
+  focusDay: number | null;
   onFocusDay: (day: number) => void;
   /** `key` is a slot row, `col` a day index. */
   cursor: Cursor | null;
@@ -58,24 +58,25 @@ interface DailyGridProps {
   drag: SeatDragApi | null;
 }
 
-/** The focused day's box score, in this order. */
-const STATS: Array<{ key: string; label: string; width: number; get: (l: StatLine) => string }> = [
-  { key: "min", label: "MIN", width: 28, get: (l) => (l.min != null ? String(l.min) : "—") },
-  { key: "pts", label: "P", width: 24, get: (l) => String(l.pts) },
-  { key: "reb", label: "R", width: 24, get: (l) => String(l.reb) },
-  { key: "ast", label: "A", width: 24, get: (l) => String(l.ast) },
-  { key: "blk", label: "BLK", width: 28, get: (l) => String(l.blk) },
-  { key: "stl", label: "STL", width: 28, get: (l) => String(l.stl) },
-  { key: "fg", label: "FG", width: 40, get: (l) => `${l.fgm}/${l.fga}` },
-  { key: "ft", label: "FT", width: 36, get: (l) => `${l.ftm}/${l.fta}` },
-  { key: "3pm", label: "3PM", width: 30, get: (l) => String(l.fg3m) },
-  { key: "tov", label: "TO", width: 24, get: (l) => String(l.tov) },
+/** The focused day's box score, in this order (FPTS follows). */
+const STATS: Array<{ key: string; label: string; get: (l: StatLine) => string }> = [
+  { key: "min", label: "MIN", get: (l) => (l.min != null ? String(l.min) : "—") },
+  { key: "pts", label: "P", get: (l) => String(l.pts) },
+  { key: "reb", label: "R", get: (l) => String(l.reb) },
+  { key: "ast", label: "A", get: (l) => String(l.ast) },
+  { key: "blk", label: "BLK", get: (l) => String(l.blk) },
+  { key: "stl", label: "STL", get: (l) => String(l.stl) },
+  { key: "fg", label: "FG", get: (l) => `${l.fgm}/${l.fga}` },
+  { key: "ft", label: "FT", get: (l) => `${l.ftm}/${l.fta}` },
+  { key: "3pm", label: "3PM", get: (l) => String(l.fg3m) },
+  { key: "tov", label: "TO", get: (l) => String(l.tov) },
 ];
-const FPTS_WIDTH = 46;
-const STAT_GAP = 6;
-const STAT_TRACKS = `${STATS.map((x) => `${x.width}px`).join(" ")} ${FPTS_WIDTH}px`;
-const STAT_WIDTH = STATS.reduce((n, x) => n + x.width, 0) + FPTS_WIDTH + STAT_GAP * STATS.length + 14;
-const FOCUS_NAME_MIN = 156;
+// Eleven equal cells, the ten stats and FPTS, so the spacing is even.
+const STAT_CELL = 34;
+const STAT_TRACKS = `repeat(${STATS.length + 1}, minmax(0, 1fr))`;
+const STAT_WIDTH = STAT_CELL * (STATS.length + 1) + 16;
+const FOCUS_NAME = "minmax(140px, 168px)";
+const FOCUS_NAME_MIN = 140;
 const DAY_NAME_MIN = 76;
 const DAY_VALUE = 58;
 
@@ -104,13 +105,18 @@ export function DailyGrid({
   const days = grid.days;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [hotDay, setHotDay] = useState<number | null>(null);
-  // The focused day takes the room: a whole name and the box score. Every other day stays narrow.
-  const cols = `56px ${days
-    .map((_, i) =>
-      i === focusDay ? `minmax(${FOCUS_NAME_MIN}px, 1fr) ${STAT_WIDTH}px` : `minmax(${DAY_NAME_MIN}px, 104px) ${DAY_VALUE}px`
-    )
-    .join(" ")}`;
-  const minWidth = 56 + (days.length - 1) * (DAY_NAME_MIN + DAY_VALUE) + FOCUS_NAME_MIN + STAT_WIDTH;
+  // A focused day gets a whole name and the box score; the other days share what's left.
+  // With no focused day, every day is collapsed and they share the whole width.
+  const cols =
+    focusDay == null
+      ? `56px repeat(${days.length}, minmax(${DAY_NAME_MIN}px, 1.5fr) minmax(${DAY_VALUE}px, 1fr))`
+      : `56px ${days
+          .map((_, i) => (i === focusDay ? `${FOCUS_NAME} ${STAT_WIDTH}px` : `minmax(${DAY_NAME_MIN}px, 1fr) ${DAY_VALUE}px`))
+          .join(" ")}`;
+  const minWidth =
+    focusDay == null
+      ? 56 + days.length * (DAY_NAME_MIN + DAY_VALUE)
+      : 56 + (days.length - 1) * (DAY_NAME_MIN + DAY_VALUE) + FOCUS_NAME_MIN + STAT_WIDTH;
   const peak = Math.max(1, ...seats.flatMap((day) => day.map((st) => (st?.cell.counts ? st.cell.value ?? 0 : 0))));
 
   // ---- drag ----
@@ -208,7 +214,6 @@ export function DailyGrid({
                     data-editable={!!drag?.editable[i]}
                     onMouseEnter={() => setHotDay(i)}
                     onClick={() => onFocusDay(i)}
-                    aria-pressed={focused}
                     title={
                       stats.past
                         ? "ESPN lineups for past days aren't recorded, so the spots show today's lineup"
@@ -563,10 +568,7 @@ function FocusStats({ cell, hasPlayer }: { cell: GridCell; hasPlayer: boolean })
       {STATS.map((x) => (
         <span key={x.key}>{line ? x.get(line) : "—"}</span>
       ))}
-      <span className={s.statFpts}>
-        {cell.state === "live" ? <span className={s.liveDot} style={{ width: 5, height: 5 }} /> : null}
-        {pts(cell.value)}
-      </span>
+      <span className={s.statFpts}>{pts(cell.value)}</span>
     </span>
   );
 }
