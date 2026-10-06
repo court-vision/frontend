@@ -44,9 +44,9 @@ import { WeekGrid, type Cursor, type DragApi, type DropTarget } from "./WeekGrid
 import { DailyGrid, type SeatDragApi } from "./DailyGrid";
 import type { TerminalData } from "./WeekPage";
 import { monthDay, shortName, signed } from "./format";
-import s from "./week.module.css";
+import dk from "@/components/desk/desk.module.css";
+import { useDeskTheme } from "@/components/desk/useDeskTheme";
 
-const THEME_KEY = "cv.week.theme";
 const NO_STAGING: Staged = {};
 const MAX_REPLACE_OPTIONS = 80;
 
@@ -65,26 +65,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
 
   // ---- view switches ----
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(THEME_KEY);
-      if (saved === "light" || saved === "dark") setTheme(saved);
-    } catch {
-      // Storage blocked: stay dark.
-    }
-  }, []);
-  const toggleTheme = useCallback(() => {
-    setTheme((t) => {
-      const next = t === "dark" ? "light" : "dark";
-      try {
-        localStorage.setItem(THEME_KEY, next);
-      } catch {
-        // Not persisted; fine.
-      }
-      return next;
-    });
-  }, []);
+  const toggleTheme = useDeskTheme((st) => st.toggle);
   const [heat, setHeat] = useState(false);
   // "espn": each day as set on ESPN; "best": the best fit for each day's games.
   const [mode, setMode] = useState<LineupMode>("espn");
@@ -680,7 +661,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
       <EmptyState
         title="Sign in to see your week"
         body="The week grid reads your team's matchup, roster and schedule."
-        action={<Link href="/account" className={`${s.btn} ${s.btnPrimary}`} style={{ textDecoration: "none" }}>Sign in</Link>}
+        action={<Link href="/account" className={`${dk.btn} ${dk.btnPrimary}`} style={{ textDecoration: "none" }}>Sign in</Link>}
       />
     );
   } else if (data.status === "no-team") {
@@ -688,7 +669,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
       <EmptyState
         title="Add a team to see its week"
         body="Connect an ESPN or Yahoo team and its matchup week shows up here."
-        action={<Link href="/manage-teams" className={`${s.btn} ${s.btnPrimary}`} style={{ textDecoration: "none" }}>Add a team</Link>}
+        action={<Link href="/manage-teams" className={`${dk.btn} ${dk.btnPrimary}`} style={{ textDecoration: "none" }}>Add a team</Link>}
       />
     );
   } else if (data.status === "loading") {
@@ -698,7 +679,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
       <EmptyState
         title="Couldn't load this week"
         body={data.message ?? "Something went wrong reading the matchup."}
-        action={<button type="button" className={s.btn} onClick={data.refetch}>Try again</button>}
+        action={<button type="button" className={dk.btn} onClick={data.refetch}>Try again</button>}
       />
     );
   } else if (data.status === "empty" || !grid || !source) {
@@ -793,7 +774,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
   }
 
   return (
-    <div ref={setRoot} className={s.root} data-theme={theme}>
+    <div ref={setRoot} className={dk.desk}>
       <Bar
         teams={data.teams}
         teamId={data.teamId}
@@ -803,8 +784,6 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
         oppName={source?.opp.name ?? null}
         liveGames={liveMine}
         demo={data.demo}
-        theme={theme}
-        onTheme={toggleTheme}
         onRefresh={data.refetch}
         container={root}
       />
@@ -867,12 +846,12 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
             key: `${p.day}-${m.player_id}`,
             left: (
               <span style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
-                <span className={s.sub} style={{ width: 70 }}>{p.label}</span>
+                <span className={dk.sub} style={{ width: 70 }}>{p.label}</span>
                 {boardById.get(m.player_id)?.name ?? `#${m.player_id}`}
               </span>
             ),
             right: (
-              <span className={s.mono} style={{ color: "var(--text-2)" }}>
+              <span className={dk.mono} style={{ color: "var(--text-2)" }}>
                 {slotName(m.from_slot_id)} → {slotName(m.to_slot_id)}
               </span>
             ),
@@ -896,8 +875,8 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
         lines={
           swap
             ? [
-                { key: "add", left: <><span style={{ color: "var(--up)" }}>+</span> {swap.fa.name}</>, right: <span className={s.sub}>{swap.fa.team} · {swap.fa.games_remaining} games left</span> },
-                { key: "drop", left: <><span style={{ color: "var(--down)" }}>−</span> {swap.out.name}</>, right: <span className={`${s.chip} ${s.pv}`}>{signed(swap.delta)} week</span> },
+                { key: "add", left: <><span style={{ color: "var(--up)" }}>+</span> {swap.fa.name}</>, right: <span className={dk.sub}>{swap.fa.team} · {swap.fa.games_remaining} games left</span> },
+                { key: "drop", left: <><span style={{ color: "var(--down)" }}>−</span> {swap.out.name}</>, right: <span className={`${dk.chip} ${dk.pv}`}>{signed(swap.delta)} week</span> },
               ]
             : []
         }

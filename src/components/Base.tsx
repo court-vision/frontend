@@ -10,6 +10,7 @@ import { MobileTabBar } from "@/components/MobileTabBar";
 import { MobileDockProvider } from "@/components/MobileDock";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { KeyboardShortcutOverlay } from "@/components/KeyboardShortcutOverlay";
+import { isDeskPath } from "@/components/desk/routes";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
 import { useScrollTapGuard } from "@/hooks/useScrollTapGuard";
 
@@ -64,8 +65,8 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   // Terminal and dashboard pages manage their own full-height layout
   const isFullHeightPage = pathname === "/terminal" || pathname === "/";
 
-  // The /week prototype brings its own shell (bar, status line, theme).
-  if (pathname === "/week") return <>{children}</>;
+  // The desks bring their own shell (bar, status line, theme, toasts).
+  if (isDeskPath(pathname)) return <>{children}</>;
 
   return (
     <MobileDockProvider value={dock}>

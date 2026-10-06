@@ -19,8 +19,9 @@ import { ArrowLeftRight, Lock, Repeat2 } from "lucide-react";
 import { BENCH_SLOT_ID, IR_SLOT_ID, isActiveSlot, slotName } from "@/lib/lineup-editor";
 import { healthOf, type GridCell, type GridRow, type LineupMode, type WeekGrid as Grid } from "@/lib/week-grid";
 import type { LineupPlayer } from "@/types/lineup-editor";
-import { Headshot } from "./Headshot";
+import { Headshot } from "@/components/desk/Headshot";
 import { monthDay, oppShort, pts, signed, tip } from "./format";
+import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
 export interface Cursor {
@@ -168,12 +169,12 @@ export function WeekGrid({
         <div className={s.grid} style={{ ["--cols" as string]: cols }}>
           <div className={s.head} role="row">
             <div className={s.rosterCell} role="columnheader">
-              <span className={s.label}>
+              <span className={dk.label}>
                 {onBoard
                   ? "ESPN lineup"
                   : `Best lineup · ${grid.days[grid.viewDay] ? `${grid.days[grid.viewDay].dow} ${monthDay(grid.days[grid.viewDay].date)}` : ""}`}
               </span>
-              {drag ? <span className={s.sub} style={{ marginLeft: "auto" }}>drag to rearrange</span> : null}
+              {drag ? <span className={dk.sub} style={{ marginLeft: "auto" }}>drag to rearrange</span> : null}
             </div>
             {grid.days.map((d, i) => {
               const canView = viewable.has(d.index);
@@ -296,7 +297,7 @@ export function WeekGrid({
               </span>
             </span>
             {overTarget ? (
-              <span className={`${s.chip} ${overTarget.delta > 0.05 ? s.up : overTarget.delta < -0.05 ? s.down : s.flat}`}>
+              <span className={`${dk.chip} ${overTarget.delta > 0.05 ? dk.up : overTarget.delta < -0.05 ? dk.down : dk.flat}`}>
                 {signed(overTarget.delta)} wk
               </span>
             ) : null}
@@ -322,8 +323,8 @@ function GroupRow({ group, count, onBoard }: { group: Group; count: number; onBo
   return (
     <motion.div layout="position" transition={ROW_SPRING} className={s.groupRow} role="presentation">
       <div className={s.groupLabel}>
-        <span className={s.label} style={{ color: "var(--text-2)" }}>{label}</span>
-        <span className={s.sub}>{count === 0 ? "empty" : `${count} · ${note}`}</span>
+        <span className={dk.label} style={{ color: "var(--text-2)" }}>{label}</span>
+        <span className={dk.sub}>{count === 0 ? "empty" : `${count} · ${note}`}</span>
       </div>
       <div className={s.groupFill} />
     </motion.div>
@@ -504,11 +505,11 @@ const RosterCell = memo(function RosterCell({ row, group, board, isToday, dragga
       <div ref={ref} {...attributes} className={s.rosterCell} data-col={0} data-cursor={cursor} onClick={onFocus}>
         {chip}
         {ir ? (
-          <span className={s.sub}>an OUT player can go here</span>
+          <span className={dk.sub}>an OUT player can go here</span>
         ) : (
           <>
             <span className={s.openSlot}>OPEN</span>
-            <span className={s.sub}>nobody eligible plays · room to stream</span>
+            <span className={dk.sub}>nobody eligible plays · room to stream</span>
           </>
         )}
       </div>
@@ -557,7 +558,7 @@ const RosterCell = memo(function RosterCell({ row, group, board, isToday, dragga
         <span className={s.rowActions}>
           <button
             type="button"
-            className={s.iconBtn}
+            className={dk.iconBtn}
             style={{ width: 26, height: 26 }}
             aria-label={`Move ${p.name}`}
             title="Move (M)"
@@ -568,7 +569,7 @@ const RosterCell = memo(function RosterCell({ row, group, board, isToday, dragga
           </button>
           <button
             type="button"
-            className={s.iconBtn}
+            className={dk.iconBtn}
             style={{ width: 26, height: 26 }}
             aria-label={`Replace ${p.name} with a free agent`}
             title="Replace (R)"
@@ -653,7 +654,7 @@ export const DayCell = memo(function DayCell({
   if (cell.state === "live")
     right = (
       <span className={s.clock}>
-        <span className={s.liveDot} style={{ width: 5, height: 5 }} />
+        <span className={dk.liveDot} style={{ width: 5, height: 5 }} />
         {cell.note}
       </span>
     );

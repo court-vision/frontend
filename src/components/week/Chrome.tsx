@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import * as Popover from "@radix-ui/react-popover";
 import { motion } from "motion/react";
-import { Check, ChevronDown, Flame, Moon, RotateCw, Sparkles, Sun } from "lucide-react";
+import { Check, ChevronDown, Flame } from "lucide-react";
 import type { LineupMode, WeekDay, WeekGrid } from "@/lib/week-grid";
 import { formatRelativeTime } from "@/lib/relative-time";
 import type { TeamOption } from "./WeekPage";
 import { monthDay, periodRange, pts, signed, tip } from "./format";
+import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
 // ---------------------------------------------------------------------------
@@ -24,46 +26,50 @@ interface BarProps {
   oppName: string | null;
   liveGames: number;
   demo: boolean;
-  theme: "dark" | "light";
-  onTheme: () => void;
   onRefresh: () => void;
   container: HTMLElement | null;
 }
 
-export function Bar({ teams, teamId, onTeam, period, days, oppName, liveGames, demo, theme, onTheme, onRefresh, container }: BarProps) {
+export function Bar({ teams, teamId, onTeam, period, days, oppName, liveGames, demo, onRefresh, container }: BarProps) {
   const [open, setOpen] = useState(false);
   const team = teams.find((t) => t.id === teamId);
   return (
-    <header className={s.bar}>
-      <Link href="/" className={s.mark} title="Back to Court Vision">
-        <span className={s.markGlyph} aria-hidden />
-        court vision
-      </Link>
-      <span className={s.divider} />
+    <DeskBar
+      desk="week"
+      demo={demo}
+      onRefresh={onRefresh}
+      right={
+        liveGames > 0 ? (
+          <span className={dk.badge}>
+            <span className={dk.liveDot} />
+            {liveGames} live
+          </span>
+        ) : null
+      }
+    >
       <Popover.Root open={open} onOpenChange={setOpen}>
         <Popover.Trigger asChild>
-          <button type="button" className={s.ghost} disabled={teams.length < 2 && !!team}>
+          <button type="button" className={dk.ghost} disabled={teams.length < 2 && !!team}>
             <span style={{ fontWeight: 500 }}>{team?.name ?? "Pick a team"}</span>
-            {team ? <span className={s.sub}>{team.tag}</span> : null}
-            {teams.length > 1 ? <ChevronDown size={14} className={s.chev} /> : null}
+            {team ? <span className={dk.sub}>{team.tag}</span> : null}
+            {teams.length > 1 ? <ChevronDown size={14} className={dk.chev} /> : null}
           </button>
         </Popover.Trigger>
         <Popover.Portal container={container}>
-          <Popover.Content className={s.menu} align="start" sideOffset={6} style={{ width: 280 }}>
-            <div className={s.menuList}>
+          <Popover.Content className={dk.menu} align="start" sideOffset={6} style={{ width: 280 }}>
+            <div className={dk.menuList}>
               {teams.map((t) => (
                 <button
                   key={t.id}
                   type="button"
-                  className={s.menuItem}
-                  style={{ width: "100%", border: 0, background: "transparent", color: "inherit", font: "inherit" }}
+                  className={dk.menuItem}
                   onClick={() => {
                     onTeam(t.id);
                     setOpen(false);
                   }}
                 >
-                  <span className={s.grow} style={{ textAlign: "left" }}>{t.name}</span>
-                  <span className={s.sub}>{t.tag}</span>
+                  <span className={dk.grow}>{t.name}</span>
+                  <span className={dk.sub}>{t.tag}</span>
                   {t.id === teamId ? <Check size={13} /> : <span style={{ width: 13 }} />}
                 </button>
               ))}
@@ -72,30 +78,12 @@ export function Bar({ teams, teamId, onTeam, period, days, oppName, liveGames, d
         </Popover.Portal>
       </Popover.Root>
       {period != null && days.length ? (
-        <span className={s.label} style={{ color: "var(--text-2)" }}>
+        <span className={dk.label} style={{ color: "var(--text-2)" }}>
           Week {period} · {periodRange(days[0].date, days[days.length - 1].date)}
           {oppName ? ` · vs ${oppName}` : ""}
         </span>
       ) : null}
-      <span className={s.spacer} />
-      {liveGames > 0 ? (
-        <span className={s.badge}>
-          <span className={s.liveDot} />
-          {liveGames} live
-        </span>
-      ) : null}
-      {demo ? (
-        <span className={`${s.badge} ${s.badgeDemo}`} title="Sample data. Nothing is sent anywhere.">
-          <Sparkles size={11} /> Demo
-        </span>
-      ) : null}
-      <button type="button" className={s.iconBtn} onClick={onRefresh} aria-label="Refresh" title="Refresh">
-        <RotateCw size={14} />
-      </button>
-      <button type="button" className={s.iconBtn} onClick={onTheme} aria-label="Switch theme" title="Theme (T)">
-        {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-      </button>
-    </header>
+    </DeskBar>
   );
 }
 
@@ -114,8 +102,8 @@ interface TapeProps {
 }
 
 function Diff({ value, className }: { value: number; className?: string }) {
-  const cls = className ?? (value > 0.05 ? s.up : value < -0.05 ? s.down : s.flat);
-  return <span className={`${s.chip} ${cls}`}>{signed(value)}</span>;
+  const cls = className ?? (value > 0.05 ? dk.up : value < -0.05 ? dk.down : dk.flat);
+  return <span className={`${dk.chip} ${cls}`}>{signed(value)}</span>;
 }
 
 export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: TapeProps) {
@@ -126,7 +114,7 @@ export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: 
   return (
     <section className={s.tape} aria-label="This week">
       <div className={s.tick}>
-        <span className={s.label}>Now</span>
+        <span className={dk.label}>Now</span>
         <span className={s.tickValue}>
           {pts(grid.now.you)}
           <span className={s.vs}>vs</span>
@@ -135,7 +123,7 @@ export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: 
         </span>
       </div>
       <div className={s.tick}>
-        <span className={s.label}>Projected finish</span>
+        <span className={dk.label}>Projected finish</span>
         <span className={s.tickValue}>
           {pts(grid.projected.you)}
           <span className={s.vs}>vs</span>
@@ -144,27 +132,27 @@ export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: 
         </span>
       </div>
       <div className={s.tick} style={{ justifyContent: "center" }}>
-        <span className={s.label}>Edge</span>
+        <span className={dk.label}>Edge</span>
         <span className={s.edgeBar} title={`${Math.round(share * 1000) / 10}% of projected points`}>
           <span className={s.edgeFill} style={{ width: `${shown * 100}%` }} />
           <span className={s.edgeMid} />
         </span>
       </div>
       <div className={s.tick}>
-        <span className={s.label}>Starts left</span>
+        <span className={dk.label}>Starts left</span>
         <span className={s.tickValue}>
           {grid.startsLeft.you}
           <span className={s.vs}>vs</span>
           <span className={s.tickSub}>{grid.startsLeft.opp}</span>
-          <Diff value={grid.startsLeft.you - grid.startsLeft.opp} className={grid.startsLeft.you >= grid.startsLeft.opp ? s.up : s.down} />
+          <Diff value={grid.startsLeft.you - grid.startsLeft.opp} className={grid.startsLeft.you >= grid.startsLeft.opp ? dk.up : dk.down} />
         </span>
       </div>
       <div className={s.tick}>
-        <span className={s.label}>Tonight</span>
+        <span className={dk.label}>Tonight</span>
         <span className={s.tickValue} style={{ fontSize: 15 }}>
           {tonight.live > 0 ? (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span className={s.liveDot} /> {tonight.live} live
+              <span className={dk.liveDot} /> {tonight.live} live
             </span>
           ) : null}
           <span className={s.tickSub}>
@@ -174,7 +162,7 @@ export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: 
       </div>
       {stagedCount > 0 || previewDelta != null ? (
         <div className={s.tick}>
-          <span className={s.label}>Pending</span>
+          <span className={dk.label}>Pending</span>
           <span className={s.tickValue} style={{ fontSize: 15 }}>
             {stagedCount > 0 ? (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -185,7 +173,7 @@ export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: 
             {previewDelta != null ? (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <span className={s.tickSub}>preview</span>
-                <Diff value={previewDelta} className={s.pv} />
+                <Diff value={previewDelta} className={dk.pv} />
               </span>
             ) : null}
           </span>
@@ -242,8 +230,8 @@ export function Toolbar({
 }: ToolbarProps) {
   return (
     <div className={s.toolbar}>
-      <span className={s.label}>View</span>
-      <div className={s.rail} role="radiogroup" aria-label="Grid view">
+      <span className={dk.label}>View</span>
+      <div className={dk.rail} role="radiogroup" aria-label="Grid view">
         {(["daily", "players"] as const).map((v) => {
           const on = view === v;
           return (
@@ -252,20 +240,20 @@ export function Toolbar({
               type="button"
               role="radio"
               aria-checked={on}
-              className={`${s.day} ${on ? s.dayOn : ""}`}
+              className={`${dk.seg} ${on ? dk.segOn : ""}`}
               onClick={() => !on && onView()}
               title={v === "daily" ? "Every day's lineup, spot by spot" : "One row per player across the week"}
             >
-              {on ? <motion.span layoutId="view-pill" className={s.dayPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
-              <span className={s.dayLabel}>{v === "daily" ? "DAILY LINEUPS" : "PLAYERS"}</span>
+              {on ? <motion.span layoutId="view-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
+              <span className={dk.segLabel}>{v === "daily" ? "DAILY LINEUPS" : "PLAYERS"}</span>
             </button>
           );
         })}
       </div>
-      <span className={s.kbd}>V</span>
-      <span className={s.divider} />
-      <span className={s.label}>Lineup</span>
-      <div className={s.rail} role="radiogroup" aria-label="Lineup view">
+      <span className={dk.kbd}>V</span>
+      <span className={dk.divider} />
+      <span className={dk.label}>Lineup</span>
+      <div className={dk.rail} role="radiogroup" aria-label="Lineup view">
         {(["espn", "best"] as const).map((m) => {
           const on = mode === m;
           return (
@@ -274,25 +262,25 @@ export function Toolbar({
               type="button"
               role="radio"
               aria-checked={on}
-              className={`${s.day} ${on ? s.dayOn : ""}`}
+              className={`${dk.seg} ${on ? dk.segOn : ""}`}
               onClick={() => !on && onMode()}
               title={m === "espn" ? "Your lineup as set on ESPN, carried forward" : "The best lineup for each day's games"}
             >
-              {on ? <motion.span layoutId="mode-pill" className={s.dayPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
-              <span className={s.dayLabel}>
+              {on ? <motion.span layoutId="mode-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
+              <span className={dk.segLabel}>
                 {m === "espn" ? "AS SET ON ESPN" : "BEST EACH DAY"}
-                {m === "best" && bestGain > 0.05 ? <span className={`${s.chip} ${s.up}`}>{signed(bestGain)}</span> : null}
+                {m === "best" && bestGain > 0.05 ? <span className={`${dk.chip} ${dk.up}`}>{signed(bestGain)}</span> : null}
               </span>
             </button>
           );
         })}
       </div>
-      <span className={s.kbd}>L</span>
-      <span className={s.divider} />
+      <span className={dk.kbd}>L</span>
+      <span className={dk.divider} />
       {view === "players" ? (
         <>
-      <span className={s.label}>Day</span>
-      <div className={s.rail} role="radiogroup" aria-label="Lineup day">
+      <span className={dk.label}>Day</span>
+      <div className={dk.rail} role="radiogroup" aria-label="Lineup day">
         {days.map((d) => {
           const on = d.index === viewDay;
           return (
@@ -301,12 +289,12 @@ export function Toolbar({
               type="button"
               role="radio"
               aria-checked={on}
-              className={`${s.day} ${on ? s.dayOn : ""}`}
+              className={`${dk.seg} ${on ? dk.segOn : ""}`}
               disabled={!viewable.has(d.index)}
               onClick={() => onViewDay(d.index)}
             >
-              {on ? <motion.span layoutId="day-pill" className={s.dayPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
-              <span className={s.dayLabel}>
+              {on ? <motion.span layoutId="day-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
+              <span className={dk.segLabel}>
                 {d.index === todayIndex ? <span className={s.todayDot} /> : null}
                 {d.dow.toUpperCase()} {monthDay(d.date).split("/")[1]}
               </span>
@@ -314,19 +302,19 @@ export function Toolbar({
           );
         })}
       </div>
-      <span className={s.kbd}>[</span>
-      <span className={s.kbd}>]</span>
-      <span className={s.divider} />
+      <span className={dk.kbd}>[</span>
+      <span className={dk.kbd}>]</span>
+      <span className={dk.divider} />
         </>
       ) : null}
-      <button type="button" className={s.btn} onClick={onAutoslot} disabled={!canAutoslot || autoslotting} title="Fill that day's lineup: the best lineup for its games (A)">
+      <button type="button" className={dk.btn} onClick={onAutoslot} disabled={!canAutoslot || autoslotting} title="Fill that day's lineup: the best lineup for its games (A)">
         {autoslotting ? "Planning…" : `Autoslot ${autoslotLabel}`}
-        <span className={s.kbd}>A</span>
+        <span className={dk.kbd}>A</span>
       </button>
-      <button type="button" className={`${s.btn} ${heat ? s.toggleOn : ""}`} onClick={onHeat} aria-pressed={heat} title="Shade cells by points (H)">
+      <button type="button" className={`${dk.btn} ${heat ? dk.toggleOn : ""}`} onClick={onHeat} aria-pressed={heat} title="Shade cells by points (H)">
         <Flame size={13} />
         Heat
-        <span className={s.kbd}>H</span>
+        <span className={dk.kbd}>H</span>
       </button>
       {note ? <span className={s.note}>{note}</span> : null}
     </div>
@@ -337,6 +325,20 @@ export function Toolbar({
 // Status line
 // ---------------------------------------------------------------------------
 
+const WEEK_KEYS: Array<[string, string]> = [
+  ["↑↓←→", "move"],
+  ["⏎", "open"],
+  ["M", "move player"],
+  ["R", "replace"],
+  ["A", "autoslot"],
+  ["L", "as set / best"],
+  ["V", "view"],
+  ["[ ]", "day"],
+  ["H", "heat"],
+  ["T", "theme"],
+  ["esc", "clear"],
+];
+
 export function StatusLine({ updatedAt, demo }: { updatedAt: number | null; demo: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -344,24 +346,10 @@ export function StatusLine({ updatedAt, demo }: { updatedAt: number | null; demo
     return () => clearInterval(t);
   }, []);
   return (
-    <footer className={s.status}>
-      <span className={s.keys}>
-        <span><span className={s.kbd}>↑↓←→</span> move</span>
-        <span><span className={s.kbd}>⏎</span> open</span>
-        <span><span className={s.kbd}>M</span> move player</span>
-        <span><span className={s.kbd}>R</span> replace</span>
-        <span><span className={s.kbd}>A</span> autoslot</span>
-        <span><span className={s.kbd}>L</span> as set / best</span>
-        <span><span className={s.kbd}>V</span> view</span>
-        <span><span className={s.kbd}>[ ]</span> day</span>
-        <span><span className={s.kbd}>H</span> heat</span>
-        <span><span className={s.kbd}>T</span> theme</span>
-        <span><span className={s.kbd}>esc</span> clear</span>
-      </span>
-      <span className={s.spacer} />
+    <DeskStatus keys={WEEK_KEYS}>
       {demo ? <span>Demo · sample data · nothing is sent to ESPN</span> : null}
       {!demo && updatedAt ? <span>Updated {formatRelativeTime(updatedAt, now)}</span> : null}
-    </footer>
+    </DeskStatus>
   );
 }
 
@@ -371,12 +359,12 @@ export function StatusLine({ updatedAt, demo }: { updatedAt: number | null; demo
 
 export function EmptyState({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) {
   return (
-    <div className={s.empty}>
-      <span className={s.emptyTitle}>{title}</span>
+    <div className={dk.empty}>
+      <span className={dk.emptyTitle}>{title}</span>
       <span style={{ maxWidth: 420, lineHeight: 1.5 }}>{body}</span>
       <span style={{ display: "flex", gap: 10 }}>
         {action}
-        <Link href="/week?demo" className={s.btn} style={{ textDecoration: "none" }}>
+        <Link href="/week?demo" className={dk.btn} style={{ textDecoration: "none" }}>
           Open the demo week
         </Link>
       </span>
@@ -390,7 +378,7 @@ export function LoadingGrid() {
       {Array.from({ length: 12 }, (_, i) => (
         <div key={i} style={{ display: "grid", gridTemplateColumns: "240px repeat(7, 1fr) 90px", gap: 18 }}>
           {Array.from({ length: 9 }, (_, j) => (
-            <span key={j} className={s.skel} style={{ opacity: 1 - i * 0.06 }} />
+            <span key={j} className={dk.skel} style={{ opacity: 1 - i * 0.06 }} />
           ))}
         </div>
       ))}

@@ -5,6 +5,7 @@ import { slotName } from "@/lib/lineup-editor";
 import type { LineupMove, LineupPlayer, MoveError } from "@/types/lineup-editor";
 import type { StreamerPlayer } from "@/types/streamer";
 import { shortName, signed } from "./format";
+import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
 /** One day's staged moves and the problems they'd hit at ESPN. */
@@ -54,7 +55,7 @@ export function Dock({
     <div className={s.dock} role="region" aria-label="Pending changes">
       {pending.length > 0 ? (
         <div className={s.dockGroup}>
-          <span className={s.label}>ESPN lineup</span>
+          <span className={dk.label}>ESPN lineup</span>
           <span className={s.dockItems}>
             {pending.flatMap((p) =>
               p.moves.map((m) => (
@@ -68,17 +69,17 @@ export function Dock({
               ))
             )}
           </span>
-          <span className={`${s.chip} ${stagedDelta > 0.05 ? s.up : stagedDelta < -0.05 ? s.down : s.flat}`}>
+          <span className={`${dk.chip} ${stagedDelta > 0.05 ? dk.up : stagedDelta < -0.05 ? dk.down : dk.flat}`}>
             {signed(stagedDelta)}
           </span>
-          {problems.length ? <span className={s.error}>{problems[0]}</span> : null}
+          {problems.length ? <span className={dk.error}>{problems[0]}</span> : null}
           {movesBlocked ? <span className={s.note}>{movesBlocked}</span> : null}
-          <button type="button" className={s.btn} onClick={onDiscardMoves}>
+          <button type="button" className={dk.btn} onClick={onDiscardMoves}>
             Discard
           </button>
           <button
             type="button"
-            className={`${s.btn} ${s.btnPrimary}`}
+            className={`${dk.btn} ${dk.btnPrimary}`}
             onClick={onReviewMoves}
             disabled={!canSendMoves || problems.length > 0}
           >
@@ -88,7 +89,7 @@ export function Dock({
       ) : null}
       {swap ? (
         <div className={s.dockGroup}>
-          <span className={s.label}>Roster</span>
+          <span className={dk.label}>Roster</span>
           <span className={s.dockItems}>
             <span className={`${s.pill} ${s.pillPreview}`}>
               <span style={{ color: "var(--up)" }}>+</span> {swap.fa.name}
@@ -97,14 +98,14 @@ export function Dock({
               <span style={{ color: "var(--down)" }}>−</span> {swap.out.name}
             </span>
           </span>
-          <span className={`${s.chip} ${s.pv}`} title="Started on his game days">{signed(swap.delta)} week</span>
+          <span className={`${dk.chip} ${dk.pv}`} title="Started on his game days">{signed(swap.delta)} week</span>
           {swap.blocked ? <span className={s.note}>{swap.blocked}</span> : null}
-          <button type="button" className={s.btn} onClick={onCancelSwap}>
+          <button type="button" className={dk.btn} onClick={onCancelSwap}>
             Cancel
           </button>
           <button
             type="button"
-            className={`${s.btn} ${s.btnPrimary}`}
+            className={`${dk.btn} ${dk.btnPrimary}`}
             onClick={onReviewSwap}
             disabled={!!swap.blocked}
           >
@@ -137,28 +138,28 @@ export function ConfirmDialog({ open, onOpenChange, container, title, body, line
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal container={container}>
-        <Dialog.Overlay className={s.overlay} />
-        <Dialog.Content className={s.dialog} aria-describedby={undefined}>
-          <div className={s.dialogBody}>
-            <Dialog.Title className={s.dialogTitle}>{title}</Dialog.Title>
-            <p className={s.dialogText}>{body}</p>
+        <Dialog.Overlay className={dk.overlay} />
+        <Dialog.Content className={dk.dialog} aria-describedby={undefined}>
+          <div className={dk.dialogBody}>
+            <Dialog.Title className={dk.dialogTitle}>{title}</Dialog.Title>
+            <p className={dk.dialogText}>{body}</p>
             <div className={s.changeList}>
               {lines.map((l) => (
                 <div key={l.key} className={s.change}>
-                  <span className={s.grow}>{l.left}</span>
+                  <span className={dk.grow}>{l.left}</span>
                   {l.right}
                 </div>
               ))}
             </div>
-            {error ? <span className={s.error}>{error}</span> : null}
+            {error ? <span className={dk.error}>{error}</span> : null}
           </div>
-          <div className={s.dialogFoot}>
+          <div className={dk.dialogFoot}>
             <Dialog.Close asChild>
-              <button type="button" className={s.btn}>
+              <button type="button" className={dk.btn}>
                 Cancel
               </button>
             </Dialog.Close>
-            <button type="button" className={`${s.btn} ${s.btnPrimary}`} onClick={onConfirm} disabled={busy}>
+            <button type="button" className={`${dk.btn} ${dk.btnPrimary}`} onClick={onConfirm} disabled={busy}>
               {busy ? "Sending…" : confirmLabel}
             </button>
           </div>

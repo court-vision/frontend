@@ -7,8 +7,9 @@ import { Repeat2 } from "lucide-react";
 import { slotName } from "@/lib/lineup-editor";
 import type { SourcePlayer, WeekDay } from "@/lib/week-grid";
 import type { StreamerPlayer } from "@/types/streamer";
-import { Headshot } from "./Headshot";
+import { Headshot } from "@/components/desk/Headshot";
 import { pts, signed } from "./format";
+import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
 interface Anchored {
@@ -23,7 +24,7 @@ function Shell({ anchor, container, onClose, wide, children }: Anchored & { wide
       <Popover.Anchor virtualRef={{ current: anchor }} />
       <Popover.Portal container={container}>
         <Popover.Content
-          className={`${s.menu} ${wide ? s.menuWide : ""}`}
+          className={`${dk.menu} ${wide ? dk.menuWide : ""}`}
           side="right"
           align="start"
           sideOffset={6}
@@ -65,44 +66,44 @@ export function MoveMenu({ player, currentSlot, targets, blocked, onPick, onRepl
   return (
     <Shell {...shell}>
       <Command ref={ref} loop label={`Move ${player.name}`} style={{ outline: "none" }}>
-        <div className={s.menuHead} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <div className={dk.menuHead} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <Headshot nbaId={player.nbaId} name={player.name} size={34} />
           <span className={s.who}>
-            <span className={s.menuTitle}>{player.name}</span>
-            <span className={s.sub}>
+            <span className={dk.menuTitle}>{player.name}</span>
+            <span className={dk.sub}>
               {currentSlot} · {player.team} · {pts(player.avg)} proj
             </span>
           </span>
         </div>
-        <Command.List className={s.menuList}>
+        <Command.List className={dk.menuList}>
           {blocked ? null : (
-            <Command.Group heading={<span className={`${s.label} ${s.menuGroupLabel}`}>Move to · change to your week</span>}>
-              {targets.length === 0 ? <div className={s.menuEmpty}>No open or swappable slot fits him.</div> : null}
+            <Command.Group heading={<span className={`${dk.label} ${dk.menuGroupLabel}`}>Move to · change to your week</span>}>
+              {targets.length === 0 ? <div className={dk.menuEmpty}>No open or swappable slot fits him.</div> : null}
               {targets.map((t) => (
                 <Command.Item
                   key={t.slotId}
                   value={`slot-${t.slotId}`}
-                  className={s.menuItem}
+                  className={dk.menuItem}
                   onSelect={() => onPick(t.slotId)}
                 >
-                  <span className={s.mono} style={{ width: 30, color: "var(--text)" }}>
+                  <span className={dk.mono} style={{ width: 30, color: "var(--text)" }}>
                     {slotName(t.slotId)}
                   </span>
-                  <span className={`${s.grow} ${s.sub}`}>{t.partner ? `swap with ${t.partner}` : "open"}</span>
-                  <span className={`${s.chip} ${t.delta > 0.05 ? s.up : t.delta < -0.05 ? s.down : s.flat}`}>
+                  <span className={`${dk.grow} ${dk.sub}`}>{t.partner ? `swap with ${t.partner}` : "open"}</span>
+                  <span className={`${dk.chip} ${t.delta > 0.05 ? dk.up : t.delta < -0.05 ? dk.down : dk.flat}`}>
                     {signed(t.delta)}
                   </span>
                 </Command.Item>
               ))}
             </Command.Group>
           )}
-          <Command.Item value="replace" className={s.menuItem} onSelect={onReplace}>
+          <Command.Item value="replace" className={dk.menuItem} onSelect={onReplace}>
             <Repeat2 size={14} style={{ color: "var(--preview)" }} />
-            <span className={s.grow}>Replace with a free agent…</span>
-            <span className={s.kbd}>R</span>
+            <span className={dk.grow}>Replace with a free agent…</span>
+            <span className={dk.kbd}>R</span>
           </Command.Item>
         </Command.List>
-        {blocked ? <div className={s.menuFoot}>{blocked}</div> : null}
+        {blocked ? <div className={dk.menuFoot}>{blocked}</div> : null}
       </Command>
     </Shell>
   );
@@ -147,14 +148,14 @@ export function ReplaceMenu({
         value={highlighted != null ? `fa-${highlighted}` : ""}
         onValueChange={(v) => onHighlight(v.startsWith("fa-") ? Number(v.slice(3)) : null)}
       >
-        <div className={s.menuHead}>
-          <span className={s.menuTitle}>Replace {player.name}</span>
-          <span className={s.sub}>Highlight a free agent to preview his week in the grid · ⏎ to keep it</span>
+        <div className={dk.menuHead}>
+          <span className={dk.menuTitle}>Replace {player.name}</span>
+          <span className={dk.sub}>Highlight a free agent to preview his week in the grid · ⏎ to keep it</span>
         </div>
-        <Command.Input autoFocus className={s.menuInput} placeholder="Search free agents" />
-        <Command.List className={s.menuList}>
-          {loading ? <div className={s.menuEmpty}>Loading free agents…</div> : null}
-          <Command.Empty className={s.menuEmpty}>No free agent matches.</Command.Empty>
+        <Command.Input autoFocus className={dk.menuInput} placeholder="Search free agents" />
+        <Command.List className={dk.menuList}>
+          {loading ? <div className={dk.menuEmpty}>Loading free agents…</div> : null}
+          <Command.Empty className={dk.menuEmpty}>No free agent matches.</Command.Empty>
           {options.map(({ fa, gain }) => {
             const playing = new Set(fa.game_days);
             const waivers = fa.acquisition_status === "waivers";
@@ -163,7 +164,7 @@ export function ReplaceMenu({
                 key={fa.player_id}
                 value={`fa-${fa.player_id}`}
                 keywords={[fa.name, fa.team, ...fa.valid_positions]}
-                className={s.menuItem}
+                className={dk.menuItem}
                 onSelect={() => onPick(fa)}
               >
                 <Headshot nbaId={fa.nba_player_id} name={fa.name} size={28} />
@@ -180,11 +181,11 @@ export function ReplaceMenu({
                     <span key={d.index} className={`${s.gameTick} ${playing.has(d.index) ? s.gameTickOn : ""}`} />
                   ))}
                 </span>
-                <span className={s.mono} style={{ width: 40, textAlign: "right", color: "var(--text-2)" }}>
+                <span className={dk.mono} style={{ width: 40, textAlign: "right", color: "var(--text-2)" }}>
                   {pts(fa.avg_points_last_n ?? fa.avg_points_season)}
                 </span>
                 <span
-                  className={`${s.chip} ${gain > 0.05 ? s.up : gain < -0.05 ? s.down : s.flat}`}
+                  className={`${dk.chip} ${gain > 0.05 ? dk.up : gain < -0.05 ? dk.down : dk.flat}`}
                   style={{ minWidth: 54, justifyContent: "flex-end" }}
                 >
                   {signed(gain)}
@@ -193,7 +194,7 @@ export function ReplaceMenu({
             );
           })}
         </Command.List>
-        <div className={s.menuFoot}>
+        <div className={dk.menuFoot}>
           Sorted by projected change to your week · bars are his games left · column is his recent average
         </div>
       </Command>

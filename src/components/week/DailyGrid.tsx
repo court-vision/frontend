@@ -26,9 +26,10 @@ import {
   type WeekGrid as Grid,
 } from "@/lib/week-grid";
 import type { LineupState } from "@/types/lineup-editor";
-import { Headshot } from "./Headshot";
+import { Headshot } from "@/components/desk/Headshot";
 import { type Cursor, type DropTarget } from "./WeekGrid";
 import { monthDay, oppShort, pts, shortName, signed, tip } from "./format";
+import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
 /** Rearranging a day's ESPN lineup: every editable day column takes drags and drops. */
@@ -193,7 +194,7 @@ export function DailyGrid({
         <div className={s.grid} style={{ ["--cols" as string]: cols, minWidth }}>
           <div className={s.head} role="row">
             <div className={s.slotCell} role="columnheader">
-              <span className={s.label}>Slot</span>
+              <span className={dk.label}>Slot</span>
             </div>
             {days.map((d, i) => {
               const focused = i === focusDay;
@@ -251,12 +252,12 @@ export function DailyGrid({
                   {starts ? (
                     <div className={s.groupRow} role="presentation">
                       <div className={s.groupLabel}>
-                        <span className={s.label} style={{ color: "var(--text-2)" }}>
+                        <span className={dk.label} style={{ color: "var(--text-2)" }}>
                           {def.group === "bench" ? "Bench" : "IR"}
                         </span>
                       </div>
                       <div className={s.groupFill}>
-                        <span className={s.sub} style={{ paddingLeft: 10 }}>
+                        <span className={dk.sub} style={{ paddingLeft: 10 }}>
                           {def.group === "bench" ? "games here don't count" : "doesn't score"}
                         </span>
                       </div>
@@ -338,7 +339,7 @@ export function DailyGrid({
               </span>
             </span>
             {overTarget ? (
-              <span className={`${s.chip} ${overTarget.delta > 0.05 ? s.up : overTarget.delta < -0.05 ? s.down : s.flat}`}>
+              <span className={`${dk.chip} ${overTarget.delta > 0.05 ? dk.up : overTarget.delta < -0.05 ? dk.down : dk.flat}`}>
                 {signed(overTarget.delta)} wk
               </span>
             ) : null}
@@ -462,7 +463,7 @@ const SeatPair = memo(function SeatPair({
         ) : def.group === "active" ? (
           <span className={s.openSlot}>OPEN</span>
         ) : (
-          <span className={s.sub}>—</span>
+          <span className={dk.sub}>—</span>
         )}
       </div>
       {focused ? (
@@ -531,13 +532,13 @@ function CompactValue({ cell }: { cell: GridCell }) {
       return (
         <span className={s.upcoming}>
           <span>{oppShort(cell.opp)}</span>
-          <span className={s.sub}>{tip(cell.note)}</span>
+          <span className={dk.sub}>{tip(cell.note)}</span>
         </span>
       );
     case "live":
       return (
         <span className={s.cellMain} style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5 }}>
-          <span className={s.liveDot} style={{ width: 5, height: 5 }} />
+          <span className={dk.liveDot} style={{ width: 5, height: 5 }} />
           {pts(cell.value)}
         </span>
       );

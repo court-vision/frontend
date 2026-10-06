@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import s from "./week.module.css";
+import dk from "@/components/desk/desk.module.css";
 
 /**
  * NBA's portrait, keyed by the nba_api id (`nba.players.id`). The CDN answers
@@ -25,7 +25,7 @@ export function Headshot({ nbaId, name, size = 30 }: { nbaId: number | null | un
     .map((w) => w[0])
     .join("");
   return (
-    <span className={s.face} style={{ width: size, height: size }} aria-hidden>
+    <span className={dk.face} style={{ width: size, height: size }} data-face aria-hidden>
       {nbaId != null && failed !== nbaId ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -38,7 +38,7 @@ export function Headshot({ nbaId, name, size = 30 }: { nbaId: number | null | un
           onError={() => setFailed(nbaId)}
         />
       ) : (
-        <span className={s.faceInitials}>{initials}</span>
+        <span className={dk.faceInitials}>{initials}</span>
       )}
     </span>
   );
