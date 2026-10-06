@@ -76,7 +76,7 @@ export function MoveMenu({ player, currentSlot, targets, blocked, onPick, onRepl
         </div>
         <Command.List className={s.menuList}>
           {blocked ? null : (
-            <Command.Group heading={<span className={`${s.label} ${s.menuGroupLabel}`}>Move today to</span>}>
+            <Command.Group heading={<span className={`${s.label} ${s.menuGroupLabel}`}>Move to · change to your week</span>}>
               {targets.length === 0 ? <div className={s.menuEmpty}>No open or swappable slot fits him.</div> : null}
               {targets.map((t) => (
                 <Command.Item

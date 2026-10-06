@@ -17,8 +17,9 @@ import {
   type Staged,
 } from "@/lib/lineup-editor";
 import type { LineupPlayer } from "@/types/lineup-editor";
+import type { StreamerPlayer } from "@/types/streamer";
 import { writeBlockedCopy } from "@/types/lineup-editor";
-import { buildWeekGrid, viewableDays, type Incoming } from "@/lib/week-grid";
+import { buildWeekGrid, viewableDays, type Incoming, type LineupMode } from "@/lib/week-grid";
 import { sourceFromStreamer } from "@/lib/week-source";
 import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar } from "./Chrome";
 import { ConfirmDialog, Dock, type PendingSwap } from "./Dock";
@@ -63,6 +64,9 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
     });
   }, []);
   const [heat, setHeat] = useState(false);
+  // "espn": the lineup as set on ESPN, carried forward; "best": the best fit for each day's games.
+  const [mode, setMode] = useState<LineupMode>("espn");
+  const toggleMode = useCallback(() => setMode((m) => (m === "espn" ? "best" : "espn")), []);
 
   // ---- the week ----
   const { makeSource } = data;
@@ -90,20 +94,46 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
   );
 
   const grid = useMemo(
-    () => (source ? buildWeekGrid({ source, board, staged, incoming, viewDay }) : null),
-    [source, board, staged, incoming, viewDay]
+    () => (source ? buildWeekGrid({ source, board, staged, incoming, viewDay, mode }) : null),
+    [source, board, staged, incoming, viewDay, mode]
   );
   const gridNoPreview = useMemo(
-    () => (source && incoming ? buildWeekGrid({ source, board, staged, incoming: null, viewDay }) : grid),
-    [source, board, staged, incoming, viewDay, grid]
+    () => (source && incoming ? buildWeekGrid({ source, board, staged, incoming: null, viewDay, mode }) : grid),
+    [source, board, staged, incoming, viewDay, mode, grid]
   );
   const hasStaging = Object.keys(staged).length > 0;
   const gridUnstaged = useMemo(
-    () => (source && hasStaging ? buildWeekGrid({ source, board, staged: NO_STAGING, incoming: null, viewDay }) : gridNoPreview),
-    [source, board, hasStaging, viewDay, gridNoPreview]
+    () =>
+      source && hasStaging
+        ? buildWeekGrid({ source, board, staged: NO_STAGING, incoming: null, viewDay, mode })
+        : gridNoPreview,
+    [source, board, hasStaging, viewDay, mode, gridNoPreview]
   );
   const stagedDelta = gridNoPreview && gridUnstaged ? gridNoPreview.projected.you - gridUnstaged.projected.you : 0;
-  const previewDelta = incoming && grid && gridNoPreview ? grid.projected.you - gridNoPreview.projected.you : null;
+
+  // A streamer is worth what he adds when he starts on his game days, so free
+  // agents are judged against the best lineup each day, whichever view is on.
+  const gridBest = useMemo(
+    () => (source ? buildWeekGrid({ source, board, staged, incoming: null, viewDay, mode: "best" }) : null),
+    [source, board, staged, viewDay]
+  );
+  const bestGain = gridBest && gridNoPreview && mode === "espn" ? gridBest.projected.you - gridNoPreview.projected.you : 0;
+  const faGain = useCallback(
+    (fa: StreamerPlayer, replaces: number) => {
+      if (!source || !gridBest) return 0;
+      const g = buildWeekGrid({
+        source,
+        board,
+        staged,
+        incoming: { player: sourceFromStreamer(fa, source.days, null), replaces },
+        viewDay,
+        mode: "best",
+      });
+      return g.projected.you - gridBest.projected.you;
+    },
+    [source, gridBest, board, staged, viewDay]
+  );
+  const previewDelta = preview && previewFa ? faGain(previewFa, preview.replaces) : null;
 
   const boardById = useMemo(() => new Map((board?.players ?? []).map((p) => [p.player_id, p])), [board]);
 
@@ -148,55 +178,47 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
   const menuRow = menu ? rowByKey(menu.rowKey) : null;
   const menuPlayer = menuRow?.player ?? null;
 
-  // Move targets for the player in the menu, each with its effect on today.
+  // Move targets for the player in the menu, each with its effect on the week
+  // (a lineup move carries forward on ESPN until it is changed again).
   const moveInfo = useMemo(() => {
     if (!menu || menu.type !== "move" || !menuPlayer || !grid) return null;
     const b = boardById.get(menuPlayer.id);
     let blocked: string | null = null;
     if (!editor || !board) blocked = "Lineup changes from here need an ESPN team.";
-    else if (viewDay !== todayIndex) blocked = "This is the best fit for that day's games. Only today's lineup can be sent to ESPN from here for now.";
-    else if (b?.locked) blocked = "Locked: his game has started.";
+    else if (mode === "best" && viewDay !== todayIndex) {
+      blocked = "This view is the best fit for that day's games. Switch to “As set on ESPN” to move players.";
+    } else if (b?.locked) blocked = "Locked: his game has started.";
     let targets: MoveTarget[] = [];
-    if (!blocked && editor && board && source && todayIndex != null) {
-      const base = gridNoPreview?.you[todayIndex].projected ?? 0;
+    if (!blocked && editor && board && source && gridNoPreview) {
+      const base = gridNoPreview.projected.you;
       targets = editor.eligibleTargetsFor(menuPlayer.id).map((slot) => {
         const next = stagePure(board, staged, menuPlayer.id, slot);
-        const g = buildWeekGrid({ source, board, staged: next, incoming: null, viewDay });
+        const g = buildWeekGrid({ source, board, staged: next, incoming: null, viewDay, mode });
         return {
           slotId: slot,
           partner: swapPartner(board, staged, menuPlayer.id, slot)?.name ?? null,
-          delta: (g.you[todayIndex].projected ?? 0) - base,
+          delta: g.projected.you - base,
         };
       });
     }
     return { blocked, targets };
-  }, [menu, menuPlayer, grid, boardById, editor, board, viewDay, todayIndex, source, gridNoPreview, staged]);
+  }, [menu, menuPlayer, grid, boardById, editor, board, viewDay, todayIndex, mode, source, gridNoPreview, staged]);
 
   // Free agents for the replace menu, best change to the week first.
   const replaceOptions = useMemo<ReplaceOption[]>(() => {
-    if (!menu || menu.type !== "replace" || !menuPlayer || !source || !gridNoPreview) return [];
-    const base = gridNoPreview.projected.you;
+    if (!menu || menu.type !== "replace" || !menuPlayer) return [];
     return data.streamers
       .slice(0, MAX_REPLACE_OPTIONS)
-      .map((fa) => {
-        const g = buildWeekGrid({
-          source,
-          board,
-          staged,
-          incoming: { player: sourceFromStreamer(fa, source.days, null), replaces: menuPlayer.id },
-          viewDay,
-        });
-        return { fa, gain: g.projected.you - base };
-      })
+      .map((fa) => ({ fa, gain: faGain(fa, menuPlayer.id) }))
       .sort((a, b) => b.gain - a.gain);
-  }, [menu, menuPlayer, source, gridNoPreview, data.streamers, board, staged, viewDay]);
+  }, [menu, menuPlayer, data.streamers, faGain]);
 
   // ---- drag to rearrange today's lineup ----
   const editorStageMoves = editor?.stageMoves;
   const drag = useMemo<DragApi | null>(() => {
-    if (!editorStageMoves || !board || !source || !grid || !gridNoPreview || todayIndex == null || viewDay !== todayIndex) {
-      return null;
-    }
+    if (!editorStageMoves || !board || !source || !grid || !gridNoPreview) return null;
+    // The best-lineup view of a later day is a plan, not something to drag.
+    if (mode === "best" && viewDay !== todayIndex) return null;
     type Planned = DropTarget & { moves: Array<{ player_id: number; to_slot_id: number }> };
     let last: { key: string; targets: Map<string, Planned> } | null = null;
 
@@ -206,7 +228,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
       if (!mover || mover.locked || from?.kind !== "player") return null;
       const assign = boardAssignment(board, staged);
       const current = assign.get(mover.player_id) ?? mover.lineup_slot_id;
-      const base = gridNoPreview.you[todayIndex].projected ?? 0;
+      const base = gridNoPreview.projected.you;
       const out = new Map<string, Planned>();
       for (const row of grid.rows) {
         if (row.key === fromKey || row.slotId == null || row.kind === "incoming") continue;
@@ -225,11 +247,11 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
           ];
         } else continue;
         const next = stageMovesPure(board, staged, moves);
-        const g = buildWeekGrid({ source, board, staged: next, incoming: null, viewDay });
+        const g = buildWeekGrid({ source, board, staged: next, incoming: null, viewDay, mode });
         out.set(row.key, {
           slotId: slot,
           swapWith: moves.length > 1 && other ? other.name : null,
-          delta: (g.you[todayIndex].projected ?? 0) - base,
+          delta: g.projected.you - base,
           moves,
         });
       }
@@ -244,7 +266,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
         if (plan) editorStageMoves(plan.moves);
       },
     };
-  }, [editorStageMoves, board, source, grid, gridNoPreview, todayIndex, viewDay, boardById, staged]);
+  }, [editorStageMoves, board, source, grid, gridNoPreview, todayIndex, viewDay, mode, boardById, staged]);
 
   // ---- writes ----
   const autoslot = useCallback(() => {
@@ -255,17 +277,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
 
   const swapOut = pinned ? source?.mine.find((p) => p.id === pinned.replaces) ?? null : null;
   const swapFa = pinned ? data.streamers.find((f) => f.player_id === pinned.faId) ?? null : null;
-  const pinnedDelta = useMemo(() => {
-    if (!pinned || !swapFa || !source || !gridNoPreview) return 0;
-    const g = buildWeekGrid({
-      source,
-      board,
-      staged,
-      incoming: { player: sourceFromStreamer(swapFa, source.days, null), replaces: pinned.replaces },
-      viewDay,
-    });
-    return g.projected.you - gridNoPreview.projected.you;
-  }, [pinned, swapFa, source, gridNoPreview, board, staged, viewDay]);
+  const pinnedDelta = pinned && swapFa ? faGain(swapFa, pinned.replaces) : 0;
 
   let swap: PendingSwap | null = null;
   if (pinned && swapFa && swapOut) {
@@ -357,6 +369,9 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
         case "]":
           stepDay(1);
           return;
+        case "l":
+          toggleMode();
+          return;
         case "h":
           setHeat((h) => !h);
           return;
@@ -371,7 +386,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, openMove, openReplace, autoslot, toggleTheme, pinned]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, openMove, openReplace, autoslot, toggleTheme, toggleMode, pinned]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
@@ -387,11 +402,13 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
   }, [grid, todayIndex]);
 
   const toolbarNote =
-    viewDay !== todayIndex && todayIndex != null
-      ? "Planned: the best lineup for that day's games"
-      : todayIndex == null && source
-        ? "The period hasn't started: every day shows its best lineup"
-        : movesBlocked;
+    mode === "best"
+      ? viewDay !== todayIndex
+        ? "Planned: the best lineup for that day's games"
+        : "Later days show the best lineup for their games"
+      : todayIndex == null
+        ? "Your ESPN lineup, carried into every day until you change it"
+        : "Your ESPN lineup carries forward until you change it";
 
   let body: React.ReactNode;
   if (data.status === "signed-out") {
@@ -443,7 +460,10 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
           viewable={viewable}
           todayIndex={todayIndex}
           onViewDay={setViewDay}
-          canAutoslot={!!editor && !!board && todayIndex != null}
+          canAutoslot={!!editor && !!board}
+          mode={mode}
+          onMode={toggleMode}
+          bestGain={bestGain}
           autoslotting={editor?.planStatus === "loading"}
           onAutoslot={autoslot}
           heat={heat}
@@ -464,6 +484,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
           onMove={openMove}
           onReplace={openReplace}
           drag={drag}
+          mode={mode}
         />
         <Dock
           moves={editor?.moves ?? []}
@@ -551,7 +572,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
         body={
           data.demo
             ? "Demo: the moves apply here only."
-            : "They go to ESPN together as one change to today's lineup, then the board re-reads."
+            : "They go to ESPN together as one change to your lineup, which carries forward until you change it again."
         }
         lines={(editor?.moves ?? []).map((m) => ({
           key: String(m.player_id),

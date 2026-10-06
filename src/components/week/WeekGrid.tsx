@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/core";
 import { ArrowLeftRight, Lock, Repeat2 } from "lucide-react";
 import { BENCH_SLOT_ID, IR_SLOT_ID, isActiveSlot, slotName } from "@/lib/lineup-editor";
-import { isOutStatus, type GridCell, type GridRow, type WeekGrid as Grid } from "@/lib/week-grid";
+import { isOutStatus, type GridCell, type GridRow, type LineupMode, type WeekGrid as Grid } from "@/lib/week-grid";
 import type { LineupPlayer } from "@/types/lineup-editor";
 import { Headshot } from "./Headshot";
 import { monthDay, oppShort, pts, signed, tip } from "./format";
@@ -58,6 +58,7 @@ interface WeekGridProps {
   onReplace: (rowKey: string, el: HTMLElement) => void;
   /** Present when the lineup on screen can be rearranged (today, ESPN board). */
   drag: DragApi | null;
+  mode: LineupMode;
 }
 
 type Group = "active" | "bench" | "ir";
@@ -93,6 +94,7 @@ export function WeekGrid({
   onMove,
   onReplace,
   drag,
+  mode,
 }: WeekGridProps) {
   const [hotCol, setHotCol] = useState<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -101,6 +103,8 @@ export function WeekGrid({
   const peak = Math.max(1, ...grid.rows.flatMap((r) => r.cells.map((c) => (c.counts ? c.value ?? 0 : 0))));
   const groups = rowGroups(grid.rows);
   const isToday = grid.viewDay === todayIndex;
+  // Rows follow the ESPN board in the as-set view, and on today in either view.
+  const onBoard = mode === "espn" || isToday;
 
   // ---- drag ----
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -165,7 +169,9 @@ export function WeekGrid({
           <div className={s.head} role="row">
             <div className={s.rosterCell} role="columnheader">
               <span className={s.label}>
-                Lineup · {grid.days[grid.viewDay] ? `${grid.days[grid.viewDay].dow} ${monthDay(grid.days[grid.viewDay].date)}` : ""}
+                {onBoard
+                  ? "ESPN lineup"
+                  : `Best lineup · ${grid.days[grid.viewDay] ? `${grid.days[grid.viewDay].dow} ${monthDay(grid.days[grid.viewDay].date)}` : ""}`}
               </span>
               {drag ? <span className={s.sub} style={{ marginLeft: "auto" }}>drag to rearrange</span> : null}
             </div>
@@ -224,7 +230,7 @@ export function WeekGrid({
               const count = groups.filter((g, j) => g === group && grid.rows[j].player && grid.rows[j].kind !== "incoming").length;
               return (
                 <Fragment key={row.key}>
-                  {starts ? <GroupRow group={group} count={count} isToday={isToday} /> : null}
+                  {starts ? <GroupRow group={group} count={count} onBoard={onBoard} /> : null}
                   <GridRowView
                     row={row}
                     group={group}
@@ -291,7 +297,7 @@ export function WeekGrid({
             </span>
             {overTarget ? (
               <span className={`${s.chip} ${overTarget.delta > 0.05 ? s.up : overTarget.delta < -0.05 ? s.down : s.flat}`}>
-                {signed(overTarget.delta)}
+                {signed(overTarget.delta)} wk
               </span>
             ) : null}
           </div>
@@ -305,12 +311,12 @@ export function WeekGrid({
 // Rows
 // ---------------------------------------------------------------------------
 
-function GroupRow({ group, count, isToday }: { group: Group; count: number; isToday: boolean }) {
+function GroupRow({ group, count, onBoard }: { group: Group; count: number; onBoard: boolean }) {
   const label = group === "bench" ? "Bench" : "Injured reserve";
   const note =
     group === "bench"
-      ? isToday
-        ? "not in today's lineup"
+      ? onBoard
+        ? "games here don't count"
         : "no game, or no room that day"
       : "doesn't score";
   return (

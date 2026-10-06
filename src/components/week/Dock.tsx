@@ -47,7 +47,7 @@ export function Dock({
     <div className={s.dock} role="region" aria-label="Pending changes">
       {moves.length > 0 ? (
         <div className={s.dockGroup}>
-          <span className={s.label}>Lineup · today</span>
+          <span className={s.label}>ESPN lineup</span>
           <span className={s.dockItems}>
             {moves.map((m) => (
               <span key={m.player_id} className={`${s.pill} ${s.pillWarn}`}>
@@ -87,7 +87,7 @@ export function Dock({
               <span style={{ color: "var(--down)" }}>−</span> {swap.out.name}
             </span>
           </span>
-          <span className={`${s.chip} ${s.pv}`}>{signed(swap.delta)} week</span>
+          <span className={`${s.chip} ${s.pv}`} title="Started on his game days">{signed(swap.delta)} week</span>
           {swap.blocked ? <span className={s.note}>{swap.blocked}</span> : null}
           <button type="button" className={s.btn} onClick={onCancelSwap}>
             Cancel

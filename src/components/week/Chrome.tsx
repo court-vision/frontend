@@ -5,7 +5,7 @@ import Link from "next/link";
 import * as Popover from "@radix-ui/react-popover";
 import { motion } from "motion/react";
 import { Check, ChevronDown, Flame, Moon, RotateCw, Sparkles, Sun } from "lucide-react";
-import type { WeekDay, WeekGrid } from "@/lib/week-grid";
+import type { LineupMode, WeekDay, WeekGrid } from "@/lib/week-grid";
 import { formatRelativeTime } from "@/lib/relative-time";
 import type { TeamOption } from "./WeekPage";
 import { monthDay, periodRange, pts, signed, tip } from "./format";
@@ -211,12 +211,56 @@ interface ToolbarProps {
   heat: boolean;
   onHeat: () => void;
   note: string | null;
+  mode: LineupMode;
+  onMode: () => void;
+  /** Projected points the best lineup each day adds over the lineup as set. */
+  bestGain: number;
 }
 
-export function Toolbar({ days, viewDay, viewable, todayIndex, onViewDay, canAutoslot, autoslotting, onAutoslot, heat, onHeat, note }: ToolbarProps) {
+export function Toolbar({
+  days,
+  viewDay,
+  viewable,
+  todayIndex,
+  onViewDay,
+  canAutoslot,
+  autoslotting,
+  onAutoslot,
+  heat,
+  onHeat,
+  note,
+  mode,
+  onMode,
+  bestGain,
+}: ToolbarProps) {
   return (
     <div className={s.toolbar}>
-      <span className={s.label}>Lineup for</span>
+      <span className={s.label}>Lineup</span>
+      <div className={s.rail} role="radiogroup" aria-label="Lineup view">
+        {(["espn", "best"] as const).map((m) => {
+          const on = mode === m;
+          return (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              className={`${s.day} ${on ? s.dayOn : ""}`}
+              onClick={() => !on && onMode()}
+              title={m === "espn" ? "Your lineup as set on ESPN, carried forward" : "The best lineup for each day's games"}
+            >
+              {on ? <motion.span layoutId="mode-pill" className={s.dayPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
+              <span className={s.dayLabel}>
+                {m === "espn" ? "AS SET ON ESPN" : "BEST EACH DAY"}
+                {m === "best" && bestGain > 0.05 ? <span className={`${s.chip} ${s.up}`}>{signed(bestGain)}</span> : null}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <span className={s.kbd}>L</span>
+      <span className={s.divider} />
+      <span className={s.label}>Day</span>
       <div className={s.rail} role="radiogroup" aria-label="Lineup day">
         {days.map((d) => {
           const on = d.index === viewDay;
@@ -243,7 +287,7 @@ export function Toolbar({ days, viewDay, viewable, todayIndex, onViewDay, canAut
       <span className={s.kbd}>]</span>
       <span className={s.divider} />
       <button type="button" className={s.btn} onClick={onAutoslot} disabled={!canAutoslot || autoslotting} title="Fill today's lineup (A)">
-        {autoslotting ? "Planning…" : "Autoslot today"}
+        {autoslotting ? "Planning…" : "Autoslot"}
         <span className={s.kbd}>A</span>
       </button>
       <button type="button" className={`${s.btn} ${heat ? s.toggleOn : ""}`} onClick={onHeat} aria-pressed={heat} title="Shade cells by points (H)">
@@ -274,6 +318,7 @@ export function StatusLine({ updatedAt, demo }: { updatedAt: number | null; demo
         <span><span className={s.kbd}>M</span> move player</span>
         <span><span className={s.kbd}>R</span> replace</span>
         <span><span className={s.kbd}>A</span> autoslot</span>
+        <span><span className={s.kbd}>L</span> lineup view</span>
         <span><span className={s.kbd}>[ ]</span> day</span>
         <span><span className={s.kbd}>H</span> heat</span>
         <span><span className={s.kbd}>T</span> theme</span>

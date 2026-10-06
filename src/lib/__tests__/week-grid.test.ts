@@ -66,14 +66,32 @@ describe("buildWeekGrid on the demo week", () => {
     expect(row.cells[today]).toMatchObject({ state: "upcoming", tag: "BENCH", counts: false });
   });
 
-  test("staging White into Maxey's seat adds his projection to today and the finish", () => {
+  test("staging White into Maxey's seat carries forward: today and every later White game count", () => {
     const before = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today });
     const staged = { [white.player_id]: 0, [maxey.player_id]: 12 };
     const after = buildWeekGrid({ source, board, staged, incoming: null, viewDay: today });
     expect(after.rows[0].player?.name).toBe("Derrick White");
     expect(after.rows[0].staged).toBe(true);
     expect(after.you[today].projected! - before.you[today].projected!).toBeCloseTo(33.5, 5);
+    // Tue + Thu + Sat + Sun at 33.5; Maxey is out all week.
+    expect(after.projected.you - before.projected.you).toBeCloseTo(134, 5);
+  });
+
+  test("as set on ESPN, future days keep the board's lineup and benched games don't count", () => {
+    const grid = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: 3 });
+    expect(grid.rows[0].player?.name).toBe("Tyrese Maxey");
+    const row = grid.rows.find((r) => r.player?.id === white.player_id)!;
+    expect(row.slot).toBe("BE");
+    expect(row.cells[3]).toMatchObject({ state: "upcoming", tag: "BENCH", counts: false });
+  });
+
+  test("the best lineup each day starts White on his game days without a move", () => {
+    const before = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today, mode: "best" });
+    const staged = { [white.player_id]: 0, [maxey.player_id]: 12 };
+    const after = buildWeekGrid({ source, board, staged, incoming: null, viewDay: today, mode: "best" });
     expect(after.projected.you - before.projected.you).toBeCloseTo(33.5, 5);
+    const asSet = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today });
+    expect(before.projected.you).toBeGreaterThan(asSet.projected.you);
   });
 
   test("now is the official score; past days use the API totals", () => {
@@ -91,8 +109,8 @@ describe("buildWeekGrid on the demo week", () => {
     expect(sunday.counts).toBe(false);
   });
 
-  test("a light future day shows open slots", () => {
-    const grid = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: 3 });
+  test("in the best-lineup view a light future day shows open slots", () => {
+    const grid = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: 3, mode: "best" });
     const open = grid.rows.filter((r) => r.kind === "open");
     expect(open.length).toBeGreaterThan(0);
     // Every healthy player with a game that day is seated.
@@ -106,8 +124,8 @@ describe("buildWeekGrid on the demo week", () => {
     const fa = DEMO_STREAMERS.find((s) => s.name === "Toumani Camara")!;
     const murray = board.players.find((p) => p.name === "Keegan Murray")!;
     const player = sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team));
-    const base = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today });
-    const grid = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: murray.player_id }, viewDay: today });
+    const base = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today, mode: "best" });
+    const grid = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: murray.player_id }, viewDay: today, mode: "best" });
     const at = grid.rows.findIndex((r) => r.player?.id === murray.player_id);
     expect(grid.rows[at].outgoing).toBe(true);
     expect(grid.rows[at + 1].kind).toBe("incoming");

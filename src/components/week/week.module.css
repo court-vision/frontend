@@ -439,8 +439,21 @@
 }
 
 .note {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 12px;
   color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* Everything else in the toolbar keeps its size; the bar scrolls before it squeezes. */
+.toolbar > :not(.note) {
+  flex-shrink: 0;
+}
+
+.day {
   white-space: nowrap;
 }
 

@@ -11,9 +11,12 @@
  *   past    — unknown (no lineup snapshots exist), so every played game shows
  *             and the day total is the API's (every rostered player's points);
  *   today   — the ESPN board with the staged moves applied;
- *   future  — the best lineup for that day (`planDay`): every healthy player
- *             with a game, slotted to maximize projected points. Anyone left
- *             over "sits", which is where streaming room shows up.
+ *   future  — `mode: "espn"` (the default): the same board, because ESPN carries
+ *             a lineup forward until it is changed, so a benched player's games
+ *             don't count; `mode: "best"`: the best lineup for that day
+ *             (`planDay`), every healthy player with a game slotted to maximize
+ *             projected points, and anyone left over "sits".
+ *   Without a board (Yahoo) every day uses the best lineup.
  */
 import type { LineupState } from "@/types/lineup-editor";
 import {
@@ -170,7 +173,7 @@ export function activeSlots(state: LineupState | null | undefined, count: number
 
 export type CellState = "none" | "final" | "live" | "upcoming" | "out" | "dnp";
 
-/** Why a game doesn't count: BENCH (today's board), SITS (no room that day), IR, DROP (preview). */
+/** Why a game doesn't count: BENCH (on the ESPN bench), SITS (no room in the best lineup), IR, DROP (preview). */
 export type CellTag = "BENCH" | "SITS" | "IR" | "DROP" | null;
 
 export interface GridCell {
@@ -220,6 +223,9 @@ export interface WeekGrid {
   startsLeft: { you: number; opp: number };
 }
 
+/** How days ahead are lined up: as set on ESPN (carried forward) or the best fit for each day's games. */
+export type LineupMode = "espn" | "best";
+
 export interface GridInput {
   source: WeekSource;
   /** Today's ESPN board, when the team has one. */
@@ -228,6 +234,8 @@ export interface GridInput {
   incoming: Incoming | null;
   /** The day the roster column describes. */
   viewDay: number;
+  /** Default "espn". */
+  mode?: LineupMode;
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -238,8 +246,11 @@ export function viewableDays(source: WeekSource): number[] {
   return source.days.filter((d) => d.index >= from).map((d) => d.index);
 }
 
-export function buildWeekGrid({ source, board, staged, incoming, viewDay }: GridInput): WeekGrid {
+export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode = "espn" }: GridInput): WeekGrid {
   const { days, todayIndex } = source;
+  const asSet = mode === "espn" && board != null;
+  // The roster column follows the ESPN board on every day it applies to.
+  const boardRows = board != null && (asSet || viewDay === todayIndex);
   const slots = activeSlots(board, source.activeSlotCount);
   const boardById = new Map((board?.players ?? []).map((p) => [p.player_id, p]));
   const todayAssign = board ? boardAssignment(board, staged) : null;
@@ -260,7 +271,7 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay }: Grid
   // Who is in which slot, per day (past days: unknown).
   const dayAssign: Array<Map<number, number> | null> = days.map((d) => {
     if (d.kind === "past") return null;
-    if (d.kind === "today" && todayAssign) {
+    if (todayAssign && (d.kind === "today" || asSet)) {
       const m = new Map(todayAssign);
       if (incoming) seatIncomingToday(m, incoming, eligibleOf(incoming.player), slots);
       return m;
@@ -293,7 +304,7 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay }: Grid
     }
     const slot = dayAssign[d.index]?.get(p.id);
     const active = slot != null && isActiveSlot(slot);
-    const tag: CellTag = active ? null : slot === IR_SLOT_ID ? "IR" : d.kind === "today" ? "BENCH" : "SITS";
+    const tag: CellTag = active ? null : slot === IR_SLOT_ID ? "IR" : d.kind === "today" || asSet ? "BENCH" : "SITS";
     if (g.status === "final") return { ...base, state: "final", value: g.fpts, counts: active, tag };
     if (g.status === "live") return { ...base, state: "live", value: g.fpts, note: g.clock, counts: active, tag };
     if (g.out) return { ...base, state: "out", value: null, counts: false, tag: null };
@@ -317,7 +328,7 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay }: Grid
         ? days.reduce((sum, d, i) => sum + (cells[i].tag === "DROP" ? cells[i].value ?? 0 : expected(cells[i], p, d)), 0)
         : days.reduce((sum, d, i) => sum + expected(cells[i], p, d), 0);
     const b = boardById.get(p.id);
-    const isStaged = !!b && staged[p.id] !== undefined && viewDay === todayIndex;
+    const isStaged = !!b && staged[p.id] !== undefined && boardRows;
     return {
       key: `${kind}-${p.id}`,
       kind,
@@ -334,9 +345,7 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay }: Grid
   // ---- rows, in the selected day's slot order ----
   const byId = new Map(pool.map((p) => [p.id, p]));
   const rows: GridRow[] = [];
-  const viewIsToday = viewDay === todayIndex && board != null;
-
-  if (viewIsToday && board) {
+  if (boardRows && board) {
     for (const r of slotRows(board, staged)) {
       const p = r.player ? byId.get(r.player.player_id) : undefined;
       if (r.player && p) rows.push(rowFor(p, "player", r.slot_id, r.slot));
@@ -372,8 +381,8 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay }: Grid
   // A previewed free agent sits directly under the player he would replace.
   if (incoming) {
     const slotId = dayAssign[viewDay]?.get(incoming.player.id) ?? null;
-    if (viewIsToday && slotId != null && isActiveSlot(slotId)) {
-      // Seated in an empty slot today: that slot is no longer open.
+    if (boardRows && slotId != null && isActiveSlot(slotId)) {
+      // Seated in an empty slot on the board: that slot is no longer open.
       const open = rows.findIndex((r) => r.kind === "open" && r.slotId === slotId);
       if (open >= 0) rows.splice(open, 1);
     }
@@ -434,11 +443,12 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay }: Grid
       }
       return { actual: round1(actual), projected: round1(projected), starts };
     }
-    // Future: the opponent's best lineup, approximated as their top projections.
-    const playing = source.opponents
-      .filter((o) => o.games[d.index] && !o.games[d.index]!.out)
-      .sort((a, b) => b.avg - a.avg)
-      .slice(0, activeCount);
+    // Future: the opponent's lineup as set (carried forward), or their best one,
+    // approximated as their top projections.
+    const healthy = source.opponents.filter((o) => o.games[d.index] && !o.games[d.index]!.out);
+    const playing = asSet
+      ? healthy.filter((o) => o.active)
+      : healthy.sort((a, b) => b.avg - a.avg).slice(0, activeCount);
     return {
       actual: null,
       projected: round1(playing.reduce((s, o) => s + o.avg, 0)),
