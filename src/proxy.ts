@@ -21,9 +21,14 @@ const isIndexableRoute = createRouteMatcher([
   "/terminal(.*)",
 ]);
 
+// A desk's demo runs on sample data in the browser: no account needed.
+function isDeskDemo(req: { nextUrl: URL }): boolean {
+  return req.nextUrl.searchParams.has("demo") || /^\/draft\/demo-\d+(\/|$)/.test(req.nextUrl.pathname);
+}
+
 export default clerkMiddleware(async (auth, req) => {
   // Protect routes that require authentication
-  if (isProtectedRoute(req)) {
+  if (isProtectedRoute(req) && !isDeskDemo(req)) {
     await auth.protect();
   }
 

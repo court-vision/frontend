@@ -1,6 +1,6 @@
-import PageClient from "./PageClient";
+import { DraftRoomPage } from "@/components/draft/DraftPages";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <PageClient sessionId={Number(id)} />;
+  return <DraftRoomPage slug={id} />;
 }
