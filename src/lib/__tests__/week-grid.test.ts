@@ -136,6 +136,49 @@ describe("buildWeekGrid on the demo week", () => {
   });
 });
 
+describe("daily lineups", () => {
+  const source = demoSource();
+  const board = demoBoard();
+  const today = source.todayIndex!;
+  const name = (seat: { player: { name: string } } | null) => seat?.player.name ?? null;
+
+  test("one row per lineup spot: ten active, three bench, one IR", () => {
+    const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today });
+    expect(lineups.slots.map((s) => s.slot)).toEqual(["PG", "SG", "SF", "PF", "C", "G", "F", "UT", "UT", "UT", "BE", "BE", "BE", "IR"]);
+    expect(lineups.boardDay).toBe(today);
+  });
+
+  test("as set, every day from today shows the board; a staged move shows on all of them", () => {
+    const staged = { [board.players.find((p) => p.name === "Derrick White")!.player_id]: 0, [board.players.find((p) => p.name === "Tyrese Maxey")!.player_id]: 12 };
+    const { lineups } = buildWeekGrid({ source, board, staged, incoming: null, viewDay: today });
+    for (let d = today; d < 7; d++) {
+      expect(name(lineups.seats[d][0])).toBe("Derrick White");
+      expect(lineups.seats[d][0]?.staged).toBe(true);
+    }
+    const bench = lineups.slots.map((s, i) => (s.group === "bench" ? name(lineups.seats[3][i]) : null)).filter(Boolean);
+    expect(bench).toContain("Tyrese Maxey");
+  });
+
+  test("best each day fills each day's spots from that day's games", () => {
+    const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today, mode: "best" });
+    const wed = lineups.seats[2];
+    const active = lineups.slots.map((s, i) => (s.group === "active" ? wed[i] : undefined)).filter((x) => x !== undefined);
+    for (const seat of active) if (seat) expect(seat.cell.state).not.toBe("none");
+    expect(active.filter((s) => s === null).length).toBe(3); // seven games for ten spots Wednesday
+  });
+
+  test("a previewed free agent takes a seat; the player he replaces leaves the lineup", () => {
+    const fa = DEMO_STREAMERS.find((s) => s.name === "Toumani Camara")!;
+    const murray = board.players.find((p) => p.name === "Keegan Murray")!;
+    const player = sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team));
+    const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: murray.player_id }, viewDay: today });
+    const names = lineups.seats[2].map(name);
+    expect(names).toContain("Toumani Camara");
+    expect(names).not.toContain("Keegan Murray");
+    expect(lineups.seats[2].find((s) => s?.incoming)?.player.name).toBe("Toumani Camara");
+  });
+});
+
 describe("buildWeekGrid without a board", () => {
   const g = (avg: number): DayGame => ({ opp: "vs X", time: "19:00", status: "scheduled", fpts: null, clock: null, remaining: 1, out: false });
   const player = (id: number, avg: number): SourcePlayer => ({

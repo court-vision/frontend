@@ -212,10 +212,42 @@ export interface DayTotal {
   starts: number;
 }
 
+export type SeatGroup = "active" | "bench" | "ir";
+
+/** One lineup spot: a slot instance (UT has three), a bench spot or an IR spot. */
+export interface SlotRowDef {
+  key: string;
+  slotId: number;
+  slot: string;
+  group: SeatGroup;
+}
+
+export interface Seat {
+  player: SourcePlayer;
+  cell: GridCell;
+  /** Moved by the staging. */
+  staged: boolean;
+  /** A previewed free agent. */
+  incoming: boolean;
+}
+
+/**
+ * Every day's lineup, spot by spot: `seats[day][row]` is who sits in
+ * `slots[row]` that day. Past days have no recorded lineup, so they reuse
+ * today's board (or the first planned day) for the spots.
+ */
+export interface DailyLineups {
+  slots: SlotRowDef[];
+  seats: Array<Array<Seat | null>>;
+  /** The day whose lineup is the ESPN board (today, or the first day before the period). */
+  boardDay: number | null;
+}
+
 export interface WeekGrid {
   days: WeekDay[];
   viewDay: number;
   rows: GridRow[];
+  lineups: DailyLineups;
   you: DayTotal[];
   opp: DayTotal[];
   now: { you: number; opp: number };
@@ -456,6 +488,63 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode =
     };
   });
 
+  // ---- every day's lineup, spot by spot ----
+  const boardOrder = new Map<number, number>();
+  if (board) slotRows(board, staged).forEach((r, i) => r.player && boardOrder.set(r.player.player_id, i));
+  // A previewed free agent who takes the replaced player's seat takes his place in the order too.
+  if (inId != null && replaced != null && boardOrder.has(replaced)) boardOrder.set(inId, boardOrder.get(replaced)!);
+  const fallbackAssign = todayAssign ?? dayAssign.find((m) => m) ?? new Map<number, number>();
+  const byDay = days.map((d) => {
+    const assign = dayAssign[d.index] ?? fallbackAssign;
+    // Board days keep the board's order inside a slot; planned days go by projection.
+    const fromBoard = !!todayAssign && (d.kind !== "future" || asSet);
+    const players = (d.kind === "past" ? roster : pool).filter((p) => d.kind === "past" || p.id !== replaced);
+    const groups = new Map<number, SourcePlayer[]>();
+    for (const p of players) {
+      const slot = assign.get(p.id) ?? (irIds.has(p.id) ? IR_SLOT_ID : BENCH_SLOT_ID);
+      const list = groups.get(slot) ?? [];
+      list.push(p);
+      groups.set(slot, list);
+    }
+    for (const list of groups.values()) {
+      list.sort((a, b) =>
+        fromBoard
+          ? (boardOrder.get(a.id) ?? 999) - (boardOrder.get(b.id) ?? 999) || b.avg - a.avg
+          : Number(!!b.games[d.index]) - Number(!!a.games[d.index]) || b.avg - a.avg
+      );
+    }
+    return groups;
+  });
+
+  const spotCount = (slotId: number, capacity: number) =>
+    Math.max(capacity, ...byDay.map((g) => g.get(slotId)?.length ?? 0));
+  const slotDefs: SlotRowDef[] = [];
+  for (const s of slots) {
+    for (let k = 0; k < spotCount(s.slotId, s.count); k++) {
+      slotDefs.push({ key: `${s.slotId}-${k}`, slotId: s.slotId, slot: slotName(s.slotId), group: "active" });
+    }
+  }
+  const capacityOf = (id: number) => (board ? board.slots.find((s) => s.slot_id === id)?.count ?? 0 : 0);
+  for (let k = 0; k < spotCount(BENCH_SLOT_ID, capacityOf(BENCH_SLOT_ID)); k++) {
+    slotDefs.push({ key: `${BENCH_SLOT_ID}-${k}`, slotId: BENCH_SLOT_ID, slot: "BE", group: "bench" });
+  }
+  for (let k = 0; k < spotCount(IR_SLOT_ID, capacityOf(IR_SLOT_ID)); k++) {
+    slotDefs.push({ key: `${IR_SLOT_ID}-${k}`, slotId: IR_SLOT_ID, slot: "IR", group: "ir" });
+  }
+
+  const ordinalOf = (def: SlotRowDef) => Number(def.key.split("-")[1]);
+  const seats = days.map((d, i) =>
+    slotDefs.map((def): Seat | null => {
+      const p = byDay[i].get(def.slotId)?.[ordinalOf(def)];
+      if (!p) return null;
+      const onBoard = !!boardById.get(p.id) && staged[p.id] !== undefined && (d.kind !== "future" || asSet);
+      return { player: p, cell: cellFor(p, d), staged: onBoard, incoming: p.id === inId };
+    })
+  );
+  const boardDay = board
+    ? todayIndex ?? (asSet ? days.find((d) => d.kind === "future")?.index ?? null : null)
+    : null;
+
   // Now = the provider's official score; the finish adds what is still to play.
   const nowYou =
     source.you.current ??
@@ -475,6 +564,7 @@ export function buildWeekGrid({ source, board, staged, incoming, viewDay, mode =
     days,
     viewDay,
     rows,
+    lineups: { slots: slotDefs, seats, boardDay },
     you,
     opp,
     now: { you: round1(nowYou), opp: round1(nowOpp) },

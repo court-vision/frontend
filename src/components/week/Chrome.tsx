@@ -215,6 +215,8 @@ interface ToolbarProps {
   onMode: () => void;
   /** Projected points the best lineup each day adds over the lineup as set. */
   bestGain: number;
+  view: "daily" | "players";
+  onView: () => void;
 }
 
 export function Toolbar({
@@ -232,9 +234,33 @@ export function Toolbar({
   mode,
   onMode,
   bestGain,
+  view,
+  onView,
 }: ToolbarProps) {
   return (
     <div className={s.toolbar}>
+      <span className={s.label}>View</span>
+      <div className={s.rail} role="radiogroup" aria-label="Grid view">
+        {(["daily", "players"] as const).map((v) => {
+          const on = view === v;
+          return (
+            <button
+              key={v}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              className={`${s.day} ${on ? s.dayOn : ""}`}
+              onClick={() => !on && onView()}
+              title={v === "daily" ? "Every day's lineup, spot by spot" : "One row per player across the week"}
+            >
+              {on ? <motion.span layoutId="view-pill" className={s.dayPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
+              <span className={s.dayLabel}>{v === "daily" ? "DAILY LINEUPS" : "PLAYERS"}</span>
+            </button>
+          );
+        })}
+      </div>
+      <span className={s.kbd}>V</span>
+      <span className={s.divider} />
       <span className={s.label}>Lineup</span>
       <div className={s.rail} role="radiogroup" aria-label="Lineup view">
         {(["espn", "best"] as const).map((m) => {
@@ -260,6 +286,8 @@ export function Toolbar({
       </div>
       <span className={s.kbd}>L</span>
       <span className={s.divider} />
+      {view === "players" ? (
+        <>
       <span className={s.label}>Day</span>
       <div className={s.rail} role="radiogroup" aria-label="Lineup day">
         {days.map((d) => {
@@ -286,6 +314,8 @@ export function Toolbar({
       <span className={s.kbd}>[</span>
       <span className={s.kbd}>]</span>
       <span className={s.divider} />
+        </>
+      ) : null}
       <button type="button" className={s.btn} onClick={onAutoslot} disabled={!canAutoslot || autoslotting} title="Fill today's lineup (A)">
         {autoslotting ? "Planning…" : "Autoslot"}
         <span className={s.kbd}>A</span>
@@ -318,7 +348,8 @@ export function StatusLine({ updatedAt, demo }: { updatedAt: number | null; demo
         <span><span className={s.kbd}>M</span> move player</span>
         <span><span className={s.kbd}>R</span> replace</span>
         <span><span className={s.kbd}>A</span> autoslot</span>
-        <span><span className={s.kbd}>L</span> lineup view</span>
+        <span><span className={s.kbd}>L</span> as set / best</span>
+        <span><span className={s.kbd}>V</span> view</span>
         <span><span className={s.kbd}>[ ]</span> day</span>
         <span><span className={s.kbd}>H</span> heat</span>
         <span><span className={s.kbd}>T</span> theme</span>

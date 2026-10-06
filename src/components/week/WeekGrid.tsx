@@ -595,6 +595,12 @@ interface DayCellProps {
   heat: number;
   onEnter: (col: number) => void;
   onClick: () => void;
+  className?: string;
+  /** Drag state for the daily view's drop targets. */
+  drop?: string;
+  cellRef?: (el: HTMLDivElement | null) => void;
+  /** Leave the opponent out of the top line (the daily view shows it beside the name). */
+  hideOpp?: boolean;
 }
 
 const TAG_CLASS: Record<string, string> = {
@@ -604,7 +610,21 @@ const TAG_CLASS: Record<string, string> = {
   DROP: s.tagDrop,
 };
 
-const DayCell = memo(function DayCell({ cell, col, incoming, today, hot, cursor, heat, onEnter, onClick }: DayCellProps) {
+export const DayCell = memo(function DayCell({
+  cell,
+  col,
+  incoming,
+  today,
+  hot,
+  cursor,
+  heat,
+  onEnter,
+  onClick,
+  className,
+  drop,
+  cellRef,
+  hideOpp,
+}: DayCellProps) {
   // A live value that moves flashes once.
   const prev = useRef(cell.value);
   const [flash, setFlash] = useState(0);
@@ -644,9 +664,11 @@ const DayCell = memo(function DayCell({ cell, col, incoming, today, hot, cursor,
 
   return (
     <div
-      className={`${s.cell} ${incoming ? s.incomingCell : ""}`}
+      ref={cellRef}
+      className={`${s.cell} ${incoming ? s.incomingCell : ""} ${className ?? ""}`}
       role="gridcell"
       data-col={col}
+      data-drop={drop}
       data-state={cell.state}
       data-counts={cell.counts}
       data-tag={cell.tag ?? undefined}
@@ -659,7 +681,7 @@ const DayCell = memo(function DayCell({ cell, col, incoming, today, hot, cursor,
       {heat > 0 ? <span className={s.heat} style={{ opacity: heat }} /> : null}
       {cell.state !== "none" ? (
         <span className={s.cellTop} style={{ position: "relative" }}>
-          <span>{oppShort(cell.opp)}</span>
+          <span>{hideOpp ? "" : oppShort(cell.opp)}</span>
           {right}
         </span>
       ) : null}

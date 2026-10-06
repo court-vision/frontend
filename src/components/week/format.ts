@@ -41,9 +41,12 @@ export function periodRange(first: string, last: string): string {
   return `${month(f)} ${f.getDate()} – ${tail}`;
 }
 
-/** "Jalen Williams" → "J. Williams". */
+const SUFFIXES = new Set(["JR", "JR.", "SR", "SR.", "II", "III", "IV", "V"]);
+
+/** "Jalen Williams" → "J. Williams"; "Jaren Jackson Jr." → "J. Jackson" (suffixes dropped). */
 export function shortName(name: string): string {
-  const parts = name.split(" ");
+  const parts = name.split(" ").filter(Boolean);
+  while (parts.length > 2 && SUFFIXES.has(parts[parts.length - 1].toUpperCase())) parts.pop();
   if (parts.length < 2) return name;
   return `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
 }
