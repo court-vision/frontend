@@ -41,6 +41,15 @@ function awaitsAuth(path: string): boolean {
 const CLERK_LOAD_TIMEOUT_MS = 8_000;
 
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
+  const pathname = usePathname();
+  // The desks bring their own shell (bar, status line, theme, toasts). The
+  // app's shell is a component of its own so it mounts afresh after a desk:
+  // its listeners (the scroll-tap guard) attach to the <main> it renders.
+  if (isDeskPath(pathname)) return <>{children}</>;
+  return <Shell>{children}</Shell>;
+};
+
+const Shell: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isLoaded } = useUser();
   const pathname = usePathname();
   const [authTimedOut, setAuthTimedOut] = useState(false);
@@ -64,9 +73,6 @@ const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
 
   // Terminal and dashboard pages manage their own full-height layout
   const isFullHeightPage = pathname === "/terminal" || pathname === "/";
-
-  // The desks bring their own shell (bar, status line, theme, toasts).
-  if (isDeskPath(pathname)) return <>{children}</>;
 
   return (
     <MobileDockProvider value={dock}>
