@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { NO_TEAM, createFormStart, importFormStart, type TeamChoice } from "@/components/draft/model";
+import { NO_TEAM, createFormStart, importFormStart, recapExit, type TeamChoice } from "@/components/draft/model";
 
 const HOME: TeamChoice = { id: 22, name: "Lvl. 3 Goblins", tag: "ESPN · PTS", espn: true };
 const WORK: TeamChoice = { id: 40, name: "Office League", tag: "ESPN · CATS", espn: true };
@@ -41,5 +41,24 @@ describe("the lobby dialogs' reset", () => {
     expect(Object.is(before.kind, after.kind)).toBe(true);
     const espn = (list: TeamChoice[]) => list.filter((t) => t.espn);
     expect(Object.is(importFormStart(espn(teams), WORK.id), importFormStart(espn(rebuilt), WORK.id))).toBe(true);
+  });
+});
+
+describe("recapExit", () => {
+  const hrefs = { lobby: "/lab", room: "/lab/12", recap: "/lab/12/recap" };
+
+  test("a drafted room's recap goes back to the room", () => {
+    for (const kind of ["live", "mock", "manual"] as const) {
+      expect(recapExit(kind, hrefs)).toEqual({ href: "/lab/12", label: "back to the room" });
+    }
+  });
+
+  test("an imported draft has no room, so its recap goes to the lobby", () => {
+    expect(recapExit("import", hrefs)).toEqual({ href: "/lab", label: "all rooms" });
+  });
+
+  test("before the session has loaded, the room as before", () => {
+    expect(recapExit(undefined, hrefs).href).toBe("/lab/12");
+    expect(recapExit(null, hrefs).href).toBe("/lab/12");
   });
 });

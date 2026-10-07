@@ -31,7 +31,7 @@ import {
 import type { DraftRecapResult, PickSortKey, RecapPick, RecapSeat, SortDirection } from "@/types/draft";
 import { num, ordinal, shortName, signed } from "./format";
 import { roomFacts, roomTitle } from "./RoomView";
-import type { RecapModel } from "./model";
+import { recapExit, type RecapModel } from "./model";
 import s from "./draft.module.css";
 
 const PICK_WIDTH: Partial<Record<PickSortKey, string>> = {
@@ -45,16 +45,17 @@ const PICK_WIDTH: Partial<Record<PickSortKey, string>> = {
 export function RecapView({ model }: { model: RecapModel }) {
   const router = useRouter();
   const toggleTheme = useDeskTheme((st) => st.toggle);
+  const exit = recapExit(model.session?.kind, model.hrefs);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select, [role='dialog']")) return;
-      if (e.key === "Escape" || e.key === "r") router.push(model.hrefs.room);
+      if (e.key === "Escape" || e.key === "r") router.push(exit.href);
       if (e.key === "t") toggleTheme();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [router, model.hrefs.room, toggleTheme]);
+  }, [router, exit.href, toggleTheme]);
 
   const session = model.session;
   return (
@@ -98,7 +99,7 @@ export function RecapView({ model }: { model: RecapModel }) {
       ) : (
         <RecapBody recap={model.recap} roomHref={session.kind === "import" ? null : model.hrefs.room} />
       )}
-      <DeskStatus keys={[["R", "back to the room"], ["T", "theme"]]}>
+      <DeskStatus keys={[["R", exit.label], ["T", "theme"]]}>
         {model.recap ? <span>{asOfLabel(model.recap.meta)}</span> : null}
       </DeskStatus>
     </>

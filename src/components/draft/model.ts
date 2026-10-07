@@ -103,3 +103,11 @@ export function createFormStart(teams: readonly TeamChoice[], selectedTeamId: nu
 export function importFormStart(teams: readonly TeamChoice[], selectedTeamId: number | null): number | null {
   return (teams.find((t) => t.id === selectedTeamId) ?? teams[0])?.id ?? null;
 }
+
+/**
+ * Where R and Escape lead from a recap, and what the status line calls it:
+ * back to the room, or to the lobby for an imported draft, which has no room.
+ */
+export function recapExit(kind: DraftKind | null | undefined, hrefs: RecapModel["hrefs"]): { href: string; label: string } {
+  return kind === "import" ? { href: hrefs.lobby, label: "all rooms" } : { href: hrefs.room, label: "back to the room" };
+}
