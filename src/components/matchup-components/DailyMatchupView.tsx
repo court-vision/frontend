@@ -48,6 +48,8 @@ interface PastRosterTableProps {
   /** The server's day total: starters only when the roster is that day's lineup. */
   totalFpts: number | null;
   rosterSource: DailyMatchupTeam["roster_source"];
+  /** Today's card shows today's roster on purpose; the source notes are about past days. */
+  isToday: boolean;
 }
 
 const BENCH_SLOTS = new Set(["BE", "IR"]);
@@ -64,10 +66,10 @@ const ROSTER_SOURCE_NOTE: Record<DailyMatchupTeam["roster_source"], string | nul
   current: "Today's roster shown — that day's lineup was not captured",
 };
 
-function PastRosterTable({ roster, totalFpts, rosterSource }: PastRosterTableProps) {
+function PastRosterTable({ roster, totalFpts, rosterSource, isToday }: PastRosterTableProps) {
   const hasAnyStats = roster.some((p) => p.fpts !== null);
   const hasSlots = roster.some((p) => p.lineup_slot != null);
-  const note = ROSTER_SOURCE_NOTE[rosterSource];
+  const note = isToday ? null : ROSTER_SOURCE_NOTE[rosterSource];
 
   return (
     <div className="overflow-x-auto">
@@ -324,6 +326,7 @@ function DailyTeamCard({ team, dayType, isYourTeam, format, record }: DailyTeamC
             roster={team.roster as DailyMatchupPlayerStats[]}
             totalFpts={team.total_fpts}
             rosterSource={team.roster_source}
+            isToday={dayType === "today"}
           />
         ) : (
           <FutureRosterTable roster={team.roster as DailyMatchupFuturePlayer[]} />
