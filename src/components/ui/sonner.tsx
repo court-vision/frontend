@@ -1,15 +1,21 @@
 "use client"
 
+import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { Toaster as Sonner } from "sonner"
 
 import { useIsMobile } from "@/hooks/useBreakpoint"
+import { isDeskPath } from "@/components/desk/routes"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ position, ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
   const isMobile = useIsMobile()
+  const pathname = usePathname()
+
+  // A desk renders its own toasts, in its own tokens.
+  if (isDeskPath(pathname)) return null
 
   return (
     <Sonner

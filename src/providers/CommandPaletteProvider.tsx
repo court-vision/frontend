@@ -19,6 +19,7 @@ import { Command as CommandIcon, X } from "lucide-react";
 import { useTeams } from "@/app/context/TeamsContext";
 import { useIsBelowLg } from "@/hooks/useBreakpoint";
 import { useShortcutOverlayStore } from "@/stores/useShortcutOverlayStore";
+import { isDeskPath } from "@/components/desk/routes";
 import {
   ALT_RANGE_LABEL,
   ALT_SHORTCUTS,
@@ -248,6 +249,8 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     // the handlers can never drift from the labels shown in the nav bar.
     // Alt uses e.code (physical key) because macOS transforms Option+digit in e.key.
     const handleKeyDown = (e: KeyboardEvent) => {
+      // The desks own their keyboard; this palette and its jumps belong to the old shell.
+      if (isDeskPath(window.location.pathname)) return;
       // Ignore if user is typing in an input
       const target = e.target as HTMLElement;
       if (

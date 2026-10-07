@@ -10,6 +10,7 @@ import { MobileTabBar } from "@/components/MobileTabBar";
 import { MobileDockProvider } from "@/components/MobileDock";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { KeyboardShortcutOverlay } from "@/components/KeyboardShortcutOverlay";
+import { isDeskPath } from "@/components/desk/routes";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
 import { useScrollTapGuard } from "@/hooks/useScrollTapGuard";
 
@@ -40,6 +41,15 @@ function awaitsAuth(path: string): boolean {
 const CLERK_LOAD_TIMEOUT_MS = 8_000;
 
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
+  const pathname = usePathname();
+  // The desks bring their own shell (bar, status line, theme, toasts). The
+  // app's shell is a component of its own so it mounts afresh after a desk:
+  // its listeners (the scroll-tap guard) attach to the <main> it renders.
+  if (isDeskPath(pathname)) return <>{children}</>;
+  return <Shell>{children}</Shell>;
+};
+
+const Shell: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isLoaded } = useUser();
   const pathname = usePathname();
   const [authTimedOut, setAuthTimedOut] = useState(false);

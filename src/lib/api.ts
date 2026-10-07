@@ -121,6 +121,13 @@ import type {
   RosterTransactionResponse,
 } from "@/types/roster-transaction";
 import type {
+  SchedulePickupRequest,
+  ScheduledPickup,
+  ScheduledPickupList,
+  ScheduledPickupListResponse,
+  ScheduledPickupResponse,
+} from "@/types/scheduled-pickup";
+import type {
   DraftBoardMeta,
   DraftBoardResult,
   DraftBoardRow,
@@ -258,13 +265,16 @@ class ApiClient {
     });
   }
 
-  // Today's ESPN lineup (manual editor). Yahoo teams answer 200 with `data: null`.
+  // An ESPN lineup: today's, or a later day's when `scoringPeriodId` (ESPN's day
+  // number, 1 = opening night) is given. Yahoo teams answer 200 with `data: null`.
   async getTeamLineup(
     getToken: GetTokenFn,
     teamId: number,
-    opts?: RequestOptions
+    opts?: RequestOptions,
+    scoringPeriodId?: number
   ): Promise<LineupState | null> {
-    const env = await fetchJson<LineupStateResponse>(`${TEAMS_API}/${teamId}/lineup`, {
+    const query = scoringPeriodId != null ? `?scoring_period_id=${scoringPeriodId}` : "";
+    const env = await fetchJson<LineupStateResponse>(`${TEAMS_API}/${teamId}/lineup${query}`, {
       ...opts,
       getToken,
     });
@@ -335,6 +345,51 @@ class ApiClient {
       `${TEAMS_API}/${teamId}/roster/transactions`,
       { getToken, method: "POST", body, timeoutMs: LINEUP_WRITE_TIMEOUT_MS }
     );
+    return unwrap(env);
+  }
+
+  /**
+   * A team's scheduled pickups: pending (soonest day first) and those settled
+   * in the last week (newest first).
+   */
+  async getScheduledPickups(
+    getToken: GetTokenFn,
+    teamId: number,
+    opts?: RequestOptions
+  ): Promise<ScheduledPickupList> {
+    const env = await fetchJson<ScheduledPickupListResponse>(`${TEAMS_API}/${teamId}/pickups`, {
+      ...opts,
+      getToken,
+    });
+    return unwrap(env, { pending: [], recent: [] });
+  }
+
+  /**
+   * Schedule a free-agent add (optionally with a drop) for a later ESPN day.
+   * Deliberately NOT `raw`: 422 SCHEDULED_PICKUP_INVALID (with `data.reason`)
+   * and 409 SCHEDULED_PICKUP_DUPLICATE reject, and their `message` is already
+   * a user sentence. The server reads the board and ESPN's pool first.
+   */
+  async schedulePickup(
+    getToken: GetTokenFn,
+    teamId: number,
+    body: SchedulePickupRequest
+  ): Promise<{ pickup: ScheduledPickup; message: string }> {
+    const env = await fetchJson<ScheduledPickupResponse>(`${TEAMS_API}/${teamId}/pickups`, {
+      getToken,
+      method: "POST",
+      body,
+      timeoutMs: LINEUP_WRITE_TIMEOUT_MS,
+    });
+    return { pickup: unwrap(env), message: env.message };
+  }
+
+  /** Cancel a pending pickup; 409 SCHEDULED_PICKUP_NOT_PENDING once it has run. */
+  async cancelPickup(getToken: GetTokenFn, teamId: number, pickupId: number): Promise<ScheduledPickup> {
+    const env = await fetchJson<ScheduledPickupResponse>(`${TEAMS_API}/${teamId}/pickups/${pickupId}`, {
+      getToken,
+      method: "DELETE",
+    });
     return unwrap(env);
   }
 

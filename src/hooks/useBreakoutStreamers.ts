@@ -8,7 +8,7 @@ export const breakoutKeys = {
   list: (limit: number) => [...breakoutKeys.all, limit] as const,
 };
 
-export function useBreakoutStreamersQuery(limit: number = 30) {
+export function useBreakoutStreamersQuery(limit: number = 30, wanted = true) {
   const { getToken, isSignedIn } = useAuth();
   return useQuery({
     queryKey: breakoutKeys.list(limit),
@@ -18,6 +18,6 @@ export function useBreakoutStreamersQuery(limit: number = 30) {
     refetchOnWindowFocus: false,
     // Pages render before Clerk resolves, so stay idle until there is a token:
     // `fetchJson` throws on a null one rather than sending an anonymous request.
-    enabled: isSignedIn === true,
+    enabled: isSignedIn === true && wanted,
   });
 }
