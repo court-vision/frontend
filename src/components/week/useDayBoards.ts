@@ -103,9 +103,13 @@ export function useDayBoards(
     return at >= 0 ? laterQueries[at]?.data ?? undefined : undefined;
   });
 
-  const mutation = useMutation<ApplyLineupMovesData, Error, ApplyLineupMovesRequest>({
+  // The team rides with each write. A mutation's options are the latest
+  // render's, so a team read from them would be whichever team is on screen
+  // now: a send still working through its days when the team changes would
+  // write its later days to the new team.
+  const mutation = useMutation<ApplyLineupMovesData, Error, { teamId: number; body: ApplyLineupMovesRequest }>({
     mutationKey: ["lineup", "apply-day", teamId],
-    mutationFn: (body) => apiClient.applyLineupMoves(getToken, teamId!, body),
+    mutationFn: (vars) => apiClient.applyLineupMoves(getToken, vars.teamId, vars.body),
     meta: { toast: false },
   });
 
@@ -126,9 +130,12 @@ export function useDayBoards(
       if (!teamId || board.scoring_period_id == null) throw new Error("This day can't be edited");
       try {
         const data = await mutateAsync({
-          moves,
-          expected_scoring_period_id: board.scoring_period_id,
-          roster_version: board.roster_version,
+          teamId,
+          body: {
+            moves,
+            expected_scoring_period_id: board.scoring_period_id,
+            roster_version: board.roster_version,
+          },
         });
         cacheBoard(data.lineup);
         // Later days may have inherited this edit, and everything that shows the roster moved.
