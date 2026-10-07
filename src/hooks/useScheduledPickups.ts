@@ -3,13 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
-import {
-  SCHEDULED_PICKUP_DUPLICATE,
-  SCHEDULED_PICKUP_INVALID,
-  SCHEDULED_PICKUP_NOT_PENDING,
-  toApiError,
-  userMessage,
-} from "@/lib/api-error";
+import { SCHEDULED_PICKUP_DUPLICATE, SCHEDULED_PICKUP_INVALID, toApiError, userMessage } from "@/lib/api-error";
+import { cancelRefusal } from "@/lib/pickups";
 import { lineupKeys } from "@/hooks/useLineupEditor";
 import { matchupKeys } from "@/hooks/useMatchup";
 import { streamersKeys } from "@/hooks/useStreamers";
@@ -96,7 +91,11 @@ export function useSchedulePickupMutation(teamId: number) {
   });
 }
 
-/** Cancel a pending pickup. One that already ran refreshes the list instead. */
+/**
+ * Cancel a pending pickup. It leaves the list only once the server says it is
+ * cancelled; a refused cancel (one being made right now, one that already
+ * settled, a failed request) reads the list again and says why.
+ */
 export function useCancelPickupMutation(teamId: number) {
   const queryClient = useQueryClient();
   const { getToken } = useAuth();
@@ -112,13 +111,10 @@ export function useCancelPickupMutation(teamId: number) {
       toast.success(`Pickup of ${pickup.add.name} cancelled`);
     },
     onError: (error) => {
-      const err = toApiError(error);
-      if (err.code === SCHEDULED_PICKUP_NOT_PENDING) {
-        queryClient.invalidateQueries({ queryKey: pickupKeys.team(teamId) });
-        toast.info("That pickup already ran");
-        return;
-      }
-      toast.error(userMessage(err));
+      queryClient.invalidateQueries({ queryKey: pickupKeys.team(teamId) });
+      const { tone, message } = cancelRefusal(error);
+      if (tone === "info") toast.info(message);
+      else toast.error(message);
     },
   });
 }

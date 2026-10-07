@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { pickupNote, pickupTiming, pickupViews } from "../pickups";
+import { ApiError } from "../api-error";
+import { cancelRefusal, pickupNote, pickupTiming, pickupViews } from "../pickups";
 import { DEMO_DAYS, DEMO_STREAMERS, DEMO_TODAY, demoScheduledPickup, demoSource } from "../week-demo";
 import type { ScheduledPickup } from "@/types/scheduled-pickup";
 
@@ -66,5 +67,39 @@ describe("pickupTiming", () => {
     expect(pickupTiming(DEMO_DAYS, DEMO_TODAY + 1, null, DEMO_TODAY, DEMO_TODAY + 1)).toBe(
       "Made right away: today's games have started"
     );
+  });
+});
+
+describe("cancelRefusal", () => {
+  const refused = (code: string, message: string, data: unknown = null) => {
+    const body = { status: "conflict", message, error_code: code, data };
+    return ApiError.fromResponse(new Response(JSON.stringify(body), { status: 409 }), body);
+  };
+
+  test("a pickup being made right now is an error, in the server's words", () => {
+    const err = refused(
+      "SCHEDULED_PICKUP_IN_PROGRESS",
+      "That pickup is being attempted right now and cannot be cancelled — check back in a few minutes",
+      { status: "pending" }
+    );
+    expect(cancelRefusal(err)).toEqual({
+      tone: "error",
+      message: "That pickup is being attempted right now and cannot be cancelled — check back in a few minutes",
+    });
+  });
+
+  test("one that settled first: an error only if it ran", () => {
+    const notPending = (status: string) =>
+      cancelRefusal(refused("SCHEDULED_PICKUP_NOT_PENDING", "That pickup is no longer pending", { status }));
+    expect(notPending("executed")).toEqual({ tone: "error", message: "Too late to cancel: that pickup already ran" });
+    expect(notPending("cancelled")).toEqual({ tone: "info", message: "That pickup was already cancelled" });
+    expect(notPending("expired")).toEqual({ tone: "info", message: "That pickup is no longer pending" });
+  });
+
+  test("a cancel that never got an answer is an error", () => {
+    expect(cancelRefusal(ApiError.network(new TypeError("Failed to fetch")))).toEqual({
+      tone: "error",
+      message: "Can't reach the Court Vision API — check your connection and retry",
+    });
   });
 });

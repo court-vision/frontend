@@ -8,6 +8,7 @@
  * his game still counts. D's own first tip-off is the deadline.
  */
 import type { ScheduledPickup, ScheduledPickupList } from "@/types/scheduled-pickup";
+import { SCHEDULED_PICKUP_NOT_PENDING, dataString, toApiError, userMessage } from "./api-error";
 import type { SourcePlayer, WeekDay } from "./week-grid";
 
 export interface PickupView {
@@ -107,3 +108,26 @@ export function pickupTiming(
 }
 
 const lastName = (name: string) => name.split(" ").slice(1).join(" ") || name;
+
+/**
+ * What a refused cancel tells the user. The pickup is never taken off the list
+ * for one: the list is read again and shows it as the server has it. A pickup
+ * that settled first (409 NOT_PENDING, its status in `data`) is an error only
+ * if it ran; any other refusal, such as a pickup being made right now, is an
+ * error in the server's words.
+ */
+export function cancelRefusal(error: unknown): { tone: "error" | "info"; message: string } {
+  const err = toApiError(error);
+  if (err.code !== SCHEDULED_PICKUP_NOT_PENDING) {
+    return { tone: "error", message: userMessage(err, "Couldn't cancel that pickup") };
+  }
+  switch (dataString(err, "status")) {
+    case "executed":
+      return { tone: "error", message: "Too late to cancel: that pickup already ran" };
+    case "cancelled":
+      return { tone: "info", message: "That pickup was already cancelled" };
+    default:
+      // Skipped, failed or expired: it never ran, and the list now says why.
+      return { tone: "info", message: userMessage(err, "That pickup is no longer pending") };
+  }
+}
