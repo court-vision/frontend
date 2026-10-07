@@ -304,10 +304,6 @@ interface ItemProps extends MarketProps {
   selected: boolean;
 }
 
-function dropLabel(dropId: number, nameOf: (id: number) => string): string {
-  return dropId === NO_DROP ? "into an open spot" : `drop ${shortName(nameOf(dropId))}`;
-}
-
 function FaItem(props: ItemProps) {
   const { fa, best, target, selected, days, open, nameOf, onHover, onPin } = props;
   const gain = best ? (target != null ? best.byDay[target] ?? 0 : best.week) : null;
@@ -336,7 +332,6 @@ function FaItem(props: ItemProps) {
             ) : null}
             {injured ? <span className={`${s.marketTag} ${s.marketTagWarn}`}>{(fa.injury_status ?? "INJ").replace("DAY_TO_DAY", "DTD")}</span> : null}
           </span>
-          <span className={s.marketDrop}>{best ? dropLabel(best.dropId, nameOf) : "no room for him"}</span>
         </span>
         <Strip states={stripFor(fa, days, open, props.addFrom)} />
         <span className={s.marketGain} data-sign={gain == null ? "none" : gain > 0.05 ? "up" : gain < -0.05 ? "down" : "flat"}>
@@ -350,16 +345,19 @@ function FaItem(props: ItemProps) {
 
 /** The selected free agent: every drop that could make room, ranked, and the add. Evaluated only when open. */
 function DropOptions({ fa, target, evaluate, allDrops, room, nameOf, avgOf, pinned, pinnedBlocked, onPin, onAdd }: ItemProps) {
+  const picked = pinned && pinned.faId === fa.player_id ? pinned.replaces : null;
   const options = useMemo(() => {
-    const ids = room > 0 ? [...allDrops, NO_DROP] : allDrops;
+    // The weakest few, plus whoever was picked from the roster.
+    const base = room > 0 ? [...allDrops, NO_DROP] : allDrops;
+    const ids = picked != null && !base.includes(picked) ? [...base, picked] : base;
     return evaluate(fa, ids).sort((a, b) => (target != null ? (b.byDay[target] ?? 0) - (a.byDay[target] ?? 0) : 0) || b.week - a.week);
-  }, [evaluate, fa, allDrops, room, target]);
+  }, [evaluate, fa, allDrops, room, target, picked]);
   const pick = pinned && pinned.faId === fa.player_id ? pinned : null;
   return (
     <div className={s.marketDetail}>
-      <span className={dk.label}>Make room · your weakest players</span>
+      <span className={dk.label}>Make room · your weakest players, or click anyone in the grid</span>
       <div className={s.marketOptions}>
-        {options.slice(0, 6).map((o) => {
+        {options.filter((o, i) => i < 6 || o.dropId === picked).map((o) => {
           const on = pick?.replaces === o.dropId;
           const value = target != null ? o.byDay[target] ?? 0 : o.week;
           return (

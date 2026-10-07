@@ -60,6 +60,8 @@ interface WeekGridProps {
   /** Present when the lineup on screen can be rearranged (today, ESPN board). */
   drag: DragApi | null;
   mode: LineupMode;
+  /** A free agent is picked: clicking a roster player makes him the drop. */
+  picking?: boolean;
 }
 
 type Group = "active" | "bench" | "ir" | "drop";
@@ -92,6 +94,7 @@ export function WeekGrid({
   onReplace,
   drag,
   mode,
+  picking = false,
 }: WeekGridProps) {
   const [hotCol, setHotCol] = useState<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -144,6 +147,37 @@ export function WeekGrid({
     el?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [cursor]);
 
+  // One row (with its group's label when it starts a group).
+  const renderRow = (row: GridRow, i: number) => {
+    const group = groups[i];
+    const starts = group !== "active" && (i === 0 || groups[i - 1] !== group);
+    const count = groups.filter((g, j) => g === group && grid.rows[j].player && grid.rows[j].kind !== "incoming").length;
+    return (
+      <Fragment key={row.key}>
+        {starts ? <GroupRow group={group} count={count} onBoard={onBoard} /> : null}
+        <GridRowView
+          row={row}
+          group={group}
+          drop={dropState(row.key)}
+          droppable={!!drag && group !== "drop"}
+          draggable={!!drag && group !== "drop" && row.kind === "player" && !!row.player && !boardById.get(row.player.id)?.locked}
+          board={row.player ? boardById.get(row.player.id) : undefined}
+          isToday={isToday}
+          todayIndex={todayIndex}
+          cursor={cursor?.key === row.key ? cursor.col : null}
+          hotCol={hotCol}
+          heat={heat}
+          peak={peak}
+          lastCol={n + 1}
+          onCursor={onCursor}
+          onHotCol={setHotCol}
+          onMove={onMove}
+          onReplace={onReplace}
+        />
+      </Fragment>
+    );
+  };
+
   return (
     <DndContext
       id="week-grid" // a fixed id keeps its aria ids the same on the server and the client
@@ -162,7 +196,7 @@ export function WeekGrid({
         aria-rowcount={grid.rows.length + 4}
         onMouseLeave={() => setHotCol(null)}
       >
-        <div className={s.grid} style={{ ["--cols" as string]: cols }}>
+        <div className={s.grid} style={{ ["--cols" as string]: cols }} data-picking={picking}>
           <div className={s.head} role="row">
             <div className={s.rosterCell} role="columnheader">
               <span className={dk.label}>
@@ -221,38 +255,12 @@ export function WeekGrid({
           </div>
 
           <LayoutGroup>
-            {grid.rows.map((row, i) => {
-              const group = groups[i];
-              const starts = group !== "active" && (i === 0 || groups[i - 1] !== group);
-              const count = groups.filter((g, j) => g === group && grid.rows[j].player && grid.rows[j].kind !== "incoming").length;
-              return (
-                <Fragment key={row.key}>
-                  {starts ? <GroupRow group={group} count={count} onBoard={onBoard} /> : null}
-                  <GridRowView
-                    row={row}
-                    group={group}
-                    drop={dropState(row.key)}
-                    droppable={!!drag}
-                    draggable={!!drag && row.kind === "player" && !!row.player && !boardById.get(row.player.id)?.locked}
-                    board={row.player ? boardById.get(row.player.id) : undefined}
-                    isToday={isToday}
-                    todayIndex={todayIndex}
-                    cursor={cursor?.key === row.key ? cursor.col : null}
-                    hotCol={hotCol}
-                    heat={heat}
-                    peak={peak}
-                    lastCol={n + 1}
-                    onCursor={onCursor}
-                    onHotCol={setHotCol}
-                    onMove={onMove}
-                    onReplace={onReplace}
-                  />
-                </Fragment>
-              );
-            })}
+            {grid.rows.map((row, i) => (groups[i] === "drop" ? null : renderRow(row, i)))}
           </LayoutGroup>
 
           <div className={s.foot}>
+            {/* A previewed add's outgoing player stays in view, pinned above the totals. */}
+            {grid.rows.map((row, i) => (groups[i] === "drop" ? renderRow(row, i) : null))}
             <FootRow label={youName} sub="you" totals={grid.you} todayIndex={todayIndex} week={grid.projected.you} />
             <FootRow label={oppName} sub="opponent" totals={grid.opp} todayIndex={todayIndex} week={grid.projected.opp} />
             <div className={s.footRow} role="row">

@@ -57,6 +57,8 @@ interface DailyGridProps {
   oppName: string;
   onSeat: (playerId: number, day: number, el: HTMLElement) => void;
   drag: SeatDragApi | null;
+  /** A free agent is picked: clicking a roster player makes him the drop. */
+  picking?: boolean;
 }
 
 /** The focused day's box score, in this order (FPTS follows). */
@@ -101,6 +103,7 @@ export function DailyGrid({
   oppName,
   onSeat,
   drag,
+  picking = false,
 }: DailyGridProps) {
   const { slots, seats } = grid.lineups;
   const days = grid.days;
@@ -174,6 +177,60 @@ export function DailyGrid({
     return { playing, idle, past: d.kind === "past" };
   });
 
+  // One lineup spot across the week (the group's label first when it starts a group).
+  const renderRow = (def: SlotRowDef, r: number) => {
+    const starts = def.group !== "active" && (r === 0 || slots[r - 1].group !== def.group);
+    return (
+      <Fragment key={def.key}>
+        {starts ? (
+          <div className={s.groupRow} role="presentation">
+            <div className={s.groupLabel}>
+              <span className={dk.label} style={{ color: def.group === "drop" ? "var(--down)" : "var(--text-2)" }}>
+                {def.group === "bench" ? "Bench" : def.group === "ir" ? "IR" : "Dropping"}
+              </span>
+            </div>
+            <div className={s.groupFill}>
+              <span className={dk.sub} style={{ paddingLeft: 10 }}>
+                {def.group === "bench"
+                  ? "games here don't count"
+                  : def.group === "ir"
+                    ? "doesn't score"
+                    : "leaves the roster for the free agent: his games stop counting"}
+              </span>
+            </div>
+          </div>
+        ) : null}
+        <div className={s.row} role="row" data-group={def.group} data-slotkey={def.key}>
+          <div className={s.slotCell} role="rowheader">
+            <span className={s.slotChip} data-group={def.group}>
+              {def.slot}
+            </span>
+          </div>
+          {days.map((d, i) => (
+            <SeatPair
+              key={d.date}
+              def={def}
+              seat={seats[i][r]}
+              day={i}
+              focused={i === focusDay}
+              today={d.index === todayIndex}
+              hot={hotDay === i}
+              cursor={cursor?.key === def.key && cursor.col === i}
+              heat={heat}
+              peak={peak}
+              locked={!!seats[i][r] && !!boards[i]?.players.find((p) => p.player_id === seats[i][r]!.player.id)?.locked}
+              dnd={!!drag?.editable[i] && def.group !== "drop"}
+              drop={dropState(i, def.key)}
+              onHot={setHotDay}
+              onCursor={onCursor}
+              onSeat={onSeat}
+            />
+          ))}
+        </div>
+      </Fragment>
+    );
+  };
+
   return (
     <DndContext
       id="daily-grid" // a fixed id keeps its aria ids the same on the server and the client
@@ -191,7 +248,7 @@ export function DailyGrid({
         aria-label="Daily lineups for the week"
         onMouseLeave={() => setHotDay(null)}
       >
-        <div className={s.grid} style={{ ["--cols" as string]: cols, minWidth }}>
+        <div className={s.grid} style={{ ["--cols" as string]: cols, minWidth }} data-picking={picking}>
           <div className={s.head} role="row">
             <div className={s.slotCell} role="columnheader">
               <span className={dk.label}>Slot</span>
@@ -245,61 +302,12 @@ export function DailyGrid({
           </div>
 
           <LayoutGroup>
-            {slots.map((def, r) => {
-              const starts = def.group !== "active" && (r === 0 || slots[r - 1].group !== def.group);
-              return (
-                <Fragment key={def.key}>
-                  {starts ? (
-                    <div className={s.groupRow} role="presentation">
-                      <div className={s.groupLabel}>
-                        <span className={dk.label} style={{ color: def.group === "drop" ? "var(--down)" : "var(--text-2)" }}>
-                          {def.group === "bench" ? "Bench" : def.group === "ir" ? "IR" : "Dropping"}
-                        </span>
-                      </div>
-                      <div className={s.groupFill}>
-                        <span className={dk.sub} style={{ paddingLeft: 10 }}>
-                          {def.group === "bench"
-                            ? "games here don't count"
-                            : def.group === "ir"
-                              ? "doesn't score"
-                              : "leaves the roster for the free agent: his games stop counting"}
-                        </span>
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className={s.row} role="row" data-group={def.group} data-slotkey={def.key}>
-                    <div className={s.slotCell} role="rowheader">
-                      <span className={s.slotChip} data-group={def.group}>
-                        {def.slot}
-                      </span>
-                    </div>
-                    {days.map((d, i) => (
-                      <SeatPair
-                        key={d.date}
-                        def={def}
-                        seat={seats[i][r]}
-                        day={i}
-                        focused={i === focusDay}
-                        today={d.index === todayIndex}
-                        hot={hotDay === i}
-                        cursor={cursor?.key === def.key && cursor.col === i}
-                        heat={heat}
-                        peak={peak}
-                        locked={!!seats[i][r] && !!boards[i]?.players.find((p) => p.player_id === seats[i][r]!.player.id)?.locked}
-                        dnd={!!drag?.editable[i] && def.group !== "drop"}
-                        drop={dropState(i, def.key)}
-                        onHot={setHotDay}
-                        onCursor={onCursor}
-                        onSeat={onSeat}
-                      />
-                    ))}
-                  </div>
-                </Fragment>
-              );
-            })}
+            {slots.map((def, r) => (def.group === "drop" ? null : renderRow(def, r)))}
           </LayoutGroup>
 
           <div className={s.foot}>
+            {/* A previewed add's outgoing player stays in view, pinned above the totals. */}
+            {slots.map((def, r) => (def.group === "drop" ? renderRow(def, r) : null))}
             {(["you", "opp", "edge"] as const).map((line) => (
               <div key={line} className={s.footRow} role="row">
                 <div className={s.slotCell} role="rowheader" title={line === "you" ? youName : line === "opp" ? oppName : "You minus them"}>

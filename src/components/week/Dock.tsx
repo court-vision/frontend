@@ -102,7 +102,11 @@ export function Dock({
             ) : null}
           </span>
           <span className={`${dk.chip} ${dk.pv}`} title="Started on his game days">{signed(swap.delta)} week</span>
-          {swap.blocked ? <span className={s.note}>{swap.blocked}</span> : null}
+          {swap.blocked ? (
+            <span className={s.note}>{swap.blocked}</span>
+          ) : (
+            <span className={s.note}>Click a player in the grid to drop him instead</span>
+          )}
           <button type="button" className={dk.btn} onClick={onCancelSwap}>
             Cancel
           </button>
