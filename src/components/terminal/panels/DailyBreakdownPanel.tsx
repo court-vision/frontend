@@ -58,10 +58,18 @@ function isDailyMatchupFuture(
 }
 
 function PastPlayerRow({ player }: { player: DailyMatchupPlayerStats }) {
+  // A dated lineup (snapshot / ESPN history) carries that day's slot; bench
+  // and IR rows did not count toward the day and are dimmed.
+  const benched = player.lineup_slot === "BE" || player.lineup_slot === "IR";
   return (
-    <div className="flex items-center gap-2 px-3 py-0.5 hover:bg-muted/30 transition-colors">
+    <div
+      className={cn(
+        "flex items-center gap-2 px-3 py-0.5 hover:bg-muted/30 transition-colors",
+        benched && "opacity-50"
+      )}
+    >
       <span className="text-[10px] font-mono text-muted-foreground w-6 shrink-0 uppercase">
-        {player.position}
+        {player.lineup_slot ?? player.position}
       </span>
       <span className="text-[10px] flex-1 truncate">
         {player.name}

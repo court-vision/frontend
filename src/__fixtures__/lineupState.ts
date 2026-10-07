@@ -118,6 +118,8 @@ export const MOCK_LINEUP_STATE: LineupState = {
   nba_date: "2026-10-20",
   scoring_period_id: 1,
   scoring_period_source: "provider",
+  current_scoring_period_id: 1,
+  final_scoring_period_id: 167,
   first_game_time_et: "19:00",
   slot_counts: {
     "0": 1, "1": 1, "2": 1, "3": 1, "4": 1, "5": 1, "6": 1,
