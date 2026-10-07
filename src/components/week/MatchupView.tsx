@@ -51,6 +51,7 @@ export function MatchupView({ grid, source, day, todayIndex, onDay }: MatchupVie
   const active = filled.filter((r) => r.group === "active");
   const bench = filled.filter((r) => r.group === "bench");
   const ir = filled.filter((r) => r.group === "ir");
+  const drop = filled.filter((r) => r.group === "drop");
   const label = d.kind === "today" ? "Today" : d.kind === "past" ? "Final" : "Ahead";
 
   return (
@@ -106,6 +107,10 @@ export function MatchupView({ grid, source, day, todayIndex, onDay }: MatchupVie
         ))}
         {ir.length ? <GroupRow label="IR" /> : null}
         {ir.map((r) => (
+          <Duel key={r.key} row={r} past={md.kind === "past"} />
+        ))}
+        {drop.length ? <GroupRow label="Dropping" note="leaves the roster for the free agent: his games stop counting" tone="var(--down)" /> : null}
+        {drop.map((r) => (
           <Duel key={r.key} row={r} past={md.kind === "past"} />
         ))}
       </div>
@@ -175,10 +180,12 @@ function ScoreSide({ name, side, kind, mirror = false }: { name: string; side: M
   );
 }
 
-function GroupRow({ label, note }: { label: string; note?: string }) {
+function GroupRow({ label, note, tone }: { label: string; note?: string; tone?: string }) {
   return (
     <div className={s.muGroup}>
-      <span className={dk.label}>{label}</span>
+      <span className={dk.label} style={tone ? { color: tone } : undefined}>
+        {label}
+      </span>
       {note ? <span className={dk.sub}>{note}</span> : null}
     </div>
   );
@@ -193,17 +200,30 @@ function Duel({ row, past }: { row: DuelRow; past: boolean }) {
           {row.slot}
         </span>
       </span>
-      <Side side={row.opp} edge={row.edge === "opp"} past={past} mirror />
+      <Side side={row.opp} edge={row.edge === "opp"} past={past} mirror blank={row.group === "drop"} />
     </div>
   );
 }
 
 /** A side's cells, built left to right as your side reads; the opponent's are the same, reversed. */
-function Side({ side, edge, past, mirror = false }: { side: DuelSide | null; edge: boolean; past: boolean; mirror?: boolean }) {
+function Side({
+  side,
+  edge,
+  past,
+  mirror = false,
+  blank: quiet = false,
+}: {
+  side: DuelSide | null;
+  edge: boolean;
+  past: boolean;
+  mirror?: boolean;
+  /** No spot to fill on this side (the drop row's opponent side): leave it unlabelled. */
+  blank?: boolean;
+}) {
   if (!side) {
     const blank = [
       <span key="name" className={s.muName} data-mirror={mirror}>
-        <span className={dk.sub}>empty</span>
+        {quiet ? null : <span className={dk.sub}>empty</span>}
       </span>,
       <span key="stats" className={s.muSpan} style={{ gridColumn: `span ${STATS.length}` }} />,
       <span key="fpts" className={s.muFpts} />,
@@ -232,7 +252,17 @@ function Side({ side, edge, past, mirror = false }: { side: DuelSide | null; edg
         ? `final ${oppShort(g.opp)}`.trim()
         : `${oppShort(g.opp)}${g.time ? ` · ${tip(g.time)}` : ""}`;
   const name = (
-    <span key="name" className={s.muName} data-mirror={mirror} data-health={health} data-staged={side.staged} data-incoming={side.incoming}>
+    <span
+      key="name"
+      className={s.muName}
+      data-mirror={mirror}
+      data-health={health}
+      data-staged={side.staged}
+      data-incoming={side.incoming}
+      data-shifted={side.shifted || undefined}
+      data-outgoing={side.outgoing || undefined}
+      title={side.shifted ? `${side.name} moves here to make room for the free agent` : side.outgoing ? `${side.name} is dropped for the free agent` : undefined}
+    >
       <Headshot nbaId={side.nbaId} name={side.name} size={28} />
       <span className={s.muWho}>
         <span className={s.muPlayer}>{side.name}</span>
@@ -250,17 +280,17 @@ function Side({ side, edge, past, mirror = false }: { side: DuelSide | null; edg
   const line = g?.line ?? null;
   const stats = line ? (
     STATS.map((c) => (
-      <span key={c.key} className={s.muStat} data-counts={side.counts} data-incoming={side.incoming}>
+      <span key={c.key} className={s.muStat} data-counts={side.counts} data-incoming={side.incoming} data-outgoing={side.outgoing || undefined}>
         {c.get(line)}
       </span>
     ))
   ) : (
-    <span key="span" className={s.muSpan} style={{ gridColumn: `span ${STATS.length}` }} data-counts={side.counts} data-incoming={side.incoming}>
+    <span key="span" className={s.muSpan} style={{ gridColumn: `span ${STATS.length}` }} data-counts={side.counts} data-incoming={side.incoming} data-outgoing={side.outgoing || undefined}>
       {status === "dnp" ? "did not play" : status === "out" ? "ruled out" : ""}
     </span>
   );
   const fpts = (
-    <span key="fpts" className={s.muFpts} data-edge={edge} data-counts={side.counts} data-status={status} data-incoming={side.incoming}>
+    <span key="fpts" className={s.muFpts} data-edge={edge} data-counts={side.counts} data-status={status} data-incoming={side.incoming} data-outgoing={side.outgoing || undefined}>
       {side.fpts == null ? "—" : side.projected ? <span className={s.muProj}>{pts(side.fpts)}</span> : pts(side.fpts)}
     </span>
   );

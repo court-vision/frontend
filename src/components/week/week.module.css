@@ -1428,6 +1428,40 @@ button.dayHead:hover {
   color: var(--preview);
 }
 
+/* A starter the preview moves to make room for him. */
+.muName[data-shifted="true"] .muPlayer {
+  color: var(--preview);
+}
+
+.muName[data-shifted="true"]::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: 50%;
+  background: var(--preview);
+}
+
+/* The player he replaces: a row of his own, last, struck through. */
+.muRow > [data-outgoing="true"] {
+  background: color-mix(in srgb, var(--down) 5%, transparent);
+}
+
+.muName[data-outgoing="true"] .muPlayer,
+.muFpts[data-outgoing="true"] {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--down) 70%, transparent);
+}
+
+.muName[data-outgoing="true"] [data-face] {
+  opacity: 0.5;
+  filter: grayscale(1);
+}
+
 .muTotal {
   min-height: 40px;
   background: var(--surface);

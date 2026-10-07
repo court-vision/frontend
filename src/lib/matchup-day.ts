@@ -38,6 +38,10 @@ export interface DuelSide {
   staged: boolean;
   /** The free agent a previewed add brings in (your side). */
   incoming: boolean;
+  /** Moved to another spot to make room for that free agent (your side). */
+  shifted: boolean;
+  /** The player that add drops, in a row of his own (your side). */
+  outgoing: boolean;
 }
 
 export interface DuelRow {
@@ -118,6 +122,8 @@ function oppSide(o: SourceOpponent, day: number, active: boolean): DuelSide {
     projected: !scored(game),
     staged: false,
     incoming: false,
+    shifted: false,
+    outgoing: false,
   };
 }
 
@@ -161,7 +167,7 @@ export function buildMatchupDay(source: WeekSource, grid: WeekGrid, day: number)
     let you: DuelSide | null = null;
     if (seat) {
       const game = seat.player.games[day] ?? null;
-      const counts = seat.cell.counts && !!game && !game.out;
+      const counts = !seat.outgoing && seat.cell.counts && !!game && !game.out;
       you = {
         id: seat.player.id,
         name: seat.player.name,
@@ -174,6 +180,8 @@ export function buildMatchupDay(source: WeekSource, grid: WeekGrid, day: number)
         projected: !scored(game),
         staged: seat.staged,
         incoming: seat.incoming,
+        shifted: !!seat.shifted,
+        outgoing: !!seat.outgoing,
       };
     }
     const o = take(canonical(def.slot));
@@ -187,7 +195,7 @@ export function buildMatchupDay(source: WeekSource, grid: WeekGrid, day: number)
       rows.push({ key: `opp-${o.id}`, slot, group, you: null, opp: oppSide(o, day, group === "active"), edge: null });
     }
   }
-  // Keep each group together: active, then bench, then IR.
+  // Keep each group together: active, then bench, then IR, then a previewed add's drop.
   const order: Record<SeatGroup, number> = { active: 0, bench: 1, ir: 2, drop: 3 };
   rows.sort((a, b) => order[a.group] - order[b.group]);
 

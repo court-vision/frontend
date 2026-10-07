@@ -54,17 +54,42 @@ describe("buildMatchupDay", () => {
     expect(days[0].you.actual).toBe(grid.you[0].actual);
   });
 
-  test("a previewed free agent is marked on your side of his spot", () => {
+  describe("a previewed add", () => {
     const fa = DEMO_STREAMERS.find((s) => s.name === "Dyson Daniels")!;
-    const murray = board.players.find((p) => p.name === "Keegan Murray")!;
     const player = sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team), DEMO_TODAY + 1);
-    const preview = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: murray.player_id }, viewDay: DEMO_TODAY });
-    const wed = buildMatchupDay(source, preview, DEMO_TODAY + 1);
-    const marked = wed.rows.filter((r) => r.you?.incoming);
-    expect(marked.map((r) => r.you?.name)).toEqual(["Dyson Daniels"]);
-    expect(marked[0].group).toBe("active");
-    expect(wed.rows.every((r) => !r.opp?.incoming)).toBe(true);
-    expect(days[DEMO_TODAY + 1].rows.some((r) => r.you?.incoming)).toBe(false);
+    const previewDay = (drop: string, day: number) => {
+      const replaces = board.players.find((p) => p.name === drop)!.player_id;
+      const preview = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces }, viewDay: DEMO_TODAY });
+      return buildMatchupDay(source, preview, day);
+    };
+
+    test("marks the free agent on your side of his spot", () => {
+      const wed = previewDay("Keegan Murray", DEMO_TODAY + 1);
+      const marked = wed.rows.filter((r) => r.you?.incoming);
+      expect(marked.map((r) => r.you?.name)).toEqual(["Dyson Daniels"]);
+      expect(marked[0].group).toBe("active");
+      expect(wed.rows.every((r) => !r.opp?.incoming && !r.opp?.shifted && !r.opp?.outgoing)).toBe(true);
+      expect(days[DEMO_TODAY + 1].rows.some((r) => r.you?.incoming)).toBe(false);
+    });
+
+    test("marks the starter moved to make room for him", () => {
+      // Maxey is out, so Daniels takes PG and Maxey goes to the bench.
+      const wed = previewDay("Keegan Murray", DEMO_TODAY + 1);
+      const moved = wed.rows.filter((r) => r.you?.shifted);
+      expect(moved.map((r) => [r.you?.name, r.group])).toEqual([["Tyrese Maxey", "bench"]]);
+    });
+
+    test("puts the dropped player last, in a row of his own that never counts", () => {
+      const wed = previewDay("Walker Kessler", DEMO_TODAY + 1);
+      const last = wed.rows[wed.rows.length - 1];
+      expect(last).toMatchObject({ group: "drop", slot: "DROP", opp: null, edge: null });
+      expect(last.you).toMatchObject({ name: "Walker Kessler", outgoing: true, counts: false });
+      expect(last.you?.game).not.toBeNull();
+      expect(wed.rows.filter((r) => r.you?.name === "Walker Kessler")).toHaveLength(1);
+      // A day already played keeps him in his own spot, so the drop row is empty.
+      const mon = previewDay("Walker Kessler", 0);
+      expect(mon.rows.find((r) => r.group === "drop")?.you).toBeNull();
+    });
   });
 });
 
