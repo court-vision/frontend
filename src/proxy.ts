@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { isDeskDemo } from "@/components/desk/routes";
 
 // Define routes that require authentication
 const isProtectedRoute = createRouteMatcher([
@@ -22,14 +23,10 @@ const isIndexableRoute = createRouteMatcher([
   "/terminal(.*)",
 ]);
 
-// A desk's demo runs on sample data in the browser: no account needed.
-function isDeskDemo(req: { nextUrl: URL }): boolean {
-  return req.nextUrl.searchParams.has("demo") || /^\/lab\/demo-\d+(\/|$)/.test(req.nextUrl.pathname);
-}
-
 export default clerkMiddleware(async (auth, req) => {
-  // Protect routes that require authentication
-  if (isProtectedRoute(req) && !isDeskDemo(req)) {
+  // Protect routes that require authentication. A desk's demo runs on sample
+  // data in the browser, so its own URLs (and only those) open signed out.
+  if (isProtectedRoute(req) && !isDeskDemo(req.nextUrl.pathname, req.nextUrl.searchParams)) {
     await auth.protect();
   }
 
