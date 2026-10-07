@@ -183,10 +183,10 @@ export function ConfirmDialog({ open, onOpenChange, container, title, body, line
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal container={container}>
         <Dialog.Overlay className={dk.overlay} />
-        <Dialog.Content className={dk.dialog} aria-describedby={undefined}>
+        <Dialog.Content className={dk.dialog}>
           <div className={dk.dialogBody}>
             <Dialog.Title className={dk.dialogTitle}>{title}</Dialog.Title>
-            <p className={dk.dialogText}>{body}</p>
+            <Dialog.Description className={dk.dialogText}>{body}</Dialog.Description>
             <div className={s.changeList}>
               {lines.map((l) => (
                 <div key={l.key} className={s.change}>

@@ -23,10 +23,18 @@ export function DeskDialog({ open, onOpenChange, title, description, wide, child
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal container={container}>
         <Dialog.Overlay className={dk.overlay} />
-        <Dialog.Content className={`${dk.dialog} ${wide ? dk.dialogWide : ""}`} aria-describedby={undefined}>
+        <Dialog.Content
+          className={`${dk.dialog} ${wide ? dk.dialogWide : ""}`}
+          // Radix points aria-describedby at the Description below; with none, nothing describes the dialog.
+          {...(description ? {} : { "aria-describedby": undefined })}
+        >
           <div className={dk.dialogBody}>
             <Dialog.Title className={dk.dialogTitle}>{title}</Dialog.Title>
-            {description ? <div className={dk.dialogText}>{description}</div> : null}
+            {description ? (
+              <Dialog.Description asChild>
+                <div className={dk.dialogText}>{description}</div>
+              </Dialog.Description>
+            ) : null}
             {children}
           </div>
           {footer || cancelLabel ? (
