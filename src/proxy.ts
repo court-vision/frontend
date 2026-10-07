@@ -8,6 +8,7 @@ const isProtectedRoute = createRouteMatcher([
   "/manage-lineups(.*)",
   "/manage-teams(.*)",
   "/draft(.*)",
+  "/lab(.*)",
   "/matchup(.*)",
   "/streamers(.*)",
   "/query-builder/manage-tables(.*)",
@@ -23,7 +24,7 @@ const isIndexableRoute = createRouteMatcher([
 
 // A desk's demo runs on sample data in the browser: no account needed.
 function isDeskDemo(req: { nextUrl: URL }): boolean {
-  return req.nextUrl.searchParams.has("demo") || /^\/draft\/demo-\d+(\/|$)/.test(req.nextUrl.pathname);
+  return req.nextUrl.searchParams.has("demo") || /^\/lab\/demo-\d+(\/|$)/.test(req.nextUrl.pathname);
 }
 
 export default clerkMiddleware(async (auth, req) => {

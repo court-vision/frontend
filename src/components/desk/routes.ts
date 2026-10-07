@@ -5,9 +5,15 @@
  * a page of its own. The rest of the app does not render its chrome around a
  * desk route.
  */
+/**
+ * The Draft desk's home. The old Draft Lab keeps `/draft` until the cutover, so
+ * both can run side by side; at the cutover this becomes "/draft".
+ */
+export const DRAFT_DESK = "/lab";
+
 export const DESKS = [
   { id: "week", label: "Week", href: "/week", key: "1" },
-  { id: "draft", label: "Draft", href: "/draft", key: "2" },
+  { id: "draft", label: "Draft", href: DRAFT_DESK, key: "2" },
 ] as const;
 
 export type DeskId = (typeof DESKS)[number]["id"];

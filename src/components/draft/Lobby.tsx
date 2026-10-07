@@ -18,6 +18,7 @@ import { KIND_LABEL, apiTime } from "./format";
 import { roomTitle } from "./RoomView";
 import type { LobbyModel } from "./model";
 import s from "./draft.module.css";
+import { DRAFT_DESK } from "@/components/desk/routes";
 
 type Filter = "active" | "completed" | "all";
 
@@ -107,7 +108,7 @@ export function Lobby({ model }: { model: LobbyModel }) {
           </span>
           <span style={{ display: "flex", gap: 10 }}>
             {model.status === "signed-out" ? (
-              <Link href="/sign-in?redirect_url=/draft" className={`${dk.btn} ${dk.btnPrimary}`}>
+              <Link href={`/sign-in?redirect_url=${DRAFT_DESK}`} className={`${dk.btn} ${dk.btnPrimary}`}>
                 Sign in
               </Link>
             ) : (
@@ -115,7 +116,7 @@ export function Lobby({ model }: { model: LobbyModel }) {
                 Try again
               </button>
             )}
-            <Link href="/draft?demo" className={dk.btn}>
+            <Link href={`${DRAFT_DESK}?demo`} className={dk.btn}>
               Open the demo
             </Link>
           </span>
@@ -189,7 +190,7 @@ export function Lobby({ model }: { model: LobbyModel }) {
                         New room
                       </button>
                       {!model.demo ? (
-                        <Link href="/draft?demo" className={dk.btn}>
+                        <Link href={`${DRAFT_DESK}?demo`} className={dk.btn}>
                           Open the demo
                         </Link>
                       ) : null}

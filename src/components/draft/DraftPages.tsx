@@ -9,6 +9,7 @@ import { Lobby } from "./Lobby";
 import { RecapView } from "./Recap";
 import { RoomView } from "./RoomView";
 import { useDemoLobby, useDemoRecap, useDemoRoom, useLiveLobby, useLiveRecap, useLiveRoom } from "./useRoomModels";
+import { DRAFT_DESK } from "@/components/desk/routes";
 
 /** A room is a session id, or `demo-N` for a room that lives in the browser. */
 function parseSlug(slug: string): { demo: number } | { live: number } | null {
@@ -24,7 +25,7 @@ function NoSuchRoom() {
       <DeskBar desk="draft" />
       <div className={dk.empty}>
         <span className={dk.emptyTitle}>No such draft room</span>
-        <Link href="/draft" className={dk.btn}>
+        <Link href={DRAFT_DESK} className={dk.btn}>
           All rooms
         </Link>
       </div>

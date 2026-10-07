@@ -28,6 +28,7 @@ import { SyncPill } from "./SyncPill";
 import { KIND_LABEL } from "./format";
 import type { RoomModel } from "./model";
 import s from "./draft.module.css";
+import { DRAFT_DESK } from "@/components/desk/routes";
 
 const SOURCES: BoardSource[] = ["espn", "cv", "my_team"];
 
@@ -84,7 +85,7 @@ function RoomState({ model }: { model: RoomModel }) {
       </span>
       <span style={{ display: "flex", gap: 10 }}>
         {model.status === "signed-out" ? (
-          <Link href="/sign-in?redirect_url=/draft" className={`${dk.btn} ${dk.btnPrimary}`}>
+          <Link href={`/sign-in?redirect_url=${DRAFT_DESK}`} className={`${dk.btn} ${dk.btnPrimary}`}>
             Sign in
           </Link>
         ) : (
@@ -92,7 +93,7 @@ function RoomState({ model }: { model: RoomModel }) {
             All rooms
           </Link>
         )}
-        <Link href="/draft?demo" className={dk.btn}>
+        <Link href={`${DRAFT_DESK}?demo`} className={dk.btn}>
           Open the demo
         </Link>
       </span>
@@ -353,7 +354,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
       const existing = (api.data as { existing_session_id?: number } | null)?.existing_session_id;
       if (api.code === "DRAFT_ROOM_ALREADY_LINKED" && existing) {
         toast.error(`ESPN room ${espnLeagueId} is already linked to Draft #${existing}`, {
-          action: { label: "Open it", onClick: () => router.push(`/draft/${existing}`) },
+          action: { label: "Open it", onClick: () => router.push(`${DRAFT_DESK}/${existing}`) },
         });
       } else {
         toast.error(userMessage(error));

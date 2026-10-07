@@ -38,12 +38,13 @@ import { draftKeys } from "@/hooks/useDrafts";
 import type { DraftSession, DraftSessionUpdate } from "@/types/draft";
 import { useDemoDrafts, useDemoFixtures, useDemoReady } from "./useDemoDrafts";
 import type { LobbyModel, RecapModel, RoomModel, TeamChoice } from "./model";
+import { DRAFT_DESK } from "@/components/desk/routes";
 
-const liveHrefs = (id: number) => ({ lobby: "/draft", room: `/draft/${id}`, recap: `/draft/${id}/recap` });
+const liveHrefs = (id: number) => ({ lobby: DRAFT_DESK, room: `${DRAFT_DESK}/${id}`, recap: `${DRAFT_DESK}/${id}/recap` });
 const demoHrefs = (id: number) => ({
-  lobby: "/draft?demo",
-  room: `/draft/${demoSlug(id)}`,
-  recap: `/draft/${demoSlug(id)}/recap`,
+  lobby: `${DRAFT_DESK}?demo`,
+  room: `${DRAFT_DESK}/${demoSlug(id)}`,
+  recap: `${DRAFT_DESK}/${demoSlug(id)}/recap`,
 });
 
 // ---------------------------------------------------------------------------
