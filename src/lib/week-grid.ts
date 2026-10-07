@@ -252,7 +252,8 @@ export interface DayTotal {
   starts: number;
 }
 
-export type SeatGroup = "active" | "bench" | "ir";
+/** Lineup groups; "drop" holds a previewed add's outgoing player, below everything else. */
+export type SeatGroup = "active" | "bench" | "ir" | "drop";
 
 /** One lineup spot: a slot instance (UT has three), a bench spot or an IR spot. */
 export interface SlotRowDef {
@@ -269,6 +270,10 @@ export interface Seat {
   staged: boolean;
   /** A previewed free agent. */
   incoming: boolean;
+  /** Moved to another spot so a previewed free agent fits where he helps most. */
+  shifted?: boolean;
+  /** The player a previewed add drops. */
+  outgoing?: boolean;
 }
 
 /**
@@ -411,6 +416,17 @@ export function buildWeekGrid({
   const replaced = incoming?.replaces ?? null;
   const pool: SourcePlayer[] = incoming ? [...roster, incoming.player] : roster;
   const inId = incoming?.player.id ?? null;
+  const benchCapacity = board ? board.slots.find((x) => x.slot_id === BENCH_SLOT_ID)?.count ?? 0 : 0;
+  // Today, a player whose game has started can't be moved.
+  const lockedToday = new Set<number>();
+  if (todayIndex != null) {
+    for (const p of roster) {
+      const g = p.games[todayIndex];
+      if ((g && g.status !== "scheduled") || boardById.get(p.id)?.locked) lockedToday.add(p.id);
+    }
+  }
+  // Per day: the roster players a previewed free agent moves to fit in.
+  const shiftedByDay: Array<Set<number>> = days.map(() => new Set());
 
   // Who is in which slot, per day (past days: unknown).
   const dayAssign: Array<Map<number, number> | null> = days.map((d) => {
@@ -418,7 +434,19 @@ export function buildWeekGrid({
     const setLineup = asSetByDay[d.index];
     if (setLineup && (d.kind === "today" || asSet)) {
       const m = new Map(setLineup);
-      if (incoming) seatIncomingToday(m, incoming, eligibleOf(incoming.player), slots);
+      if (incoming) {
+        shiftedByDay[d.index] = seatIncomingBest({
+          assign: m,
+          incoming,
+          roster,
+          day: d.index,
+          eligibleOf,
+          slots,
+          benchCapacity,
+          irIds,
+          locked: d.kind === "today" ? lockedToday : new Set(),
+        });
+      }
       return m;
     }
     const cands: PlanCandidate[] = [];
@@ -511,8 +539,7 @@ export function buildWeekGrid({
         .sort((a, b) => b.avg - a.avg);
       for (let k = 0; k < s.count; k++) {
         const p = here[k];
-        if (p?.id === inId) continue; // drawn under the player he replaces, below
-        if (p) rows.push(rowFor(p, "player", s.slotId, slotName(s.slotId)));
+        if (p) rows.push(rowFor(p, p.id === inId ? "incoming" : "player", s.slotId, slotName(s.slotId)));
         else rows.push(openRow(s.slotId, k, days.length));
       }
     }
@@ -523,19 +550,27 @@ export function buildWeekGrid({
     for (const p of roster.filter((x) => irIds.has(x.id))) rows.push(rowFor(p, "player", IR_SLOT_ID, "IR"));
   }
 
-  // A previewed free agent sits directly under the player he would replace.
-  if (incoming) {
-    const slotId = dayAssign[viewDay]?.get(incoming.player.id) ?? null;
-    if (boardRows && slotId != null && isActiveSlot(slotId)) {
-      // Seated in an empty slot on the board: that slot is no longer open.
-      const open = rows.findIndex((r) => r.kind === "open" && r.slotId === slotId);
-      if (open >= 0) rows.splice(open, 1);
+  // A previewed free agent sits in the spot the selected day gives him (an open
+  // one of that slot when there is one); the player he replaces goes to the bottom.
+  if (incoming && !rows.some((r) => r.kind === "incoming")) {
+    const slotId = dayAssign[viewDay]?.get(incoming.player.id) ?? BENCH_SLOT_ID;
+    const active = isActiveSlot(slotId);
+    const row = rowFor(incoming.player, "incoming", slotId, active ? slotName(slotId) : "BE");
+    const open = active ? rows.findIndex((r) => r.kind === "open" && r.slotId === slotId) : -1;
+    if (open >= 0) rows.splice(open, 1, row);
+    else {
+      const group = active ? slotId : BENCH_SLOT_ID;
+      let at = -1;
+      rows.forEach((r, i) => {
+        if (r.slotId === group) at = i;
+      });
+      if (at < 0) at = rows.findIndex((r) => r.slotId === IR_SLOT_ID) - 1;
+      rows.splice(at < -1 ? rows.length : at + 1, 0, row);
     }
-    const at = rows.findIndex((r) => r.player?.id === incoming.replaces);
-    const label = slotId != null && isActiveSlot(slotId) ? slotName(slotId) : "IN";
-    const row = rowFor(incoming.player, "incoming", slotId, label);
-    if (at >= 0) rows.splice(at + 1, 0, row);
-    else rows.push(row);
+  }
+  if (replaced != null) {
+    const at = rows.findIndex((r) => r.player?.id === replaced && r.kind !== "incoming");
+    if (at >= 0) rows.push({ ...rows.splice(at, 1)[0], slot: "DROP" });
   }
 
   // ---- totals ----
@@ -652,14 +687,22 @@ export function buildWeekGrid({
   for (let k = 0; k < spotCount(IR_SLOT_ID, capacityOf(IR_SLOT_ID)); k++) {
     slotDefs.push({ key: `${IR_SLOT_ID}-${k}`, slotId: IR_SLOT_ID, slot: "IR", group: "ir" });
   }
+  const outgoing = replaced != null ? roster.find((p) => p.id === replaced) ?? null : null;
+  if (outgoing) slotDefs.push({ key: "drop-0", slotId: DROP_ROW_ID, slot: "DROP", group: "drop" });
 
   const ordinalOf = (def: SlotRowDef) => Number(def.key.split("-")[1]);
   const seats = days.map((d, i) =>
     slotDefs.map((def): Seat | null => {
+      // The outgoing player: in his own spot on days already played, here from today on.
+      if (def.group === "drop") {
+        return outgoing && d.kind !== "past"
+          ? { player: outgoing, cell: cellFor(outgoing, d), staged: false, incoming: false, outgoing: true }
+          : null;
+      }
       const p = byDay[i].get(def.slotId)?.[ordinalOf(def)];
       if (!p) return null;
       const isStaged = (d.kind !== "future" || asSet) && pendingOn(d.index, p.id);
-      return { player: p, cell: cellFor(p, d), staged: isStaged, incoming: p.id === inId };
+      return { player: p, cell: cellFor(p, d), staged: isStaged, incoming: p.id === inId, shifted: shiftedByDay[i].has(p.id) };
     })
   );
   const boardDay = board ? (boardDayIndex >= 0 ? boardDayIndex : todayIndex) : null;
@@ -727,31 +770,144 @@ function openRow(slotId: number, ordinal: number, dayCount: number): GridRow {
   };
 }
 
+/** The daily lineups' row id for a previewed add's outgoing player. */
+export const DROP_ROW_ID = -1;
+
+// Tie-breaks, far below any real projection: keep a player where he sits, and
+// keep a free agent who wouldn't score off an active spot. Overflowing the
+// bench costs more than any tie-break, less than any real start.
+const STAY = 0.01;
+const BENCH_IF_IDLE = 0.005;
+const OVERFLOW = 1;
+const FORBID = 1e9;
+
+interface SeatInput {
+  /** The day's lineup as set; updated in place. */
+  assign: Map<number, number>;
+  incoming: Incoming;
+  roster: SourcePlayer[];
+  day: number;
+  eligibleOf: (p: SourcePlayer) => number[];
+  slots: PlanSlot[];
+  benchCapacity: number;
+  irIds: ReadonlySet<number>;
+  /** Players whose games have started: they stay where they are. */
+  locked: ReadonlySet<number>;
+}
+
 /**
- * Today, a previewed free agent takes the replaced player's seat when he is
- * eligible for it, else any empty active slot he fits, else the bench.
+ * Seat a previewed free agent where he helps most on a day whose lineup is
+ * set: an exact assignment that maximizes the day's projected points, then
+ * moves as few players as it can. It only makes room for him — starters may
+ * change spots, one may drop to the bench where he takes the spot, but nobody
+ * comes off the bench — so the preview shows the add, not an unrelated
+ * lineup fix. Returns the players it moved.
  */
-function seatIncomingToday(
-  assign: Map<number, number>,
-  incoming: Incoming,
-  eligible: number[],
-  slots: PlanSlot[]
-): void {
-  const vacated = assign.get(incoming.replaces);
+function seatIncomingBest({ assign, incoming, roster, day, eligibleOf, slots, benchCapacity, irIds, locked }: SeatInput): Set<number> {
+  const before = new Map(assign);
   assign.delete(incoming.replaces);
-  if (vacated != null && isActiveSlot(vacated) && eligible.includes(vacated)) {
-    assign.set(incoming.player.id, vacated);
-    return;
+  const fa = incoming.player;
+  const value = (p: SourcePlayer) => {
+    const g = p.games[day];
+    return g && !g.out && g.status === "scheduled" ? p.avg : 0;
+  };
+
+  // Players who can move, and what the locked ones already hold.
+  const movers = [...roster.filter((p) => p.id !== incoming.replaces && !irIds.has(p.id) && !locked.has(p.id)), fa]
+    .filter((p) => p.id === fa.id || assign.get(p.id) !== IR_SLOT_ID);
+  const held = new Map<number, number>();
+  for (const [id, slot] of assign) {
+    if (locked.has(id) && !irIds.has(id)) held.set(slot, (held.get(slot) ?? 0) + 1);
   }
-  for (const s of slots) {
-    if (!eligible.includes(s.slotId)) continue;
-    const held = [...assign.values()].filter((v) => v === s.slotId).length;
-    if (held < s.count) {
-      assign.set(incoming.player.id, s.slotId);
-      return;
-    }
+  const instances: number[] = [];
+  for (const sl of slots) for (let k = held.get(sl.slotId) ?? 0; k < sl.count; k++) instances.push(sl.slotId);
+  const benchFree = Math.max(0, benchCapacity - (held.get(BENCH_SLOT_ID) ?? 0));
+  for (let k = 0; k < benchFree; k++) instances.push(BENCH_SLOT_ID);
+  const overflowFrom = instances.length;
+  for (let k = 0; k < movers.length; k++) instances.push(BENCH_SLOT_ID);
+
+  const cost = movers.map((p) => {
+    const was = assign.get(p.id);
+    // Benched, or not on the lineup ESPN sent: either way, not a starter to shuffle.
+    const benched = p.id !== fa.id && (was === BENCH_SLOT_ID || was === undefined);
+    const v = value(p);
+    const eligible = eligibleOf(p);
+    return instances.map((slot, j) => {
+      if (slot !== BENCH_SLOT_ID) {
+        // Nobody comes off the bench: the preview is about the add.
+        if (benched || !eligible.includes(slot)) return FORBID;
+        return -(v + (was === slot ? STAY : 0));
+      }
+      const bonus = (was === BENCH_SLOT_ID ? STAY : 0) + (p.id === fa.id && v === 0 ? BENCH_IF_IDLE : 0);
+      return -(bonus - (j >= overflowFrom ? OVERFLOW : 0));
+    });
+  });
+
+  const pick = assignMin(cost);
+  movers.forEach((p, i) => {
+    const slot = instances[pick[i]];
+    if (slot != null && cost[i][pick[i]] < FORBID) assign.set(p.id, slot);
+    else assign.set(p.id, BENCH_SLOT_ID);
+  });
+
+  const moved = new Set<number>();
+  for (const p of movers) {
+    if (p.id !== fa.id && before.get(p.id) !== assign.get(p.id)) moved.add(p.id);
   }
-  assign.set(incoming.player.id, BENCH_SLOT_ID);
+  return moved;
+}
+
+/**
+ * Minimum-cost assignment of rows to columns (rows ≤ columns), the Hungarian
+ * method: `result[row]` is the column it takes.
+ */
+export function assignMin(cost: number[][]): number[] {
+  const n = cost.length;
+  if (n === 0) return [];
+  const m = cost[0].length;
+  const u = new Array<number>(n + 1).fill(0);
+  const v = new Array<number>(m + 1).fill(0);
+  const p = new Array<number>(m + 1).fill(0);
+  const way = new Array<number>(m + 1).fill(0);
+  for (let i = 1; i <= n; i++) {
+    p[0] = i;
+    let j0 = 0;
+    const minv = new Array<number>(m + 1).fill(Infinity);
+    const used = new Array<boolean>(m + 1).fill(false);
+    do {
+      used[j0] = true;
+      const i0 = p[j0];
+      let delta = Infinity;
+      let j1 = 0;
+      for (let j = 1; j <= m; j++) {
+        if (used[j]) continue;
+        const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+        if (cur < minv[j]) {
+          minv[j] = cur;
+          way[j] = j0;
+        }
+        if (minv[j] < delta) {
+          delta = minv[j];
+          j1 = j;
+        }
+      }
+      for (let j = 0; j <= m; j++) {
+        if (used[j]) {
+          u[p[j]] += delta;
+          v[j] -= delta;
+        } else minv[j] -= delta;
+      }
+      j0 = j1;
+    } while (p[j0] !== 0);
+    do {
+      const j1 = way[j0];
+      p[j0] = p[j1];
+      j0 = j1;
+    } while (j0);
+  }
+  const result = new Array<number>(n).fill(-1);
+  for (let j = 1; j <= m; j++) if (p[j]) result[p[j] - 1] = j - 1;
+  return result;
 }
 
 // ---------------------------------------------------------------------------

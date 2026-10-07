@@ -20,7 +20,7 @@ import {
   type PositionFilter,
   type StripState,
 } from "@/lib/market";
-import type { WeekDay } from "@/lib/week-grid";
+import type { LineupMode, WeekDay } from "@/lib/week-grid";
 import type { BreakoutCandidateResp } from "@/types/breakout";
 import type { StreamerPlayer } from "@/types/streamer";
 import { monthDay, pts, shortName, signed } from "./format";
@@ -49,6 +49,8 @@ interface MarketProps {
   open: number[];
   /** The first day an add made now counts (today's first tip has passed), or null. */
   addFrom: number | null;
+  /** The grid's lineup view, which every gain here is measured in. */
+  lineupMode: LineupMode;
   mode: MarketMode;
   onMode: (mode: MarketMode) => void;
   /** The one-day mode's day (today or later). */
@@ -219,7 +221,19 @@ export function MarketPane(props: MarketProps) {
       ) : null}
       <div className={`${s.marketRow} ${s.marketColHead}`}>
         <span />
-        <span className={dk.label}>{mode === "breakouts" ? "Beneficiary" : target != null ? `Best for ${days[target]?.dow ?? ""}` : "Best for your week"}</span>
+        <span
+          className={dk.label}
+          title={
+            props.lineupMode === "best"
+              ? "Measured with the best lineup each day"
+              : "Measured against your lineup as set on ESPN, the add seated where he helps most. Switch the lineup to Best (L) to judge with ideal lineups"
+          }
+        >
+          {mode === "breakouts" ? "Beneficiary" : target != null ? `Best for ${days[target]?.dow ?? ""}` : "Best for your week"}
+          <span className={dk.sub} style={{ display: "block", textTransform: "none", letterSpacing: 0, marginTop: 2 }}>
+            vs {props.lineupMode === "best" ? "best lineups" : "lineups as set"}
+          </span>
+        </span>
         <span className={s.strip} title="Your open spots each day: where a game counts without benching anyone">
           {days.map((d) => (
             <span key={d.index} className={s.stripHead} data-today={d.index === todayIndex} data-target={d.index === target}>

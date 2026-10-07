@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  assignMin,
   buildWeekGrid,
   healthOf,
   liveClock,
@@ -121,17 +122,19 @@ describe("buildWeekGrid on the demo week", () => {
     }
   });
 
-  test("previewing a free agent puts his row under the replaced player and moves the finish", () => {
+  test("previewing a free agent seats him in his own spot, sends the dropped player to the bottom, and moves the finish", () => {
     const fa = DEMO_STREAMERS.find((s) => s.name === "Toumani Camara")!;
     const murray = board.players.find((p) => p.name === "Keegan Murray")!;
     const player = sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team));
     const base = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today, mode: "best" });
     const grid = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: murray.player_id }, viewDay: today, mode: "best" });
-    const at = grid.rows.findIndex((r) => r.player?.id === murray.player_id);
-    expect(grid.rows[at].outgoing).toBe(true);
-    expect(grid.rows[at + 1].kind).toBe("incoming");
-    expect(grid.rows[at + 1].player?.name).toBe("Toumani Camara");
-    expect(grid.rows[at + 1].cells[2].opp).toBe("@ PHX");
+    const last = grid.rows[grid.rows.length - 1];
+    expect(last.player?.id).toBe(murray.player_id);
+    expect(last.outgoing).toBe(true);
+    expect(last.slot).toBe("DROP");
+    const incomingRow = grid.rows.find((r) => r.kind === "incoming")!;
+    expect(incomingRow.player?.name).toBe("Toumani Camara");
+    expect(incomingRow.cells[2].opp).toBe("@ PHX");
     // Camara plays more games than Murray this week.
     expect(grid.projected.you).toBeGreaterThan(base.projected.you);
   });
@@ -168,15 +171,66 @@ describe("daily lineups", () => {
     expect(active.filter((s) => s === null).length).toBe(3); // seven games for ten spots Wednesday
   });
 
-  test("a previewed free agent takes a seat; the player he replaces leaves the lineup", () => {
+  test("a previewed free agent takes a seat; the player he replaces moves to a row of his own", () => {
     const fa = DEMO_STREAMERS.find((s) => s.name === "Toumani Camara")!;
     const murray = board.players.find((p) => p.name === "Keegan Murray")!;
     const player = sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team));
     const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: murray.player_id }, viewDay: today });
-    const names = lineups.seats[2].map(name);
-    expect(names).toContain("Toumani Camara");
-    expect(names).not.toContain("Keegan Murray");
-    expect(lineups.seats[2].find((s) => s?.incoming)?.player.name).toBe("Toumani Camara");
+    const drop = lineups.slots.length - 1;
+    expect(lineups.slots[drop]).toMatchObject({ group: "drop", slot: "DROP" });
+    const wed = lineups.seats[2];
+    expect(wed.slice(0, drop).map(name)).toContain("Toumani Camara");
+    expect(wed.slice(0, drop).map(name)).not.toContain("Keegan Murray");
+    expect(wed[drop]).toMatchObject({ outgoing: true, player: { name: "Keegan Murray" } });
+    expect(wed.find((s) => s?.incoming)?.player.name).toBe("Toumani Camara");
+    // On a day already played he is still where he sat, and the drop row is empty.
+    expect(lineups.seats[0].map(name)).toContain("Keegan Murray");
+    expect(lineups.seats[0][drop]).toBeNull();
+  });
+
+  test("the free agent starts where he helps most, not just in the dropped player's spot", () => {
+    // Dropping a bench player leaves no active spot open; Wednesday's UT (Sengun) has no game.
+    const fa = DEMO_STREAMERS.find((s) => s.name === "Toumani Camara")!;
+    const kessler = board.players.find((p) => p.name === "Walker Kessler")!;
+    const sengun = board.players.find((p) => p.name === "Alperen Şengün")!;
+    const player = sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team));
+    const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: kessler.player_id }, viewDay: today });
+    const wed = lineups.seats[2];
+    const at = wed.findIndex((s) => s?.incoming);
+    expect(lineups.slots[at].group).toBe("active");
+    expect(wed[at]?.cell.counts).toBe(true);
+    const sengunAt = wed.findIndex((s) => s?.player.id === sengun.player_id);
+    expect(lineups.slots[sengunAt].group).toBe("bench");
+    expect(wed[sengunAt]?.shifted).toBe(true);
+  });
+
+  test("the preview never brings anyone up from the bench", () => {
+    const fa = DEMO_STREAMERS.find((s) => s.name === "Toumani Camara")!;
+    const murray = board.players.find((p) => p.name === "Keegan Murray")!;
+    const white = board.players.find((p) => p.name === "Derrick White")!;
+    const player = sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team));
+    const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: murray.player_id }, viewDay: today });
+    for (const day of [2, 3, 4, 5, 6]) {
+      const at = lineups.seats[day].findIndex((s) => s?.player.id === white.player_id);
+      expect(lineups.slots[at].group).toBe("bench");
+    }
+  });
+
+  test("after today's first tip he isn't seated in an active spot today", () => {
+    const fa = DEMO_STREAMERS.find((s) => s.name === "Toumani Camara")!;
+    const murray = board.players.find((p) => p.name === "Keegan Murray")!;
+    const player = sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team), today + 1);
+    const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: murray.player_id }, viewDay: today });
+    const at = lineups.seats[today].findIndex((s) => s?.incoming);
+    expect(lineups.slots[at].group).not.toBe("active");
+  });
+});
+
+describe("assignMin", () => {
+  test("finds the cheapest assignment, rows to columns", () => {
+    expect(assignMin([[4, 1, 3], [2, 0, 5], [3, 2, 2]])).toEqual([1, 0, 2]);
+    expect(assignMin([[5, 1, 9, 9]])).toEqual([1]);
+    expect(assignMin([])).toEqual([]);
   });
 });
 

@@ -252,13 +252,17 @@ export function DailyGrid({
                   {starts ? (
                     <div className={s.groupRow} role="presentation">
                       <div className={s.groupLabel}>
-                        <span className={dk.label} style={{ color: "var(--text-2)" }}>
-                          {def.group === "bench" ? "Bench" : "IR"}
+                        <span className={dk.label} style={{ color: def.group === "drop" ? "var(--down)" : "var(--text-2)" }}>
+                          {def.group === "bench" ? "Bench" : def.group === "ir" ? "IR" : "Dropping"}
                         </span>
                       </div>
                       <div className={s.groupFill}>
                         <span className={dk.sub} style={{ paddingLeft: 10 }}>
-                          {def.group === "bench" ? "games here don't count" : "doesn't score"}
+                          {def.group === "bench"
+                            ? "games here don't count"
+                            : def.group === "ir"
+                              ? "doesn't score"
+                              : "leaves the roster for the free agent: his games stop counting"}
                         </span>
                       </div>
                     </div>
@@ -282,7 +286,7 @@ export function DailyGrid({
                         heat={heat}
                         peak={peak}
                         locked={!!seats[i][r] && !!boards[i]?.players.find((p) => p.player_id === seats[i][r]!.player.id)?.locked}
-                        dnd={!!drag?.editable[i]}
+                        dnd={!!drag?.editable[i] && def.group !== "drop"}
                         drop={dropState(i, def.key)}
                         onHot={setHotDay}
                         onCursor={onCursor}
@@ -393,7 +397,7 @@ const SeatPair = memo(function SeatPair({
   onSeat,
 }: SeatPairProps) {
   const p = seat?.player ?? null;
-  const canDrag = dnd && !!p && !locked && !seat?.incoming;
+  const canDrag = dnd && !!p && !locked && !seat?.incoming && !seat?.outgoing;
   const nameRef = useRef<HTMLDivElement | null>(null);
   const dragger = useDraggable({
     id: dndId(day, def.key),
@@ -432,15 +436,25 @@ const SeatPair = memo(function SeatPair({
         data-cursor={cursor}
         data-staged={seat?.staged}
         data-incoming={seat?.incoming}
+        data-shifted={seat?.shifted || undefined}
+        data-outgoing={seat?.outgoing || undefined}
         data-draggable={canDrag}
         data-drop={drop}
         data-health={health}
         onMouseEnter={() => onHot(day)}
         onClick={() => {
           onCursor({ key: def.key, col: day });
-          if (p && nameRef.current && !seat?.incoming) onSeat(p.id, day, nameRef.current);
+          if (p && nameRef.current && !seat?.incoming && !seat?.outgoing) onSeat(p.id, day, nameRef.current);
         }}
-        title={p ? `${p.name} · ${p.team} · ${statusTitle}` : undefined}
+        title={
+          p
+            ? seat?.shifted
+              ? `${p.name} moves here to make room for the free agent`
+              : seat?.outgoing
+                ? `${p.name} is dropped for the free agent`
+                : `${p.name} · ${p.team} · ${statusTitle}`
+            : undefined
+        }
       >
         {p ? (
           // Keyed by day and player, so a move slides him to his new spot in that day's column.
@@ -455,6 +469,8 @@ const SeatPair = memo(function SeatPair({
                   {cell.state === "live" ? <span style={{ color: "var(--live)" }}>{cell.note}</span> : null}
                   {cell.state === "upcoming" && cell.note ? <span>{tip(cell.note)}</span> : null}
                   {seat?.incoming ? <span style={{ color: "var(--preview)" }}>FREE AGENT</span> : null}
+                  {seat?.shifted ? <span style={{ color: "var(--preview)" }}>MOVES</span> : null}
+                  {seat?.outgoing ? <span style={{ color: "var(--down)" }}>DROPPED</span> : null}
                 </span>
               ) : null}
             </span>

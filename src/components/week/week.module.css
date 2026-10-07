@@ -1951,3 +1951,43 @@ button.marketRow:hover {
   color: var(--text-2);
   flex-shrink: 0;
 }
+
+/* ---------------------------------------------------------------- a previewed add */
+
+/* The outgoing player's row: below everything, struck through. */
+.row[data-group="drop"] .seatName,
+.row[data-group="drop"] .cell,
+.row[data-group="drop"] .statCell {
+  background: color-mix(in srgb, var(--down) 5%, transparent);
+}
+
+.seatName[data-outgoing="true"] .seatNameText {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--down) 70%, transparent);
+}
+
+.slotChip[data-group="drop"] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--down) 55%, transparent);
+  background: transparent;
+  color: var(--down);
+  font-size: 9px;
+}
+
+/* A starter the preview moves to make room for the free agent. */
+.seatName[data-shifted="true"] .seatNameText {
+  color: var(--preview);
+}
+
+.seatName[data-shifted="true"]::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: 50%;
+  background: var(--preview);
+}

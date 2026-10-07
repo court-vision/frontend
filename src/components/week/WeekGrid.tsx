@@ -62,7 +62,7 @@ interface WeekGridProps {
   mode: LineupMode;
 }
 
-type Group = "active" | "bench" | "ir";
+type Group = "active" | "bench" | "ir" | "drop";
 
 const ROW_SPRING = { type: "spring", stiffness: 520, damping: 44, mass: 0.7 } as const;
 
@@ -72,13 +72,9 @@ function slotGroup(slotId: number | null): Group {
   return "active";
 }
 
-/** Each row's group; a previewed free agent belongs to the group of the row he sits under. */
+/** Each row's group: by its slot on the selected day; a previewed add's outgoing player has his own, last. */
 function rowGroups(rows: GridRow[]): Group[] {
-  const out: Group[] = [];
-  rows.forEach((r, i) => {
-    out.push(r.kind === "incoming" && i > 0 ? out[i - 1] : slotGroup(r.slotId));
-  });
-  return out;
+  return rows.map((r) => (r.outgoing ? "drop" : slotGroup(r.slotId)));
 }
 
 export function WeekGrid({
@@ -313,13 +309,15 @@ export function WeekGrid({
 // ---------------------------------------------------------------------------
 
 function GroupRow({ group, count, onBoard }: { group: Group; count: number; onBoard: boolean }) {
-  const label = group === "bench" ? "Bench" : "Injured reserve";
+  const label = group === "bench" ? "Bench" : group === "drop" ? "Dropping" : "Injured reserve";
   const note =
     group === "bench"
       ? onBoard
         ? "games here don't count"
         : "no game, or no room that day"
-      : "doesn't score";
+      : group === "drop"
+        ? "leaves the roster for the free agent"
+        : "doesn't score";
   return (
     <motion.div layout="position" transition={ROW_SPRING} className={s.groupRow} role="presentation">
       <div className={s.groupLabel}>

@@ -184,7 +184,7 @@ export function buildMatchupDay(source: WeekSource, grid: WeekGrid, day: number)
     }
   }
   // Keep each group together: active, then bench, then IR.
-  const order: Record<SeatGroup, number> = { active: 0, bench: 1, ir: 2 };
+  const order: Record<SeatGroup, number> = { active: 0, bench: 1, ir: 2, drop: 3 };
   rows.sort((a, b) => order[a.group] - order[b.group]);
 
   for (const r of rows) {

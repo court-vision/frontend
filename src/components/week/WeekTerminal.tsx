@@ -166,34 +166,35 @@ export function WeekTerminal({
   );
   const stagedDelta = gridNoPreview && gridUnstaged ? gridNoPreview.projected.you - gridUnstaged.projected.you : 0;
 
-  // A streamer is worth what he adds when he starts on his game days, so free
-  // agents are judged against the best lineup each day, whichever view is on.
   const gridBest = useMemo(
     () => (source ? build(source, { incoming: null, mode: "best" }) : null),
     [source, build]
   );
   const bestGain = gridBest && gridNoPreview && mode === "espn" ? gridBest.projected.you - gridNoPreview.projected.you : 0;
+  // What an add does to the week on screen: the lineup view in force (as set,
+  // or the best each day) with him seated where he helps most. The market, the
+  // replace menu, the preview and the dock all read this one number.
   const faGain = useCallback(
     (fa: StreamerPlayer, replaces: number) => {
-      if (!source || !gridBest) return 0;
+      if (!source || !gridNoPreview) return 0;
       const g = build(source, {
         incoming: { player: sourceFromStreamer(fa, source.days, null, addFrom), replaces },
-        mode: "best",
       });
-      return g.projected.you - gridBest.projected.you;
+      return g.projected.you - gridNoPreview.projected.you;
     },
-    [source, gridBest, build, addFrom]
+    [source, gridNoPreview, build, addFrom]
   );
   const previewDelta = preview && previewFa ? faGain(previewFa, preview.replaces) : null;
 
   // ---- the market: free agents ranked by what they add to this week ----
   const [marketOpen, setMarketOpen] = useState(initialMarket != null);
   const [marketMode, setMarketMode] = useState<MarketMode>(initialMarket ?? "week");
-  // Gains are measured without any preview in the grid, so hovering a row never re-ranks the list.
+  // The same measure as `faGain`, but built without any preview in the grid, so
+  // hovering a row never re-ranks the list.
   const gainBuild = useCallback(
     (src: WeekSource, over: Partial<GridInput> = {}) =>
-      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, viewDay: todayIndex ?? 0, mode: "best", ...over }),
-    [board, staged, dayBoards, todayIndex]
+      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, viewDay: todayIndex ?? 0, mode, ...over }),
+    [board, staged, dayBoards, todayIndex, mode]
   );
   const marketBase = useMemo(() => (source && marketOpen ? gainBuild(source) : null), [source, marketOpen, gainBuild]);
   const evaluate = useCallback(
@@ -647,14 +648,14 @@ export function WeekTerminal({
           case "Enter":
           case "m": {
             const seat = seatHere();
-            if (!seat || seat.incoming || !cursor) return;
+            if (!seat || seat.incoming || seat.outgoing || !cursor) return;
             e.preventDefault();
             openMove(`player-${seat.player.id}`, seatEl(), cursor.col);
             return;
           }
           case "r": {
             const seat = seatHere();
-            if (seat && !seat.incoming) openReplace(`player-${seat.player.id}`, seatEl());
+            if (seat && !seat.incoming && !seat.outgoing) openReplace(`player-${seat.player.id}`, seatEl());
             return;
           }
         }
@@ -861,6 +862,7 @@ export function WeekTerminal({
             todayIndex={todayIndex}
             open={marketOpenSpots}
             addFrom={addFrom}
+            lineupMode={mode}
             mode={marketMode}
             onMode={setMarketMode}
             day={marketDay}
