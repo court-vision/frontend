@@ -9,6 +9,7 @@
  */
 import type { LineupPlanData, LineupPlayer, LineupState } from "@/types/lineup-editor";
 import type { StreamerPlayer } from "@/types/streamer";
+import type { BreakoutCandidateResp } from "@/types/breakout";
 import type { ScheduleGame } from "@/types/games";
 import type { DayGame, SourceOpponent, SourcePlayer, StatLine, WeekDay, WeekSource } from "./week-grid";
 import { SLOT_NAMES, assignment, type Staged } from "./lineup-editor";
@@ -319,7 +320,10 @@ export function demoSource(roster: MineSpec[] = MINE): WeekSource {
 
 // ---- free agents ----
 
-interface FaSpec { id: number; nbaId: number; name: string; team: string; positions: string[]; avg: number; season: number; score: number }
+interface FaSpec {
+  id: number; nbaId: number; name: string; team: string; positions: string[]; avg: number; season: number; score: number;
+  injury?: string; waiversUntil?: string;
+}
 
 const FREE_AGENTS: FaSpec[] = [
   { id: 4683749, nbaId: 1641739, name: "Toumani Camara", team: "POR", positions: ["SF", "PF", "F", "UT"], avg: 30.2, season: 28.9, score: 88 },
@@ -330,6 +334,22 @@ const FREE_AGENTS: FaSpec[] = [
   { id: 3448, nbaId: 201572, name: "Brook Lopez", team: "LAC", positions: ["C", "UT"], avg: 27.0, season: 26.1, score: 58 },
   { id: 3934721, nbaId: 1629048, name: "Goga Bitadze", team: "ORL", positions: ["C", "UT"], avg: 24.0, season: 23.0, score: 49 },
   { id: 4592410, nbaId: 1631165, name: "Keon Ellis", team: "SAC", positions: ["SG", "G", "UT"], avg: 22.0, season: 21.3, score: 44 },
+  { id: 4431785, nbaId: 1641718, name: "Keyonte George", team: "UTA", positions: ["PG", "SG", "G", "UT"], avg: 31.5, season: 29.8, score: 74 },
+  { id: 4397077, nbaId: 1630590, name: "Scotty Pippen Jr.", team: "MEM", positions: ["PG", "SG", "G", "UT"], avg: 27.5, season: 24.0, score: 63 },
+  { id: 4433139, nbaId: 1631106, name: "Tari Eason", team: "HOU", positions: ["SF", "PF", "F", "UT"], avg: 27.0, season: 26.2, score: 60, injury: "DAY_TO_DAY" },
+  { id: 4431685, nbaId: 1631212, name: "Peyton Watson", team: "DEN", positions: ["SF", "PF", "F", "UT"], avg: 23.5, season: 22.1, score: 57 },
+  { id: 4683686, nbaId: 1641711, name: "Gradey Dick", team: "TOR", positions: ["SG", "SF", "G", "F", "UT"], avg: 24.5, season: 23.2, score: 56 },
+  { id: 4683745, nbaId: 1641731, name: "Bilal Coulibaly", team: "WAS", positions: ["SG", "SF", "G", "F", "UT"], avg: 25.0, season: 24.4, score: 53 },
+  { id: 4432907, nbaId: 1631157, name: "Ryan Rollins", team: "MIL", positions: ["PG", "SG", "G", "UT"], avg: 26.5, season: 22.9, score: 52 },
+  { id: 4432816, nbaId: 1631217, name: "Moussa Diabaté", team: "CHA", positions: ["PF", "C", "F", "UT"], avg: 24.0, season: 21.7, score: 50 },
+  { id: 4278104, nbaId: 1630541, name: "Moses Moody", team: "GSW", positions: ["SG", "SF", "G", "F", "UT"], avg: 21.0, season: 20.5, score: 48 },
+  { id: 4873138, nbaId: 1642267, name: "Bub Carrington", team: "WAS", positions: ["PG", "SG", "G", "UT"], avg: 22.0, season: 19.8, score: 46, waiversUntil: "2026-11-11" },
+  { id: 3907498, nbaId: 1627739, name: "Kris Dunn", team: "LAC", positions: ["PG", "SG", "G", "UT"], avg: 22.5, season: 21.6, score: 41, injury: "DAY_TO_DAY" },
+  { id: 4278591, nbaId: 1630208, name: "Nick Richards", team: "PHX", positions: ["C", "UT"], avg: 22.0, season: 20.9, score: 40 },
+  { id: 4397013, nbaId: 1630534, name: "Ochai Agbaji", team: "TOR", positions: ["SG", "SF", "G", "F", "UT"], avg: 19.0, season: 18.2, score: 39 },
+  { id: 4065731, nbaId: 1630241, name: "Sam Merrill", team: "CLE", positions: ["SG", "G", "UT"], avg: 18.0, season: 17.4, score: 35 },
+  { id: 4278080, nbaId: 1630174, name: "Aaron Nesmith", team: "IND", positions: ["SF", "F", "UT"], avg: 20.0, season: 19.6, score: 33 },
+  { id: 4432810, nbaId: 1631101, name: "Day'Ron Sharpe", team: "BKN", positions: ["C", "UT"], avg: 22.0, season: 20.1, score: 30 },
 ];
 
 /** Remaining game days from today, as the streamer search reports them (today's included). */
@@ -337,8 +357,14 @@ function remainingDays(team: string): number[] {
   return DEMO_DAYS.filter((d) => d.index >= TODAY && gameOn(team, d.index)).map((d) => d.index);
 }
 
+/** Back-to-backs among a team's remaining games. */
+function backToBacks(days: number[]): number {
+  return days.filter((d, i) => i > 0 && days[i - 1] === d - 1).length;
+}
+
 export const DEMO_STREAMERS: StreamerPlayer[] = FREE_AGENTS.map((f) => {
   const days = remainingDays(f.team);
+  const b2b = backToBacks(days);
   return {
     player_id: f.id,
     nba_player_id: f.nbaId,
@@ -351,15 +377,46 @@ export const DEMO_STREAMERS: StreamerPlayer[] = FREE_AGENTS.map((f) => {
     streamer_score: f.score,
     game_days: days,
     games_remaining: days.length,
-    b2b_game_count: 0,
-    has_b2b: false,
-    injured: false,
-    injury_status: null,
-    acquisition_status: "free_agent",
-    waivers_until: null,
+    b2b_game_count: b2b,
+    has_b2b: b2b > 0,
+    injured: !!f.injury,
+    injury_status: f.injury ?? null,
+    acquisition_status: f.waiversUntil ? "waivers" : "free_agent",
+    waivers_until: f.waiversUntil ?? null,
     default_position_id: null,
   };
 });
+
+/** The single-day search: free agents with a game on `day`, best for the day first. */
+export function demoDailyStreamers(day: number): StreamerPlayer[] {
+  return DEMO_STREAMERS.filter((f) => f.game_days.includes(day)).sort((a, b) => (b.avg_points_last_n ?? 0) - (a.avg_points_last_n ?? 0));
+}
+
+const byName = (name: string) => FREE_AGENTS.find((f) => f.name === name)!;
+
+/** Breakout candidates: a starter out, the player whose minutes grow. One is not a free agent in the demo league. */
+export const DEMO_BREAKOUTS: BreakoutCandidateResp[] = [
+  {
+    injured_player: { player_id: 4277905, name: "Trae Young", avg_min: 35.1, status: "OUT", expected_return: "2026-11-20" },
+    beneficiary: { player_id: byName("Dyson Daniels").id, nba_player_id: byName("Dyson Daniels").nbaId, name: "Dyson Daniels", team: "ATL", position: "PG", depth_rank: 2, avg_min: 31.2, avg_fpts: 33.0, games_remaining: 3, has_b2b: false },
+    signals: { depth_rank: 2, projected_min_boost: 8.5, opp_min_avg: 36.4, opp_fpts_avg: 39.1, opp_game_count: 7, breakout_score: 82 },
+  },
+  {
+    injured_player: { player_id: 4279888, name: "Ja Morant", avg_min: 30.4, status: "OUT", expected_return: null },
+    beneficiary: { player_id: byName("Scotty Pippen Jr.").id, nba_player_id: byName("Scotty Pippen Jr.").nbaId, name: "Scotty Pippen Jr.", team: "MEM", position: "PG", depth_rank: 2, avg_min: 24.8, avg_fpts: 27.5, games_remaining: 3, has_b2b: false },
+    signals: { depth_rank: 2, projected_min_boost: 10.9, opp_min_avg: 33.0, opp_fpts_avg: 34.1, opp_game_count: 5, breakout_score: 78 },
+  },
+  {
+    injured_player: { player_id: 4701232, name: "Mark Williams", avg_min: 27.0, status: "OUT", expected_return: "2026-11-16" },
+    beneficiary: { player_id: byName("Moussa Diabaté").id, nba_player_id: byName("Moussa Diabaté").nbaId, name: "Moussa Diabaté", team: "CHA", position: "C", depth_rank: 2, avg_min: 19.5, avg_fpts: 24.0, games_remaining: 2, has_b2b: true },
+    signals: { depth_rank: 2, projected_min_boost: 12.1, opp_min_avg: 30.2, opp_fpts_avg: 29.8, opp_game_count: 4, breakout_score: 71 },
+  },
+  {
+    injured_player: { player_id: 3059318, name: "Joel Embiid", avg_min: 32.8, status: "OUT", expected_return: null },
+    beneficiary: { player_id: 3133603, nba_player_id: 1626162, name: "Kelly Oubre Jr.", team: "PHI", position: "SF", depth_rank: 1, avg_min: 30.1, avg_fpts: 30.5, games_remaining: 3, has_b2b: false },
+    signals: { depth_rank: 1, projected_min_boost: 4.2, opp_min_avg: 33.5, opp_fpts_avg: 34.0, opp_game_count: 9, breakout_score: 64 },
+  },
+];
 
 /** A team's demo schedule, shaped like `GET /teams/{abbrev}/schedule`. */
 export function demoSchedule(team: string): ScheduleGame[] {
@@ -386,7 +443,7 @@ export function demoTransact(roster: MineSpec[], addId: number | null, dropId: n
   const fa = FREE_AGENTS.find((f) => f.id === addId);
   if (fa) {
     next = [...next, {
-      id: fa.id, nbaId: fa.nbaId, name: fa.name, team: fa.team, slot: BE,
+      id: fa.id, nbaId: fa.nbaId, name: fa.name, team: fa.team, slot: BE, injury: fa.injury,
       eligible: fa.positions.map((p) => ({ PG, SG, SF, PF, C, G, F, UT } as Record<string, number>)[p]).filter((x) => x !== undefined),
       avg: fa.avg,
     }];

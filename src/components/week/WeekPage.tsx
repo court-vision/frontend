@@ -14,10 +14,12 @@ import { sourceFromApi, weekDaysFromApi } from "@/lib/week-source";
 import {
   DEMO_DAYS,
   DEMO_ROSTER,
+  DEMO_BREAKOUTS,
   DEMO_STREAMERS,
   DEMO_TODAY,
   demoAssignment,
   demoBoard,
+  demoDailyStreamers,
   demoPeriod,
   demoPlan,
   demoSchedule,
@@ -27,10 +29,13 @@ import {
 import type { LineupMove, LineupState } from "@/types/lineup-editor";
 import type { ScheduleGame } from "@/types/games";
 import type { StreamerPlayer } from "@/types/streamer";
+import type { BreakoutCandidateResp } from "@/types/breakout";
+import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import type { WeekSource } from "@/lib/week-grid";
 import { useDayBoards, type DayLineups } from "./useDayBoards";
 import { WeekTerminal } from "./WeekTerminal";
 import type { WeekView } from "./Chrome";
+import type { MarketMode } from "./Market";
 
 export type TerminalStatus = "ready" | "loading" | "signed-out" | "no-team" | "error" | "empty";
 
@@ -57,6 +62,15 @@ export interface TerminalData {
   streamers: StreamerPlayer[];
   streamersLoading: boolean;
   requestStreamers: () => void;
+  /** The single-day search for `dailyDay` (a day index), once a day is asked for. */
+  daily: StreamerPlayer[];
+  dailyLoading: boolean;
+  dailyDay: number | null;
+  setDailyDay: (day: number | null) => void;
+  /** Breakout candidates (league-blind), once asked for. */
+  breakouts: BreakoutCandidateResp[];
+  breakoutsLoading: boolean;
+  requestBreakouts: () => void;
   /** Opponents for a previewed free agent's games. */
   schedule: ScheduleGame[] | null;
   setScheduleTeam: (team: string | null) => void;
@@ -67,8 +81,8 @@ export interface TerminalData {
   clearTransactError: () => void;
 }
 
-export function WeekPage({ demo, view }: { demo: boolean; view?: WeekView }) {
-  return demo ? <DemoWeek view={view} /> : <LiveWeek view={view} />;
+export function WeekPage({ demo, view, market }: { demo: boolean; view?: WeekView; market?: MarketMode }) {
+  return demo ? <DemoWeek view={view} market={market} /> : <LiveWeek view={view} market={market} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -77,7 +91,7 @@ export function WeekPage({ demo, view }: { demo: boolean; view?: WeekView }) {
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function DemoWeek({ view }: { view?: WeekView }) {
+function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const [roster, setRoster] = useState(DEMO_ROSTER);
   // Each day's own edit (where everyone sits), ESPN's carry-forward applied on read.
   const edits = useRef<Record<number, Record<number, number>>>({});
@@ -85,6 +99,7 @@ function DemoWeek({ view }: { view?: WeekView }) {
   const [applying, setApplying] = useState(false);
   const [scheduleTeam, setScheduleTeam] = useState<string | null>(null);
   const [transacting, setTransacting] = useState(false);
+  const [dailyDay, setDailyDay] = useState<number | null>(null);
 
   const boardFor = useCallback(
     (r: typeof roster, day: number, v: number) =>
@@ -148,6 +163,13 @@ function DemoWeek({ view }: { view?: WeekView }) {
     streamers: DEMO_STREAMERS.filter((s) => !rosterIds.has(s.player_id)),
     streamersLoading: false,
     requestStreamers: () => {},
+    daily: dailyDay != null ? demoDailyStreamers(dailyDay).filter((s) => !rosterIds.has(s.player_id)) : [],
+    dailyLoading: false,
+    dailyDay,
+    setDailyDay,
+    breakouts: DEMO_BREAKOUTS.filter((b) => !rosterIds.has(b.beneficiary.player_id)),
+    breakoutsLoading: false,
+    requestBreakouts: () => {},
     schedule: scheduleTeam ? demoSchedule(scheduleTeam) : null,
     setScheduleTeam,
     transact,
@@ -156,14 +178,14 @@ function DemoWeek({ view }: { view?: WeekView }) {
     clearTransactError: () => {},
   };
 
-  return <WeekTerminal data={data} initialView={view} />;
+  return <WeekTerminal data={data} initialView={view} initialMarket={market} />;
 }
 
 // ---------------------------------------------------------------------------
 // Live: the selected team's week from the API
 // ---------------------------------------------------------------------------
 
-function LiveWeek({ view }: { view?: WeekView }) {
+function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const { isSignedIn, isLoaded } = useAuth();
   const selected = useSelectedTeam();
   const setSelectedTeam = useUIStore((s) => s.setSelectedTeam);
@@ -181,6 +203,15 @@ function LiveWeek({ view }: { view?: WeekView }) {
     faCount: 150,
     excludeInjured: true,
   });
+  const [dailyDay, setDailyDay] = useState<number | null>(null);
+  const daily = useStreamersQuery(dailyDay != null ? teamId : null, {
+    mode: "daily",
+    targetDay: dailyDay,
+    faCount: 150,
+    excludeInjured: true,
+  });
+  const [wantBreakouts, setWantBreakouts] = useState(false);
+  const breakouts = useBreakoutStreamersQuery(30, wantBreakouts);
   const [scheduleTeam, setScheduleTeam] = useState<string | null>(null);
   const schedule = useTeamScheduleQuery(scheduleTeam, true, 10);
   const transaction = useRosterTransactionMutation(teamId ?? 0);
@@ -250,6 +281,13 @@ function LiveWeek({ view }: { view?: WeekView }) {
     streamers: streamers.data?.streamers ?? [],
     streamersLoading: wantStreamers && streamers.isLoading,
     requestStreamers: () => setWantStreamers(true),
+    daily: dailyDay != null ? daily.data?.streamers ?? [] : [],
+    dailyLoading: dailyDay != null && daily.isLoading,
+    dailyDay,
+    setDailyDay,
+    breakouts: breakouts.data?.candidates ?? [],
+    breakoutsLoading: wantBreakouts && breakouts.isLoading,
+    requestBreakouts: () => setWantBreakouts(true),
     schedule: schedule.data?.schedule ?? null,
     setScheduleTeam,
     transact,
@@ -258,5 +296,5 @@ function LiveWeek({ view }: { view?: WeekView }) {
     clearTransactError: transaction.reset,
   };
 
-  return <WeekTerminal data={data} initialView={view} />;
+  return <WeekTerminal data={data} initialView={view} initialMarket={market} />;
 }

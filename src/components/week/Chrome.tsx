@@ -5,7 +5,7 @@ import Link from "next/link";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import * as Popover from "@radix-ui/react-popover";
 import { motion } from "motion/react";
-import { Check, ChevronDown, Flame } from "lucide-react";
+import { Check, ChevronDown, Flame, Store } from "lucide-react";
 import type { LineupMode, WeekDay, WeekGrid } from "@/lib/week-grid";
 import { formatRelativeTime } from "@/lib/relative-time";
 import type { TeamOption } from "./WeekPage";
@@ -214,6 +214,9 @@ interface ToolbarProps {
   bestGain: number;
   view: WeekView;
   onView: (view: WeekView) => void;
+  /** The market pane, open or not. */
+  market: boolean;
+  onMarket: () => void;
 }
 
 export function Toolbar({
@@ -232,6 +235,8 @@ export function Toolbar({
   bestGain,
   view,
   onView,
+  market,
+  onMarket,
 }: ToolbarProps) {
   return (
     <div className={s.toolbar}>
@@ -322,6 +327,11 @@ export function Toolbar({
         </button>
       ) : null}
       {note ? <span className={s.note}>{note}</span> : null}
+      <button type="button" className={`${dk.btn} ${market ? dk.toggleOn : ""}`} onClick={onMarket} aria-pressed={market} title="Free agents, ranked by what they add to your week (P)">
+        <Store size={13} />
+        Market
+        <span className={dk.kbd}>P</span>
+      </button>
     </div>
   );
 }
@@ -340,6 +350,7 @@ const WEEK_KEYS: Array<[string, string]> = [
   ["V", "view"],
   ["[ ]", "day"],
   ["H", "heat"],
+  ["P", "market"],
   ["T", "theme"],
   ["esc", "clear"],
 ];

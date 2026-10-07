@@ -13,5 +13,6 @@ export default async function Page({
 }) {
   const params = await searchParams;
   const view = params.view === "players" || params.view === "matchup" || params.view === "daily" ? params.view : undefined;
-  return <WeekPage demo={"demo" in params} view={view} />;
+  const market = "market" in params ? (params.market === "day" || params.market === "breakouts" ? params.market : "week") : undefined;
+  return <WeekPage demo={"demo" in params} view={view} market={market} />;
 }

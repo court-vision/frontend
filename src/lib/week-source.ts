@@ -287,12 +287,14 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
 /**
  * A free agent as a grid player. `game_days` are the remaining day indices of
  * the period; opponents and tip times come from his team's schedule when it
- * has loaded (keyed by date).
+ * has loaded (keyed by date). `firstDay` is the first day an add made now
+ * counts: ESPN puts a pickup made after the day's first tip on the next day.
  */
 export function sourceFromStreamer(
   fa: StreamerPlayer,
   days: WeekDay[],
-  schedule?: ScheduleGame[] | null
+  schedule?: ScheduleGame[] | null,
+  firstDay: number | null = null
 ): SourcePlayer {
   const byDate = new Map((schedule ?? []).map((g) => [g.date.slice(0, 10), g]));
   const playing = new Set(fa.game_days);
@@ -306,6 +308,7 @@ export function sourceFromStreamer(
     eligible: slotsFromPositions(fa.valid_positions),
     games: days.map((d) => {
       if (!playing.has(d.index) || d.kind === "past") return null;
+      if (firstDay != null && d.index < firstDay) return null;
       const g = byDate.get(d.date);
       // Today's game only counts if it hasn't tipped (the schedule says "scheduled").
       if (d.kind === "today" && g && g.status !== "scheduled") return null;

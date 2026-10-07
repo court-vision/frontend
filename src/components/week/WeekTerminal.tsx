@@ -39,6 +39,8 @@ import {
 import { sourceFromStreamer } from "@/lib/week-source";
 import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar, type WeekView } from "./Chrome";
 import { MatchupView } from "./MatchupView";
+import { MarketPane, type MarketMode, type MarketPick } from "./Market";
+import { NO_DROP, addsCountFrom, dropCandidates, gainOf, openSpots, rosterRoom } from "@/lib/market";
 import { ConfirmDialog, Dock, type PendingDay, type PendingSwap } from "./Dock";
 import { MoveMenu, ReplaceMenu, type MoveTarget, type ReplaceOption } from "./Menus";
 import { WeekGrid, type Cursor, type DragApi, type DropTarget } from "./WeekGrid";
@@ -46,6 +48,7 @@ import { DailyGrid, type SeatDragApi } from "./DailyGrid";
 import type { TerminalData } from "./WeekPage";
 import { monthDay, shortName, signed } from "./format";
 import dk from "@/components/desk/desk.module.css";
+import s from "./week.module.css";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 
 const NO_STAGING: Staged = {};
@@ -57,7 +60,16 @@ type View = WeekView;
 type PreviewRef = { faId: number; replaces: number };
 type Planned = DropTarget & { moves: Array<{ player_id: number; to_slot_id: number }> };
 
-export function WeekTerminal({ data, initialView = "daily" }: { data: TerminalData; initialView?: View }) {
+export function WeekTerminal({
+  data,
+  initialView = "daily",
+  initialMarket,
+}: {
+  data: TerminalData;
+  initialView?: View;
+  /** Open the market on arrival, in this mode. */
+  initialMarket?: MarketMode;
+}) {
   const lineup = data.lineup;
   const boards = lineup.boards;
   const todayDay = lineup.todayDay;
@@ -116,16 +128,23 @@ export function WeekTerminal({ data, initialView = "daily" }: { data: TerminalDa
   const [hover, setHover] = useState<PreviewRef | null>(null);
   const [pinned, setPinned] = useState<PreviewRef | null>(null);
   const preview = hover ?? pinned;
-  const previewFa = preview ? data.streamers.find((f) => f.player_id === preview.faId) ?? null : null;
+  // After today's first tip an add counts from tomorrow; the previews and the market both obey.
+  const addFrom = useMemo(() => (source ? addsCountFrom(source, board) : null), [source, board]);
+  // Free agents the desk has loaded: the rest-of-week pool, and the one-day search.
+  const faById = useMemo(
+    () => new Map([...data.daily, ...data.streamers].map((f) => [f.player_id, f])),
+    [data.daily, data.streamers]
+  );
+  const previewFa = preview ? faById.get(preview.faId) ?? null : null;
   const { setScheduleTeam } = data;
   useEffect(() => setScheduleTeam(previewFa?.team ?? null), [previewFa?.team, setScheduleTeam]);
 
   const incoming: Incoming | null = useMemo(
     () =>
       source && preview && previewFa
-        ? { player: sourceFromStreamer(previewFa, source.days, data.schedule), replaces: preview.replaces }
+        ? { player: sourceFromStreamer(previewFa, source.days, data.schedule, addFrom), replaces: preview.replaces }
         : null,
-    [source, preview, previewFa, data.schedule]
+    [source, preview, previewFa, data.schedule, addFrom]
   );
 
   const build = useCallback(
@@ -158,14 +177,54 @@ export function WeekTerminal({ data, initialView = "daily" }: { data: TerminalDa
     (fa: StreamerPlayer, replaces: number) => {
       if (!source || !gridBest) return 0;
       const g = build(source, {
-        incoming: { player: sourceFromStreamer(fa, source.days, null), replaces },
+        incoming: { player: sourceFromStreamer(fa, source.days, null, addFrom), replaces },
         mode: "best",
       });
       return g.projected.you - gridBest.projected.you;
     },
-    [source, gridBest, build]
+    [source, gridBest, build, addFrom]
   );
   const previewDelta = preview && previewFa ? faGain(previewFa, preview.replaces) : null;
+
+  // ---- the market: free agents ranked by what they add to this week ----
+  const [marketOpen, setMarketOpen] = useState(initialMarket != null);
+  const [marketMode, setMarketMode] = useState<MarketMode>(initialMarket ?? "week");
+  // Gains are measured without any preview in the grid, so hovering a row never re-ranks the list.
+  const gainBuild = useCallback(
+    (src: WeekSource, over: Partial<GridInput> = {}) =>
+      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, viewDay: todayIndex ?? 0, mode: "best", ...over }),
+    [board, staged, dayBoards, todayIndex]
+  );
+  const marketBase = useMemo(() => (source && marketOpen ? gainBuild(source) : null), [source, marketOpen, gainBuild]);
+  const evaluate = useCallback(
+    (fa: StreamerPlayer, dropIds: number[]) => {
+      if (!source || !marketBase) return [];
+      const player = sourceFromStreamer(fa, source.days, null, addFrom);
+      return dropIds.map((id) => gainOf(marketBase, gainBuild(source, { incoming: { player, replaces: id } }), id));
+    },
+    [source, marketBase, gainBuild, addFrom]
+  );
+  const marketOpenSpots = useMemo(() => (marketBase ? openSpots(marketBase) : []), [marketBase]);
+  // The one-day search follows the expanded day, never a day already played.
+  const firstOpenDay = addFrom ?? source?.days.find((d) => d.kind !== "past")?.index ?? 0;
+  const marketDay = Math.max(focusDay ?? defaultFocus, firstOpenDay);
+  const marketDrops = useMemo(() => (source ? dropCandidates(source, board) : []), [source, board]);
+  // The detail offers a few more, never the stars: a week's gain can't see what a player is worth
+  // the rest of the season (an injured star projects nothing this week, and is still no drop).
+  const marketAllDrops = useMemo(() => (source ? dropCandidates(source, board, 7) : []), [source, board]);
+  const avgOf = useCallback((id: number) => source?.mine.find((p) => p.id === id)?.avg ?? null, [source]);
+  const marketRoom = rosterRoom(todayDay != null ? boards[todayDay] ?? board : board);
+  const nameOf = useCallback((id: number) => source?.mine.find((p) => p.id === id)?.name ?? `#${id}`, [source]);
+  const { setDailyDay, requestBreakouts, requestStreamers: requestPool } = data;
+  useEffect(() => {
+    if (marketOpen) requestPool();
+  }, [marketOpen, requestPool]);
+  useEffect(() => {
+    setDailyDay(marketOpen && marketMode === "day" ? marketDay : null);
+  }, [marketOpen, marketMode, marketDay, setDailyDay]);
+  useEffect(() => {
+    if (marketOpen && marketMode === "breakouts") requestBreakouts();
+  }, [marketOpen, marketMode, requestBreakouts]);
 
   const boardById = useMemo(() => new Map((board?.players ?? []).map((p) => [p.player_id, p])), [board]);
   const dayLabel = useCallback(
@@ -467,25 +526,26 @@ export function WeekTerminal({ data, initialView = "daily" }: { data: TerminalDa
   }, [stagedByDay, pending, boards, lineup, data.demo]);
 
   // ---- add / drop ----
-  const swapOut = pinned ? source?.mine.find((p) => p.id === pinned.replaces) ?? null : null;
-  const swapFa = pinned ? data.streamers.find((f) => f.player_id === pinned.faId) ?? null : null;
+  const swapOut = pinned && pinned.replaces !== NO_DROP ? source?.mine.find((p) => p.id === pinned.replaces) ?? null : null;
+  const swapFa = pinned ? faById.get(pinned.faId) ?? null : null;
   const pinnedDelta = pinned && swapFa ? faGain(swapFa, pinned.replaces) : 0;
   const todayBoard = todayDay != null ? boards[todayDay] ?? null : null;
 
   let swap: PendingSwap | null = null;
-  if (pinned && swapFa && swapOut) {
+  if (pinned && swapFa && (swapOut || pinned.replaces === NO_DROP)) {
     let blocked: string | null = null;
     if (!todayBoard) blocked = "Add and drop from here need an ESPN team.";
-    else if (todayBoard.players.find((p) => p.player_id === swapOut.id)?.locked) {
+    else if (swapOut && todayBoard.players.find((p) => p.player_id === swapOut.id)?.locked) {
       blocked = `${swapOut.name} is locked until his game ends.`;
     } else if (swapFa.acquisition_status === "waivers") blocked = `${swapFa.name} is on waivers.`;
     else if (!data.demo && !todayBoard.can_write) blocked = writeBlockedCopy(todayBoard.write_blocked_reason);
-    swap = { fa: swapFa, out: { id: swapOut.id, name: swapOut.name }, delta: pinnedDelta, blocked };
+    else if (!swapOut && rosterRoom(todayBoard) === 0) blocked = "Your roster is full: pick someone to drop.";
+    swap = { fa: swapFa, out: swapOut ? { id: swapOut.id, name: swapOut.name } : null, delta: pinnedDelta, blocked };
   }
 
   const sendSwap = useCallback(async () => {
     if (!pinned || !todayBoard) return;
-    const outcome = await data.transact(pinned.faId, pinned.replaces, todayBoard);
+    const outcome = await data.transact(pinned.faId, pinned.replaces === NO_DROP ? null : pinned.replaces, todayBoard);
     if (outcome === "ok") {
       setPinned(null);
       setConfirm(null);
@@ -501,7 +561,7 @@ export function WeekTerminal({ data, initialView = "daily" }: { data: TerminalDa
       // Keys typed in a field or a menu belong to it (a menu's Enter also reaches
       // window after the menu has closed and this listener has re-subscribed).
       const target = e.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable='true'], [cmdk-root], [role='dialog']")) return;
+      if (target?.closest("input, textarea, select, [contenteditable='true'], [cmdk-root], [role='dialog'], [data-market]")) return;
       if ((e.key === "Enter" || e.key === " ") && target?.closest("button, a")) return;
 
       // Keys that work the same in both views.
@@ -514,6 +574,9 @@ export function WeekTerminal({ data, initialView = "daily" }: { data: TerminalDa
           return;
         case "v":
           toggleView();
+          return;
+        case "p":
+          setMarketOpen((o) => !o);
           return;
         case "h":
           setHeat((h) => !h);
@@ -745,7 +808,11 @@ export function WeekTerminal({ data, initialView = "daily" }: { data: TerminalDa
           note={toolbarNote}
           view={view}
           onView={chooseView}
+          market={marketOpen}
+          onMarket={() => setMarketOpen((o) => !o)}
         />
+        <div className={s.work}>
+        <div className={s.workMain}>
         {view === "matchup" ? (
           <MatchupView
             grid={grid}
@@ -787,6 +854,46 @@ export function WeekTerminal({ data, initialView = "daily" }: { data: TerminalDa
             mode={mode}
           />
         )}
+        </div>
+        {marketOpen ? (
+          <MarketPane
+            days={grid.days}
+            todayIndex={todayIndex}
+            open={marketOpenSpots}
+            addFrom={addFrom}
+            mode={marketMode}
+            onMode={setMarketMode}
+            day={marketDay}
+            onDay={(d) => setFocusPick(d)}
+            pool={data.streamers}
+            poolLoading={data.streamersLoading}
+            daily={data.daily}
+            dailyLoading={data.dailyLoading}
+            breakouts={data.breakouts}
+            breakoutsLoading={data.breakoutsLoading}
+            evaluate={evaluate}
+            drops={marketDrops}
+            allDrops={marketAllDrops}
+            room={marketRoom}
+            nameOf={nameOf}
+            avgOf={avgOf}
+            pinned={pinned}
+            pinnedBlocked={swap?.blocked ?? null}
+            onHover={setHover}
+            onPin={(pick: MarketPick | null) => setPinned(pick)}
+            onAdd={(pick: MarketPick) => {
+              setPinned(pick);
+              setHover(null);
+              data.clearTransactError();
+              setConfirm("swap");
+            }}
+            onClose={() => {
+              setMarketOpen(false);
+              setHover(null);
+            }}
+          />
+        ) : null}
+        </div>
         <Dock
           pending={pending}
           playerById={boardById}
@@ -902,7 +1009,7 @@ export function WeekTerminal({ data, initialView = "daily" }: { data: TerminalDa
         open={confirm === "swap" && !!swap}
         onOpenChange={(open) => !open && setConfirm(null)}
         container={root}
-        title={swap ? `Add ${shortName(swap.fa.name)}, drop ${shortName(swap.out.name)}` : ""}
+        title={swap ? (swap.out ? `Add ${shortName(swap.fa.name)}, drop ${shortName(swap.out.name)}` : `Add ${shortName(swap.fa.name)}`) : ""}
         body={
           data.demo
             ? "Demo: the add and drop apply here only."
@@ -912,7 +1019,9 @@ export function WeekTerminal({ data, initialView = "daily" }: { data: TerminalDa
           swap
             ? [
                 { key: "add", left: <><span style={{ color: "var(--up)" }}>+</span> {swap.fa.name}</>, right: <span className={dk.sub}>{swap.fa.team} · {swap.fa.games_remaining} games left</span> },
-                { key: "drop", left: <><span style={{ color: "var(--down)" }}>−</span> {swap.out.name}</>, right: <span className={`${dk.chip} ${dk.pv}`}>{signed(swap.delta)} week</span> },
+                swap.out
+                  ? { key: "drop", left: <><span style={{ color: "var(--down)" }}>−</span> {swap.out.name}</>, right: <span className={`${dk.chip} ${dk.pv}`}>{signed(swap.delta)} week</span> }
+                  : { key: "room", left: <span className={dk.sub}>Into an open roster spot</span>, right: <span className={`${dk.chip} ${dk.pv}`}>{signed(swap.delta)} week</span> },
               ]
             : []
         }

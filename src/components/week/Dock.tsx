@@ -18,7 +18,8 @@ export interface PendingDay {
 
 export interface PendingSwap {
   fa: StreamerPlayer;
-  out: { id: number; name: string };
+  /** Who is dropped; null for an add into an open roster spot. */
+  out: { id: number; name: string } | null;
   delta: number;
   /** Why it can't be sent right now, if it can't. */
   blocked: string | null;
@@ -94,9 +95,11 @@ export function Dock({
             <span className={`${s.pill} ${s.pillPreview}`}>
               <span style={{ color: "var(--up)" }}>+</span> {swap.fa.name}
             </span>
-            <span className={s.pill}>
-              <span style={{ color: "var(--down)" }}>−</span> {swap.out.name}
-            </span>
+            {swap.out ? (
+              <span className={s.pill}>
+                <span style={{ color: "var(--down)" }}>−</span> {swap.out.name}
+              </span>
+            ) : null}
           </span>
           <span className={`${dk.chip} ${dk.pv}`} title="Started on his game days">{signed(swap.delta)} week</span>
           {swap.blocked ? <span className={s.note}>{swap.blocked}</span> : null}
@@ -109,7 +112,7 @@ export function Dock({
             onClick={onReviewSwap}
             disabled={!!swap.blocked}
           >
-            Review add / drop
+            {swap.out ? "Review add / drop" : "Review add"}
           </button>
         </div>
       ) : null}
