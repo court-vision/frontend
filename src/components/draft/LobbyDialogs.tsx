@@ -9,10 +9,8 @@ import { importFailure, type ImportFailure } from "@/lib/draft-import";
 import { DEMO_POOL } from "@/lib/draft-demo";
 import { useTeamLeagueQuery } from "@/hooks/useTeams";
 import type { DraftKind, DraftSession, DraftType, ScoringFormat } from "@/types/draft";
-import type { LobbyModel, TeamChoice } from "./model";
+import { NO_TEAM, createFormStart, importFormStart, type LobbyModel, type TeamChoice } from "./model";
 import s from "./draft.module.css";
-
-const NO_TEAM = 0;
 
 /** Where the picks come from — the one choice that shapes everything else about a room. */
 const SOURCES: Array<{ value: DraftKind; title: string; text: string; espnOnly?: boolean }> = [
@@ -63,20 +61,23 @@ export function CreateRoomDialog({
   const [existing, setExisting] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Fresh form each time, on the selected team when it is one of yours.
+  // Fresh form each time it opens, on the selected team when it is one of
+  // yours. Keyed on plain values, not on `model.teams`, which is a new list on
+  // every lobby render: a reset then would wipe what the dialog is showing,
+  // such as the link to the league's existing room.
+  const { teamId: startTeam, kind: startKind } = createFormStart(model.teams, model.selectedTeamId);
   useEffect(() => {
     if (!open) return;
-    const preferred = model.teams.find((t) => t.id === model.selectedTeamId) ?? null;
     setName("");
-    setTeamId(preferred?.id ?? NO_TEAM);
-    setKind(preferred?.espn ? "live" : "mock");
+    setTeamId(startTeam);
+    setKind(startKind);
     setDraftType("");
     setSeats("10");
     setRounds("");
     setSlot(null);
     setFormat("points");
     setExisting(null);
-  }, [open, model.teams, model.selectedTeamId]);
+  }, [open, startTeam, startKind]);
 
   const team: TeamChoice | null = model.teams.find((t) => t.id === teamId) ?? null;
   const sources = SOURCES.filter((src) => !src.espnOnly || team?.espn);
@@ -277,12 +278,16 @@ export function ImportDialog({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<ImportFailure | null>(null);
+  // Fresh form each time it opens. Keyed on the starting team, not on `teams`
+  // (a new list on every lobby render), so a failed import's message and its
+  // "Open it" outlast the re-render the failure itself causes.
+  const startTeam = importFormStart(teams, selectedTeamId);
   useEffect(() => {
     if (!open) return;
-    setTeamId((teams.find((t) => t.id === selectedTeamId) ?? teams[0])?.id ?? null);
+    setTeamId(startTeam);
     setName("");
     setFailure(null);
-  }, [open, teams, selectedTeamId]);
+  }, [open, startTeam]);
 
   const run = async () => {
     if (teamId == null) return;

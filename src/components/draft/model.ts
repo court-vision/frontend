@@ -1,6 +1,7 @@
 import type { EspnDraftSync } from "@/hooks/useEspnDraftSync";
 import type {
   DraftBoardResult,
+  DraftKind,
   DraftPick,
   DraftPickCreate,
   DraftRecapResult,
@@ -82,4 +83,23 @@ export interface LobbyModel {
   importDraft: ((teamId: number, name: string | null) => Promise<DraftSession>) | null;
   reset: (() => void) | null;
   refetch: () => void;
+}
+
+/** The new-room form's "No league — generic settings". */
+export const NO_TEAM = 0;
+
+/**
+ * Where the new-room form starts: on the selected team when it is one of
+ * yours, following that league's ESPN draft when it is an ESPN league, else on
+ * no league as a mock. Plain values on purpose: the dialog resets when they
+ * change, and the lobby hands it a freshly built team list on every render.
+ */
+export function createFormStart(teams: readonly TeamChoice[], selectedTeamId: number | null): { teamId: number; kind: DraftKind } {
+  const preferred = teams.find((t) => t.id === selectedTeamId);
+  return { teamId: preferred?.id ?? NO_TEAM, kind: preferred?.espn ? "live" : "mock" };
+}
+
+/** Where the import form starts: the selected team when it can be imported, else the first that can. */
+export function importFormStart(teams: readonly TeamChoice[], selectedTeamId: number | null): number | null {
+  return (teams.find((t) => t.id === selectedTeamId) ?? teams[0])?.id ?? null;
 }
