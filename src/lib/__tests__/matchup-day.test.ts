@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { buildWeekGrid } from "../week-grid";
-import { DEMO_TODAY, demoBoard, demoSource } from "../week-demo";
+import { DEMO_DAYS, DEMO_STREAMERS, DEMO_TODAY, demoBoard, demoSchedule, demoSource } from "../week-demo";
+import { sourceFromStreamer } from "../week-source";
 import { buildMatchupDay, dayBars, statOf, weekBars, EMPTY_LINE } from "../matchup-day";
 
 const source = demoSource();
@@ -51,6 +52,19 @@ describe("buildMatchupDay", () => {
     expect(withGame.you!.projected).toBe(true);
     expect(days[0].spotsAsToday.you).toBe(true);
     expect(days[0].you.actual).toBe(grid.you[0].actual);
+  });
+
+  test("a previewed free agent is marked on your side of his spot", () => {
+    const fa = DEMO_STREAMERS.find((s) => s.name === "Dyson Daniels")!;
+    const murray = board.players.find((p) => p.name === "Keegan Murray")!;
+    const player = sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team), DEMO_TODAY + 1);
+    const preview = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: murray.player_id }, viewDay: DEMO_TODAY });
+    const wed = buildMatchupDay(source, preview, DEMO_TODAY + 1);
+    const marked = wed.rows.filter((r) => r.you?.incoming);
+    expect(marked.map((r) => r.you?.name)).toEqual(["Dyson Daniels"]);
+    expect(marked[0].group).toBe("active");
+    expect(wed.rows.every((r) => !r.opp?.incoming)).toBe(true);
+    expect(days[DEMO_TODAY + 1].rows.some((r) => r.you?.incoming)).toBe(false);
   });
 });
 

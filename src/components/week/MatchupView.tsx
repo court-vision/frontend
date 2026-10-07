@@ -189,7 +189,7 @@ function Duel({ row, past }: { row: DuelRow; past: boolean }) {
     <div className={s.muRow} style={{ gridTemplateColumns: TEMPLATE }} data-group={row.group}>
       <Side side={row.you} edge={row.edge === "you"} past={past} />
       <span className={s.muSpine}>
-        <span className={s.slotChip} data-group={row.group}>
+        <span className={s.slotChip} data-group={row.group} data-in={row.you?.incoming}>
           {row.slot}
         </span>
       </span>
@@ -232,7 +232,7 @@ function Side({ side, edge, past, mirror = false }: { side: DuelSide | null; edg
         ? `final ${oppShort(g.opp)}`.trim()
         : `${oppShort(g.opp)}${g.time ? ` · ${tip(g.time)}` : ""}`;
   const name = (
-    <span key="name" className={s.muName} data-mirror={mirror} data-health={health} data-staged={side.staged}>
+    <span key="name" className={s.muName} data-mirror={mirror} data-health={health} data-staged={side.staged} data-incoming={side.incoming}>
       <Headshot nbaId={side.nbaId} name={side.name} size={28} />
       <span className={s.muWho}>
         <span className={s.muPlayer}>{side.name}</span>
@@ -250,17 +250,17 @@ function Side({ side, edge, past, mirror = false }: { side: DuelSide | null; edg
   const line = g?.line ?? null;
   const stats = line ? (
     STATS.map((c) => (
-      <span key={c.key} className={s.muStat} data-counts={side.counts}>
+      <span key={c.key} className={s.muStat} data-counts={side.counts} data-incoming={side.incoming}>
         {c.get(line)}
       </span>
     ))
   ) : (
-    <span key="span" className={s.muSpan} style={{ gridColumn: `span ${STATS.length}` }} data-counts={side.counts}>
+    <span key="span" className={s.muSpan} style={{ gridColumn: `span ${STATS.length}` }} data-counts={side.counts} data-incoming={side.incoming}>
       {status === "dnp" ? "did not play" : status === "out" ? "ruled out" : ""}
     </span>
   );
   const fpts = (
-    <span key="fpts" className={s.muFpts} data-edge={edge} data-counts={side.counts} data-status={status}>
+    <span key="fpts" className={s.muFpts} data-edge={edge} data-counts={side.counts} data-status={status} data-incoming={side.incoming}>
       {side.fpts == null ? "—" : side.projected ? <span className={s.muProj}>{pts(side.fpts)}</span> : pts(side.fpts)}
     </span>
   );

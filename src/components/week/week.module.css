@@ -1415,6 +1415,19 @@ button.dayHead:hover {
   filter: grayscale(0.6);
 }
 
+/* A previewed free agent: his side of the spot, marked as in the other views. */
+.muRow > [data-incoming="true"]:not([data-edge="true"]) {
+  background: color-mix(in srgb, var(--preview) 8%, var(--bg));
+}
+
+.muRow:hover > [data-incoming="true"]:not([data-edge="true"]) {
+  background: color-mix(in srgb, var(--preview) 12%, var(--hover-col));
+}
+
+.muName[data-incoming="true"] .muPlayer {
+  color: var(--preview);
+}
+
 .muTotal {
   min-height: 40px;
   background: var(--surface);

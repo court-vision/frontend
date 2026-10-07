@@ -36,6 +36,8 @@ export interface DuelSide {
   projected: boolean;
   /** Moved there by a staged move (your side). */
   staged: boolean;
+  /** The free agent a previewed add brings in (your side). */
+  incoming: boolean;
 }
 
 export interface DuelRow {
@@ -115,6 +117,7 @@ function oppSide(o: SourceOpponent, day: number, active: boolean): DuelSide {
     fpts: scored(game) ? game!.fpts : game && !game.out ? o.avg : null,
     projected: !scored(game),
     staged: false,
+    incoming: false,
   };
 }
 
@@ -170,6 +173,7 @@ export function buildMatchupDay(source: WeekSource, grid: WeekGrid, day: number)
         fpts: scored(game) ? game!.fpts : game && !game.out ? seat.player.avg : null,
         projected: !scored(game),
         staged: seat.staged,
+        incoming: seat.incoming,
       };
     }
     const o = take(canonical(def.slot));
