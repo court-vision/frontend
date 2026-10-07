@@ -2,7 +2,9 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { lineupKeys } from "@/hooks/useLineupEditor";
 import { useLiveMatchupQuery, useMatchupQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { useCancelPickupMutation, useSchedulePickupMutation, useScheduledPickupsQuery } from "@/hooks/useScheduledPickups";
@@ -289,9 +291,12 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   } else if (!weekData || weekData.days.length === 0) status = "empty";
 
   const mutateAsync = transaction.mutateAsync;
+  const queryClient = useQueryClient();
   const transact = useCallback(
     async (add: number | null, drop: number | null, board: LineupState) => {
-      if (board.scoring_period_id == null) return "refused" as const;
+      if (board.scoring_period_id == null || teamId == null) return "refused" as const;
+      // The later days' lineups hold the roster too; the shared mutation only refreshes today's.
+      const rereadLaterDays = () => void queryClient.invalidateQueries({ queryKey: lineupKeys.days(teamId) });
       try {
         await mutateAsync({
           add_player_id: add,
@@ -299,13 +304,16 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
           expected_scoring_period_id: board.scoring_period_id,
           roster_version: board.roster_version,
         });
+        rereadLaterDays();
         return "ok" as const;
       } catch (err) {
         // A stale board was swapped in by the mutation; the preview no longer applies.
-        return staleLineup(err) ? ("ok" as const) : ("refused" as const);
+        if (!staleLineup(err)) return "refused" as const;
+        rereadLaterDays();
+        return "ok" as const;
       }
     },
-    [mutateAsync]
+    [mutateAsync, queryClient, teamId]
   );
 
   const { periodOf } = lineup;
