@@ -619,6 +619,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/jobs/pickups/execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Execute Pickups
+         * @description Attempt every scheduled pickup that is due, up to `limit` rows.
+         *
+         *     Called by data-platform's scheduled-pickups pipeline every minute (its route
+         *     gates on whether anything is due). Each row's outcome is reported in
+         *     `data.results`, never raised: executed, skipped (the player is gone — the
+         *     no-op), failed, expired, or deferred (a lock, a waiver period or a writer
+         *     outage; the row waits for `next_attempt_at`). With roster writes switched off
+         *     nothing is attempted and due rows are pushed back ten minutes.
+         */
+        post: operations["execute_pickups_v1_internal_jobs_pickups_execute_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/jobs/valuation/standard": {
         parameters: {
             query?: never;
@@ -1400,6 +1427,60 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/pickups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Pickups
+         * @description Pending pickups (soonest day first) and those settled in the last week (newest first).
+         */
+        get: operations["list_pickups_v1_internal_teams__team_id__pickups_get"];
+        put?: never;
+        /**
+         * Schedule Pickup
+         * @description Schedule a pickup for a later ESPN day. The add/drop is made automatically at
+         *     the earliest moment it counts for that day — the previous day's first tip-off,
+         *     or the rollover into the day when the player to drop plays the day before — and
+         *     is a no-op if the player is gone by then.
+         *
+         *     The request is checked against today's board and ESPN's pool before it is stored:
+         *     403 ROSTER_WRITE_DISABLED, 409 ROSTER_WRITE_BLOCKED, 400 SCORING_PERIOD_OUT_OF_RANGE
+         *     (a day past the season), 422 SCHEDULED_PICKUP_INVALID with `data.reason`
+         *     (not_future, add_not_available, drop_not_on_roster, ...), 409
+         *     SCHEDULED_PICKUP_DUPLICATE when that player is already scheduled.
+         */
+        post: operations["schedule_pickup_v1_internal_teams__team_id__pickups_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/pickups/{pickup_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Cancel Pickup
+         * @description Cancel a pending pickup. 404 when it is not this team's; 409 SCHEDULED_PICKUP_NOT_PENDING
+         *     when it already ran (or was cancelled).
+         */
+        delete: operations["cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -6477,6 +6558,77 @@ export interface components {
             /** Avg Turnovers */
             avg_turnovers: number;
         };
+        /** PickupExecuteData */
+        PickupExecuteData: {
+            /** Due */
+            due: number;
+            /**
+             * Results
+             * @default []
+             */
+            results: components["schemas"]["PickupResult"][];
+        };
+        /** PickupExecuteReq */
+        PickupExecuteReq: {
+            /**
+             * Limit
+             * @default 4
+             */
+            limit?: number;
+            /** Now */
+            now?: string | null;
+        };
+        /** PickupExecuteResp */
+        PickupExecuteResp: {
+            data: components["schemas"]["PickupExecuteData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** PickupResult */
+        PickupResult: {
+            add: components["schemas"]["ScheduledPickupPlayer"];
+            /** Audit Id */
+            audit_id: number | null;
+            /** Detail */
+            detail: string | null;
+            drop: components["schemas"]["ScheduledPickupPlayer"] | null;
+            /**
+             * Nba Date
+             * Format: date
+             */
+            nba_date: string;
+            /** Next Attempt At */
+            next_attempt_at: string | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "executed" | "skipped" | "failed" | "expired" | "deferred";
+            /** Pickup Id */
+            pickup_id: number;
+            /** Reason */
+            reason: string | null;
+            /** Scoring Period Id */
+            scoring_period_id: number;
+            /** Seated Slot */
+            seated_slot: string | null;
+            /** Team Id */
+            team_id: number;
+            /**
+             * Team Name
+             * @default
+             */
+            team_name: string;
+            /** User Id */
+            user_id: number;
+            /** Verified */
+            verified: boolean | null;
+        };
         /**
          * PlayerGamesData
          * @description Response data for a player's game log.
@@ -8085,6 +8237,15 @@ export interface components {
             /** Total Team Games */
             total_team_games: number;
         };
+        /** SchedulePickupReq */
+        SchedulePickupReq: {
+            /** Add Player Id */
+            add_player_id: number;
+            /** Drop Player Id */
+            drop_player_id?: number | null;
+            /** Scoring Period Id */
+            scoring_period_id: number;
+        };
         /** ScheduleWeek */
         ScheduleWeek: {
             /** End Date */
@@ -8107,6 +8268,106 @@ export interface components {
         /** ScheduleWeeksResp */
         ScheduleWeeksResp: {
             data: components["schemas"]["ScheduleWeeksData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** ScheduledPickup */
+        ScheduledPickup: {
+            add: components["schemas"]["ScheduledPickupPlayer"];
+            /**
+             * Attempts
+             * @default 0
+             */
+            attempts: number;
+            /** Audit Id */
+            audit_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Deadline At */
+            deadline_at: string | null;
+            /** Detail */
+            detail: string | null;
+            drop: components["schemas"]["ScheduledPickupPlayer"] | null;
+            /** Executed At */
+            executed_at: string | null;
+            /** Id */
+            id: number;
+            /** Lineup Audit Id */
+            lineup_audit_id: number | null;
+            /**
+             * Nba Date
+             * Format: date
+             */
+            nba_date: string;
+            /** Next Attempt At */
+            next_attempt_at: string | null;
+            /**
+             * Not Before At
+             * Format: date-time
+             */
+            not_before_at: string;
+            /** Reason */
+            reason: string | null;
+            /** Scoring Period Id */
+            scoring_period_id: number;
+            /** Seated Slot */
+            seated_slot: string | null;
+            /** Seated Slot Id */
+            seated_slot_id: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "executed" | "skipped" | "failed" | "cancelled" | "expired";
+            /** Team Id */
+            team_id: number;
+        };
+        /** ScheduledPickupListData */
+        ScheduledPickupListData: {
+            /**
+             * Pending
+             * @default []
+             */
+            pending: components["schemas"]["ScheduledPickup"][];
+            /**
+             * Recent
+             * @default []
+             */
+            recent: components["schemas"]["ScheduledPickup"][];
+        };
+        /** ScheduledPickupListResp */
+        ScheduledPickupListResp: {
+            data: components["schemas"]["ScheduledPickupListData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** ScheduledPickupPlayer */
+        ScheduledPickupPlayer: {
+            /** Name */
+            name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
+            /** Player Id */
+            player_id: number;
+            /** Team */
+            team: string | null;
+        };
+        /** ScheduledPickupResp */
+        ScheduledPickupResp: {
+            data: components["schemas"]["ScheduledPickup"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -10329,6 +10590,39 @@ export interface operations {
             };
         };
     };
+    execute_pickups_v1_internal_jobs_pickups_execute_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PickupExecuteReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickupExecuteResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     value_standard_league_v1_internal_jobs_valuation_standard_post: {
         parameters: {
             query?: never;
@@ -11590,6 +11884,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LineupPlanResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_pickups_v1_internal_teams__team_id__pickups_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledPickupListResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    schedule_pickup_v1_internal_teams__team_id__pickups_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchedulePickupReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledPickupResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pickup_id: number;
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledPickupResp"];
                 };
             };
             /** @description Validation Error */

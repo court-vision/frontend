@@ -43,6 +43,16 @@ export const ROSTER_WRITE_BLOCKED = "ROSTER_WRITE_BLOCKED";
 export const ROSTER_WRITE_DISABLED = "ROSTER_WRITE_DISABLED";
 export const ROSTER_WRITE_UNAVAILABLE = "ROSTER_WRITE_UNAVAILABLE";
 
+/**
+ * Scheduled pickups (`/teams/{id}/pickups`): 422 INVALID carries `data.reason`
+ * (a `PickupInvalidReason`), 409 DUPLICATE means that player is already
+ * scheduled, 409 NOT_PENDING that a cancel came after the pickup ran. Each
+ * `message` is written for the user.
+ */
+export const SCHEDULED_PICKUP_INVALID = "SCHEDULED_PICKUP_INVALID";
+export const SCHEDULED_PICKUP_DUPLICATE = "SCHEDULED_PICKUP_DUPLICATE";
+export const SCHEDULED_PICKUP_NOT_PENDING = "SCHEDULED_PICKUP_NOT_PENDING";
+
 const RETRYABLE_KINDS: ReadonlySet<ApiErrorKind> = new Set<ApiErrorKind>([
   "network",
   "timeout",
