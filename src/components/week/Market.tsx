@@ -314,8 +314,12 @@ function FaItem(props: ItemProps) {
         type="button"
         className={s.marketRow}
         data-fa-row
-        onMouseEnter={() => best && onHover({ faId: fa.player_id, replaces: best.dropId })}
-        onFocus={() => best && onHover({ faId: fa.player_id, replaces: best.dropId })}
+        // A hover previews this row only while the pointer (or focus) is on it, and never
+        // over the picked free agent: his preview is the pinned one, with the drop chosen below.
+        onMouseEnter={() => best && !selected && onHover({ faId: fa.player_id, replaces: best.dropId })}
+        onMouseLeave={() => onHover(null)}
+        onFocus={() => best && !selected && onHover({ faId: fa.player_id, replaces: best.dropId })}
+        onBlur={() => onHover(null)}
         onClick={() => onPin(selected ? null : best ? { faId: fa.player_id, replaces: best.dropId } : null)}
         title={selected ? "Stop previewing" : "Preview him in the grid"}
       >
@@ -344,7 +348,7 @@ function FaItem(props: ItemProps) {
 }
 
 /** The selected free agent: every drop that could make room, ranked, and the add. Evaluated only when open. */
-function DropOptions({ fa, target, evaluate, allDrops, room, nameOf, avgOf, pinned, pinnedBlocked, onPin, onAdd }: ItemProps) {
+function DropOptions({ fa, target, evaluate, allDrops, room, nameOf, avgOf, pinned, pinnedBlocked, onHover, onPin, onAdd }: ItemProps) {
   const picked = pinned && pinned.faId === fa.player_id ? pinned.replaces : null;
   const options = useMemo(() => {
     // The weakest few, plus whoever was picked from the roster.
@@ -361,7 +365,10 @@ function DropOptions({ fa, target, evaluate, allDrops, room, nameOf, avgOf, pinn
           const on = pick?.replaces === o.dropId;
           const value = target != null ? o.byDay[target] ?? 0 : o.week;
           return (
-            <button key={o.dropId} type="button" className={s.marketOption} aria-pressed={on} onClick={() => onPin({ faId: fa.player_id, replaces: o.dropId })}>
+            <button key={o.dropId} type="button" className={s.marketOption} aria-pressed={on} onClick={() => {
+                onHover(null);
+                onPin({ faId: fa.player_id, replaces: o.dropId });
+              }}>
               <span className={s.marketOptionName}>{o.dropId === NO_DROP ? "Open roster spot" : nameOf(o.dropId)}</span>
               <span className={dk.sub}>
                 {o.dropId === NO_DROP ? "" : `${pts(avgOf(o.dropId))}/g`}

@@ -889,7 +889,10 @@ export function WeekTerminal({
             pinned={pinned}
             pinnedBlocked={swap?.blocked ?? null}
             onHover={setHover}
-            onPin={(pick: MarketPick | null) => setPinned(pick)}
+            onPin={(pick: MarketPick | null) => {
+              setHover(null);
+              setPinned(pick);
+            }}
             onAdd={(pick: MarketPick) => {
               setPinned(pick);
               setHover(null);
