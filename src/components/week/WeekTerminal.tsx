@@ -188,6 +188,16 @@ export function WeekTerminal({
 
   // ---- the market: free agents ranked by what they add to this week ----
   const [marketOpen, setMarketOpen] = useState(initialMarket != null);
+  // Closing the market lets go of the free agent picked in it, and of any hover.
+  const closeMarket = useCallback(() => {
+    setMarketOpen(false);
+    setHover(null);
+    setPinned(null);
+  }, []);
+  const toggleMarket = useCallback(() => {
+    if (marketOpen) closeMarket();
+    else setMarketOpen(true);
+  }, [marketOpen, closeMarket]);
   const [marketMode, setMarketMode] = useState<MarketMode>(initialMarket ?? "week");
   // The same measure as `faGain`, but built without any preview in the grid, so
   // hovering a row never re-ranks the list.
@@ -582,7 +592,7 @@ export function WeekTerminal({
           toggleView();
           return;
         case "p":
-          setMarketOpen((o) => !o);
+          toggleMarket();
           return;
         case "h":
           setHeat((h) => !h);
@@ -718,7 +728,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, toggleMarket]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
@@ -815,7 +825,7 @@ export function WeekTerminal({
           view={view}
           onView={chooseView}
           market={marketOpen}
-          onMarket={() => setMarketOpen((o) => !o)}
+          onMarket={toggleMarket}
         />
         <div className={s.work}>
         <div className={s.workMain}>
@@ -899,10 +909,7 @@ export function WeekTerminal({
               data.clearTransactError();
               setConfirm("swap");
             }}
-            onClose={() => {
-              setMarketOpen(false);
-              setHover(null);
-            }}
+            onClose={closeMarket}
           />
         ) : null}
         </div>
