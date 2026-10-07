@@ -371,5 +371,8 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     cancelling: pickupCancel.isPending ? pickupCancel.variables ?? null : null,
   };
 
-  return <WeekTerminal data={data} initialView={view} initialMarket={market} />;
+  // Everything the terminal holds (staged moves, a picked free agent and its
+  // timing, an open confirm, a hovered pickup) is one team's: another team gets
+  // a fresh terminal, so nothing staged for one can be sent for the other.
+  return <WeekTerminal key={teamId ?? "none"} data={data} initialView={view} initialMarket={market} />;
 }
