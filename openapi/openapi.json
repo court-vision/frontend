@@ -2206,7 +2206,7 @@
         "type": "object"
       },
       "DailyMatchupPlayerStats": {
-        "description": "Player stats for a single past day. No lineup_slot since we don't snapshot rosters.",
+        "description": "Player stats for a single past day.\n\nThe lineup fields are set when the day's roster came from a lineup snapshot\n(or ESPN's per-day history) and left None when the team's current roster\nstood in for it \u2014 today's slots are never presented as that day's.",
         "properties": {
           "ast": {
             "anyOf": [
@@ -2311,6 +2311,39 @@
             "title": "Had Game",
             "type": "boolean"
           },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injury Status"
+          },
+          "lineup_slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lineup Slot"
+          },
+          "lineup_slot_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lineup Slot Id"
+          },
           "min": {
             "anyOf": [
               {
@@ -2401,6 +2434,9 @@
           "position",
           "nba_player_id",
           "had_game",
+          "lineup_slot",
+          "lineup_slot_id",
+          "injury_status",
           "fpts",
           "pts",
           "reb",
@@ -2489,6 +2525,17 @@
             ],
             "title": "Categories"
           },
+          "lineup_captured_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lineup Captured At"
+          },
           "roster": {
             "anyOf": [
               {
@@ -2505,6 +2552,16 @@
               }
             ],
             "title": "Roster"
+          },
+          "roster_source": {
+            "default": "current",
+            "enum": [
+              "snapshot",
+              "provider_history",
+              "current"
+            ],
+            "title": "Roster Source",
+            "type": "string"
           },
           "team_id": {
             "title": "Team Id",
@@ -2531,7 +2588,9 @@
           "team_id",
           "total_fpts",
           "roster",
-          "categories"
+          "categories",
+          "roster_source",
+          "lineup_captured_at"
         ],
         "title": "DailyMatchupTeam",
         "type": "object"
@@ -8557,6 +8616,357 @@
           "count"
         ],
         "title": "LineupSlotDef",
+        "type": "object"
+      },
+      "LineupSnapshot": {
+        "properties": {
+          "applied_stat_total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied Stat Total"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "matchup_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchup Period Id"
+          },
+          "nba_date": {
+            "title": "Nba Date",
+            "type": "string"
+          },
+          "opponent_provider_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opponent Provider Team Id"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/LineupSnapshotPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/FantasyProvider"
+          },
+          "provider_league_id": {
+            "title": "Provider League Id",
+            "type": "string"
+          },
+          "provider_team_id": {
+            "title": "Provider Team Id",
+            "type": "integer"
+          },
+          "scoring_period_id": {
+            "title": "Scoring Period Id",
+            "type": "integer"
+          },
+          "season": {
+            "title": "Season",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "snapshot",
+              "provider_history"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "provider_league_id",
+          "season",
+          "provider_team_id",
+          "team_name",
+          "scoring_period_id",
+          "nba_date",
+          "matchup_period_id",
+          "opponent_provider_team_id",
+          "applied_stat_total",
+          "captured_at",
+          "source",
+          "players"
+        ],
+        "title": "LineupSnapshot",
+        "type": "object"
+      },
+      "LineupSnapshotListData": {
+        "properties": {
+          "from_date": {
+            "title": "From Date",
+            "type": "string"
+          },
+          "missing_dates": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Dates",
+            "type": "array"
+          },
+          "provider_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Team Id"
+          },
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/LineupSnapshot"
+            },
+            "title": "Snapshots",
+            "type": "array"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "to_date": {
+            "title": "To Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id",
+          "provider_team_id",
+          "from_date",
+          "to_date",
+          "snapshots",
+          "missing_dates"
+        ],
+        "title": "LineupSnapshotListData",
+        "type": "object"
+      },
+      "LineupSnapshotListResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LineupSnapshotListData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "LineupSnapshotListResp",
+        "type": "object"
+      },
+      "LineupSnapshotPlayer": {
+        "properties": {
+          "applied_total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied Total"
+          },
+          "eligible_slots": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Eligible Slots",
+            "type": "array"
+          },
+          "injured": {
+            "default": false,
+            "title": "Injured",
+            "type": "boolean"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injury Status"
+          },
+          "lineup_slot": {
+            "title": "Lineup Slot",
+            "type": "string"
+          },
+          "lineup_slot_id": {
+            "title": "Lineup Slot Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "position": {
+            "title": "Position",
+            "type": "string"
+          },
+          "team": {
+            "title": "Team",
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "nba_player_id",
+          "name",
+          "team",
+          "position",
+          "lineup_slot_id",
+          "lineup_slot",
+          "eligible_slots",
+          "injured",
+          "injury_status",
+          "applied_total"
+        ],
+        "title": "LineupSnapshotPlayer",
+        "type": "object"
+      },
+      "LineupSnapshotResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LineupSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "LineupSnapshotResp",
         "type": "object"
       },
       "LineupState": {
@@ -21360,7 +21770,7 @@
     },
     "/v1/internal/jobs/pickups/execute": {
       "post": {
-        "description": "Attempt every scheduled pickup that is due, up to `limit` rows.\n\nCalled by data-platform's scheduled-pickups pipeline every minute (its route\ngates on whether anything is due). Each row's outcome is reported in\n`data.results`, never raised: executed, skipped (the player is gone \u2014 the\nno-op), failed, expired, or deferred (a lock, a waiver period or a writer\noutage; the row waits for `next_attempt_at`). With roster writes switched off\nnothing is attempted and due rows are pushed back ten minutes.",
+        "description": "Attempt every scheduled pickup that is due, up to `limit` rows.\n\nCalled by data-platform's scheduled-pickups pipeline every minute (its route\ngates on whether anything is due). Each row's outcome is reported in\n`data.results`, never raised: executed, skipped (the player is gone \u2014 the\nno-op), failed, expired, or deferred (a lock, a waiver period or a writer\noutage; the row waits for `next_attempt_at`). A write is sent at most once:\none that got no answer is settled by the next attempt from the board alone\n(executed, or failed `interrupted`). With roster writes switched off nothing\nis attempted and due rows are pushed back ten minutes.",
         "operationId": "execute_pickups_v1_internal_jobs_pickups_execute_post",
         "requestBody": {
           "content": {
@@ -23259,6 +23669,171 @@
         ]
       }
     },
+    "/v1/internal/teams/{team_id}/lineup-snapshots": {
+      "get": {
+        "description": "The team's stored lineups over a range of finished days, with the days that have none.",
+        "operationId": "list_lineup_snapshots_v1_internal_teams__team_id__lineup_snapshots_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "First day (YYYY-MM-DD). Default: the current matchup week.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day (YYYY-MM-DD). Default: the current matchup week.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Last day (YYYY-MM-DD), at most 31 days after `from`.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day (YYYY-MM-DD), at most 31 days after `from`.",
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineupSnapshotListResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Lineup Snapshots",
+        "tags": [
+          "lineup snapshots"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/lineup-snapshots/{date}": {
+      "get": {
+        "description": "One team's roster and lineup slots as they stood on that day.\n\nThe stored snapshot when there is one; otherwise ESPN's own history of the\nday, read live (`source: provider_history`). 404 LINEUP_SNAPSHOT_NOT_FOUND\nwhen neither has it; 400 DATE_NOT_PAST for today or a later day.",
+        "operationId": "get_lineup_snapshot_v1_internal_teams__team_id__lineup_snapshots__date__get",
+        "parameters": [
+          {
+            "description": "A finished day (YYYY-MM-DD)",
+            "in": "path",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "description": "A finished day (YYYY-MM-DD)",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "title": "Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Another team in the same league (the opponent's ESPN team id). Default: this team.",
+            "in": "query",
+            "name": "provider_team_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Another team in the same league (the opponent's ESPN team id). Default: this team.",
+              "title": "Provider Team Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineupSnapshotResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Lineup Snapshot",
+        "tags": [
+          "lineup snapshots"
+        ]
+      }
+    },
     "/v1/internal/teams/{team_id}/lineup/moves": {
       "post": {
         "description": "Send slot moves to ESPN as one transaction for the board's day (`expected_scoring_period_id`,\ntoday or later), then return the re-read board.",
@@ -23471,7 +24046,7 @@
     },
     "/v1/internal/teams/{team_id}/pickups/{pickup_id}": {
       "delete": {
-        "description": "Cancel a pending pickup. 404 when it is not this team's; 409 SCHEDULED_PICKUP_NOT_PENDING\nwhen it already ran (or was cancelled).",
+        "description": "Cancel a pending pickup. 404 when it is not this team's; 409 SCHEDULED_PICKUP_NOT_PENDING\nwhen it already ran (or was cancelled); 409 SCHEDULED_PICKUP_IN_PROGRESS while an attempt is\nmaking it \u2014 its outcome follows in a few minutes, and a deferred pickup can be cancelled again.",
         "operationId": "cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete",
         "parameters": [
           {

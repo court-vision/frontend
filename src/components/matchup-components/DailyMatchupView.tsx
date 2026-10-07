@@ -45,18 +45,44 @@ function StatCell({ value }: { value: number | null }) {
 
 interface PastRosterTableProps {
   roster: DailyMatchupPlayerStats[];
+  /** The server's day total: starters only when the roster is that day's lineup. */
+  totalFpts: number | null;
+  rosterSource: DailyMatchupTeam["roster_source"];
+  /** Today's card shows today's roster on purpose; the source notes are about past days. */
+  isToday: boolean;
 }
 
-function PastRosterTable({ roster }: PastRosterTableProps) {
-  const totalFpts = roster.reduce((sum, p) => sum + (p.fpts ?? 0), 0);
+const BENCH_SLOTS = new Set(["BE", "IR"]);
+
+// A snapshot or provider-history roster carries each player's slot for that
+// day; today's roster standing in for a past day carries none.
+function isBenchThatDay(player: DailyMatchupPlayerStats): boolean {
+  return player.lineup_slot != null && BENCH_SLOTS.has(player.lineup_slot);
+}
+
+const ROSTER_SOURCE_NOTE: Record<DailyMatchupTeam["roster_source"], string | null> = {
+  snapshot: null,
+  provider_history: "Lineup as ESPN recorded it for that day",
+  current: "Today's roster shown — that day's lineup was not captured",
+};
+
+function PastRosterTable({ roster, totalFpts, rosterSource, isToday }: PastRosterTableProps) {
   const hasAnyStats = roster.some((p) => p.fpts !== null);
+  const hasSlots = roster.some((p) => p.lineup_slot != null);
+  const note = isToday ? null : ROSTER_SOURCE_NOTE[rosterSource];
 
   return (
     <div className="overflow-x-auto">
+      {note && (
+        <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-b border-border/50">{note}</p>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="pl-3">Player</TableHead>
+            {hasSlots && (
+              <TableHead className="w-[36px] pl-3 font-mono text-[11px] uppercase tracking-wider">Slot</TableHead>
+            )}
+            <TableHead className={cn(!hasSlots && "pl-3")}>Player</TableHead>
             <TableHead className="w-[40px] font-mono text-[11px] uppercase tracking-wider">Team</TableHead>
             <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">MIN</TableHead>
             <TableHead className="w-[36px] text-right font-mono text-[11px] uppercase tracking-wider">PTS</TableHead>
@@ -72,16 +98,28 @@ function PastRosterTable({ roster }: PastRosterTableProps) {
           {roster.map((player) => {
             const hasStats = player.fpts !== null;
             const noGame = !player.had_game;
+            const benched = isBenchThatDay(player);
 
             return (
               <TableRow
                 key={player.player_id}
                 className={cn(
                   "border-l-2 border-l-transparent",
-                  noGame && "opacity-40"
+                  noGame && "opacity-40",
+                  benched && !noGame && "opacity-50"
                 )}
               >
-                <TableCell className="pl-3">
+                {hasSlots && (
+                  <TableCell
+                    className={cn(
+                      "pl-3 font-mono text-[11px] uppercase",
+                      benched ? "text-muted-foreground/60" : "text-muted-foreground"
+                    )}
+                  >
+                    {player.lineup_slot ?? ""}
+                  </TableCell>
+                )}
+                <TableCell className={cn(!hasSlots && "pl-3")}>
                   <div className="flex items-center gap-1.5 min-w-0">
                     <PlayerHeadshot
                       playerId={player.nba_player_id}
@@ -138,13 +176,13 @@ function PastRosterTable({ roster }: PastRosterTableProps) {
             );
           })}
 
-          {/* Summary row */}
+          {/* Summary row — the server's total, which counts starters only for a dated lineup */}
           <TableRow className="border-t border-border/50 bg-muted/20 hover:bg-muted/20">
-            <TableCell colSpan={9} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
-              Day total {!hasAnyStats && <span className="normal-case">(no stats)</span>}
+            <TableCell colSpan={hasSlots ? 10 : 9} className="pl-3 py-2 text-[11px] text-muted-foreground uppercase tracking-wider">
+              Day total{hasSlots && " (starters)"} {!hasAnyStats && <span className="normal-case">(no stats)</span>}
             </TableCell>
             <TableCell className="text-right font-mono text-sm font-bold pr-3 py-2 tabular-nums">
-              {hasAnyStats ? totalFpts : <span className="text-muted-foreground/30">—</span>}
+              {hasAnyStats && totalFpts !== null ? Math.round(totalFpts * 10) / 10 : <span className="text-muted-foreground/30">—</span>}
             </TableCell>
           </TableRow>
         </TableBody>
@@ -284,7 +322,12 @@ function DailyTeamCard({ team, dayType, isYourTeam, format, record }: DailyTeamC
       </CardHeader>
       <CardContent className="p-0">
         {isPast ? (
-          <PastRosterTable roster={team.roster as DailyMatchupPlayerStats[]} />
+          <PastRosterTable
+            roster={team.roster as DailyMatchupPlayerStats[]}
+            totalFpts={team.total_fpts}
+            rosterSource={team.roster_source}
+            isToday={dayType === "today"}
+          />
         ) : (
           <FutureRosterTable roster={team.roster as DailyMatchupFuturePlayer[]} />
         )}

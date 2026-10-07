@@ -636,8 +636,10 @@ export interface paths {
          *     gates on whether anything is due). Each row's outcome is reported in
          *     `data.results`, never raised: executed, skipped (the player is gone — the
          *     no-op), failed, expired, or deferred (a lock, a waiver period or a writer
-         *     outage; the row waits for `next_attempt_at`). With roster writes switched off
-         *     nothing is attempted and due rows are pushed back ten minutes.
+         *     outage; the row waits for `next_attempt_at`). A write is sent at most once:
+         *     one that got no answer is settled by the next attempt from the board alone
+         *     (executed, or failed `interrupted`). With roster writes switched off nothing
+         *     is attempted and due rows are pushed back ten minutes.
          */
         post: operations["execute_pickups_v1_internal_jobs_pickups_execute_post"];
         delete?: never;
@@ -1391,6 +1393,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/teams/{team_id}/lineup-snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Lineup Snapshots
+         * @description The team's stored lineups over a range of finished days, with the days that have none.
+         */
+        get: operations["list_lineup_snapshots_v1_internal_teams__team_id__lineup_snapshots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/lineup-snapshots/{date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lineup Snapshot
+         * @description One team's roster and lineup slots as they stood on that day.
+         *
+         *     The stored snapshot when there is one; otherwise ESPN's own history of the
+         *     day, read live (`source: provider_history`). 404 LINEUP_SNAPSHOT_NOT_FOUND
+         *     when neither has it; 400 DATE_NOT_PAST for today or a later day.
+         */
+        get: operations["get_lineup_snapshot_v1_internal_teams__team_id__lineup_snapshots__date__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/teams/{team_id}/lineup/moves": {
         parameters: {
             query?: never;
@@ -1478,7 +1524,8 @@ export interface paths {
         /**
          * Cancel Pickup
          * @description Cancel a pending pickup. 404 when it is not this team's; 409 SCHEDULED_PICKUP_NOT_PENDING
-         *     when it already ran (or was cancelled).
+         *     when it already ran (or was cancelled); 409 SCHEDULED_PICKUP_IN_PROGRESS while an attempt is
+         *     making it — its outcome follows in a few minutes, and a deferred pickup can be cancelled again.
          */
         delete: operations["cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete"];
         options?: never;
@@ -3010,7 +3057,11 @@ export interface components {
         };
         /**
          * DailyMatchupPlayerStats
-         * @description Player stats for a single past day. No lineup_slot since we don't snapshot rosters.
+         * @description Player stats for a single past day.
+         *
+         *     The lineup fields are set when the day's roster came from a lineup snapshot
+         *     (or ESPN's per-day history) and left None when the team's current roster
+         *     stood in for it — today's slots are never presented as that day's.
          */
         DailyMatchupPlayerStats: {
             /** Ast */
@@ -3033,6 +3084,12 @@ export interface components {
             ftm: number | null;
             /** Had Game */
             had_game: boolean;
+            /** Injury Status */
+            injury_status: string | null;
+            /** Lineup Slot */
+            lineup_slot: string | null;
+            /** Lineup Slot Id */
+            lineup_slot_id: number | null;
             /** Min */
             min: number | null;
             /** Name */
@@ -3077,8 +3134,16 @@ export interface components {
             categories: {
                 [key: string]: number;
             } | null;
+            /** Lineup Captured At */
+            lineup_captured_at: string | null;
             /** Roster */
             roster: components["schemas"]["DailyMatchupPlayerStats"][] | components["schemas"]["DailyMatchupFuturePlayer"][];
+            /**
+             * Roster Source
+             * @default current
+             * @enum {string}
+             */
+            roster_source: "snapshot" | "provider_history" | "current";
             /** Team Id */
             team_id: number;
             /** Team Name */
@@ -5463,6 +5528,105 @@ export interface components {
             slot: string;
             /** Slot Id */
             slot_id: number;
+        };
+        /** LineupSnapshot */
+        LineupSnapshot: {
+            /** Applied Stat Total */
+            applied_stat_total: number | null;
+            /** Captured At */
+            captured_at: string | null;
+            /** Matchup Period Id */
+            matchup_period_id: number | null;
+            /** Nba Date */
+            nba_date: string;
+            /** Opponent Provider Team Id */
+            opponent_provider_team_id: number | null;
+            /** Players */
+            players: components["schemas"]["LineupSnapshotPlayer"][];
+            provider: components["schemas"]["FantasyProvider"];
+            /** Provider League Id */
+            provider_league_id: string;
+            /** Provider Team Id */
+            provider_team_id: number;
+            /** Scoring Period Id */
+            scoring_period_id: number;
+            /** Season */
+            season: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "snapshot" | "provider_history";
+            /** Team Name */
+            team_name: string;
+        };
+        /** LineupSnapshotListData */
+        LineupSnapshotListData: {
+            /** From Date */
+            from_date: string;
+            /** Missing Dates */
+            missing_dates: string[];
+            /** Provider Team Id */
+            provider_team_id: number | null;
+            /** Snapshots */
+            snapshots: components["schemas"]["LineupSnapshot"][];
+            /** Team Id */
+            team_id: number;
+            /** To Date */
+            to_date: string;
+        };
+        /** LineupSnapshotListResp */
+        LineupSnapshotListResp: {
+            data: components["schemas"]["LineupSnapshotListData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** LineupSnapshotPlayer */
+        LineupSnapshotPlayer: {
+            /** Applied Total */
+            applied_total: number | null;
+            /**
+             * Eligible Slots
+             * @default []
+             */
+            eligible_slots: string[];
+            /**
+             * Injured
+             * @default false
+             */
+            injured: boolean;
+            /** Injury Status */
+            injury_status: string | null;
+            /** Lineup Slot */
+            lineup_slot: string;
+            /** Lineup Slot Id */
+            lineup_slot_id: number;
+            /** Name */
+            name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
+            /** Player Id */
+            player_id: number;
+            /** Position */
+            position: string;
+            /** Team */
+            team: string;
+        };
+        /** LineupSnapshotResp */
+        LineupSnapshotResp: {
+            data: components["schemas"]["LineupSnapshot"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /** LineupState */
         LineupState: {
@@ -11818,6 +11982,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LineupStateResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_lineup_snapshots_v1_internal_teams__team_id__lineup_snapshots_get: {
+        parameters: {
+            query?: {
+                /** @description First day (YYYY-MM-DD). Default: the current matchup week. */
+                from?: string | null;
+                /** @description Last day (YYYY-MM-DD), at most 31 days after `from`. */
+                to?: string | null;
+            };
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineupSnapshotListResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lineup_snapshot_v1_internal_teams__team_id__lineup_snapshots__date__get: {
+        parameters: {
+            query?: {
+                /** @description Another team in the same league (the opponent's ESPN team id). Default: this team. */
+                provider_team_id?: number | null;
+            };
+            header?: never;
+            path: {
+                /** @description A finished day (YYYY-MM-DD) */
+                date: string;
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineupSnapshotResp"];
                 };
             };
             /** @description Validation Error */
