@@ -15,7 +15,7 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Lock } from "lucide-react";
+import { Lock, X } from "lucide-react";
 import { slotName } from "@/lib/lineup-editor";
 import {
   healthOf,
@@ -25,10 +25,11 @@ import {
   type StatLine,
   type WeekGrid as Grid,
 } from "@/lib/week-grid";
+import type { PickupView } from "@/lib/pickups";
 import type { LineupState } from "@/types/lineup-editor";
 import { Headshot } from "@/components/desk/Headshot";
 import { type Cursor, type DropTarget } from "./WeekGrid";
-import { monthDay, oppShort, pts, shortName, signed, tip } from "./format";
+import { monthDay, oppShort, pts, shortName, signed, tip, weekdayTime } from "./format";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
@@ -59,6 +60,13 @@ interface DailyGridProps {
   drag: SeatDragApi | null;
   /** A free agent is picked: clicking a roster player makes him the drop. */
   picking?: boolean;
+  /** Scheduled pickups: a row each above the lineup, the free agent from his day on. */
+  pickups?: PickupView[];
+  /** Hovering a pending pickup previews it in the grid. */
+  onPreviewPickup?: (id: number | null) => void;
+  onCancelPickup?: (id: number) => void;
+  /** The pickup being cancelled, while that request is out. */
+  cancelling?: number | null;
 }
 
 /** The focused day's box score, in this order (FPTS follows). */
@@ -104,6 +112,10 @@ export function DailyGrid({
   onSeat,
   drag,
   picking = false,
+  pickups = [],
+  onPreviewPickup,
+  onCancelPickup,
+  cancelling = null,
 }: DailyGridProps) {
   const { slots, seats } = grid.lineups;
   const days = grid.days;
@@ -301,6 +313,36 @@ export function DailyGrid({
             })}
           </div>
 
+          {/* Scheduled pickups lead, like a calendar's all-day lane: a preview below never moves them. */}
+          {pickups.length ? (
+            <div className={s.pickupLane}>
+              <div className={s.groupRow} role="presentation">
+                <div className={s.groupLabel}>
+                  <span className={dk.label} style={{ color: "var(--preview)" }}>
+                    Scheduled
+                  </span>
+                </div>
+                <div className={s.groupFill}>
+                  <span className={dk.sub} style={{ paddingLeft: 10 }}>
+                    pickups made for you before that day&apos;s games · hover one to see it below
+                  </span>
+                </div>
+              </div>
+              {pickups.map((pk) => (
+                <PickupRow
+                  key={pk.id}
+                  pickup={pk}
+                  days={days}
+                  focusDay={focusDay}
+                  todayIndex={todayIndex}
+                  cancelling={cancelling === pk.id}
+                  onPreview={onPreviewPickup}
+                  onCancel={onCancelPickup}
+                />
+              ))}
+            </div>
+          ) : null}
+
           <LayoutGroup>
             {slots.map((def, r) => (def.group === "drop" ? null : renderRow(def, r)))}
           </LayoutGroup>
@@ -359,6 +401,145 @@ export function DailyGrid({
         ) : null}
       </DragOverlay>
     </DndContext>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// A scheduled pickup: empty before its day, the free agent from that day on
+// ---------------------------------------------------------------------------
+
+const STATUS_TAG: Record<PickupView["status"], string> = {
+  pending: "SCHEDULED",
+  executed: "ADDED",
+  skipped: "SKIPPED",
+  failed: "FAILED",
+  expired: "EXPIRED",
+  cancelled: "CANCELLED",
+};
+
+function PickupRow({
+  pickup,
+  days,
+  focusDay,
+  todayIndex,
+  cancelling,
+  onPreview,
+  onCancel,
+}: {
+  pickup: PickupView;
+  days: Grid["days"];
+  focusDay: number | null;
+  todayIndex: number | null;
+  cancelling: boolean;
+  onPreview?: (id: number | null) => void;
+  onCancel?: (id: number) => void;
+}) {
+  const pending = pickup.status === "pending";
+  const forWhom = pickup.drop ? `for ${shortName(pickup.drop.name)}` : "into an open spot";
+  const first = pending && pickup.notBefore ? `first try ${weekdayTime(pickup.notBefore)}` : null;
+  const title = [
+    `${pickup.add.name}${pickup.drop ? `, dropping ${pickup.drop.name}` : ""}`,
+    first,
+    pickup.note,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const cancel = pending && onCancel ? (
+    <button
+      type="button"
+      className={s.pickupCancel}
+      onClick={(e) => {
+        e.stopPropagation();
+        onCancel(pickup.id);
+      }}
+      disabled={cancelling}
+      aria-label={`Cancel the pickup of ${pickup.add.name}`}
+      title="Cancel this pickup"
+    >
+      <X size={12} />
+    </button>
+  ) : null;
+  const status = (
+    <span className={s.pickupStatus} data-status={pickup.status}>
+      {cancelling ? "CANCELLING" : STATUS_TAG[pickup.status]}
+    </span>
+  );
+  return (
+    <div
+      className={s.row}
+      role="row"
+      data-group="pickup"
+      data-status={pickup.status}
+      title={title}
+      onMouseEnter={() => pending && onPreview?.(pickup.id)}
+      onMouseLeave={() => pending && onPreview?.(null)}
+    >
+      <div className={s.slotCell} role="rowheader">
+        <span className={s.slotChip} data-group="pickup">
+          ADD
+        </span>
+      </div>
+      {pickup.day == null ? (
+        // Another week's day: one line across the days.
+        <div className={s.pickupSpan} role="gridcell">
+          <span className={s.pickupName}>+ {pickup.add.name}</span>
+          <span className={dk.sub}>
+            {forWhom} · {monthDay(pickup.date)}
+            {first ? ` · ${first}` : ""}
+          </span>
+          {status}
+          {cancel}
+        </div>
+      ) : (
+        days.map((d, i) => {
+          const focused = i === focusDay;
+          const at = i === pickup.day;
+          const after = i > pickup.day!;
+          return (
+            <Fragment key={d.date}>
+              <div
+                className={s.pickupCell}
+                role="gridcell"
+                data-at={at}
+                data-after={after}
+                data-today={d.index === todayIndex}
+                data-status={at ? pickup.status : undefined}
+              >
+                {at ? (
+                  <>
+                    {focused ? <Headshot nbaId={pickup.add.nba_player_id ?? null} name={pickup.add.name} size={24} /> : null}
+                    <span className={s.who}>
+                      <span className={s.pickupName}>{focused ? `+ ${pickup.add.name}` : shortName(pickup.add.name)}</span>
+                      {focused ? <span className={s.seatSub}>{forWhom}</span> : null}
+                    </span>
+                  </>
+                ) : after && pickup.status !== "skipped" && pickup.status !== "failed" && pickup.status !== "expired" ? (
+                  <span className={s.pickupGhost}>{focused ? pickup.add.name : shortName(pickup.add.name)}</span>
+                ) : null}
+              </div>
+              <div
+                className={focused ? s.pickupStat : s.pickupValue}
+                role="gridcell"
+                data-at={at}
+                data-today={d.index === todayIndex}
+              >
+                {at ? (
+                  focused ? (
+                    <>
+                      {status}
+                      <span className={s.pickupNote}>{pickup.note ?? first ?? ""}</span>
+                      {cancel}
+                    </>
+                  ) : (
+                    cancel ?? status
+                  )
+                ) : null}
+              </div>
+            </Fragment>
+          );
+        })
+      )}
+    </div>
   );
 }
 

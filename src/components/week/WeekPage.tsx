@@ -2,8 +2,10 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
+import { toast } from "sonner";
 import { useLiveMatchupQuery, useMatchupQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
+import { useCancelPickupMutation, useSchedulePickupMutation, useScheduledPickupsQuery } from "@/hooks/useScheduledPickups";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
@@ -23,6 +25,7 @@ import {
   demoPeriod,
   demoPlan,
   demoSchedule,
+  demoScheduledPickup,
   demoSource,
   demoTransact,
 } from "@/lib/week-demo";
@@ -30,6 +33,7 @@ import type { LineupMove, LineupState } from "@/types/lineup-editor";
 import type { ScheduleGame } from "@/types/games";
 import type { StreamerPlayer } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
+import type { ScheduledPickup, ScheduledPickupList } from "@/types/scheduled-pickup";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import type { WeekSource } from "@/lib/week-grid";
 import { useDayBoards, type DayLineups } from "./useDayBoards";
@@ -79,6 +83,16 @@ export interface TerminalData {
   transacting: boolean;
   transactError: string | null;
   clearTransactError: () => void;
+  /** Scheduled pickups (ESPN teams): pending, soonest first, and those settled in the last week. */
+  pickups: ScheduledPickupList;
+  /** Schedule an add (with a drop, or into an open spot) for a later day of the week. */
+  schedulePickup: (add: StreamerPlayer, drop: number | null, day: number) => Promise<"ok" | "refused">;
+  scheduling: boolean;
+  scheduleError: string | null;
+  clearScheduleError: () => void;
+  cancelPickup: (id: number) => void;
+  /** The pickup being cancelled, while that request is out. */
+  cancelling: number | null;
 }
 
 export function WeekPage({ demo, view, market }: { demo: boolean; view?: WeekView; market?: MarketMode }) {
@@ -100,6 +114,10 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const [scheduleTeam, setScheduleTeam] = useState<string | null>(null);
   const [transacting, setTransacting] = useState(false);
   const [dailyDay, setDailyDay] = useState<number | null>(null);
+  const [pickups, setPickups] = useState<ScheduledPickup[]>([]);
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const nextPickupId = useRef(1);
 
   const boardFor = useCallback(
     (r: typeof roster, day: number, v: number) =>
@@ -148,6 +166,29 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     return "ok" as const;
   }, []);
 
+  const schedulePickup = useCallback(
+    async (add: StreamerPlayer, drop: number | null, day: number) => {
+      setScheduleError(null);
+      if (pickups.some((p) => p.add.player_id === add.player_id)) {
+        setScheduleError(`A pickup of ${add.name} is already scheduled`);
+        return "refused" as const;
+      }
+      setScheduling(true);
+      await wait(400);
+      const out = drop != null ? roster.find((r) => r.id === drop) ?? null : null;
+      const pickup = demoScheduledPickup(nextPickupId.current++, add, out, day);
+      setPickups((list) => [...list, pickup].sort((a, b) => a.scoring_period_id - b.scoring_period_id || a.id - b.id));
+      setScheduling(false);
+      toast.success(`Pickup of ${add.name} scheduled for ${DEMO_DAYS[day].dow} (demo)`);
+      return "ok" as const;
+    },
+    [pickups, roster]
+  );
+  const cancelPickup = useCallback((id: number) => {
+    setPickups((list) => list.filter((p) => p.id !== id));
+    toast.success("Pickup cancelled (demo)");
+  }, []);
+
   const rosterIds = useMemo(() => new Set(roster.map((r) => r.id)), [roster]);
   const data: TerminalData = {
     demo: true,
@@ -176,6 +217,13 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     transacting,
     transactError: null,
     clearTransactError: () => {},
+    pickups: { pending: pickups, recent: [] },
+    schedulePickup,
+    scheduling,
+    scheduleError,
+    clearScheduleError: () => setScheduleError(null),
+    cancelPickup,
+    cancelling: null,
   };
 
   return <WeekTerminal data={data} initialView={view} initialMarket={market} />;
@@ -215,6 +263,9 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const [scheduleTeam, setScheduleTeam] = useState<string | null>(null);
   const schedule = useTeamScheduleQuery(scheduleTeam, true, 10);
   const transaction = useRosterTransactionMutation(teamId ?? 0);
+  const pickups = useScheduledPickupsQuery(selected.provider === "espn" ? teamId : null);
+  const pickupSchedule = useSchedulePickupMutation(teamId ?? 0);
+  const pickupCancel = useCancelPickupMutation(teamId ?? 0);
 
   const weekData = week.data;
   const liveData = live.data;
@@ -257,6 +308,23 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     [mutateAsync]
   );
 
+  const { periodOf } = lineup;
+  const scheduleAsync = pickupSchedule.mutateAsync;
+  const schedulePickup = useCallback(
+    async (add: StreamerPlayer, drop: number | null, day: number) => {
+      const period = periodOf(day);
+      if (period == null) return "refused" as const;
+      try {
+        await scheduleAsync({ add_player_id: add.player_id, drop_player_id: drop, scoring_period_id: period });
+        return "ok" as const;
+      } catch {
+        return "refused" as const;
+      }
+    },
+    [periodOf, scheduleAsync]
+  );
+  const cancelMutate = pickupCancel.mutate;
+
   const teams: TeamOption[] = selected.teams.map((t) => ({
     id: t.team_id,
     name: t.league_info?.team_name ?? `Team ${t.team_id}`,
@@ -294,6 +362,13 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     transacting: transaction.isPending,
     transactError: transaction.error ? userMessage(transaction.error) : null,
     clearTransactError: transaction.reset,
+    pickups: pickups.data,
+    schedulePickup,
+    scheduling: pickupSchedule.isPending,
+    scheduleError: pickupSchedule.error ? userMessage(pickupSchedule.error) : null,
+    clearScheduleError: pickupSchedule.reset,
+    cancelPickup: (id) => cancelMutate(id),
+    cancelling: pickupCancel.isPending ? pickupCancel.variables ?? null : null,
   };
 
   return <WeekTerminal data={data} initialView={view} initialMarket={market} />;

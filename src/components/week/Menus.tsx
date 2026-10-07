@@ -8,7 +8,7 @@ import { slotName } from "@/lib/lineup-editor";
 import type { SourcePlayer, WeekDay } from "@/lib/week-grid";
 import type { StreamerPlayer } from "@/types/streamer";
 import { Headshot } from "@/components/desk/Headshot";
-import { pts, signed } from "./format";
+import { monthDay, pts, shortName, signed } from "./format";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
@@ -58,9 +58,11 @@ interface MoveMenuProps extends Anchored {
   blocked: string | null;
   onPick: (slotId: number) => void;
   onReplace: () => void;
+  /** A later day's spot: replacing him schedules a pickup for that day (its name, "Thu"). */
+  scheduleFor?: string | null;
 }
 
-export function MoveMenu({ player, currentSlot, targets, blocked, onPick, onReplace, ...shell }: MoveMenuProps) {
+export function MoveMenu({ player, currentSlot, targets, blocked, onPick, onReplace, scheduleFor = null, ...shell }: MoveMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
@@ -99,7 +101,9 @@ export function MoveMenu({ player, currentSlot, targets, blocked, onPick, onRepl
           )}
           <Command.Item value="replace" className={dk.menuItem} onSelect={onReplace}>
             <Repeat2 size={14} style={{ color: "var(--preview)" }} />
-            <span className={dk.grow}>Replace with a free agent…</span>
+            <span className={dk.grow}>
+              {scheduleFor ? `Replace him from ${scheduleFor} with a free agent…` : "Replace with a free agent…"}
+            </span>
             <span className={dk.kbd}>R</span>
           </Command.Item>
         </Command.List>
@@ -127,6 +131,8 @@ interface ReplaceMenuProps extends Anchored {
   highlighted: number | null;
   onHighlight: (id: number | null) => void;
   onPick: (fa: StreamerPlayer) => void;
+  /** A pickup scheduled for this day (a day index) rather than made now. */
+  from?: number | null;
 }
 
 export function ReplaceMenu({
@@ -137,9 +143,11 @@ export function ReplaceMenu({
   highlighted,
   onHighlight,
   onPick,
+  from = null,
   ...shell
 }: ReplaceMenuProps) {
   const upcoming = days.filter((d) => d.kind !== "past");
+  const day = from != null ? days[from] : null;
   return (
     <Shell {...shell} wide>
       <Command
@@ -149,8 +157,15 @@ export function ReplaceMenu({
         onValueChange={(v) => onHighlight(v.startsWith("fa-") ? Number(v.slice(3)) : null)}
       >
         <div className={dk.menuHead}>
-          <span className={dk.menuTitle}>Replace {player.name}</span>
-          <span className={dk.sub}>Highlight a free agent to preview his week in the grid · ⏎ to keep it</span>
+          <span className={dk.menuTitle}>
+            Replace {player.name}
+            {day ? ` from ${day.dow} ${monthDay(day.date)}` : ""}
+          </span>
+          <span className={dk.sub}>
+            {day
+              ? `A pickup made for you before ${day.dow}'s games: ${shortName(player.name)} plays until then · ⏎ to keep it`
+              : "Highlight a free agent to preview his week in the grid · ⏎ to keep it"}
+          </span>
         </div>
         <Command.Input autoFocus className={dk.menuInput} placeholder="Search free agents" />
         <Command.List className={dk.menuList}>
@@ -178,7 +193,10 @@ export function ReplaceMenu({
                 </span>
                 <span className={s.games} title={`${fa.games_remaining} games left`}>
                   {upcoming.map((d) => (
-                    <span key={d.index} className={`${s.gameTick} ${playing.has(d.index) ? s.gameTickOn : ""}`} />
+                    <span
+                      key={d.index}
+                      className={`${s.gameTick} ${playing.has(d.index) && (from == null || d.index >= from) ? s.gameTickOn : ""}`}
+                    />
                   ))}
                 </span>
                 <span className={dk.mono} style={{ width: 40, textAlign: "right", color: "var(--text-2)" }}>

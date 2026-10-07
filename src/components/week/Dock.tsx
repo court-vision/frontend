@@ -23,6 +23,18 @@ export interface PendingSwap {
   delta: number;
   /** Why it can't be sent right now, if it can't. */
   blocked: string | null;
+  /** The day it is scheduled for (a day index); null: made now. */
+  from: number | null;
+  /** When it could be made: now, or before one of his later game days, with what each does to the week. */
+  timings: SwapTiming[];
+  /** When the server makes a scheduled one, in words. */
+  timing: string | null;
+}
+
+export interface SwapTiming {
+  day: number | null;
+  label: string;
+  delta: number;
 }
 
 interface DockProps {
@@ -34,6 +46,7 @@ interface DockProps {
   onDiscardMoves: () => void;
   onReviewMoves: () => void;
   swap: PendingSwap | null;
+  onTiming: (day: number | null) => void;
   onCancelSwap: () => void;
   onReviewSwap: () => void;
 }
@@ -47,6 +60,7 @@ export function Dock({
   onDiscardMoves,
   onReviewMoves,
   swap,
+  onTiming,
   onCancelSwap,
   onReviewSwap,
 }: DockProps) {
@@ -90,7 +104,7 @@ export function Dock({
       ) : null}
       {swap ? (
         <div className={s.dockGroup}>
-          <span className={dk.label}>Roster</span>
+          <span className={dk.label}>{swap.from != null ? "Pickup" : "Roster"}</span>
           <span className={s.dockItems}>
             <span className={`${s.pill} ${s.pillPreview}`}>
               <span style={{ color: "var(--up)" }}>+</span> {swap.fa.name}
@@ -101,11 +115,34 @@ export function Dock({
               </span>
             ) : null}
           </span>
-          <span className={`${dk.chip} ${dk.pv}`} title="Started on his game days">{signed(swap.delta)} week</span>
+          {swap.timings.length > 1 ? (
+            <span className={s.timings} role="radiogroup" aria-label="When to make it">
+              {swap.timings.map((t) => (
+                <button
+                  key={t.day ?? "now"}
+                  type="button"
+                  role="radio"
+                  aria-checked={t.day === swap.from}
+                  className={s.timing}
+                  onClick={() => onTiming(t.day)}
+                  title={t.day == null ? "Add him now" : `Schedule it for ${t.label}: the player you drop plays until then`}
+                >
+                  {t.label}
+                  <span className={s.timingDelta} data-sign={t.delta > 0.05 ? "up" : t.delta < -0.05 ? "down" : "flat"}>
+                    {signed(t.delta)}
+                  </span>
+                </button>
+              ))}
+            </span>
+          ) : (
+            <span className={`${dk.chip} ${dk.pv}`} title="Started on his game days">{signed(swap.delta)} week</span>
+          )}
           {swap.blocked ? (
             <span className={s.note}>{swap.blocked}</span>
           ) : (
-            <span className={s.note}>Click a player in the grid to drop him instead</span>
+            <span className={s.note}>
+              {swap.timing ? `${swap.timing} · click a player to drop him instead` : "Click a player in the grid to drop him instead"}
+            </span>
           )}
           <button type="button" className={dk.btn} onClick={onCancelSwap}>
             Cancel
@@ -116,7 +153,7 @@ export function Dock({
             onClick={onReviewSwap}
             disabled={!!swap.blocked}
           >
-            {swap.out ? "Review add / drop" : "Review add"}
+            {swap.from != null ? "Review pickup" : swap.out ? "Review add / drop" : "Review add"}
           </button>
         </div>
       ) : null}

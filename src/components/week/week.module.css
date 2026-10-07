@@ -1819,6 +1819,11 @@ button.marketRow:hover {
   color: var(--warn);
 }
 
+.marketTagPv {
+  border-color: color-mix(in srgb, var(--preview) 50%, transparent);
+  color: var(--preview);
+}
+
 .marketTagDown {
   border-color: color-mix(in srgb, var(--down) 50%, transparent);
   color: var(--down);
@@ -2049,4 +2054,229 @@ button.marketRow:hover {
 /* The pinned Dropping row sits on the footer's surface. */
 .foot .groupRow {
   background: var(--surface);
+}
+
+/* ---------------------------------------------------------------- scheduled pickups */
+
+/*
+ * The lane sits between the day headers and the lineup, and stays there while
+ * the lineup scrolls: above the totals too, so a preview that grows them never
+ * covers the pickup being hovered.
+ */
+.pickupLane {
+  position: sticky;
+  top: 52px;
+  z-index: 4;
+  border-bottom: 1px solid var(--line-2);
+  background: var(--bg);
+}
+
+.pickupLane .groupRow {
+  border-top: 0;
+}
+
+.slotChip[data-group="pickup"] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--preview) 60%, transparent);
+  background: transparent;
+  color: var(--preview);
+  font-size: 9.5px;
+}
+
+.row[data-group="pickup"] {
+  min-height: 40px;
+}
+
+.pickupCell,
+.pickupValue,
+.pickupStat,
+.pickupSpan {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.pickupCell {
+  border-left: 1px solid var(--line-2);
+}
+
+.pickupValue {
+  justify-content: flex-end;
+  padding: 0 6px;
+}
+
+.pickupStat {
+  gap: 10px;
+  padding: 0 12px;
+}
+
+.pickupSpan {
+  grid-column: 2 / -1;
+  gap: 12px;
+  padding: 0 14px;
+  border-left: 1px solid var(--line-2);
+}
+
+.pickupCell[data-today="true"],
+.pickupValue[data-today="true"],
+.pickupStat[data-today="true"] {
+  background: var(--today);
+}
+
+/* Its day: the free agent comes in. */
+.pickupCell[data-at="true"],
+.pickupValue[data-at="true"],
+.pickupStat[data-at="true"] {
+  background: var(--preview-soft);
+}
+
+.pickupCell[data-at="true"] {
+  box-shadow: inset 2px 0 0 var(--preview);
+}
+
+.row[data-group="pickup"][data-status="pending"]:hover .pickupCell[data-at="true"],
+.row[data-group="pickup"][data-status="pending"]:hover .pickupValue[data-at="true"],
+.row[data-group="pickup"][data-status="pending"]:hover .pickupStat[data-at="true"] {
+  background: color-mix(in srgb, var(--preview) 16%, var(--bg));
+}
+
+.pickupName {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--preview);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The days after: he stays on. */
+.pickupGhost {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--preview) 50%, var(--text-3));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pickupNote {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pickupStatus {
+  flex-shrink: 0;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--preview);
+}
+
+.pickupStatus[data-status="executed"] {
+  color: var(--up);
+}
+
+.pickupStatus[data-status="skipped"],
+.pickupStatus[data-status="expired"] {
+  color: var(--text-3);
+}
+
+.pickupStatus[data-status="failed"] {
+  color: var(--down);
+}
+
+/* A pickup that didn't happen. */
+.row[data-group="pickup"][data-status="skipped"] .pickupName,
+.row[data-group="pickup"][data-status="failed"] .pickupName,
+.row[data-group="pickup"][data-status="expired"] .pickupName {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
+.pickupCancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.pickupCancel:hover:not(:disabled) {
+  color: var(--down);
+  border-color: color-mix(in srgb, var(--down) 45%, transparent);
+}
+
+.pickupCancel:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* When to make an add: now, or before one of his later game days. */
+.timings {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.timing {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 24px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.timing:hover {
+  color: var(--text);
+}
+
+.timing[aria-checked="true"] {
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--preview) 55%, var(--line-2));
+}
+
+.timing:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.timingDelta {
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+.timingDelta[data-sign="up"] {
+  color: var(--up);
+}
+
+.timingDelta[data-sign="down"] {
+  color: var(--down);
 }

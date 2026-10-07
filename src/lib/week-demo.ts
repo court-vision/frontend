@@ -11,6 +11,7 @@ import type { LineupPlanData, LineupPlayer, LineupState } from "@/types/lineup-e
 import type { StreamerPlayer } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
 import type { ScheduleGame } from "@/types/games";
+import type { ScheduledPickup } from "@/types/scheduled-pickup";
 import type { DayGame, SourceOpponent, SourcePlayer, StatLine, WeekDay, WeekSource } from "./week-grid";
 import { SLOT_NAMES, assignment, type Staged } from "./lineup-editor";
 
@@ -449,6 +450,43 @@ export function demoTransact(roster: MineSpec[], addId: number | null, dropId: n
     }];
   }
   return next;
+}
+
+/**
+ * A pickup the demo team schedules for `day`: first tried at the day before's
+ * first tip (7 PM ET here), or overnight into the day when the player to drop
+ * plays the day before, as the server would have it.
+ */
+export function demoScheduledPickup(
+  id: number,
+  fa: StreamerPlayer,
+  drop: MineSpec | null,
+  day: number,
+  now: Date = new Date(`${DATES[TODAY]}T23:30:00Z`)
+): ScheduledPickup {
+  const prev = DATES[day - 1];
+  const dropPlaysBefore = !!drop && !!gameOn(drop.team, day - 1);
+  return {
+    id,
+    team_id: 1,
+    scoring_period_id: demoPeriod(day),
+    nba_date: DATES[day],
+    status: "pending",
+    reason: null,
+    detail: null,
+    add: { player_id: fa.player_id, name: fa.name, team: fa.team, nba_player_id: fa.nba_player_id ?? null },
+    drop: drop ? { player_id: drop.id, name: drop.name, team: drop.team, nba_player_id: drop.nbaId } : null,
+    not_before_at: dropPlaysBefore ? `${DATES[day]}T07:00:00Z` : `${prev}T23:00:00Z`,
+    deadline_at: `${DATES[day]}T23:00:00Z`,
+    next_attempt_at: null,
+    attempts: 0,
+    audit_id: null,
+    lineup_audit_id: null,
+    seated_slot_id: null,
+    seated_slot: null,
+    created_at: now.toISOString(),
+    executed_at: null,
+  };
 }
 
 export { MINE as DEMO_ROSTER };

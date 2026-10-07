@@ -30,6 +30,8 @@ export type MarketMode = "week" | "day" | "breakouts";
 export interface MarketPick {
   faId: number;
   replaces: number;
+  /** Scheduled for this day (a day index) rather than made now. */
+  from?: number | null;
 }
 
 /** Ranking runs one grid per free agent and candidate drop; the pool beyond this is rarely worth it. */
@@ -62,8 +64,8 @@ interface MarketProps {
   dailyLoading: boolean;
   breakouts: BreakoutCandidateResp[];
   breakoutsLoading: boolean;
-  /** Each drop's change to your week (and each day), for one free agent. Stable across hovers. */
-  evaluate: (fa: StreamerPlayer, dropIds: number[]) => DropOption[];
+  /** Each drop's change to your week (and each day), for one free agent, made now or scheduled for `from`. Stable across hovers. */
+  evaluate: (fa: StreamerPlayer, dropIds: number[], from?: number | null) => DropOption[];
   /** The likeliest drops, for ranking the list. */
   drops: number[];
   /** The roster players offered as drops for the selected free agent (the weakest few). */
@@ -76,6 +78,8 @@ interface MarketProps {
   pinned: MarketPick | null;
   /** Why the pinned add can't be sent, if it can't. */
   pinnedBlocked: string | null;
+  /** Free agents already scheduled to be picked up, and the day each is for ("Thu"). */
+  scheduled: ReadonlyMap<number, string>;
   onHover: (pick: MarketPick | null) => void;
   onPin: (pick: MarketPick | null) => void;
   onAdd: (pick: MarketPick) => void;
@@ -335,6 +339,11 @@ function FaItem(props: ItemProps) {
               </span>
             ) : null}
             {injured ? <span className={`${s.marketTag} ${s.marketTagWarn}`}>{(fa.injury_status ?? "INJ").replace("DAY_TO_DAY", "DTD")}</span> : null}
+            {props.scheduled.has(fa.player_id) ? (
+              <span className={`${s.marketTag} ${s.marketTagPv}`} title="A pickup of him is already scheduled">
+                {props.scheduled.get(fa.player_id)!.toUpperCase()}
+              </span>
+            ) : null}
           </span>
         </span>
         <Strip states={stripFor(fa, days, open, props.addFrom)} />
@@ -348,18 +357,22 @@ function FaItem(props: ItemProps) {
 }
 
 /** The selected free agent: every drop that could make room, ranked, and the add. Evaluated only when open. */
-function DropOptions({ fa, target, evaluate, allDrops, room, nameOf, avgOf, pinned, pinnedBlocked, onHover, onPin, onAdd }: ItemProps) {
+function DropOptions({ fa, target, days, evaluate, allDrops, room, nameOf, avgOf, pinned, pinnedBlocked, onHover, onPin, onAdd }: ItemProps) {
   const picked = pinned && pinned.faId === fa.player_id ? pinned.replaces : null;
+  const from = pinned && pinned.faId === fa.player_id ? pinned.from ?? null : null;
   const options = useMemo(() => {
     // The weakest few, plus whoever was picked from the roster.
     const base = room > 0 ? [...allDrops, NO_DROP] : allDrops;
     const ids = picked != null && !base.includes(picked) ? [...base, picked] : base;
-    return evaluate(fa, ids).sort((a, b) => (target != null ? (b.byDay[target] ?? 0) - (a.byDay[target] ?? 0) : 0) || b.week - a.week);
-  }, [evaluate, fa, allDrops, room, target, picked]);
+    return evaluate(fa, ids, from).sort((a, b) => (target != null ? (b.byDay[target] ?? 0) - (a.byDay[target] ?? 0) : 0) || b.week - a.week);
+  }, [evaluate, fa, allDrops, room, target, picked, from]);
   const pick = pinned && pinned.faId === fa.player_id ? pinned : null;
+  const day = from != null ? days[from] : null;
   return (
     <div className={s.marketDetail}>
-      <span className={dk.label}>Make room · your weakest players, or click anyone in the grid</span>
+      <span className={dk.label}>
+        {day ? `Make room from ${day.dow}` : "Make room"} · your weakest players, or click anyone in the grid
+      </span>
       <div className={s.marketOptions}>
         {options.filter((o, i) => i < 6 || o.dropId === picked).map((o) => {
           const on = pick?.replaces === o.dropId;
@@ -385,7 +398,8 @@ function DropOptions({ fa, target, evaluate, allDrops, room, nameOf, avgOf, pinn
         <div className={s.marketActs}>
           {pinnedBlocked ? <span className={s.marketBlocked}>{pinnedBlocked}</span> : null}
           <button type="button" className={`${dk.btn} ${dk.btnPrimary} ${dk.btnSmall}`} disabled={!!pinnedBlocked} onClick={() => onAdd(pick)}>
-            Add {shortName(fa.name)}
+            {day ? `Schedule for ${day.dow}: ` : ""}
+            {day ? "add" : "Add"} {shortName(fa.name)}
             {pick.replaces === NO_DROP ? "" : `, drop ${shortName(nameOf(pick.replaces))}`}
           </button>
         </div>

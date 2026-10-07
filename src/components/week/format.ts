@@ -50,3 +50,10 @@ export function shortName(name: string): string {
   if (parts.length < 2) return name;
   return `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
 }
+
+/** An instant in the viewer's time: "Wed 7:00 PM". */
+export function weekdayTime(iso: string): string {
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return "";
+  return t.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
+}

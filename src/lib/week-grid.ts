@@ -143,6 +143,12 @@ export interface Incoming {
   player: SourcePlayer;
   /** The rostered player he would replace. */
   replaces: number;
+  /**
+   * The first day the swap applies, for a pickup scheduled ahead: before it the
+   * replaced player keeps his spot and the free agent isn't on the roster.
+   * Omitted: an add made now, the replaced player gone from today.
+   */
+  from?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -416,6 +422,10 @@ export function buildWeekGrid({
   const replaced = incoming?.replaces ?? null;
   const pool: SourcePlayer[] = incoming ? [...roster, incoming.player] : roster;
   const inId = incoming?.player.id ?? null;
+  // A scheduled pickup changes the roster from its day on; before it, the roster stands.
+  const swapsOn = (day: number) => incoming != null && (incoming.from == null || day >= incoming.from);
+  const poolOn = (day: number) => (swapsOn(day) ? pool : roster);
+  const replacedOn = (day: number) => (swapsOn(day) ? replaced : null);
   const benchCapacity = board ? board.slots.find((x) => x.slot_id === BENCH_SLOT_ID)?.count ?? 0 : 0;
   // Today, a player whose game has started can't be moved.
   const lockedToday = new Set<number>();
@@ -434,7 +444,7 @@ export function buildWeekGrid({
     const setLineup = asSetByDay[d.index];
     if (setLineup && (d.kind === "today" || asSet)) {
       const m = new Map(setLineup);
-      if (incoming) {
+      if (incoming && swapsOn(d.index)) {
         shiftedByDay[d.index] = seatIncomingBest({
           assign: m,
           incoming,
@@ -450,14 +460,15 @@ export function buildWeekGrid({
       return m;
     }
     const cands: PlanCandidate[] = [];
-    for (const p of pool) {
-      if (p.id === replaced || irIds.has(p.id)) continue;
+    const out = replacedOn(d.index);
+    for (const p of poolOn(d.index)) {
+      if (p.id === out || irIds.has(p.id)) continue;
       const g = p.games[d.index];
       if (!g || g.out || g.status === "final") continue;
       cands.push({ id: p.id, avg: p.avg, eligible: eligibleOf(p) });
     }
     const plan = planDay(cands, slots);
-    for (const p of pool) {
+    for (const p of poolOn(d.index)) {
       if (!plan.has(p.id)) plan.set(p.id, irIds.has(p.id) ? IR_SLOT_ID : BENCH_SLOT_ID);
     }
     return plan;
@@ -472,7 +483,7 @@ export function buildWeekGrid({
         ? { ...base, state: "final", value: g.fpts, counts: true, tag: null }
         : { ...base, state: "dnp", value: null, counts: false, tag: null };
     }
-    if (p.id === replaced) {
+    if (p.id === replaced && swapsOn(d.index)) {
       return { ...base, state: g.status === "scheduled" ? "upcoming" : g.status, value: g.fpts ?? p.avg, counts: false, tag: "DROP" };
     }
     const slot = dayAssign[d.index]?.get(p.id);
@@ -534,8 +545,8 @@ export function buildWeekGrid({
   } else {
     const assign = dayAssign[viewDay] ?? dayAssign.find((m) => m) ?? new Map<number, number>();
     for (const s of slots) {
-      const here = pool
-        .filter((p) => p.id !== replaced && assign.get(p.id) === s.slotId)
+      const here = poolOn(viewDay)
+        .filter((p) => p.id !== replacedOn(viewDay) && assign.get(p.id) === s.slotId)
         .sort((a, b) => b.avg - a.avg);
       for (let k = 0; k < s.count; k++) {
         const p = here[k];
@@ -654,7 +665,7 @@ export function buildWeekGrid({
     // Lineups as set keep ESPN's order inside a slot; planned days go by projection.
     const fromBoard = !!todayAssign && (d.kind !== "future" || asSet);
     const boardOrder = fromBoard ? orderOf(d.index) : new Map<number, number>();
-    const players = (d.kind === "past" ? roster : pool).filter((p) => d.kind === "past" || p.id !== replaced);
+    const players = d.kind === "past" ? roster : poolOn(d.index).filter((p) => p.id !== replacedOn(d.index));
     const groups = new Map<number, SourcePlayer[]>();
     for (const p of players) {
       const slot = assign.get(p.id) ?? (irIds.has(p.id) ? IR_SLOT_ID : BENCH_SLOT_ID);
@@ -693,9 +704,10 @@ export function buildWeekGrid({
   const ordinalOf = (def: SlotRowDef) => Number(def.key.split("-")[1]);
   const seats = days.map((d, i) =>
     slotDefs.map((def): Seat | null => {
-      // The outgoing player: in his own spot on days already played, here from today on.
+      // The outgoing player: in his own spot on days already played (and before a
+      // scheduled pickup's day), here from today (or that day) on.
       if (def.group === "drop") {
-        return outgoing && d.kind !== "past"
+        return outgoing && d.kind !== "past" && swapsOn(d.index)
           ? { player: outgoing, cell: cellFor(outgoing, d), staged: false, incoming: false, outgoing: true }
           : null;
       }

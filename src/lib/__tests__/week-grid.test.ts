@@ -226,6 +226,71 @@ describe("daily lineups", () => {
   });
 });
 
+describe("a pickup scheduled ahead", () => {
+  const source = demoSource();
+  const board = demoBoard();
+  const today = source.todayIndex!;
+  const name = (seat: { player: { name: string } } | null) => seat?.player.name ?? null;
+  // Camara plays Sat and Sun; Barnes, the starter he replaces, plays Wed and Fri before that.
+  const fa = DEMO_STREAMERS.find((s) => s.name === "Toumani Camara")!;
+  const barnes = board.players.find((p) => p.name === "Scottie Barnes")!;
+  const sat = 5;
+  const scheduled = buildWeekGrid({
+    source,
+    board,
+    staged: {},
+    incoming: { player: sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team), sat), replaces: barnes.player_id, from: sat },
+    viewDay: today,
+  });
+
+  test("leaves the roster as it stands until his day", () => {
+    const { slots, seats } = scheduled.lineups;
+    const drop = slots.findIndex((s) => s.group === "drop");
+    for (const day of [today, 2, 3, 4]) {
+      expect(seats[day].map(name)).toContain("Scottie Barnes");
+      expect(seats[day].some((s) => s?.incoming || s?.shifted)).toBe(false);
+      expect(seats[day][drop]).toBeNull();
+    }
+    expect(seats[sat].find((s) => s?.incoming)?.player.name).toBe("Toumani Camara");
+    expect(seats[sat][drop]).toMatchObject({ outgoing: true, player: { name: "Scottie Barnes" } });
+  });
+
+  test("the dropped player's games before it still count", () => {
+    const row = scheduled.rows.find((r) => r.player?.id === barnes.player_id)!;
+    expect(row.cells[2]).toMatchObject({ counts: true, tag: null });
+    expect(row.cells[4]).toMatchObject({ counts: true, tag: null });
+    expect(row.cells[6]).toMatchObject({ counts: false, tag: "DROP" });
+  });
+
+  test("which makes it worth more than the same swap made today", () => {
+    const now = buildWeekGrid({
+      source,
+      board,
+      staged: {},
+      incoming: { player: sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team), today + 1), replaces: barnes.player_id },
+      viewDay: today,
+    });
+    const base = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today });
+    expect(now.projected.you).toBeLessThan(base.projected.you);
+    expect(scheduled.projected.you).toBeGreaterThan(now.projected.you);
+    expect(scheduled.projected.you).toBeGreaterThan(base.projected.you);
+  });
+
+  test("in the best lineups too", () => {
+    const best = buildWeekGrid({
+      source,
+      board,
+      staged: {},
+      incoming: { player: sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team), sat), replaces: barnes.player_id, from: sat },
+      viewDay: today,
+      mode: "best",
+    });
+    expect(best.lineups.seats[4].map(name)).toContain("Scottie Barnes");
+    expect(best.lineups.seats[4].map(name)).not.toContain("Toumani Camara");
+    expect(best.lineups.seats[sat].map(name)).toContain("Toumani Camara");
+  });
+});
+
 describe("assignMin", () => {
   test("finds the cheapest assignment, rows to columns", () => {
     expect(assignMin([[4, 1, 3], [2, 0, 5], [3, 2, 2]])).toEqual([1, 0, 2]);
