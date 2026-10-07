@@ -12136,6 +12136,245 @@
         "title": "PercentileData",
         "type": "object"
       },
+      "PickupExecuteData": {
+        "properties": {
+          "due": {
+            "title": "Due",
+            "type": "integer"
+          },
+          "results": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PickupResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "due",
+          "results"
+        ],
+        "title": "PickupExecuteData",
+        "type": "object"
+      },
+      "PickupExecuteReq": {
+        "properties": {
+          "limit": {
+            "default": 4,
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "now": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Now"
+          }
+        },
+        "title": "PickupExecuteReq",
+        "type": "object"
+      },
+      "PickupExecuteResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PickupExecuteData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "PickupExecuteResp",
+        "type": "object"
+      },
+      "PickupResult": {
+        "properties": {
+          "add": {
+            "$ref": "#/components/schemas/ScheduledPickupPlayer"
+          },
+          "audit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Id"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "drop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduledPickupPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nba_date": {
+            "format": "date",
+            "title": "Nba Date",
+            "type": "string"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At"
+          },
+          "outcome": {
+            "enum": [
+              "executed",
+              "skipped",
+              "failed",
+              "expired",
+              "deferred"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "pickup_id": {
+            "title": "Pickup Id",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "scoring_period_id": {
+            "title": "Scoring Period Id",
+            "type": "integer"
+          },
+          "seated_slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seated Slot"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "team_name": {
+            "default": "",
+            "title": "Team Name",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified"
+          }
+        },
+        "required": [
+          "pickup_id",
+          "team_id",
+          "user_id",
+          "team_name",
+          "outcome",
+          "reason",
+          "detail",
+          "add",
+          "drop",
+          "nba_date",
+          "scoring_period_id",
+          "seated_slot",
+          "verified",
+          "audit_id",
+          "next_attempt_at"
+        ],
+        "title": "PickupResult",
+        "type": "object"
+      },
       "PlayerGamesData": {
         "description": "Response data for a player's game log.",
         "properties": {
@@ -16782,6 +17021,38 @@
         "title": "ScheduleOverview",
         "type": "object"
       },
+      "SchedulePickupReq": {
+        "properties": {
+          "add_player_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Add Player Id",
+            "type": "integer"
+          },
+          "drop_player_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drop Player Id"
+          },
+          "scoring_period_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Scoring Period Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "add_player_id",
+          "scoring_period_id"
+        ],
+        "title": "SchedulePickupReq",
+        "type": "object"
+      },
       "ScheduleWeek": {
         "properties": {
           "end_date": {
@@ -16892,6 +17163,364 @@
           "timestamp"
         ],
         "title": "ScheduleWeeksResp",
+        "type": "object"
+      },
+      "ScheduledPickup": {
+        "properties": {
+          "add": {
+            "$ref": "#/components/schemas/ScheduledPickupPlayer"
+          },
+          "attempts": {
+            "default": 0,
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "audit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deadline_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline At"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "drop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduledPickupPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "executed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Executed At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lineup_audit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lineup Audit Id"
+          },
+          "nba_date": {
+            "format": "date",
+            "title": "Nba Date",
+            "type": "string"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At"
+          },
+          "not_before_at": {
+            "format": "date-time",
+            "title": "Not Before At",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "scoring_period_id": {
+            "title": "Scoring Period Id",
+            "type": "integer"
+          },
+          "seated_slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seated Slot"
+          },
+          "seated_slot_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seated Slot Id"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "executed",
+              "skipped",
+              "failed",
+              "cancelled",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "team_id",
+          "scoring_period_id",
+          "nba_date",
+          "status",
+          "reason",
+          "detail",
+          "add",
+          "drop",
+          "not_before_at",
+          "deadline_at",
+          "next_attempt_at",
+          "attempts",
+          "audit_id",
+          "lineup_audit_id",
+          "seated_slot_id",
+          "seated_slot",
+          "created_at",
+          "executed_at"
+        ],
+        "title": "ScheduledPickup",
+        "type": "object"
+      },
+      "ScheduledPickupListData": {
+        "properties": {
+          "pending": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ScheduledPickup"
+            },
+            "title": "Pending",
+            "type": "array"
+          },
+          "recent": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ScheduledPickup"
+            },
+            "title": "Recent",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pending",
+          "recent"
+        ],
+        "title": "ScheduledPickupListData",
+        "type": "object"
+      },
+      "ScheduledPickupListResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduledPickupListData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "ScheduledPickupListResp",
+        "type": "object"
+      },
+      "ScheduledPickupPlayer": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "team",
+          "nba_player_id"
+        ],
+        "title": "ScheduledPickupPlayer",
+        "type": "object"
+      },
+      "ScheduledPickupResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduledPickup"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "ScheduledPickupResp",
         "type": "object"
       },
       "ScoreboardData": {
@@ -21139,6 +21768,53 @@
         ]
       }
     },
+    "/v1/internal/jobs/pickups/execute": {
+      "post": {
+        "description": "Attempt every scheduled pickup that is due, up to `limit` rows.\n\nCalled by data-platform's scheduled-pickups pipeline every minute (its route\ngates on whether anything is due). Each row's outcome is reported in\n`data.results`, never raised: executed, skipped (the player is gone \u2014 the\nno-op), failed, expired, or deferred (a lock, a waiver period or a writer\noutage; the row waits for `next_attempt_at`). A write is sent at most once:\none that got no answer is settled by the next attempt from the board alone\n(executed, or failed `interrupted`). With roster writes switched off nothing\nis attempted and due rows are pushed back ten minutes.",
+        "operationId": "execute_pickups_v1_internal_jobs_pickups_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickupExecuteReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupExecuteResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Execute Pickups",
+        "tags": [
+          "internal jobs"
+        ]
+      }
+    },
     "/v1/internal/jobs/valuation/standard": {
       "post": {
         "description": "Rank a set of projections in the standard league, in points and in 9-cat.\n\nCalled by data-platform's projections editor, which holds the projections\n(and the edit being previewed) and has no valuation of its own. The ranks\nare the `cv_rank` a room with no league would show for the same\nprojections: ESPN's default points weights or the standard nine categories,\ntwelve teams, thirteen rounds, the default fantasy-playoff weeks. Nothing\nis read from or written to the database.",
@@ -23261,6 +23937,167 @@
         "summary": "Get Lineup Plan",
         "tags": [
           "lineup editor"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/pickups": {
+      "get": {
+        "description": "Pending pickups (soonest day first) and those settled in the last week (newest first).",
+        "operationId": "list_pickups_v1_internal_teams__team_id__pickups_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledPickupListResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Pickups",
+        "tags": [
+          "scheduled pickups"
+        ]
+      },
+      "post": {
+        "description": "Schedule a pickup for a later ESPN day. The add/drop is made automatically at\nthe earliest moment it counts for that day \u2014 the previous day's first tip-off,\nor the rollover into the day when the player to drop plays the day before \u2014 and\nis a no-op if the player is gone by then.\n\nThe request is checked against today's board and ESPN's pool before it is stored:\n403 ROSTER_WRITE_DISABLED, 409 ROSTER_WRITE_BLOCKED, 400 SCORING_PERIOD_OUT_OF_RANGE\n(a day past the season), 422 SCHEDULED_PICKUP_INVALID with `data.reason`\n(not_future, add_not_available, drop_not_on_roster, ...), 409\nSCHEDULED_PICKUP_DUPLICATE when that player is already scheduled.",
+        "operationId": "schedule_pickup_v1_internal_teams__team_id__pickups_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchedulePickupReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledPickupResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Schedule Pickup",
+        "tags": [
+          "scheduled pickups"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/pickups/{pickup_id}": {
+      "delete": {
+        "description": "Cancel a pending pickup. 404 when it is not this team's; 409 SCHEDULED_PICKUP_NOT_PENDING\nwhen it already ran (or was cancelled); 409 SCHEDULED_PICKUP_IN_PROGRESS while an attempt is\nmaking it \u2014 its outcome follows in a few minutes, and a deferred pickup can be cancelled again.",
+        "operationId": "cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pickup_id",
+            "required": true,
+            "schema": {
+              "title": "Pickup Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledPickupResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Pickup",
+        "tags": [
+          "scheduled pickups"
         ]
       }
     },
