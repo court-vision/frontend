@@ -102,6 +102,19 @@ export interface SourceOpponent {
   /** In an active slot on the opponent's board today. */
   active: boolean;
   games: Array<DayGame | null>;
+  team?: string;
+  nbaId?: number | null;
+  /** Today's lineup slot ("PG", "UT", "BE", "IR"); the API keeps no other day's. */
+  slot?: string;
+  injury?: string | null;
+}
+
+/** A scoring category, as the matchup reports it. */
+export interface MatchupCategory {
+  key: string;
+  label: string;
+  higherIsBetter: boolean;
+  isRate: boolean;
 }
 
 export interface WeekSource {
@@ -117,6 +130,12 @@ export interface WeekSource {
   pastTotals: { you: Array<number | null>; opp: Array<number | null> };
   /** Active lineup spots, for teams with no ESPN board. */
   activeSlotCount: number;
+  /** How the league scores; points when unknown. */
+  format?: "points" | "categories";
+  /** The league's categories (category leagues). */
+  categories?: MatchupCategory[];
+  /** The week so far per category, as the API scores it (live-adjusted when it can be). */
+  weekCategories?: Array<{ key: string; you: number; opp: number }> | null;
 }
 
 /** A free agent previewed in place of a rostered player. */

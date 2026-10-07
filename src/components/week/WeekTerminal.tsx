@@ -37,7 +37,8 @@ import {
   type WeekSource,
 } from "@/lib/week-grid";
 import { sourceFromStreamer } from "@/lib/week-source";
-import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar } from "./Chrome";
+import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar, type WeekView } from "./Chrome";
+import { MatchupView } from "./MatchupView";
 import { ConfirmDialog, Dock, type PendingDay, type PendingSwap } from "./Dock";
 import { MoveMenu, ReplaceMenu, type MoveTarget, type ReplaceOption } from "./Menus";
 import { WeekGrid, type Cursor, type DragApi, type DropTarget } from "./WeekGrid";
@@ -52,11 +53,11 @@ const MAX_REPLACE_OPTIONS = 80;
 
 /** `day` is the day the menu acts on (a column in the daily view, the selected day in the player view). */
 type Menu = { type: "move" | "replace"; rowKey: string; anchor: HTMLElement; day: number };
-type View = "daily" | "players";
+type View = WeekView;
 type PreviewRef = { faId: number; replaces: number };
 type Planned = DropTarget & { moves: Array<{ player_id: number; to_slot_id: number }> };
 
-export function WeekTerminal({ data }: { data: TerminalData }) {
+export function WeekTerminal({ data, initialView = "daily" }: { data: TerminalData; initialView?: View }) {
   const lineup = data.lineup;
   const boards = lineup.boards;
   const todayDay = lineup.todayDay;
@@ -70,8 +71,9 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
   // "espn": each day as set on ESPN; "best": the best fit for each day's games.
   const [mode, setMode] = useState<LineupMode>("espn");
   const toggleMode = useCallback(() => setMode((m) => (m === "espn" ? "best" : "espn")), []);
-  // "daily": every day's lineup side by side; "players": one row per player across the week.
-  const [view, setView] = useState<View>("daily");
+  // "daily": every day's lineup side by side; "players": one row per player across the week;
+  // "matchup": one day, your lineup against the opponent's, box scores live.
+  const [view, setView] = useState<View>(initialView);
 
   // ---- staging: moves per day, kept only while they still differ from that day's lineup ----
   const [stagedByDay, setStagedByDay] = useState<Record<number, Staged>>({});
@@ -215,7 +217,11 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
   const [confirm, setConfirm] = useState<"moves" | "swap" | null>(null);
 
   const toggleView = useCallback(() => {
-    setView((v) => (v === "daily" ? "players" : "daily"));
+    setView((v) => (v === "daily" ? "players" : v === "players" ? "matchup" : "daily"));
+    setCursor(null);
+  }, []);
+  const chooseView = useCallback((v: View) => {
+    setView(v);
     setCursor(null);
   }, []);
 
@@ -399,7 +405,7 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
 
   // ---- autoslot ----
   const [autoslotting, setAutoslotting] = useState(false);
-  const autoslotDay = view === "daily" ? focusDay ?? defaultFocus : viewDay;
+  const autoslotDay = view === "players" ? viewDay : focusDay ?? defaultFocus;
   const autoslot = useCallback(async () => {
     const day = autoslotDay;
     const b = boards[day];
@@ -519,6 +525,20 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
           if (pinned) setPinned(null);
           else setCursor(null);
           return;
+      }
+
+      if (view === "matchup") {
+        // One day at a time: the arrows and [ ] step it, shared with the daily view's expanded day.
+        const lastDay = grid.days.length - 1;
+        const at = focusDay ?? defaultFocus;
+        if (e.key === "[" || e.key === "ArrowLeft") {
+          e.preventDefault();
+          setFocusPick(Math.max(0, at - 1));
+        } else if (e.key === "]" || e.key === "ArrowRight") {
+          e.preventDefault();
+          setFocusPick(Math.min(lastDay, at + 1));
+        }
+        return;
       }
 
       if (view === "daily") {
@@ -645,7 +665,11 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
   }, [grid, todayIndex]);
 
   const toolbarNote =
-    view === "daily"
+    view === "matchup"
+      ? todayIndex != null && (focusDay ?? defaultFocus) === todayIndex
+        ? "Live box scores, refreshed every 30 s · the spot's leader is underlined"
+        : "Spot against spot · the leader is underlined"
+      : view === "daily"
       ? mode === "best"
         ? "Each day shows its best lineup for that day's games"
         : "Each day as set on ESPN · an edit carries into later days until a day has its own"
@@ -701,10 +725,14 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
         />
         <Toolbar
           days={grid.days}
-          viewDay={viewDay}
-          viewable={viewable}
           todayIndex={todayIndex}
-          onViewDay={setViewDay}
+          rail={
+            view === "players"
+              ? { day: viewDay, enabled: viewable, onDay: setViewDay }
+              : view === "matchup"
+                ? { day: focusDay ?? defaultFocus, enabled: null, onDay: (d) => setFocusPick(d) }
+                : null
+          }
           canAutoslot={editableOn(autoslotDay)}
           autoslotLabel={dayLabel(autoslotDay)}
           mode={mode}
@@ -716,9 +744,17 @@ export function WeekTerminal({ data }: { data: TerminalData }) {
           onHeat={() => setHeat((h) => !h)}
           note={toolbarNote}
           view={view}
-          onView={toggleView}
+          onView={chooseView}
         />
-        {view === "daily" ? (
+        {view === "matchup" ? (
+          <MatchupView
+            grid={grid}
+            source={source}
+            day={focusDay ?? defaultFocus}
+            todayIndex={todayIndex}
+            onDay={(d) => setFocusPick(d)}
+          />
+        ) : view === "daily" ? (
           <DailyGrid
             grid={grid}
             todayIndex={todayIndex}

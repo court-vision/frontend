@@ -1117,3 +1117,450 @@ button.dayHead:hover {
 .rosterCell[data-health="out"] {
   --strip: var(--down);
 }
+
+/* ---------------------------------------------------------------- matchup */
+
+.mu {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* The day's scoreboard: you, the day, them. */
+.muScore {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.muSide {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.muSide[data-mirror="true"] {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.muBig {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.muBigSub {
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--text-3);
+}
+
+.muDay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.muDayText {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 110px;
+}
+
+.muDayName {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.muTable {
+  border-bottom: 1px solid var(--line);
+}
+
+.muRow {
+  display: grid;
+  align-items: stretch;
+  min-height: 48px;
+  border-bottom: 1px solid var(--line);
+}
+
+.muRow:hover > * {
+  background: var(--hover-col);
+}
+
+.muHead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  min-height: 32px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-2);
+}
+
+.muHead:hover > * {
+  background: transparent;
+}
+
+.muHeadName,
+.muHeadCell {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.muHeadName {
+  color: var(--text-2);
+}
+
+.muHeadName:last-child {
+  justify-content: flex-end;
+}
+
+.muHeadCell {
+  justify-content: center;
+  padding: 0;
+}
+
+.muGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+/* The spine: the shared slot, the spot both lineups are filling. */
+.muSpine {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.muSpine .slotChip {
+  flex: 0 0 auto;
+  min-width: 34px;
+}
+
+.muName {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 12px 0 14px;
+}
+
+.muName[data-mirror="true"] {
+  flex-direction: row-reverse;
+  text-align: right;
+  padding: 0 14px 0 12px;
+}
+
+.muName[data-health]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--strip, transparent);
+}
+
+.muName[data-mirror="true"][data-health]::before {
+  left: auto;
+  right: 0;
+  border-radius: 2px 0 0 2px;
+}
+
+.muName[data-health="dtd"] {
+  --strip: var(--warn);
+}
+
+.muName[data-health="out"] {
+  --strip: var(--down);
+}
+
+.muName[data-staged="true"] .muPlayer {
+  color: var(--accent);
+}
+
+.muWho {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.muPlayer {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.muMeta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.muName[data-mirror="true"] .muMeta {
+  justify-content: flex-end;
+}
+
+.muGameNote[data-status="live"] {
+  color: var(--live);
+}
+
+.muStat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.muStat[data-total] {
+  color: var(--text);
+}
+
+.muSpan {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+.muFpts {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.muFpts[data-status="live"] {
+  color: var(--live);
+}
+
+/* The spot's leader: the side whose counted points are higher. */
+.muFpts[data-edge="true"] {
+  background: color-mix(in srgb, var(--up) 10%, transparent);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--up) 55%, transparent);
+}
+
+.muRow:hover > .muFpts[data-edge="true"] {
+  background: color-mix(in srgb, var(--up) 14%, var(--hover-col));
+}
+
+.muProj {
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text-3);
+}
+
+/* Off the lineup (bench, IR, no game): shown, never counted. */
+.muStat[data-counts="false"],
+.muFpts[data-counts="false"] {
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+.muRow[data-group="bench"] .muPlayer,
+.muRow[data-group="ir"] .muPlayer {
+  color: var(--text-2);
+}
+
+.muRow[data-group="bench"] [data-face],
+.muRow[data-group="ir"] [data-face] {
+  opacity: 0.6;
+  filter: grayscale(0.6);
+}
+
+.muTotal {
+  min-height: 40px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-2);
+}
+
+.muTotal:hover > * {
+  background: transparent;
+}
+
+.muTotalName {
+  padding-left: 14px;
+}
+
+.muFptsTotal {
+  font-size: 14px;
+}
+
+.muNote {
+  padding: 9px 20px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+/* Who's winning: one split bar per stat. */
+.muBars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 20px 22px;
+}
+
+.muBarsHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.muLegend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+.muSwatchYou,
+.muSwatchOpp {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.muSwatchOpp {
+  background: var(--text-3);
+}
+
+.muBar {
+  display: grid;
+  grid-template-columns: 64px 76px minmax(0, 1fr) 76px 52px;
+  align-items: center;
+  gap: 12px;
+  height: 28px;
+}
+
+.muBar[data-headline="true"] {
+  height: 40px;
+}
+
+.muBarLabel {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+}
+
+.muBarValue {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  text-align: right;
+  color: var(--text-2);
+}
+
+.muBarValue[data-side="opp"] {
+  text-align: left;
+}
+
+.muBarValue[data-lead="true"] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.muBar[data-headline="true"] .muBarValue {
+  font-size: 15px;
+}
+
+.muTrack {
+  position: relative;
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.muBar[data-headline="true"] .muTrack {
+  height: 14px;
+  border-radius: 5px;
+}
+
+.muFillYou {
+  height: 100%;
+  background: var(--accent);
+}
+
+.muFillOpp {
+  flex: 1;
+  height: 100%;
+  background: color-mix(in srgb, var(--text-3) 55%, transparent);
+}
+
+.muMid {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--bg);
+}
+
+.muBarEdge {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.muBarEdge[data-leader="you"] {
+  color: var(--up);
+}
+
+.muBarEdge[data-leader="opp"] {
+  color: var(--down);
+}

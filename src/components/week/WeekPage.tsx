@@ -30,6 +30,7 @@ import type { StreamerPlayer } from "@/types/streamer";
 import type { WeekSource } from "@/lib/week-grid";
 import { useDayBoards, type DayLineups } from "./useDayBoards";
 import { WeekTerminal } from "./WeekTerminal";
+import type { WeekView } from "./Chrome";
 
 export type TerminalStatus = "ready" | "loading" | "signed-out" | "no-team" | "error" | "empty";
 
@@ -66,8 +67,8 @@ export interface TerminalData {
   clearTransactError: () => void;
 }
 
-export function WeekPage({ demo }: { demo: boolean }) {
-  return demo ? <DemoWeek /> : <LiveWeek />;
+export function WeekPage({ demo, view }: { demo: boolean; view?: WeekView }) {
+  return demo ? <DemoWeek view={view} /> : <LiveWeek view={view} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,7 +77,7 @@ export function WeekPage({ demo }: { demo: boolean }) {
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function DemoWeek() {
+function DemoWeek({ view }: { view?: WeekView }) {
   const [roster, setRoster] = useState(DEMO_ROSTER);
   // Each day's own edit (where everyone sits), ESPN's carry-forward applied on read.
   const edits = useRef<Record<number, Record<number, number>>>({});
@@ -155,14 +156,14 @@ function DemoWeek() {
     clearTransactError: () => {},
   };
 
-  return <WeekTerminal data={data} />;
+  return <WeekTerminal data={data} initialView={view} />;
 }
 
 // ---------------------------------------------------------------------------
 // Live: the selected team's week from the API
 // ---------------------------------------------------------------------------
 
-function LiveWeek() {
+function LiveWeek({ view }: { view?: WeekView }) {
   const { isSignedIn, isLoaded } = useAuth();
   const selected = useSelectedTeam();
   const setSelectedTeam = useUIStore((s) => s.setSelectedTeam);
@@ -257,5 +258,5 @@ function LiveWeek() {
     clearTransactError: transaction.reset,
   };
 
-  return <WeekTerminal data={data} />;
+  return <WeekTerminal data={data} initialView={view} />;
 }

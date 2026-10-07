@@ -187,12 +187,19 @@ export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: 
 // Toolbar: the lineup day rail and the grid's switches
 // ---------------------------------------------------------------------------
 
+export type WeekView = "daily" | "players" | "matchup";
+
+const VIEWS: Array<{ id: WeekView; label: string; title: string }> = [
+  { id: "daily", label: "DAILY LINEUPS", title: "Every day's lineup, spot by spot" },
+  { id: "players", label: "PLAYERS", title: "One row per player across the week" },
+  { id: "matchup", label: "MATCHUP", title: "One day, your lineup against theirs, box scores live" },
+];
+
 interface ToolbarProps {
   days: WeekDay[];
-  viewDay: number;
-  viewable: ReadonlySet<number>;
   todayIndex: number | null;
-  onViewDay: (d: number) => void;
+  /** The day rail: the players view's lineup day, the matchup's day; none in the daily view. */
+  rail: { day: number; enabled: ReadonlySet<number> | null; onDay: (d: number) => void } | null;
   canAutoslot: boolean;
   /** The day autoslot acts on, e.g. "Thu 11/12". */
   autoslotLabel: string;
@@ -205,16 +212,14 @@ interface ToolbarProps {
   onMode: () => void;
   /** Projected points the best lineup each day adds over the lineup as set. */
   bestGain: number;
-  view: "daily" | "players";
-  onView: () => void;
+  view: WeekView;
+  onView: (view: WeekView) => void;
 }
 
 export function Toolbar({
   days,
-  viewDay,
-  viewable,
   todayIndex,
-  onViewDay,
+  rail,
   canAutoslot,
   autoslotLabel,
   autoslotting,
@@ -232,20 +237,20 @@ export function Toolbar({
     <div className={s.toolbar}>
       <span className={dk.label}>View</span>
       <div className={dk.rail} role="radiogroup" aria-label="Grid view">
-        {(["daily", "players"] as const).map((v) => {
-          const on = view === v;
+        {VIEWS.map((v) => {
+          const on = view === v.id;
           return (
             <button
-              key={v}
+              key={v.id}
               type="button"
               role="radio"
               aria-checked={on}
               className={`${dk.seg} ${on ? dk.segOn : ""}`}
-              onClick={() => !on && onView()}
-              title={v === "daily" ? "Every day's lineup, spot by spot" : "One row per player across the week"}
+              onClick={() => !on && onView(v.id)}
+              title={v.title}
             >
               {on ? <motion.span layoutId="view-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
-              <span className={dk.segLabel}>{v === "daily" ? "DAILY LINEUPS" : "PLAYERS"}</span>
+              <span className={dk.segLabel}>{v.label}</span>
             </button>
           );
         })}
@@ -268,7 +273,7 @@ export function Toolbar({
             >
               {on ? <motion.span layoutId="mode-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
               <span className={dk.segLabel}>
-                {m === "espn" ? "AS SET ON ESPN" : "BEST EACH DAY"}
+                {m === "espn" ? "AS SET" : "BEST"}
                 {m === "best" && bestGain > 0.05 ? <span className={`${dk.chip} ${dk.up}`}>{signed(bestGain)}</span> : null}
               </span>
             </button>
@@ -277,45 +282,45 @@ export function Toolbar({
       </div>
       <span className={dk.kbd}>L</span>
       <span className={dk.divider} />
-      {view === "players" ? (
+      {rail ? (
         <>
-      <span className={dk.label}>Day</span>
-      <div className={dk.rail} role="radiogroup" aria-label="Lineup day">
-        {days.map((d) => {
-          const on = d.index === viewDay;
-          return (
-            <button
-              key={d.date}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              className={`${dk.seg} ${on ? dk.segOn : ""}`}
-              disabled={!viewable.has(d.index)}
-              onClick={() => onViewDay(d.index)}
-            >
-              {on ? <motion.span layoutId="day-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
-              <span className={dk.segLabel}>
-                {d.index === todayIndex ? <span className={s.todayDot} /> : null}
-                {d.dow.toUpperCase()} {monthDay(d.date).split("/")[1]}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <span className={dk.kbd}>[</span>
-      <span className={dk.kbd}>]</span>
-      <span className={dk.divider} />
+          <span className={dk.label}>Day</span>
+          <div className={dk.rail} role="radiogroup" aria-label="Day">
+            {days.map((d) => {
+              const on = d.index === rail.day;
+              return (
+                <button
+                  key={d.date}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  className={`${dk.seg} ${on ? dk.segOn : ""}`}
+                  disabled={rail.enabled != null && !rail.enabled.has(d.index)}
+                  onClick={() => rail.onDay(d.index)}
+                >
+                  {on ? <motion.span layoutId="day-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
+                  <span className={dk.segLabel}>
+                    {d.index === todayIndex ? <span className={s.todayDot} /> : null}
+                    {d.dow.toUpperCase()} {monthDay(d.date).split("/")[1]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <span className={dk.divider} />
         </>
       ) : null}
       <button type="button" className={dk.btn} onClick={onAutoslot} disabled={!canAutoslot || autoslotting} title="Fill that day's lineup: the best lineup for its games (A)">
         {autoslotting ? "Planning…" : `Autoslot ${autoslotLabel}`}
         <span className={dk.kbd}>A</span>
       </button>
-      <button type="button" className={`${dk.btn} ${heat ? dk.toggleOn : ""}`} onClick={onHeat} aria-pressed={heat} title="Shade cells by points (H)">
-        <Flame size={13} />
-        Heat
-        <span className={dk.kbd}>H</span>
-      </button>
+      {view !== "matchup" ? (
+        <button type="button" className={`${dk.btn} ${heat ? dk.toggleOn : ""}`} onClick={onHeat} aria-pressed={heat} title="Shade cells by points (H)">
+          <Flame size={13} />
+          Heat
+          <span className={dk.kbd}>H</span>
+        </button>
+      ) : null}
       {note ? <span className={s.note}>{note}</span> : null}
     </div>
   );

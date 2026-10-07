@@ -141,8 +141,10 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
     injury: string | null
   ): DayGame | null => {
     const b = boardById.get(id);
-    const opp = b?.opponent ?? null;
-    const time = b?.game_time_et ?? null;
+    // My players' games come off the board; the opponent's off the week's own today row.
+    const ahead = entry && !isPast(entry) ? entry : null;
+    const opp = b?.opponent ?? ahead?.opponent ?? null;
+    const time = b?.game_time_et ?? ahead?.game_time_et ?? null;
     const out = isOutStatus(injury);
     const fromLive = liveGame(liveRow, opp, time, out);
     if (fromLive) return fromLive;
@@ -230,14 +232,22 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
     const liveRow = liveOpp.get(id);
     const w = sortedDays.flatMap((d) => rosterOf(d, "opponent_team")).find((p) => p.player_id === id);
     const slot = liveRow?.lineup_slot ?? m?.lineup_slot ?? "BE";
+    const injury = liveRow?.injury_status ?? m?.injury_status ?? (w && !isPast(w) ? w.injury_status : null) ?? null;
     return {
       id,
-      name: m?.name ?? w?.name ?? `Player ${id}`,
+      name: m?.name ?? liveRow?.name ?? w?.name ?? `Player ${id}`,
       avg: m?.avg_points ?? liveRow?.avg_points ?? 0,
       active: !INACTIVE_SLOT_NAMES.has(slot.toUpperCase()),
-      games: gamesFor(id, "opponent_team", liveRow, m?.injury_status ?? null),
+      games: gamesFor(id, "opponent_team", liveRow, injury),
+      team: m?.team ?? liveRow?.team ?? w?.team ?? "",
+      nbaId: m?.nba_player_id ?? liveRow?.nba_player_id ?? w?.nba_player_id ?? null,
+      slot,
+      injury,
     };
   });
+
+  // The week by category: live-adjusted when the live matchup has it.
+  const comparison = live?.category_comparison ?? matchup?.category_comparison ?? null;
 
   const activeSlotCount = board
     ? board.slots.filter((s) => isActiveSlot(s.slot_id)).reduce((s, d) => s + d.count, 0)
@@ -263,6 +273,14 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
       opp: sortedDays.map((d, i) => (days[i].kind === "past" ? d.opponent_team.total_fpts ?? null : null)),
     },
     activeSlotCount: n > 0 ? activeSlotCount : 10,
+    format: (live?.scoring_format ?? matchup?.scoring_format) === "categories" ? "categories" : "points",
+    categories: (comparison?.items ?? []).map((c) => ({
+      key: c.key,
+      label: c.label,
+      higherIsBetter: c.higher_is_better,
+      isRate: c.is_rate,
+    })),
+    weekCategories: comparison ? comparison.items.map((c) => ({ key: c.key, you: c.you, opp: c.opp })) : null,
   };
 }
 

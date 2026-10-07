@@ -12,5 +12,6 @@ export default async function Page({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  return <WeekPage demo={"demo" in params} />;
+  const view = params.view === "players" || params.view === "matchup" || params.view === "daily" ? params.view : undefined;
+  return <WeekPage demo={"demo" in params} view={view} />;
 }

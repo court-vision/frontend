@@ -127,23 +127,23 @@ const MINE: MineSpec[] = [
 ];
 
 interface OppSpec {
-  id: number; name: string; team: string; avg: number; active: boolean; line?: Line;
+  id: number; nbaId: number; name: string; team: string; avg: number; slot: string; line?: Line; injury?: string;
 }
 
 const OPP: OppSpec[] = [
-  { id: 4594268, name: "Anthony Edwards", team: "MIN", avg: 50.0, active: true, line: { tue: { fpts: 48.5, status: "live", clock: "Q3 2:05", remaining: 0.29 } } },
-  { id: 4066261, name: "Bam Adebayo", team: "MIA", avg: 40.5, active: true, line: { tue: { fpts: 39.0, status: "final" } } },
-  { id: 4432573, name: "Paolo Banchero", team: "ORL", avg: 44.5, active: true, line: { mon: 41.0, tue: { fpts: 44.0, status: "live", clock: "Q4 9:30", remaining: 0.2 } } },
-  { id: 4432166, name: "Cade Cunningham", team: "DET", avg: 47.0, active: true, line: { mon: 46.5 } },
-  { id: 4066457, name: "Austin Reaves", team: "LAL", avg: 36.0, active: true, line: { mon: 35.0 } },
-  { id: 3934672, name: "Jalen Brunson", team: "NYK", avg: 45.5, active: true, line: { mon: 44.0 } },
-  { id: 4433255, name: "Chet Holmgren", team: "OKC", avg: 38.0, active: true, line: { mon: 37.5, tue: { fpts: 18.0, status: "live", clock: "Q2 7:48", remaining: 0.66 } } },
-  { id: 3155942, name: "Domantas Sabonis", team: "SAC", avg: 47.5, active: true },
-  { id: 4278049, name: "Zion Williamson", team: "NOP", avg: 41.5, active: true, line: { mon: 42.0 } },
-  { id: 5104157, name: "Victor Wembanyama", team: "SAS", avg: 56.0, active: true, line: { mon: 55.0, tue: { fpts: 27.0, status: "live", clock: "Q2 7:48", remaining: 0.66 } } },
-  { id: 4395725, name: "Tyler Herro", team: "MIA", avg: 33.0, active: false, line: { tue: { fpts: 31.5, status: "final" } } },
-  { id: 4683021, name: "Kel'el Ware", team: "MIA", avg: 29.0, active: false, line: { tue: { fpts: 22.0, status: "final" } } },
-  { id: 4066336, name: "Lauri Markkanen", team: "UTA", avg: 35.5, active: false },
+  { id: 4594268, nbaId: 1630162, name: "Anthony Edwards", team: "MIN", avg: 50.0, slot: "SG", line: { tue: { fpts: 48.5, status: "live", clock: "Q3 2:05", remaining: 0.29 } } },
+  { id: 4066261, nbaId: 1628389, name: "Bam Adebayo", team: "MIA", avg: 40.5, slot: "C", line: { tue: { fpts: 39.0, status: "final" } } },
+  { id: 4432573, nbaId: 1631094, name: "Paolo Banchero", team: "ORL", avg: 44.5, slot: "SF", line: { mon: 41.0, tue: { fpts: 44.0, status: "live", clock: "Q4 9:30", remaining: 0.2 } } },
+  { id: 4432166, nbaId: 1630595, name: "Cade Cunningham", team: "DET", avg: 47.0, slot: "G", line: { mon: 46.5 } },
+  { id: 4066457, nbaId: 1630559, name: "Austin Reaves", team: "LAL", avg: 36.0, slot: "UT", line: { mon: 35.0 } },
+  { id: 3934672, nbaId: 1628973, name: "Jalen Brunson", team: "NYK", avg: 45.5, slot: "PG", line: { mon: 44.0 } },
+  { id: 4433255, nbaId: 1631096, name: "Chet Holmgren", team: "OKC", avg: 38.0, slot: "F", line: { mon: 37.5, tue: { fpts: 18.0, status: "live", clock: "Q2 7:48", remaining: 0.66 } } },
+  { id: 3155942, nbaId: 1627734, name: "Domantas Sabonis", team: "SAC", avg: 47.5, slot: "UT" },
+  { id: 4278049, nbaId: 1629627, name: "Zion Williamson", team: "NOP", avg: 41.5, slot: "PF", line: { mon: 42.0 } },
+  { id: 5104157, nbaId: 1641705, name: "Victor Wembanyama", team: "SAS", avg: 56.0, slot: "UT", line: { mon: 55.0, tue: { fpts: 27.0, status: "live", clock: "Q2 7:48", remaining: 0.66 } } },
+  { id: 4395725, nbaId: 1629639, name: "Tyler Herro", team: "MIA", avg: 33.0, slot: "BE", line: { tue: { fpts: 31.5, status: "final" } } },
+  { id: 4683021, nbaId: 1642276, name: "Kel'el Ware", team: "MIA", avg: 29.0, slot: "BE", line: { tue: { fpts: 22.0, status: "final" } } },
+  { id: 4066336, nbaId: 1628374, name: "Lauri Markkanen", team: "UTA", avg: 35.5, slot: "BE" },
 ];
 
 function lineupPlayer(s: MineSpec, slot: number = s.slot, day: number = TODAY): LineupPlayer {
@@ -279,8 +279,20 @@ function sourcePlayer(s: MineSpec): SourcePlayer {
   };
 }
 
+const INACTIVE = new Set(["BE", "IR"]);
+
 function sourceOpponent(s: OppSpec): SourceOpponent {
-  return { id: s.id, name: s.name, avg: s.avg, active: s.active, games: games(s.team, s.line ?? {}, false) };
+  return {
+    id: s.id,
+    name: s.name,
+    avg: s.avg,
+    active: !INACTIVE.has(s.slot),
+    games: games(s.team, s.line ?? {}, false),
+    team: s.team,
+    nbaId: s.nbaId,
+    slot: s.slot,
+    injury: s.injury ?? null,
+  };
 }
 
 const sum = (xs: number[]) => Math.round(xs.reduce((a, b) => a + b, 0) * 10) / 10;
@@ -289,7 +301,7 @@ export function demoSource(roster: MineSpec[] = MINE): WeekSource {
   const mine = roster.map(sourcePlayer);
   const opponents = OPP.map(sourceOpponent);
   const youToday = sum(roster.filter((s) => s.slot !== BE && s.slot !== IR).map((s) => s.line?.tue?.fpts ?? 0));
-  const oppToday = sum(OPP.filter((s) => s.active).map((s) => s.line?.tue?.fpts ?? 0));
+  const oppToday = sum(OPP.filter((s) => !INACTIVE.has(s.slot)).map((s) => s.line?.tue?.fpts ?? 0));
   const youMon = sum(MINE.map((s) => s.line?.mon ?? 0));
   const oppMon = sum(OPP.map((s) => s.line?.mon ?? 0));
   return {
