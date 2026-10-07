@@ -17,7 +17,11 @@ interface DeskBarProps {
   onRefresh?: () => void;
 }
 
-/** The top of every desk: the mark, the desks, the desk's context, then status. */
+/**
+ * The top of every desk: the mark, the desks, the desk's context, then status.
+ * The mark and the desk tabs stay put; everything after them scrolls sideways
+ * when it does not fit, so no control is squeezed or pushed off screen.
+ */
 export function DeskBar({ desk, demo = false, children, right, onRefresh }: DeskBarProps) {
   const theme = useDeskTheme((s) => s.theme);
   const toggle = useDeskTheme((s) => s.toggle);
@@ -25,7 +29,7 @@ export function DeskBar({ desk, demo = false, children, right, onRefresh }: Desk
     <header className={dk.bar}>
       <Link href="/" className={dk.mark} title="Back to Court Vision">
         <span className={dk.markGlyph} aria-hidden />
-        court vision
+        <span className={dk.markText}>court vision</span>
       </Link>
       <nav className={dk.tabs} aria-label="Desks">
         {DESKS.map((x) => (
@@ -39,23 +43,25 @@ export function DeskBar({ desk, demo = false, children, right, onRefresh }: Desk
           </Link>
         ))}
       </nav>
-      <span className={dk.divider} />
-      {children}
-      <span className={dk.spacer} />
-      {right}
-      {demo ? (
-        <span className={`${dk.badge} ${dk.badgeDemo}`} title="Sample data. Nothing is sent anywhere.">
-          <Sparkles size={11} /> Demo
-        </span>
-      ) : null}
-      {onRefresh ? (
-        <button type="button" className={dk.iconBtn} onClick={onRefresh} aria-label="Refresh" title="Refresh">
-          <RotateCw size={14} />
+      <div className={dk.barScroll}>
+        <span className={dk.divider} />
+        {children}
+        <span className={dk.spacer} />
+        {right}
+        {demo ? (
+          <span className={`${dk.badge} ${dk.badgeDemo}`} title="Sample data. Nothing is sent anywhere.">
+            <Sparkles size={11} /> Demo
+          </span>
+        ) : null}
+        {onRefresh ? (
+          <button type="button" className={dk.iconBtn} onClick={onRefresh} aria-label="Refresh" title="Refresh">
+            <RotateCw size={14} />
+          </button>
+        ) : null}
+        <button type="button" className={dk.iconBtn} onClick={toggle} aria-label="Switch theme" title="Theme (T)">
+          {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
         </button>
-      ) : null}
-      <button type="button" className={dk.iconBtn} onClick={toggle} aria-label="Switch theme" title="Theme (T)">
-        {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-      </button>
+      </div>
     </header>
   );
 }

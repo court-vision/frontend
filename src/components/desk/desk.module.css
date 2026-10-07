@@ -159,6 +159,43 @@
   border-radius: 1.5px;
 }
 
+/*
+ * Everything after the desk tabs: the desk's context, then its controls. They
+ * keep their size; when they do not fit, this row scrolls sideways (as the
+ * toolbars under the bar do), so each one can still be reached. The padding,
+ * taken back by the margin, keeps focus rings at either end inside the
+ * scrolling box.
+ */
+.barScroll {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 -4px;
+  padding: 0 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.barScroll > * {
+  flex-shrink: 0;
+}
+
+/* Phones: the mark is its glyph alone; the name stays for screen readers. */
+@media (max-width: 767.98px) {
+  .markText {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 /* The desks, as tabs: where you are, and the one other place to be. */
 .tabs {
   display: flex;
