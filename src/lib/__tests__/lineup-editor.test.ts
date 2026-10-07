@@ -70,6 +70,8 @@ function board(players: LineupPlayer[], overrides: Partial<LineupState> = {}): L
     nba_date: "2026-10-20",
     scoring_period_id: 1,
     scoring_period_source: "provider",
+    current_scoring_period_id: 1,
+    final_scoring_period_id: 167,
     first_game_time_et: "19:00",
     position_limits: {},
     slot_counts: { "0": 1, "1": 1, "5": 1, "11": 2, "12": 2, "13": 1 },
