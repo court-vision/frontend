@@ -84,6 +84,9 @@ export function useSchedulePickupMutation(teamId: number) {
       toast.success(message);
     },
     onError: (error) => {
+      // A duplicate is one the list doesn't show yet, and a request that got no
+      // answer may have been stored: either way the lane must show what will run.
+      queryClient.invalidateQueries({ queryKey: pickupKeys.team(teamId) });
       const err = toApiError(error);
       if (err.code === SCHEDULED_PICKUP_INVALID || err.code === SCHEDULED_PICKUP_DUPLICATE) return;
       toast.error(userMessage(err));
