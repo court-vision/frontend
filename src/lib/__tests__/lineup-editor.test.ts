@@ -18,6 +18,7 @@ import {
   slotName,
   slotRows,
   stage,
+  swapPartner,
   stageMoves,
   staleLineup,
   unstage,
@@ -217,14 +218,19 @@ describe("eligibleTargets", () => {
     expect(eligibleTargets(lockedUt, {}, bench.player_id)).not.toContain(UT);
   });
 
-  test("the bench is not a target when it is full of locked players", () => {
+  test("ESPN's bench is unbounded: a starter can always be benched, even past its slot count", () => {
     const fullBench = board([
       pg, sgLocked, g, ut1, ut2,
       { ...bench, locked: true },
       player({ player_id: 8, lineup_slot_id: BE, eligible_slot_ids: [UT, BE], locked: true }),
       ir,
     ]);
-    expect(eligibleTargets(fullBench, {}, ut2.player_id)).not.toContain(BE);
+    expect(eligibleTargets(fullBench, {}, ut2.player_id)).toContain(BE);
+    // A plain move, leaving his spot empty: nobody has to swap up.
+    expect(swapPartner(fullBench, {}, ut2.player_id, BE)).toBeNull();
+    const staged = stage(fullBench, {}, ut2.player_id, BE);
+    expect(staged).toEqual({ 5: BE });
+    expect(validateStaged(fullBench, staged)).toEqual([]);
   });
 });
 
@@ -301,6 +307,17 @@ describe("validateStaged", () => {
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({ player_id: null, code: "CAPACITY" });
     expect(errors[0].message).toContain("UT");
+  });
+
+  test("coming off IR needs a roster spot", () => {
+    // Seven spots off IR (PG SG G UT UT BE BE): six players use them, so one may come off IR.
+    expect(validateStaged(STATE, { 7: BE })).toEqual([]);
+    const full = board([pg, sgLocked, g, ut1, ut2, bench, player({ player_id: 8, lineup_slot_id: BE, eligible_slot_ids: [UT, BE] }), ir]);
+    const errors = validateStaged(full, { 7: BE });
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({ player_id: null, code: "ROSTER_FULL" });
+    // Swapping him with an injured player keeps the count: fine.
+    expect(validateStaged(full, { 7: BE, 6: IR })).toEqual([]);
   });
 
   test("locked and ineligible movers are reported per player, before capacity", () => {

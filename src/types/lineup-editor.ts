@@ -48,7 +48,8 @@ export type MoveErrorCode =
   | "LOCKED"
   | "UNTOUCHABLE_SLOT"
   | "INELIGIBLE"
-  | "CAPACITY";
+  | "CAPACITY"
+  | "ROSTER_FULL";
 
 export type WriteBlockedReason = NonNullable<LineupState["write_blocked_reason"]>;
 

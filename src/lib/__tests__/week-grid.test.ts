@@ -226,6 +226,39 @@ describe("daily lineups", () => {
   });
 });
 
+describe("ESPN's bench is unbounded", () => {
+  const source = demoSource();
+  const board = demoBoard();
+  const today = source.todayIndex!;
+  const name = (seat: { player: { name: string } } | null) => seat?.player.name ?? null;
+
+  test("dropping a starter leaves his spot empty rather than shuffling guards to refill it", () => {
+    // Thursday: Maxey (PG) is dropped for Watson (SF/PF/F); Barnes, at SF, has no game.
+    // Nobody else who plays fits PG, so the fewest moves leave PG open and bench Barnes.
+    const fa = DEMO_STREAMERS.find((s) => s.name === "Peyton Watson")!;
+    const maxey = board.players.find((p) => p.name === "Tyrese Maxey")!;
+    const player = sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team), today + 1);
+    const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: maxey.player_id }, viewDay: today });
+    const thu = lineups.seats[3];
+    const at = (slot: string) => lineups.slots.map((s, i) => (s.slot === slot ? name(thu[i]) : undefined)).filter((x) => x !== undefined);
+    expect(at("PG")).toEqual([null]);
+    expect(at("SF")).toEqual(["Peyton Watson"]);
+    expect(thu.filter((s) => s?.shifted).map(name)).toEqual(["Scottie Barnes"]);
+    expect(at("BE")).toContain("Scottie Barnes");
+    expect(at("BE").filter(Boolean)).toHaveLength(4);
+  });
+
+  test("a free agent takes his position before a UT spot when both cost the same", () => {
+    // Watson fits SF (Barnes idle) or a UT held by an idle player: one move either way.
+    const fa = DEMO_STREAMERS.find((s) => s.name === "Peyton Watson")!;
+    const maxey = board.players.find((p) => p.name === "Tyrese Maxey")!;
+    const player = sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team), today + 1);
+    const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: { player, replaces: maxey.player_id }, viewDay: today });
+    const i = lineups.seats[3].findIndex((s) => s?.incoming);
+    expect(lineups.slots[i].slot).not.toBe("UT");
+  });
+});
+
 describe("a pickup scheduled ahead", () => {
   const source = demoSource();
   const board = demoBoard();

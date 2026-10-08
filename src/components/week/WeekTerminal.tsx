@@ -1186,9 +1186,9 @@ function canSit(player: LineupPlayer, slot: number): boolean {
 
 /**
  * The best lineup for a later day, as staging on that day's ESPN lineup:
- * everyone healthy with a game seated to maximize projected points, then the
- * spots left over filled with players who don't play (so the bench never holds
- * more than it can), IR untouched.
+ * everyone healthy with a game seated to maximize projected points; players
+ * who don't play keep a spot that's still free, else go to the bench (ESPN's
+ * bench is unbounded, so a spot may stay empty); IR untouched.
  */
 function bestDayStaging(board: LineupState, source: WeekSource, day: number): Staged {
   const avgOf = new Map(source.mine.map((p) => [p.id, p.avg]));
@@ -1202,7 +1202,7 @@ function bestDayStaging(board: LineupState, source: WeekSource, day: number): St
     playing.map((p) => ({ id: p.player_id, avg: avgOf.get(p.player_id) ?? p.avg_points, eligible: p.eligible_slot_ids.filter(isActiveSlot) })),
     slots
   );
-  // Seats left: fill them with non-players, keeping anyone already sitting there.
+  // Players who don't play stay where they sit while it's free.
   const used = new Map<number, number>();
   for (const slot of plan.values()) used.set(slot, (used.get(slot) ?? 0) + 1);
   const free = (slot: number) => (board.slots.find((x) => x.slot_id === slot)?.count ?? 0) - (used.get(slot) ?? 0);
@@ -1214,16 +1214,6 @@ function bestDayStaging(board: LineupState, source: WeekSource, day: number): St
     const slot = keep ?? BENCH_SLOT_ID;
     target[p.player_id] = slot;
     used.set(slot, (used.get(slot) ?? 0) + 1);
-  }
-  // Too many on the bench: seat the overflow in any open active spot they fit.
-  const benchRoom = board.slots.find((x) => x.slot_id === BENCH_SLOT_ID)?.count ?? 0;
-  const benched = rest.filter((p) => target[p.player_id] === BENCH_SLOT_ID);
-  for (const p of benched.slice(benchRoom)) {
-    const open = p.eligible_slot_ids.find((slot) => isActiveSlot(slot) && free(slot) > 0);
-    if (open != null) {
-      target[p.player_id] = open;
-      used.set(open, (used.get(open) ?? 0) + 1);
-    }
   }
   return normalize(board, target);
 }
