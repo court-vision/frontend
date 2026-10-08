@@ -546,6 +546,7 @@ export function WeekTerminal({
 
   // ---- the tray: staged moves by day, confirmed and sent from there ----
   const [sendingDay, setSendingDay] = useState<number | null>(null);
+  const [trayHeight, setTrayHeight] = useState(0);
   const [dayErrors, setDayErrors] = useState<Record<number, string>>({});
   const dropDay = useCallback((day: number) => {
     setStagedByDay((prev) => {
@@ -961,7 +962,12 @@ export function WeekTerminal({
           onMarket={toggleMarket}
         />
         <div className={s.work}>
-        <div className={s.workMain}>
+        {/* An open tray floats over the view's bottom; the view scrolls its last rows clear of it. */}
+        <div
+          className={s.workMain}
+          data-tray-open={trayDays.length ? true : undefined}
+          style={trayDays.length ? { ["--tray-h" as string]: `${trayHeight}px` } : undefined}
+        >
         {view === "matchup" ? (
           <MatchupView
             grid={grid}
@@ -1009,6 +1015,22 @@ export function WeekTerminal({
             mode={mode}
           />
         )}
+        {trayDays.length ? (
+          <Tray
+            days={trayDays}
+            blocked={movesBlocked}
+            demo={data.demo}
+            sendingDay={sendingDay}
+            onUnstage={(day, playerId) => {
+              const b = boards[day];
+              if (b) setDay(day, unstagePure(b, staging[day], playerId));
+            }}
+            onDiscardDay={dropDay}
+            onDiscardAll={() => setStagedByDay({})}
+            onSend={sendDays}
+            onHeight={setTrayHeight}
+          />
+        ) : null}
         </div>
         {marketOpen ? (
           <MarketPane
@@ -1051,21 +1073,6 @@ export function WeekTerminal({
           />
         ) : null}
         </div>
-        {trayDays.length ? (
-          <Tray
-            days={trayDays}
-            blocked={movesBlocked}
-            demo={data.demo}
-            sendingDay={sendingDay}
-            onUnstage={(day, playerId) => {
-              const b = boards[day];
-              if (b) setDay(day, unstagePure(b, staging[day], playerId));
-            }}
-            onDiscardDay={dropDay}
-            onDiscardAll={() => setStagedByDay({})}
-            onSend={sendDays}
-          />
-        ) : null}
         <Dock
           swap={swap}
           onTiming={(day) => pinned && setPinned({ ...pinned, from: day })}

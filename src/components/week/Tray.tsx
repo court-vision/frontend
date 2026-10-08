@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronsRight, X } from "lucide-react";
 import { slotName, type MoveRole } from "@/lib/lineup-editor";
 import type { LineupMove, MoveError } from "@/types/lineup-editor";
@@ -52,6 +52,8 @@ interface TrayProps {
   onDiscardAll: () => void;
   /** Send these days' moves, in day order; resolves when done (or stopped at a refusal). */
   onSend: (days: number[]) => Promise<void>;
+  /** The tray floats over the view: its height, so the view can scroll its last rows clear of it. */
+  onHeight?: (px: number) => void;
 }
 
 const THUMB = 44;
@@ -74,7 +76,15 @@ interface Track {
  * passing under it; Send (or the slider reaching its end) writes the confirmed
  * days, earliest first, since each day's edit carries into the days after it.
  */
-export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay, onDiscardAll, onSend }: TrayProps) {
+export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay, onDiscardAll, onSend, onHeight }: TrayProps) {
+  const rootRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || !onHeight) return;
+    const ro = new ResizeObserver(() => onHeight(el.getBoundingClientRect().height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [onHeight]);
   const sending = sendingDay != null;
   const locked = sending || !!blocked;
   const sendable = useMemo(() => new Set(days.filter((d) => d.problems.length === 0).map((d) => d.day)), [days]);
@@ -159,7 +169,7 @@ export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay,
   const fill = x + THUMB / 2;
 
   return (
-    <section className={s.tray} data-tray aria-label="Staged lineup moves">
+    <section ref={rootRef} className={s.tray} data-tray aria-label="Staged lineup moves">
       <div className={s.trayHead}>
         <span className={dk.label}>ESPN lineup</span>
         <span className={dk.sub}>

@@ -1622,11 +1622,27 @@ button.dayHead:hover {
 }
 
 .workMain {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/*
+ * With the tray open it is the only thing pinned to the bottom: the summary
+ * rows scroll with the lineup and pass behind it, and the view scrolls far
+ * enough to bring its last rows clear of it.
+ */
+.workMain[data-tray-open="true"] .gridWrap,
+.workMain[data-tray-open="true"] .mu {
+  padding-bottom: var(--tray-h, 0px);
+  scroll-padding-bottom: var(--tray-h, 0px);
+}
+
+.workMain[data-tray-open="true"] .foot {
+  position: relative;
 }
 
 .market {
@@ -2284,13 +2300,19 @@ button.marketRow:hover {
 /* ---------------------------------------------------------------- the tray: staged moves by day */
 
 .tray {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 6;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 10px 16px 14px;
   border-top: 1px solid var(--line-2);
-  background: var(--surface);
-  flex-shrink: 0;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
 }
 
 .trayHead {
