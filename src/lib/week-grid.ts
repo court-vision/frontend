@@ -426,7 +426,6 @@ export function buildWeekGrid({
   const swapsOn = (day: number) => incoming != null && (incoming.from == null || day >= incoming.from);
   const poolOn = (day: number) => (swapsOn(day) ? pool : roster);
   const replacedOn = (day: number) => (swapsOn(day) ? replaced : null);
-  const benchCapacity = board ? board.slots.find((x) => x.slot_id === BENCH_SLOT_ID)?.count ?? 0 : 0;
   // Today, a player whose game has started can't be moved.
   const lockedToday = new Set<number>();
   if (todayIndex != null) {
@@ -452,7 +451,6 @@ export function buildWeekGrid({
           day: d.index,
           eligibleOf,
           slots,
-          benchCapacity,
           irIds,
           locked: d.kind === "today" ? lockedToday : new Set(),
         });
@@ -785,12 +783,14 @@ function openRow(slotId: number, ordinal: number, dayCount: number): GridRow {
 /** The daily lineups' row id for a previewed add's outgoing player. */
 export const DROP_ROW_ID = -1;
 
-// Tie-breaks, far below any real projection: keep a player where he sits, and
-// keep a free agent who wouldn't score off an active spot. Overflowing the
-// bench costs more than any tie-break, less than any real start.
+// Tie-breaks, far below any real projection: keep a player where he sits, keep
+// a free agent who wouldn't score off an active spot, and seat a free agent at
+// a position before UT (keeping UT open for whoever comes next). Each is worth
+// less than the one before, so none of them ever costs an extra move.
 const STAY = 0.01;
 const BENCH_IF_IDLE = 0.005;
-const OVERFLOW = 1;
+const FLEX = 0.002;
+const UTIL_SLOT_ID = 11;
 const FORBID = 1e9;
 
 interface SeatInput {
@@ -801,7 +801,6 @@ interface SeatInput {
   day: number;
   eligibleOf: (p: SourcePlayer) => number[];
   slots: PlanSlot[];
-  benchCapacity: number;
   irIds: ReadonlySet<number>;
   /** Players whose games have started: they stay where they are. */
   locked: ReadonlySet<number>;
@@ -813,9 +812,11 @@ interface SeatInput {
  * moves as few players as it can. It only makes room for him — starters may
  * change spots, one may drop to the bench where he takes the spot, but nobody
  * comes off the bench — so the preview shows the add, not an unrelated
- * lineup fix. Returns the players it moved.
+ * lineup fix. ESPN's bench is unbounded (a spot may stay empty), so the
+ * dropped player's spot is refilled only when that scores. Returns the
+ * players it moved.
  */
-function seatIncomingBest({ assign, incoming, roster, day, eligibleOf, slots, benchCapacity, irIds, locked }: SeatInput): Set<number> {
+function seatIncomingBest({ assign, incoming, roster, day, eligibleOf, slots, irIds, locked }: SeatInput): Set<number> {
   const before = new Map(assign);
   assign.delete(incoming.replaces);
   const fa = incoming.player;
@@ -833,9 +834,7 @@ function seatIncomingBest({ assign, incoming, roster, day, eligibleOf, slots, be
   }
   const instances: number[] = [];
   for (const sl of slots) for (let k = held.get(sl.slotId) ?? 0; k < sl.count; k++) instances.push(sl.slotId);
-  const benchFree = Math.max(0, benchCapacity - (held.get(BENCH_SLOT_ID) ?? 0));
-  for (let k = 0; k < benchFree; k++) instances.push(BENCH_SLOT_ID);
-  const overflowFrom = instances.length;
+  // The bench takes everyone who can move.
   for (let k = 0; k < movers.length; k++) instances.push(BENCH_SLOT_ID);
 
   const cost = movers.map((p) => {
@@ -844,14 +843,13 @@ function seatIncomingBest({ assign, incoming, roster, day, eligibleOf, slots, be
     const benched = p.id !== fa.id && (was === BENCH_SLOT_ID || was === undefined);
     const v = value(p);
     const eligible = eligibleOf(p);
-    return instances.map((slot, j) => {
+    return instances.map((slot) => {
       if (slot !== BENCH_SLOT_ID) {
         // Nobody comes off the bench: the preview is about the add.
         if (benched || !eligible.includes(slot)) return FORBID;
-        return -(v + (was === slot ? STAY : 0));
+        return -(v + (was === slot ? STAY : 0)) + (p.id === fa.id && slot === UTIL_SLOT_ID ? FLEX : 0);
       }
-      const bonus = (was === BENCH_SLOT_ID ? STAY : 0) + (p.id === fa.id && v === 0 ? BENCH_IF_IDLE : 0);
-      return -(bonus - (j >= overflowFrom ? OVERFLOW : 0));
+      return -((was === BENCH_SLOT_ID ? STAY : 0) + (p.id === fa.id && v === 0 ? BENCH_IF_IDLE : 0));
     });
   });
 

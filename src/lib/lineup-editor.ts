@@ -84,10 +84,31 @@ export function assignment(state: LineupState, staged: Staged): Map<number, numb
 }
 
 /** How many of a slot the league has (`slot_counts` is id-keyed with string keys). */
-export function slotCapacity(state: LineupState, slotId: number): number {
+function slotCount(state: LineupState, slotId: number): number {
   const fromCounts = state.slot_counts[String(slotId)];
   if (typeof fromCounts === "number") return Math.max(0, fromCounts);
   return Math.max(0, state.slots.find((s) => s.slot_id === slotId)?.count ?? 0);
+}
+
+/**
+ * The roster's spots off IR: every slot the league has except IR. ESPN's
+ * roster limit is this many players off IR; mirrors `has_open_seat` server-side.
+ */
+export function rosterSpots(state: LineupState): number {
+  const ids = new Set([...Object.keys(state.slot_counts).map(Number), ...state.slots.map((s) => s.slot_id)]);
+  let n = 0;
+  for (const id of ids) if (id !== IR_SLOT_ID) n += slotCount(state, id);
+  return n;
+}
+
+/**
+ * How many players a slot can hold. ESPN's bench is unbounded: its slot count
+ * only sizes the roster, and a starter can always be benched (leaving his spot
+ * empty), so the bench holds as many as the roster does. Every other slot holds
+ * its count.
+ */
+export function slotCapacity(state: LineupState, slotId: number): number {
+  return slotId === BENCH_SLOT_ID ? rosterSpots(state) : slotCount(state, slotId);
 }
 
 /** Players sitting in `slotId` after staging, in board order. */
@@ -364,8 +385,9 @@ export function ineligibleMessage(p: LineupPlayer, toSlotId: number): string {
 
 /**
  * The checks `validate_moves` runs server-side, for instant feedback: per-move
- * UNTOUCHABLE_SLOT / LOCKED / INELIGIBLE first, then CAPACITY per target slot
- * once every move is individually sound.
+ * UNTOUCHABLE_SLOT / LOCKED / INELIGIBLE first, then, once every move is
+ * individually sound, CAPACITY per target slot and ROSTER_FULL when players
+ * coming off IR would leave more players off IR than the roster has spots.
  */
 export function validateStaged(state: LineupState, staged: Staged): MoveError[] {
   const byId = playerIndex(state);
@@ -399,6 +421,7 @@ export function validateStaged(state: LineupState, staged: Staged): MoveError[] 
   const assign = assignment(state, staged);
   const targets = [...new Set(moves.map((m) => m.to_slot_id))].sort((a, b) => a - b);
   for (const slot of targets) {
+    if (slot === BENCH_SLOT_ID) continue; // bounded only by the roster, checked below
     const limit = slotCapacity(state, slot);
     const held = state.players.filter((p) => assign.get(p.player_id) === slot).length;
     if (held > limit) {
@@ -408,6 +431,18 @@ export function validateStaged(state: LineupState, staged: Staged): MoveError[] 
         message: `${slotName(slot)} would hold ${held} players (limit ${limit})`,
       });
     }
+  }
+  // Coming off IR needs a roster spot; a board already over the limit isn't this send's doing.
+  const offIr = (slotOf: (p: LineupPlayer) => number) => state.players.filter((p) => slotOf(p) !== IR_SLOT_ID).length;
+  const before = offIr((p) => p.lineup_slot_id);
+  const after = offIr((p) => assign.get(p.player_id) ?? p.lineup_slot_id);
+  const spots = rosterSpots(state);
+  if (after > before && after > spots) {
+    errors.push({
+      player_id: null,
+      code: "ROSTER_FULL",
+      message: `Your roster is full: ${after} players off IR for ${spots} spots — drop someone or move a player to IR first`,
+    });
   }
   return errors;
 }
