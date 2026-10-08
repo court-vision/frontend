@@ -1,20 +1,10 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { slotName } from "@/lib/lineup-editor";
-import type { LineupMove, LineupPlayer, MoveError } from "@/types/lineup-editor";
 import type { StreamerPlayer } from "@/types/streamer";
-import { shortName, signed } from "./format";
+import { signed } from "./format";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
-
-/** One day's staged moves and the problems they'd hit at ESPN. */
-export interface PendingDay {
-  day: number;
-  label: string;
-  moves: LineupMove[];
-  problems: MoveError[];
-}
 
 export interface PendingSwap {
   fa: StreamerPlayer;
@@ -38,70 +28,17 @@ export interface SwapTiming {
 }
 
 interface DockProps {
-  pending: PendingDay[];
-  playerById: ReadonlyMap<number, LineupPlayer>;
-  stagedDelta: number;
-  canSendMoves: boolean;
-  movesBlocked: string | null;
-  onDiscardMoves: () => void;
-  onReviewMoves: () => void;
   swap: PendingSwap | null;
   onTiming: (day: number | null) => void;
   onCancelSwap: () => void;
   onReviewSwap: () => void;
 }
 
-export function Dock({
-  pending,
-  playerById,
-  stagedDelta,
-  canSendMoves,
-  movesBlocked,
-  onDiscardMoves,
-  onReviewMoves,
-  swap,
-  onTiming,
-  onCancelSwap,
-  onReviewSwap,
-}: DockProps) {
-  const problems = pending.flatMap((p) => p.problems.map((e) => `${p.label}: ${e.message}`));
-  if (pending.length === 0 && !swap) return null;
+/** The pending add / drop (now or scheduled); staged lineup moves live in the tray. */
+export function Dock({ swap, onTiming, onCancelSwap, onReviewSwap }: DockProps) {
+  if (!swap) return null;
   return (
     <div className={s.dock} role="region" aria-label="Pending changes">
-      {pending.length > 0 ? (
-        <div className={s.dockGroup}>
-          <span className={dk.label}>ESPN lineup</span>
-          <span className={s.dockItems}>
-            {pending.flatMap((p) =>
-              p.moves.map((m) => (
-                <span key={`${p.day}-${m.player_id}`} className={`${s.pill} ${s.pillWarn}`}>
-                  <span className={s.arrow}>{p.label.split(" ")[0]}</span>
-                  {shortName(playerById.get(m.player_id)?.name ?? `#${m.player_id}`)}
-                  <span className={s.arrow}>
-                    {slotName(m.from_slot_id)} → {slotName(m.to_slot_id)}
-                  </span>
-                </span>
-              ))
-            )}
-          </span>
-          <span className={`${dk.chip} ${stagedDelta > 0.05 ? dk.up : stagedDelta < -0.05 ? dk.down : dk.flat}`}>
-            {signed(stagedDelta)}
-          </span>
-          {problems.length ? <span className={dk.error}>{problems[0]}</span> : null}
-          {movesBlocked ? <span className={s.note}>{movesBlocked}</span> : null}
-          <button type="button" className={dk.btn} onClick={onDiscardMoves}>
-            Discard
-          </button>
-          <button
-            type="button"
-            className={`${dk.btn} ${dk.btnPrimary}`}
-            onClick={onReviewMoves}
-            disabled={!canSendMoves || problems.length > 0}
-          >
-            Review and send
-          </button>
-        </div>
-      ) : null}
       {swap ? (
         <div className={s.dockGroup}>
           <span className={dk.label}>{swap.from != null ? "Pickup" : "Roster"}</span>
