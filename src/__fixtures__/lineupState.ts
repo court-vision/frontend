@@ -144,6 +144,7 @@ export const MOCK_LINEUP_STATE: LineupState = {
   write_blocked_reason: null,
   roster_version: "mock-1",
   fetched_at: "2026-10-20T22:30:00Z",
+  acquisitions: null,
 };
 
 function planMove(

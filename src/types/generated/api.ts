@@ -2275,6 +2275,39 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AcquisitionState
+         * @description ESPN's limits on adds and what this team has used: `settings.acquisitionSettings`
+         *     (mSettings) and the team's `transactionCounter` (mTeam). A day's own adds (what a
+         *     per-day limit counts) are not in the counter: `services.acquisitions.adds_for_day`.
+         */
+        AcquisitionState: {
+            /** Limit */
+            limit: number | null;
+            /** Matchup End */
+            matchup_end: string | null;
+            /** Matchup Period Id */
+            matchup_period_id: number | null;
+            /** Matchup Start */
+            matchup_start: string | null;
+            /**
+             * Matchup Used
+             * @default 0
+             */
+            matchup_used: number;
+            /**
+             * Per
+             * @enum {string}
+             */
+            per: "matchup" | "day";
+            /** Season Limit */
+            season_limit: number | null;
+            /**
+             * Season Used
+             * @default 0
+             */
+            season_used: number;
+        };
+        /**
          * AdvancedStatsData
          * @description Advanced stats from pipeline - always season-level.
          */
@@ -5630,6 +5663,7 @@ export interface components {
         };
         /** LineupState */
         LineupState: {
+            acquisitions: components["schemas"]["AcquisitionState"] | null;
             /**
              * Can Write
              * @default false
