@@ -1633,7 +1633,9 @@ export interface paths {
          * @description Initiate Yahoo OAuth flow.
          *
          *     Returns the Yahoo authorization URL that the frontend should redirect to
-         *     (503 YAHOO_NOT_CONFIGURED when the client credentials are missing).
+         *     (503 YAHOO_NOT_CONFIGURED when the client credentials are missing). The
+         *     callback lands on `return_to` with `?yahoo_connected=true&yahoo_connection=<id>`
+         *     or `?yahoo_error=<code>` added.
          */
         get: operations["yahoo_authorize_v1_internal_yahoo_authorize_get"];
         put?: never;
@@ -12403,7 +12405,10 @@ export interface operations {
     };
     yahoo_authorize_v1_internal_yahoo_authorize_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Frontend path the callback sends the browser back to, e.g. `/week`; a path on the app's own origin only (optionally with a query). Anything else is ignored and the callback returns to Manage Teams. */
+                return_to?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -12417,6 +12422,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["YahooAuthUrlResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

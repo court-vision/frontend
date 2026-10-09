@@ -72,13 +72,19 @@ export function useTeamLeagueQuery(teamId: number | null) {
 }
 
 // Mutations
-export function useAddTeamMutation() {
+/**
+ * Add a team. `silent` keeps the failure out of the global toast: the add
+ * dialog shows a refusal inline, where the fix is (a wrong team name lists
+ * the league's teams to pick from).
+ */
+export function useAddTeamMutation(opts: { silent?: boolean } = {}) {
   const queryClient = useQueryClient();
   const { getToken } = useAuth();
 
   return useMutation({
     mutationFn: (teamData: LeagueInfoRequest) =>
       apiClient.addTeam(getToken, teamData),
+    meta: opts.silent ? { toast: false } : undefined,
     onSuccess: (response) => {
       if (response.status === "success") {
         const league = response.data?.league ?? null;

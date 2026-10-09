@@ -24414,8 +24414,29 @@
     },
     "/v1/internal/yahoo/authorize": {
       "get": {
-        "description": "Initiate Yahoo OAuth flow.\n\nReturns the Yahoo authorization URL that the frontend should redirect to\n(503 YAHOO_NOT_CONFIGURED when the client credentials are missing).",
+        "description": "Initiate Yahoo OAuth flow.\n\nReturns the Yahoo authorization URL that the frontend should redirect to\n(503 YAHOO_NOT_CONFIGURED when the client credentials are missing). The\ncallback lands on `return_to` with `?yahoo_connected=true&yahoo_connection=<id>`\nor `?yahoo_error=<code>` added.",
         "operationId": "yahoo_authorize_v1_internal_yahoo_authorize_get",
+        "parameters": [
+          {
+            "description": "Frontend path the callback sends the browser back to, e.g. `/week`; a path on the app's own origin only (optionally with a query). Anything else is ignored and the callback returns to Manage Teams.",
+            "in": "query",
+            "name": "return_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Frontend path the callback sends the browser back to, e.g. `/week`; a path on the app's own origin only (optionally with a query). Anything else is ignored and the callback returns to Manage Teams.",
+              "title": "Return To"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -24426,6 +24447,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [

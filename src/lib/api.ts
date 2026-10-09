@@ -560,8 +560,15 @@ class ApiClient {
   }
 
   // Yahoo API
-  async getYahooAuthUrl(getToken: GetTokenFn): Promise<string> {
-    const env = await fetchJson<YahooAuthUrlResponse>(`${YAHOO_API}/authorize`, { getToken });
+  /**
+   * The Yahoo authorize URL. `returnTo` is the path on this app the callback
+   * sends the browser back to afterwards (with `?yahoo_connected=true&
+   * yahoo_connection=<id>` or `?yahoo_error=<code>` appended); the backend
+   * falls back to Manage Teams when it is not a plain path of our own.
+   */
+  async getYahooAuthUrl(getToken: GetTokenFn, returnTo?: string): Promise<string> {
+    const query = returnTo ? `?return_to=${encodeURIComponent(returnTo)}` : "";
+    const env = await fetchJson<YahooAuthUrlResponse>(`${YAHOO_API}/authorize${query}`, { getToken });
     if (!env.auth_url) throw ApiError.empty(env);
     return env.auth_url;
   }

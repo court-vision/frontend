@@ -8,6 +8,7 @@ export type DeskTheme = "dark" | "light";
 interface DeskThemeStore {
   theme: DeskTheme;
   toggle: () => void;
+  setTheme: (theme: DeskTheme) => void;
 }
 
 /** One theme for every desk, remembered per browser. Dark until storage says otherwise. */
@@ -16,6 +17,7 @@ export const useDeskTheme = create<DeskThemeStore>()(
     (set) => ({
       theme: "dark",
       toggle: () => set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
+      setTheme: (theme) => set({ theme }),
     }),
     {
       name: "cv.desk.theme",

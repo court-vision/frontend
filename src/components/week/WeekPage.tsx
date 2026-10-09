@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -8,11 +9,17 @@ import { lineupKeys } from "@/hooks/useLineupEditor";
 import { useLiveMatchupQuery, useMatchupQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { useCancelPickupMutation, useSchedulePickupMutation, useScheduledPickupsQuery } from "@/hooks/useScheduledPickups";
+import { useConnectionsQuery } from "@/hooks/useConnections";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
 import { useUIStore } from "@/stores/useUIStore";
 import { userMessage } from "@/lib/api-error";
+import { connectionForTeam, connectionTitle, providerLabel, returnPath, teamName, teamTag, withoutYahooReturn, yahooReturn, type YahooReturn } from "@/lib/account";
+import { yahooConnectErrorMessage } from "@/lib/yahoo-connect";
+import { AddTeamDialog, type AddStart } from "@/components/account/AddTeamDialog";
+import { useLiveAddTeam } from "@/components/account/useAccountModels";
+import type { DeskTeam } from "@/components/desk/TeamSwitch";
 import { staleLineup } from "@/lib/lineup-editor";
 import { sourceFromApi, weekDaysFromApi } from "@/lib/week-source";
 import {
@@ -45,10 +52,13 @@ import type { MarketMode } from "./Market";
 
 export type TerminalStatus = "ready" | "loading" | "signed-out" | "no-team" | "error" | "empty";
 
-export interface TeamOption {
-  id: number;
-  name: string;
-  tag: string;
+export type TeamOption = DeskTeam;
+
+/** Something the team's account needs before its week can be read, and the way there. */
+export interface BarNotice {
+  text: string;
+  action: string;
+  onAction: () => void;
 }
 
 /** Everything the terminal needs from outside: data, each day's lineup, and the writes. */
@@ -59,6 +69,9 @@ export interface TerminalData {
   teamId: number | null;
   teams: TeamOption[];
   selectTeam: (id: number) => void;
+  /** Opens the add-team flow on this desk; null in the demo. */
+  addTeam: (() => void) | null;
+  notice: BarNotice | null;
   /** The week, given today's ESPN lineup. */
   makeSource: (board: LineupState | null) => WeekSource | null;
   /** Each day's ESPN lineup and the lineup writes (ESPN teams). */
@@ -199,6 +212,8 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     teamId: 1,
     teams: [{ id: 1, name: "Paint Beasts", tag: "ESPN · PTS" }],
     selectTeam: () => {},
+    addTeam: null,
+    notice: null,
     makeSource,
     lineup,
     updatedAt: null,
@@ -235,11 +250,41 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
 // Live: the selected team's week from the API
 // ---------------------------------------------------------------------------
 
+const START_PROVIDER: AddStart = { step: "provider" };
+
 function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const { isSignedIn, isLoaded } = useAuth();
+  const pathname = usePathname();
   const selected = useSelectedTeam();
   const setSelectedTeam = useUIStore((s) => s.setSelectedTeam);
+  const connections = useConnectionsQuery();
+  const addModel = useLiveAddTeam();
+  const [add, setAdd] = useState<AddStart | null>(null);
+  // The saved team, if it is still one of yours; else the first. Nothing picked is a state, not a wait.
   const teamId = selected.teamId;
+  const teamsLoaded = isSignedIn === true && !selected.isLoading && !selected.teamsError;
+  useEffect(() => {
+    if (!teamsLoaded || selected.teams.length === 0) return;
+    if (teamId == null || !selected.teams.some((t) => t.team_id === teamId)) setSelectedTeam(selected.teams[0].team_id);
+  }, [teamsLoaded, selected.teams, teamId, setSelectedTeam]);
+
+  // Back from Yahoo's sign-in: the callback appended its verdict to this URL.
+  const [arrival, setArrival] = useState<YahooReturn | null | undefined>(undefined);
+  useEffect(() => {
+    if (arrival !== undefined) return;
+    const search = new URLSearchParams(window.location.search);
+    const back = yahooReturn(search);
+    setArrival(back);
+    if (!back) return;
+    const qs = withoutYahooReturn(search).toString().replace(/=(&|$)/g, "$1");
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    if (back.kind === "connected") {
+      toast.success("Yahoo account connected. Pick the league and the team.");
+      setAdd({ step: "yahoo-league", connectionId: back.connectionId });
+    } else {
+      toast.error(yahooConnectErrorMessage(back.code));
+    }
+  }, [arrival]);
 
   const week = useWeeklyMatchupQuery(teamId);
   const live = useLiveMatchupQuery(teamId);
@@ -333,11 +378,23 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   );
   const cancelMutate = pickupCancel.mutate;
 
-  const teams: TeamOption[] = selected.teams.map((t) => ({
-    id: t.team_id,
-    name: t.league_info?.team_name ?? `Team ${t.team_id}`,
-    tag: `${(t.league_info?.provider ?? "espn").toUpperCase()} · ${t.league?.scoring_type === "categories" ? "CATS" : "PTS"}`,
-  }));
+  const connectionList = connections.data ?? [];
+  const teams: TeamOption[] = selected.teams.map((t) => {
+    const c = connectionForTeam(connectionList, t.team_id);
+    return {
+      id: t.team_id,
+      name: teamName(t),
+      tag: teamTag(t),
+      warn: c?.status === "expired" ? `${providerLabel(c.provider)} rejected the ${connectionTitle(c)}'s ${c.provider === "yahoo" ? "login" : "cookies"}` : null,
+    };
+  });
+  const expired = teamId != null ? connectionForTeam(connectionList, teamId) : null;
+  const notice: BarNotice | null =
+    expired && expired.status === "expired"
+      ? expired.provider === "yahoo"
+        ? { text: "Yahoo rejected the login", action: "Reconnect", onAction: () => setAdd({ step: "yahoo-connect", connectionId: expired.id }) }
+        : { text: "ESPN rejected the cookies", action: "Update", onAction: () => setAdd({ step: "espn-connect", connectionId: expired.id, refresh: true }) }
+      : null;
 
   const data: TerminalData = {
     demo: false,
@@ -346,6 +403,8 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     teamId,
     teams,
     selectTeam: (id) => setSelectedTeam(id),
+    addTeam: () => setAdd(START_PROVIDER),
+    notice,
     makeSource,
     lineup,
     updatedAt: Math.max(week.dataUpdatedAt || 0, live.dataUpdatedAt || 0) || null,
@@ -382,5 +441,19 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   // Everything the terminal holds (staged moves, a picked free agent and its
   // timing, an open confirm, a hovered pickup) is one team's: another team gets
   // a fresh terminal, so nothing staged for one can be sent for the other.
-  return <WeekTerminal key={teamId ?? "none"} data={data} initialView={view} initialMarket={market} />;
+  return (
+    <>
+      <WeekTerminal key={teamId ?? "none"} data={data} initialView={view} initialMarket={market} />
+      <AddTeamDialog
+        open={add != null}
+        onOpenChange={(o) => {
+          if (!o) setAdd(null);
+        }}
+        model={addModel}
+        start={add ?? START_PROVIDER}
+        returnTo={returnPath(pathname, new URLSearchParams(typeof window === "undefined" ? "" : window.location.search), ["view", "market"])}
+        onAdded={(added) => setSelectedTeam(added.teamId)}
+      />
+    </>
+  );
 }

@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
-import * as Popover from "@radix-ui/react-popover";
 import { motion } from "motion/react";
-import { Check, ChevronDown, Flame, Store } from "lucide-react";
+import { AlertTriangle, Flame, Store } from "lucide-react";
+import { TeamSwitch } from "@/components/desk/TeamSwitch";
 import type { LineupMode, WeekDay, WeekGrid } from "@/lib/week-grid";
 import { formatRelativeTime } from "@/lib/relative-time";
-import type { TeamOption } from "./WeekPage";
+import type { BarNotice, TeamOption } from "./WeekPage";
 import { monthDay, periodRange, pts, signed, tip } from "./format";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
@@ -21,6 +21,10 @@ interface BarProps {
   teams: TeamOption[];
   teamId: number | null;
   onTeam: (id: number) => void;
+  /** Opens the add-team flow here; without it the switcher only links to the Account desk. */
+  onAdd?: () => void;
+  /** Something the team's account needs before its week can be read. */
+  notice: BarNotice | null;
   period: number | null;
   days: WeekDay[];
   oppName: string | null;
@@ -30,53 +34,29 @@ interface BarProps {
   container: HTMLElement | null;
 }
 
-export function Bar({ teams, teamId, onTeam, period, days, oppName, liveGames, demo, onRefresh, container }: BarProps) {
-  const [open, setOpen] = useState(false);
-  const team = teams.find((t) => t.id === teamId);
+export function Bar({ teams, teamId, onTeam, onAdd, notice, period, days, oppName, liveGames, demo, onRefresh, container }: BarProps) {
   return (
     <DeskBar
       desk="week"
       demo={demo}
       onRefresh={onRefresh}
       right={
-        liveGames > 0 ? (
-          <span className={dk.badge}>
-            <span className={dk.liveDot} />
-            {liveGames} live
-          </span>
-        ) : null
+        <>
+          {notice ? (
+            <button type="button" className={`${dk.badge} ${dk.badgeWarn}`} onClick={notice.onAction} title={notice.text}>
+              <AlertTriangle size={11} /> {notice.text} · {notice.action}
+            </button>
+          ) : null}
+          {liveGames > 0 ? (
+            <span className={dk.badge}>
+              <span className={dk.liveDot} />
+              {liveGames} live
+            </span>
+          ) : null}
+        </>
       }
     >
-      <Popover.Root open={open} onOpenChange={setOpen}>
-        <Popover.Trigger asChild>
-          <button type="button" className={dk.ghost} disabled={teams.length < 2 && !!team}>
-            <span style={{ fontWeight: 500 }}>{team?.name ?? "Pick a team"}</span>
-            {team ? <span className={dk.sub}>{team.tag}</span> : null}
-            {teams.length > 1 ? <ChevronDown size={14} className={dk.chev} /> : null}
-          </button>
-        </Popover.Trigger>
-        <Popover.Portal container={container}>
-          <Popover.Content className={dk.menu} align="start" sideOffset={6} style={{ width: 280 }}>
-            <div className={dk.menuList}>
-              {teams.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={dk.menuItem}
-                  onClick={() => {
-                    onTeam(t.id);
-                    setOpen(false);
-                  }}
-                >
-                  <span className={dk.grow}>{t.name}</span>
-                  <span className={dk.sub}>{t.tag}</span>
-                  {t.id === teamId ? <Check size={13} /> : <span style={{ width: 13 }} />}
-                </button>
-              ))}
-            </div>
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
+      <TeamSwitch teams={teams} teamId={teamId} onTeam={onTeam} onAdd={onAdd} demo={demo} container={container} />
       {period != null && days.length ? (
         <span className={dk.label} style={{ color: "var(--text-2)" }}>
           Week {period} · {periodRange(days[0].date, days[days.length - 1].date)}

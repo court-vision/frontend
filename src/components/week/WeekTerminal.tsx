@@ -905,8 +905,18 @@ export function WeekTerminal({
     body = (
       <EmptyState
         title="Add a team to see its week"
-        body="Connect an ESPN or Yahoo team and its matchup week shows up here."
-        action={<Link href="/manage-teams" className={`${dk.btn} ${dk.btnPrimary}`} style={{ textDecoration: "none" }}>Add a team</Link>}
+        body="Add an ESPN or Yahoo team and its matchup week shows up here."
+        action={
+          data.addTeam ? (
+            <button type="button" className={`${dk.btn} ${dk.btnPrimary}`} onClick={data.addTeam}>
+              Add a team
+            </button>
+          ) : (
+            <Link href="/me?add" className={`${dk.btn} ${dk.btnPrimary}`} style={{ textDecoration: "none" }}>
+              Add a team
+            </Link>
+          )
+        }
       />
     );
   } else if (data.status === "loading") {
@@ -1089,6 +1099,8 @@ export function WeekTerminal({
         teams={data.teams}
         teamId={data.teamId}
         onTeam={data.selectTeam}
+        onAdd={data.addTeam ?? undefined}
+        notice={data.notice}
         period={source?.period ?? null}
         days={source?.days ?? []}
         oppName={source?.opp.name ?? null}
