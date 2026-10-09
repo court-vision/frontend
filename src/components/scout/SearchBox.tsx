@@ -42,9 +42,9 @@ export function SearchBox({ pool, recent, today, onPick, nameOf, inputRef, onOpe
   const date = useMemo(() => parseDateQuery(q, today), [q, today]);
   const directory = usePlayerSearchQuery(open && q.trim().length >= 2 ? q : "");
   const poolIds = useMemo(() => new Set(poolHits.map((p) => p.id)), [poolHits]);
-  const directoryHits = (directory.data?.players ?? []).filter((p) => !poolIds.has(p.id)).slice(0, 5);
+  const directoryHits = (directory.data?.query === q.trim() ? directory.data.players : []).filter((p) => !poolIds.has(p.id)).slice(0, 5);
   const empty = q.trim().length === 0;
-  const nothing = !empty && poolHits.length === 0 && teamHits.length === 0 && !date && directoryHits.length === 0 && !directory.isFetching;
+  const nothing = q.trim().length >= 2 && poolHits.length === 0 && teamHits.length === 0 && !date && directoryHits.length === 0 && !directory.isFetching;
 
   const measure = useCallback(() => {
     const el = inputRef.current;

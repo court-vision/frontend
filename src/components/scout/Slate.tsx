@@ -110,6 +110,8 @@ export function SlateOverview({ today, open, live }: { today: string; open: (foc
         <Block title="Last night" note={`${dow(dates[0])} ${monthDay(dates[0])}`}>
           {yesterday.isLoading ? (
             <Skeleton rows={3} className={s.ledgerSkel} />
+          ) : yesterday.error ? (
+            <div className={dk.error}>{userMessage(yesterday.error, "Couldn't load last night")}</div>
           ) : !yesterday.data || yesterday.data.games.length === 0 ? (
             <div className={s.blockEmpty}>No games last night.</div>
           ) : (
@@ -127,8 +129,9 @@ export function SlateOverview({ today, open, live }: { today: string; open: (foc
                     <span className={s.teamAbbrev}>{dow(d).toUpperCase()}</span>
                     <span className={s.muted}>{monthDay(d)}</span>
                   </span>
-                  <span className={s.aheadCount}>{q.isLoading ? "…" : `${list.length}`}</span>
+                  <span className={s.aheadCount}>{q.isLoading ? "…" : q.error ? "!" : `${list.length}`}</span>
                   <span className={s.aheadGames}>
+                    {q.error ? <span className={dk.error}>{userMessage(q.error, "Couldn't load this night")}</span> : null}
                     {list.map((g) => (
                       <button key={g.game_id ?? `${g.away_team}@${g.home_team}`} type="button" className={s.aheadChip} onClick={() => open(gameFocus(d, g.game_id, g.away_team, g.home_team))} title={`${g.away_team} at ${g.home_team}${g.start_time_et ? ` · ${tipText(g.start_time_et)} ET` : ""}`}>
                         <TeamLogo abbrev={g.away_team} size={12} />
@@ -138,7 +141,7 @@ export function SlateOverview({ today, open, live }: { today: string; open: (foc
                         {g.home_team}
                       </button>
                     ))}
-                    {!q.isLoading && list.length === 0 ? <span className={s.muted}>off</span> : null}
+                    {!q.isLoading && !q.error && list.length === 0 ? <span className={s.muted}>off</span> : null}
                   </span>
                 </div>
               );
@@ -590,7 +593,8 @@ function MarginChart({ data }: { data: NBATeamLiveGameData }) {
   const pts = data.score_history.map((snap) => snap.away_score - snap.home_score);
   const W = 1000;
   const H = 120;
-  const max = Math.max(5, ...pts.map((v) => Math.abs(v)));
+  const largest = Math.max(0, ...pts.map((v) => Math.abs(v)));
+  const max = Math.max(5, largest);
   const x = (i: number) => (pts.length === 1 ? W / 2 : (i / (pts.length - 1)) * W);
   const y = (v: number) => H / 2 - (v / max) * (H / 2 - 6);
   const path = pts.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
@@ -606,7 +610,7 @@ function MarginChart({ data }: { data: NBATeamLiveGameData }) {
           {last > 0 ? `${data.away_team} +${last}` : last < 0 ? `${data.home_team} +${-last}` : "tied"}
         </span>
         <span className={dk.spacer} />
-        <span>largest lead ±{max}</span>
+        <span>largest lead {largest}</span>
       </div>
     </>
   );

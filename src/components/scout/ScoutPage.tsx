@@ -159,8 +159,11 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
 
   useEffect(() => {
     const onPop = () => {
-      setFocusState(focusFromSearch(new URLSearchParams(window.location.search)));
+      const f = focusFromSearch(new URLSearchParams(window.location.search));
+      setFocusState(f);
       setCompare(false);
+      setPane(f ? "sheet" : "list");
+      if (f?.kind === "game") setSlateDay(f.date);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -225,6 +228,8 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
       }
       if (L.searchOpen || e.metaKey || e.ctrlKey || e.altKey) return;
       if (typing(e.target)) return;
+      // Enter or space on a focused button or link is that control's, not the ledger's.
+      if ((e.key === "Enter" || e.key === " ") && e.target instanceof HTMLElement && (e.target.closest("button, a, [role='button'], [role='radio']"))) return;
       switch (e.key) {
         case "/":
           e.preventDefault();

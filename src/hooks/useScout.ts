@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { getTodayDate } from "@/hooks/useGames";
 import { addDays } from "@/lib/scout";
@@ -27,7 +27,6 @@ export function usePlayerSearchQuery(q: string) {
     queryFn: ({ signal }) => apiClient.searchPlayers(term, 12, { signal }),
     enabled: term.length >= 2,
     staleTime: 1000 * 60 * 10,
-    placeholderData: keepPreviousData,
     meta: { toast: false },
   });
 }
@@ -102,7 +101,8 @@ export function useEspnMarketMoversQuery(
  */
 export function useLiveLeadersQuery(enabled: boolean = true) {
   return useQuery({
-    queryKey: ["live", "players", "today", "all"],
+    // Its own key: the old terminal caches a bare list under ["live", "players", "today", "all"].
+    queryKey: ["live", "players", "today", "scout"],
     queryFn: async ({ signal }) => {
       const data = await apiClient.getLivePlayersToday({ signal });
       return { gameDate: data.game_date, players: [...data.players].sort((a, b) => b.fpts - a.fpts) };

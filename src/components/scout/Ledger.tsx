@@ -126,7 +126,10 @@ function PoolLedger({ focus, open, cursor, setCursor, onRows, pool, lens }: Ledg
               setQ("");
               (e.target as HTMLInputElement).blur();
             }
-            if (e.key === "Enter" && rows[cursor - 1]) open({ kind: "player", id: rows[cursor - 1].id });
+            if (e.key === "Enter") {
+              if (cursor === 0) open(overview);
+              else if (rows[cursor - 1]) open({ kind: "player", id: rows[cursor - 1].id });
+            }
             if (e.key === "ArrowDown") {
               e.preventDefault();
               setCursor(Math.min(rows.length, cursor + 1));
