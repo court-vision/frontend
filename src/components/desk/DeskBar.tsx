@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Braces, Moon, RotateCw, Sparkles, Sun } from "lucide-react";
+import { Braces, RotateCw, Sparkles } from "lucide-react";
 import { DESKS, DEVELOPER, type DeskId } from "./routes";
-import { useDeskTheme } from "./useDeskTheme";
+import { ThemePicker } from "./ThemePicker";
 import dk from "./desk.module.css";
 
 interface DeskBarProps {
@@ -23,8 +23,6 @@ interface DeskBarProps {
  * when it does not fit, so no control is squeezed or pushed off screen.
  */
 export function DeskBar({ desk, demo = false, children, right, onRefresh }: DeskBarProps) {
-  const theme = useDeskTheme((s) => s.theme);
-  const toggle = useDeskTheme((s) => s.toggle);
   return (
     <header className={dk.bar}>
       <Link href="/" className={dk.mark} title="Back to Court Vision">
@@ -58,9 +56,7 @@ export function DeskBar({ desk, demo = false, children, right, onRefresh }: Desk
             <RotateCw size={14} />
           </button>
         ) : null}
-        <button type="button" className={dk.iconBtn} onClick={toggle} aria-label="Switch theme" title="Theme (T)">
-          {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-        </button>
+        <ThemePicker />
         <Link
           href={demo ? `${DEVELOPER.href}?demo` : DEVELOPER.href}
           className={`${dk.iconBtn} ${dk.iconLink}`}

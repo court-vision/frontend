@@ -1230,7 +1230,7 @@
   display: flex;
   flex-direction: column;
   border-radius: 12px;
-  background: var(--surface);
+  background: var(--raised);
   box-shadow: var(--shadow);
   color: var(--text);
   outline: none;
@@ -1444,7 +1444,7 @@
   display: flex;
   flex-direction: column;
   border-radius: 9px;
-  background: var(--surface);
+  background: var(--raised);
   box-shadow: var(--shadow);
   color: var(--text);
   overflow: hidden;

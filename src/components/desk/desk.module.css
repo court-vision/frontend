@@ -6,28 +6,6 @@
  */
 
 .root {
-  --bg: #08090b;
-  --surface: #0d0f12;
-  --surface-2: #121519;
-  --hover: #15191e;
-  --hover-col: #111418;
-  --line: #1a1e24;
-  --line-2: #262b33;
-  --text: #e8eaed;
-  --text-2: #a3aab5;
-  --text-3: #7a828e;
-  --accent: #6e9bff;
-  --accent-soft: rgba(110, 155, 255, 0.14);
-  --up: #2fd08b;
-  --down: #ff6464;
-  --live: #2fd08b;
-  --warn: #f2b33d;
-  --preview: #b794ff;
-  --preview-soft: rgba(183, 148, 255, 0.09);
-  --today: #0f1216;
-  --today-head: #11151a;
-  --shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line-2);
-
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -38,10 +16,167 @@
   font-family: var(--desk-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Themes. Every desk color is a token, and a theme is one block of them keyed
+ * by `data-theme` on an element carrying `.tokens`: the frame, and each swatch
+ * in the theme picker (a small preview drawn in its own theme's tokens). The
+ * picker's list and each theme's scheme live in themes.ts; the ids are what
+ * storage remembers, so never rename one.
+ *
+ * Weight, lightest touch first: --bg (rows) · --surface (chrome: bars, heads,
+ * panes) · --surface-2 (chips, inputs, rails) · --pill (the chosen segment).
+ * --raised floats (menus, dialogs, toasts). --line divides rows and --line-2
+ * outlines controls: the newer themes hold them near 1.5:1 and 2.2:1 against
+ * what they sit on, where the originals were under 1.2:1 and 1.45:1.
+ *
+ * Effects are tokens too: --glow lights the accent marks, --bar-bg paints the
+ * bar, and a theme may re-scope the tokens of the bar and status line.
+ */
+.tokens {
+  --bg: #08090b;
+  --surface: #0d0f12;
+  --surface-2: #121519;
+  --raised: var(--surface);
+  --pill: var(--surface);
+  --hover: #15191e;
+  --hover-col: #111418;
+  --line: #1a1e24;
+  --line-2: #262b33;
+  --text: #e8eaed;
+  --text-2: #a3aab5;
+  --text-3: #7a828e;
+  --accent: #6e9bff;
+  --accent-soft: rgba(110, 155, 255, 0.14);
+  --accent-ink: #05070a;
+  --up: #2fd08b;
+  --down: #ff6464;
+  --live: #2fd08b;
+  --warn: #f2b33d;
+  --preview: #b794ff;
+  --preview-soft: rgba(183, 148, 255, 0.09);
+  --today: #0f1216;
+  --today-head: #11151a;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line-2);
+  --overlay: rgba(3, 4, 6, 0.6);
+  --glow: none;
   color-scheme: dark;
 }
 
-.root[data-theme="light"] {
+/* ---- light */
+
+.tokens[data-theme="paper"] {
+  --bg: #f6f3ec;
+  --surface: #ece7dc;
+  --surface-2: #e3ddcf;
+  --raised: #fcfaf6;
+  --pill: #fcfaf6;
+  --hover: #ece6d9;
+  --hover-col: #f1ede4;
+  --line: #d0c6b3;
+  --line-2: #ada18b;
+  --text: #1e1a15;
+  --text-2: #4c443a;
+  --text-3: #6b6254;
+  --accent: #b4471a;
+  --accent-soft: rgba(180, 71, 26, 0.11);
+  --accent-ink: #ffffff;
+  --up: #17784a;
+  --down: #c0322b;
+  --live: #17784a;
+  --warn: #8f5f00;
+  --preview: #6a45c2;
+  --preview-soft: rgba(106, 69, 194, 0.08);
+  --today: #f9eedb;
+  --today-head: #f0dec2;
+  --shadow: 0 14px 40px rgba(60, 45, 25, 0.16), 0 0 0 1px var(--line-2);
+  --overlay: rgba(40, 32, 20, 0.32);
+  color-scheme: light;
+}
+
+.tokens[data-theme="fog"] {
+  --bg: #eef1f5;
+  --surface: #e2e7ee;
+  --surface-2: #d7dee7;
+  --raised: #f9fbfd;
+  --pill: #f9fbfd;
+  --hover: #e3e8ef;
+  --hover-col: #e8ecf2;
+  --line: #c0c9d5;
+  --line-2: #97a3b3;
+  --text: #0f172a;
+  --text-2: #3a4659;
+  --text-3: #566275;
+  --accent: #0a6e9e;
+  --accent-soft: rgba(10, 110, 158, 0.1);
+  --accent-ink: #ffffff;
+  --up: #0b7a4b;
+  --down: #c42f3b;
+  --live: #0b7a4b;
+  --warn: #8d5700;
+  --preview: #6b45d1;
+  --preview-soft: rgba(107, 69, 209, 0.08);
+  --today: #e3edf6;
+  --today-head: #d3e3f1;
+  --shadow: 0 14px 40px rgba(15, 23, 42, 0.14), 0 0 0 1px var(--line-2);
+  --overlay: rgba(15, 23, 42, 0.3);
+  color-scheme: light;
+}
+
+/* Light stone under a dark scoreboard: the bar and status line re-scope to dark tokens. */
+.tokens[data-theme="pressbox"] {
+  --bg: #f3f2ef;
+  --surface: #e9e8e4;
+  --surface-2: #dfddd8;
+  --raised: #fbfaf8;
+  --pill: #fbfaf8;
+  --hover: #e8e6e1;
+  --hover-col: #eceae6;
+  --line: #ccc8c0;
+  --line-2: #a19c92;
+  --text: #16161a;
+  --text-2: #45454d;
+  --text-3: #62626b;
+  --accent: #1f5fe0;
+  --accent-soft: rgba(31, 95, 224, 0.1);
+  --accent-ink: #ffffff;
+  --up: #0e7a46;
+  --down: #c8312f;
+  --live: #0e7a46;
+  --warn: #8f5b00;
+  --preview: #6d43d6;
+  --preview-soft: rgba(109, 67, 214, 0.08);
+  --today: #e8edf8;
+  --today-head: #d9e2f5;
+  --shadow: 0 14px 40px rgba(20, 20, 26, 0.16), 0 0 0 1px var(--line-2);
+  --overlay: rgba(16, 16, 20, 0.36);
+  color-scheme: light;
+}
+
+.tokens[data-theme="pressbox"] :is(.bar, .status, .swatchBar) {
+  --surface: #1a1b1f;
+  --surface-2: #26282d;
+  --pill: #34373d;
+  --hover: #2a2c32;
+  --line: #0e0f11;
+  --line-2: #44474f;
+  --text: #f3f3f4;
+  --text-2: #babbc2;
+  --text-3: #8e8f98;
+  --accent: #7aa5ff;
+  --accent-soft: rgba(122, 165, 255, 0.18);
+  --accent-ink: #0b1020;
+  --up: #3ad493;
+  --down: #ff7474;
+  --live: #3ad493;
+  --warn: #f4bb4a;
+  --preview: #c4a6ff;
+  color-scheme: dark;
+}
+
+/* The first desk palettes, kept under their original ids. */
+.tokens[data-theme="light"] {
   --bg: #f3f4f6;
   --surface: #ffffff;
   --surface-2: #f8f9fa;
@@ -54,6 +189,7 @@
   --text-3: #66707c;
   --accent: #2457e6;
   --accent-soft: rgba(36, 87, 230, 0.1);
+  --accent-ink: #ffffff;
   --up: #0c8a52;
   --down: #d33535;
   --live: #0c8a52;
@@ -64,6 +200,123 @@
   --today-head: #f2f5fa;
   --shadow: 0 12px 40px rgba(16, 24, 40, 0.14), 0 0 0 1px var(--line-2);
   color-scheme: light;
+}
+
+/* ---- dark (the original dark is the .tokens defaults above) */
+
+.tokens[data-theme="graphite"] {
+  --bg: #16181c;
+  --surface: #1d2025;
+  --surface-2: #272b31;
+  --raised: #24282e;
+  --pill: #353a42;
+  --hover: #22262c;
+  --hover-col: #1a1d22;
+  --line: #33383f;
+  --line-2: #4f5560;
+  --text: #eceef1;
+  --text-2: #b4bac4;
+  --text-3: #8d949f;
+  --accent: #7ea6ff;
+  --accent-soft: rgba(126, 166, 255, 0.16);
+  --accent-ink: #0b1020;
+  --up: #3ad493;
+  --down: #ff7474;
+  --live: #3ad493;
+  --warn: #f4bb4a;
+  --preview: #bf9fff;
+  --preview-soft: rgba(191, 159, 255, 0.11);
+  --today: #1a1f29;
+  --today-head: #232a3a;
+  --shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--line-2);
+  --overlay: rgba(8, 9, 11, 0.6);
+}
+
+.tokens[data-theme="midnight"] {
+  --bg: #0f1729;
+  --surface: #162039;
+  --surface-2: #1e2a47;
+  --raised: #1c2744;
+  --pill: #2b3a5e;
+  --hover: #1b2541;
+  --hover-col: #131c33;
+  --line: #2a3755;
+  --line-2: #43537a;
+  --text: #e8eef8;
+  --text-2: #adbad2;
+  --text-3: #8696b4;
+  --accent: #5cc8ff;
+  --accent-soft: rgba(92, 200, 255, 0.15);
+  --accent-ink: #04121f;
+  --up: #3ddc97;
+  --down: #ff6b7a;
+  --live: #3ddc97;
+  --warn: #ffc35c;
+  --preview: #c6aaff;
+  --preview-soft: rgba(198, 170, 255, 0.11);
+  --today: #13223d;
+  --today-head: #1a2d50;
+  --shadow: 0 16px 48px rgba(2, 6, 16, 0.6), 0 0 0 1px var(--line-2);
+  --overlay: rgba(4, 8, 18, 0.62);
+  --glow: 0 0 14px rgba(92, 200, 255, 0.45);
+  --bar-bg: linear-gradient(180deg, #1c294a, #162039);
+}
+
+.tokens[data-theme="ember"] {
+  --bg: #1b1815;
+  --surface: #24201c;
+  --surface-2: #2e2a25;
+  --raised: #2c2823;
+  --pill: #3d3730;
+  --hover: #29251f;
+  --hover-col: #201d19;
+  --line: #3c362f;
+  --line-2: #585047;
+  --text: #f3ede5;
+  --text-2: #c3b9ac;
+  --text-3: #9d9284;
+  --accent: #f5a524;
+  --accent-soft: rgba(245, 165, 36, 0.15);
+  --accent-ink: #1b1206;
+  --up: #4cc38a;
+  --down: #f2685a;
+  --live: #4cc38a;
+  --warn: #ead06b;
+  --preview: #cba4ff;
+  --preview-soft: rgba(203, 164, 255, 0.1);
+  --today: #241e15;
+  --today-head: #31281a;
+  --shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--line-2);
+  --overlay: rgba(12, 10, 8, 0.62);
+}
+
+.tokens[data-theme="volt"] {
+  --bg: #0b0c0e;
+  --surface: #141619;
+  --surface-2: #1d2024;
+  --raised: #191c20;
+  --pill: #2b2f35;
+  --hover: #1a1d21;
+  --hover-col: #111316;
+  --line: #30353c;
+  --line-2: #50565f;
+  --text: #f5f6f7;
+  --text-2: #bcc1c8;
+  --text-3: #8f959f;
+  --accent: #d7ff3d;
+  --accent-soft: rgba(215, 255, 61, 0.13);
+  --accent-ink: #0b0c0e;
+  --up: #2fe0c0;
+  --down: #ff5d73;
+  --live: #2fe0c0;
+  --warn: #ffb547;
+  --preview: #b28eff;
+  --preview-soft: rgba(178, 142, 255, 0.11);
+  --today: #12140c;
+  --today-head: #1a1e0e;
+  --shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--line-2);
+  --overlay: rgba(0, 0, 0, 0.66);
+  --glow: 0 0 16px rgba(215, 255, 61, 0.42);
 }
 
 /* A desk's own column: everything between the bar and the status line. */
@@ -136,7 +389,7 @@
   height: 46px;
   padding: 0 16px;
   border-bottom: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--bar-bg, var(--surface));
   flex-shrink: 0;
 }
 
@@ -157,6 +410,7 @@
   background: var(--accent);
   transform: rotate(45deg);
   border-radius: 1.5px;
+  box-shadow: var(--glow);
 }
 
 /*
@@ -235,6 +489,7 @@
   height: 2px;
   border-radius: 2px 2px 0 0;
   background: var(--accent);
+  box-shadow: var(--glow);
 }
 
 .ghost {
@@ -416,7 +671,7 @@
   position: absolute;
   inset: 0;
   border-radius: 5px;
-  background: var(--surface);
+  background: var(--pill);
   box-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(0, 0, 0, 0.3);
   z-index: 0;
 }
@@ -461,7 +716,8 @@
 .btnPrimary {
   border-color: var(--accent);
   background: var(--accent);
-  color: #ffffff;
+  color: var(--accent-ink);
+  box-shadow: var(--glow);
 }
 
 .btnPrimary:hover:not(:disabled) {
@@ -470,12 +726,7 @@
 
 .btnPrimary:disabled {
   opacity: 0.55;
-  color: #ffffff;
-}
-
-.root[data-theme="dark"] .btnPrimary,
-.root[data-theme="dark"] .btnPrimary:disabled {
-  color: #05070a;
+  box-shadow: none;
 }
 
 .btnDanger {
@@ -587,7 +838,7 @@
   display: flex;
   flex-direction: column;
   border-radius: 9px;
-  background: var(--surface);
+  background: var(--raised);
   box-shadow: var(--shadow);
   color: var(--text);
   font-size: 12.5px;
@@ -697,13 +948,186 @@ button.menuItem:hover:not(:disabled) {
   line-height: 1.45;
 }
 
+/* ---------------------------------------------------------------- theme picker */
+
+.themeMenu {
+  width: min(392px, calc(100vw - 16px));
+  max-height: min(760px, var(--radix-popover-content-available-height));
+}
+
+.themeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 0 4px 6px;
+}
+
+.themeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.themeCard:hover {
+  border-color: var(--line-2);
+  background: var(--hover);
+}
+
+.themeCard[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.themeCard:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.themeName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.themeName svg {
+  color: var(--accent);
+}
+
+.themeNote {
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* A desk in miniature, drawn in the swatch's own theme tokens. */
+.swatch {
+  display: flex;
+  flex-direction: column;
+  height: 68px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--bg);
+  box-shadow: 0 0 0 1px var(--line-2);
+}
+
+.swatchBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 12px;
+  padding: 0 6px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--bar-bg, var(--surface));
+}
+
+.swatchGlyph {
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--accent);
+  transform: rotate(45deg);
+  box-shadow: var(--glow);
+}
+
+.swatchTab {
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--text-2);
+}
+
+.swatchHead,
+.swatchRow {
+  display: grid;
+  grid-template-columns: 1fr 36%;
+  align-items: center;
+  height: 11px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.swatchHead {
+  background: var(--surface);
+}
+
+.swatchToday {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 5px;
+  border-left: 1px solid var(--line);
+  background: var(--today);
+}
+
+.swatchHead .swatchToday {
+  background: var(--today-head);
+  box-shadow: inset 0 1.5px 0 var(--accent);
+}
+
+.swatchText {
+  height: 3px;
+  margin-left: 6px;
+  border-radius: 1px;
+  background: var(--text-3);
+}
+
+.swatchValue {
+  width: 11px;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--up);
+}
+
+.swatchValue[data-tone="down"] {
+  background: var(--down);
+}
+
+.swatchFoot {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  background: var(--surface);
+}
+
+.swatchChip {
+  width: 22px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  box-shadow: 0 0 0 1px var(--line-2);
+}
+
+.swatchButton {
+  margin-left: auto;
+  width: 18px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: var(--glow);
+}
+
 /* ---------------------------------------------------------------- dialogs */
 
 .overlay {
   position: fixed;
   inset: 0;
   z-index: 90;
-  background: rgba(3, 4, 6, 0.6);
+  background: var(--overlay);
   backdrop-filter: blur(2px);
   animation: fadeIn 140ms ease-out;
 }
@@ -723,7 +1147,7 @@ button.menuItem:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   border-radius: 12px;
-  background: var(--surface);
+  background: var(--raised);
   box-shadow: var(--shadow);
   color: var(--text);
   outline: none;
@@ -861,7 +1285,7 @@ button.menuItem:hover:not(:disabled) {
   width: 356px;
   padding: 11px 14px;
   border-radius: 9px;
-  background: var(--surface);
+  background: var(--raised);
   box-shadow: var(--shadow);
   color: var(--text);
   font-family: var(--desk-sans), ui-sans-serif, system-ui, sans-serif;
