@@ -98,9 +98,13 @@ function DevDesk({ demo, initial, keys, query }: { demo: boolean; initial: DevIn
   useEffect(() => {
     const onPop = () => {
       const p = new URLSearchParams(window.location.search);
-      setViewState(isView(p.get("view")) ? (p.get("view") as DevView) : "overview");
-      setOpId(p.get("op"));
-      setGuideId(p.get("g"));
+      const v = isView(p.get("view")) ? (p.get("view") as DevView) : "overview";
+      const op = p.get("op");
+      const g = p.get("g");
+      setViewState(v);
+      setOpId(op);
+      setGuideId(g);
+      setPane(v === "reference" || v === "playground" ? (op || g ? "sheet" : "list") : v === "query" ? "list" : "sheet");
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -225,7 +229,7 @@ function DevDesk({ demo, initial, keys, query }: { demo: boolean; initial: DevIn
         {spec.isError ? <span className={dk.error}>Couldn&apos;t read the API&apos;s OpenAPI document: {userMessage(spec.error, "unreachable")}</span> : null}
       </div>
 
-      <div className={`${s.body} ${hasLedger ? "" : s.bodyWide} ${dk.desk}`} data-pane={pane}>
+      <div className={`${s.body} ${hasLedger ? "" : s.bodyWide} ${dk.desk}`} data-pane={hasLedger ? pane : "sheet"}>
         {hasLedger ? (
           <aside className={s.ledger}>
             {view === "reference" ? (

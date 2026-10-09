@@ -398,12 +398,35 @@ export function fetchSnippet(url: string, method: Method, key: string | null, bo
   return `const res = await fetch("${url}", {\n  ${opts.join(",\n  ")},\n});\nconst { status, data } = await res.json();`;
 }
 
+/** JSON text as a Python literal: true/false/null become True/False/None; non-JSON passes through. */
+export function pythonLiteral(json: string): string {
+  let value: unknown;
+  try {
+    value = JSON.parse(json);
+  } catch {
+    return json;
+  }
+  const py = (v: unknown, depth: number): string => {
+    if (v === null) return "None";
+    if (v === true) return "True";
+    if (v === false) return "False";
+    if (typeof v === "number") return String(v);
+    if (typeof v === "string") return JSON.stringify(v);
+    const pad = "  ".repeat(depth + 1);
+    const end = "  ".repeat(depth);
+    if (Array.isArray(v)) return v.length ? `[\n${v.map((x) => pad + py(x, depth + 1)).join(",\n")}\n${end}]` : "[]";
+    const entries = Object.entries(v as Record<string, unknown>);
+    return entries.length ? `{\n${entries.map(([k, x]) => `${pad}${JSON.stringify(k)}: ${py(x, depth + 1)}`).join(",\n")}\n${end}}` : "{}";
+  };
+  return py(value, 0);
+}
+
 export function pythonSnippet(url: string, method: Method, key: string | null, body: string | null): string {
   const headers: string[] = [`"Accept": "application/json"`];
   if (key) headers.push(`"X-API-Key": "${key}"`);
   const call = method === "GET" ? "get" : method.toLowerCase();
   const args = [`"${url}"`, `headers={${headers.join(", ")}}`];
-  if (body != null && method !== "GET") args.push(`json=${body}`);
+  if (body != null && method !== "GET") args.push(`json=${pythonLiteral(body)}`);
   return `import requests\n\nres = requests.${call}(${args.join(", ")})\nres.raise_for_status()\ndata = res.json()["data"]`;
 }
 

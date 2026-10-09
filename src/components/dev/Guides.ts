@@ -15,7 +15,7 @@ export const GUIDES: Guide[] = [
     id: "quickstart",
     title: "Quickstart",
     summary: "One request, no key.",
-    body: `Everything under \`/v1\` that is not \`/v1/internal\` is public. No account, no key: call it.
+    body: `Everything under \`/v1\` is public except \`/v1/internal\` (the app's own routes) and the two \`/v1/analytics\` routes, which take a key. No account, no key: call it.
 
 \`\`\`bash
 curl 'https://api.courtvision.dev/v1/rankings/?window=14' -H 'Accept: application/json'

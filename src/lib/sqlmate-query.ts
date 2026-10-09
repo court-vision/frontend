@@ -264,3 +264,17 @@ export function cellText(v: unknown): string {
 export function isResultTable(t: Table | null | undefined): t is Table {
   return !!t && Array.isArray(t.columns) && Array.isArray(t.rows);
 }
+
+/** A result as CSV. Rows arrive as arrays in column order (objects keyed by column are read too). */
+export function tableToCsv(table: Table): string {
+  const cell = (v: unknown): string => {
+    if (v == null) return "";
+    const text = typeof v === "string" ? v : typeof v === "object" ? JSON.stringify(v) : String(v);
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const head = table.columns.map(cell).join(",");
+  const body = table.rows.map((row) =>
+    table.columns.map((c, i) => cell(Array.isArray(row) ? row[i] : (row as Record<string, unknown>)[c])).join(",")
+  );
+  return [head, ...body].join("\n");
+}

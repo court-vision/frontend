@@ -198,3 +198,12 @@ describe("requests", () => {
     expect(fmtBytes(1229)).toBe("1.2 KB");
   });
 });
+
+describe("python literals", () => {
+  test("booleans and nulls become Python's, strings stay quoted", async () => {
+    const { pythonLiteral, pythonSnippet } = await import("@/lib/openapi");
+    expect(pythonLiteral('{"team_id": 1, "use_recent_stats": false, "note": null, "tags": ["a"]}')).toBe('{\n  "team_id": 1,\n  "use_recent_stats": False,\n  "note": None,\n  "tags": [\n    "a"\n  ]\n}');
+    expect(pythonLiteral("not json")).toBe("not json");
+    expect(pythonSnippet("u", "POST", null, '{"ok": true}')).toContain('json={\n  "ok": True\n}');
+  });
+});

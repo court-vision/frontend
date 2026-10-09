@@ -268,22 +268,33 @@ export function runDemoQuery(req: QueryRequest): QueryResponse {
   if (!parts.length) return { status: { status: "error", message: "No query parameters provided" } };
   for (const p of parts) if (!DEMO_ROWS[p.table]) return { status: { status: "error", message: `Table is not available: ${p.table}` } };
 
-  // Filter each table, then join left to right on the shared key.
+  // Filter each table, then join each next one to whichever earlier table it relates to.
   let rows: Row[] = DEMO_ROWS[parts[0].table]
     .filter((r) => (parts[0].constraints ?? []).every((c) => compare(r[c.attribute], c.operator, c.value)))
     .map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [`${parts[0].table}.${k}`, v])));
+  const joined: string[] = [parts[0].table];
   for (const p of parts.slice(1)) {
     const right = DEMO_ROWS[p.table].filter((r) => (p.constraints ?? []).every((c) => compare(r[c.attribute], c.operator, c.value)));
-    const keys = joinKeys(parts[0].table, p.table);
-    const joined: Row[] = [];
+    let via: { table: string; keys: [string, string] } | null = null;
+    for (const t of joined) {
+      const keys = joinKeys(t, p.table);
+      // A wildcard relation only counts when both sides really have the column.
+      if (keys && keys[0] in (DEMO_ROWS[t][0] ?? {}) && keys[1] in (DEMO_ROWS[p.table][0] ?? {})) {
+        via = { table: t, keys };
+        break;
+      }
+    }
+    if (!via) return { status: { status: "error", message: `No join path between ${joined.join(", ")} and ${p.table}` } };
+    const out: Row[] = [];
     for (const l of rows) {
       for (const r of right) {
-        if (!keys || l[`${parts[0].table}.${keys[0]}`] === r[keys[1]]) {
-          joined.push({ ...l, ...Object.fromEntries(Object.entries(r).map(([k, v]) => [`${p.table}.${k}`, v])) });
+        if (l[`${via.table}.${via.keys[0]}`] === r[via.keys[1]]) {
+          out.push({ ...l, ...Object.fromEntries(Object.entries(r).map(([k, v]) => [`${p.table}.${k}`, v])) });
         }
       }
     }
-    rows = joined;
+    rows = out;
+    joined.push(p.table);
   }
 
   // Columns in canvas order; aggregates collapse by the group-by columns.

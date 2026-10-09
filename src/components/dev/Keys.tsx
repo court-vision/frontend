@@ -36,6 +36,7 @@ export function KeysSheet({ model, openPlayground }: { model: KeysModel; openPla
   const [error, setError] = useState<string | null>(null);
   const [made, setMade] = useState<{ raw: string; key: ApiKeyListItem } | null>(null);
   const [confirm, setConfirm] = useState<ApiKeyListItem | null>(null);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
   const setSessionKey = useSessionKey((st) => st.setKey);
 
   const create = async () => {
@@ -130,7 +131,12 @@ export function KeysSheet({ model, openPlayground }: { model: KeysModel; openPla
           <Skeleton rows={3} className={s.ledgerSkel} />
         ) : model.error ? (
           <div className={dk.error}>{model.error}</div>
-        ) : model.keys.length === 0 ? (
+        ) : revokeError ? (
+          <div className={dk.error} style={{ marginBottom: 10 }}>
+            {revokeError}
+          </div>
+        ) : null}
+        {model.loading || model.error ? null : model.keys.length === 0 ? (
           <div className={s.blockEmpty}>No keys yet. Make one when you want to call the Analytics routes from your own code.</div>
         ) : (
           <div className={s.keyList}>
@@ -240,9 +246,11 @@ export function KeysSheet({ model, openPlayground }: { model: KeysModel; openPla
             className={`${dk.btn} ${dk.btnDanger}`}
             onClick={() => {
               if (confirm) {
-                void model.revoke(confirm.id);
+                const id = confirm.id;
+                setRevokeError(null);
+                model.revoke(id).catch((e) => setRevokeError(`${confirm.name} was not revoked: ${e instanceof Error ? e.message : "the request failed"}`));
                 // The reveal of a key just revoked has nothing left to say.
-                if (made?.key.id === confirm.id) setMade(null);
+                if (made?.key.id === id) setMade(null);
               }
               setConfirm(null);
             }}

@@ -143,3 +143,33 @@ describe("demo evaluator", () => {
     expect(runDemoQuery({ query_params: [] }).status.status).toBe("error");
   });
 });
+
+describe("csv and chained joins", () => {
+  test("csv reads array rows by position and quotes what needs it", async () => {
+    const { tableToCsv } = await import("@/lib/sqlmate-query");
+    const csv = tableToCsv({ query: "", columns: ["name", "pts"], rows: [["Nikola Jokić", 27.7], ['Say "hi", Luka', null]] });
+    expect(csv).toBe('name,pts\nNikola Jokić,27.7\n"Say ""hi"", Luka",');
+    expect(tableToCsv({ query: "", columns: ["a"], rows: [{ a: 1 }] })).toBe("a\n1");
+  });
+
+  test("a third table joins through the second; an unrelated one is refused", () => {
+    const res = runDemoQuery({
+      query_params: [
+        { table: "nba.players", attributes: [{ attribute: "name", alias: "" }], constraints: [{ attribute: "name", operator: "PREFIX", value: "Nikola" }] },
+        { table: "nba.player_season_stats", attributes: [{ attribute: "fpts", alias: "" }], constraints: [] },
+        { table: "nba.teams", attributes: [{ attribute: "name", alias: "" }], constraints: [] },
+      ],
+      options: { limit: 10 },
+    });
+    expect(res.status.status).toBe("success");
+    expect(res.table?.rows).toEqual([["Nikola Jokić", Math.round(66.3 * 65), "Denver Nuggets"]]);
+    const bad = runDemoQuery({
+      query_params: [
+        { table: "nba.games", attributes: [{ attribute: "game_id", alias: "" }], constraints: [] },
+        { table: "nba.player_injuries", attributes: [{ attribute: "status", alias: "" }], constraints: [] },
+      ],
+    });
+    expect(bad.status.status).toBe("error");
+    expect(bad.status.message).toContain("No join path");
+  });
+});

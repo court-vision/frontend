@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, Download, PanelRight, Play, Plus, Save, Trash2, X } from "lucide-react";
 import { DeskDialog } from "@/components/desk/DeskDialog";
 import { useDeskPortal } from "@/components/desk/DeskFrame";
-import { downloadTableAsCSV } from "@/lib/csvUtils";
 import {
   AGGREGATES,
   OPERATORS,
@@ -29,6 +28,7 @@ import {
   setAlias,
   setLimit,
   shortTable,
+  tableToCsv,
   toRequest,
   toggleColumn,
   toggleGroupBy,
@@ -179,14 +179,13 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
   const [drawer, setDrawer] = useState(false);
 
-  // A saved table opened from the ledger shows in the drawer.
+  // A saved table opened from the ledger shows in the drawer: the old rows go at once, its rows come when loaded.
   useEffect(() => {
-    if (model.savedOpen && model.savedData) {
-      setResult(model.savedData);
-      setRan(null);
-      setError(null);
-      setDrawer(true);
-    }
+    if (!model.savedOpen) return;
+    setResult(model.savedData);
+    setRan(null);
+    setError(null);
+    setDrawer(true);
   }, [model.savedOpen, model.savedData]);
 
   const problem = validate(canvas);
@@ -359,7 +358,7 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
         actions={
           table ? (
             <>
-              <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={() => downloadTableAsCSV(table as Table, `${model.savedOpen ?? "query"}.csv`)}>
+              <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={() => downloadCsv(tableToCsv(table), `${model.savedOpen ?? "query"}.csv`)}>
                 <Download size={12} /> CSV
               </button>
               {model.signedIn && !model.savedOpen ? (
@@ -581,6 +580,17 @@ function ResultsDrawer({ open, onClose, canClose, title, note, table, error, loa
     </aside>,
     container
   );
+}
+
+function downloadCsv(csv: string, filename: string) {
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /** The canvas lives in the persisted store so a page reload keeps it. */
