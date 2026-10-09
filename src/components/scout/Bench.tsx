@@ -2,6 +2,7 @@
 
 import { X, Columns3, Pin } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
+import { TeamLogo } from "@/components/desk/TeamLogo";
 import { sameFocus, shortName, type Focus } from "@/lib/scout";
 import dk from "@/components/desk/desk.module.css";
 import s from "./scout.module.css";
@@ -32,7 +33,7 @@ export function Bench({ pinned, focus, compare, nameOf, open, unpin, clear, togg
         return (
           <span key={p.kind === "player" ? `p${p.id}` : p.kind === "team" ? `t${p.abbrev}` : `d${p.date}`} className={`${s.benchChip} ${on ? s.benchChipOn : ""}`}>
             <button type="button" className={s.benchChip} style={{ border: 0, background: "transparent", padding: 0, height: "auto" }} onClick={() => open(p)} title={name}>
-              {p.kind === "player" ? <Headshot nbaId={p.id} name={name} size={20} /> : <span className={s.benchMark}>{p.kind === "team" ? p.abbrev : "D"}</span>}
+              {p.kind === "player" ? <Headshot nbaId={p.id} name={name} size={20} /> : p.kind === "team" ? <TeamLogo abbrev={p.abbrev} size={20} /> : <span className={s.benchMark}>D</span>}
               <span>{p.kind === "player" ? shortName(name) : name}</span>
             </button>
             <button type="button" className={s.benchX} onClick={() => unpin(p)} aria-label={`Unpin ${name}`}>

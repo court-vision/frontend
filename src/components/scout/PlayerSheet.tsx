@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Columns3, Pin, PinOff, Shield } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
+import { TeamLogo } from "@/components/desk/TeamLogo";
 import { usePlayerPercentilesQuery, usePlayerStatsQuery } from "@/hooks/usePlayer";
 import { usePlayerOwnershipQuery } from "@/hooks/usePlayerOwnership";
 import { usePlayerStatusQuery } from "@/hooks/usePlayerStatus";
@@ -144,7 +145,8 @@ export function PlayerSheet(props: PlayerSheetProps) {
           </div>
           <div className={s.headMeta}>
             {team ? (
-              <button type="button" className={s.linkBtn} onClick={() => open({ kind: "team", abbrev: team })} title={`${info?.name ?? team} (G)`}>
+              <button type="button" className={`${s.linkBtn} ${s.inline}`} onClick={() => open({ kind: "team", abbrev: team })} title={`${info?.name ?? team} (G)`}>
+                <TeamLogo abbrev={team} size={16} />
                 {info?.name ?? team}
               </button>
             ) : (

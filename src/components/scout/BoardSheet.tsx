@@ -3,6 +3,7 @@
 import { useGamesOnDateQuery } from "@/hooks/useGames";
 import { useOwnershipTrendingQuery } from "@/hooks/useOwnershipTrending";
 import { Headshot } from "@/components/desk/Headshot";
+import { TeamLogo } from "@/components/desk/TeamLogo";
 import { dayName, fmtDelta, gameState, shortName, type Focus, type Lens } from "@/lib/scout";
 import type { LivePlayerData } from "@/types/live";
 import type { RankingsPlayer } from "@/types/rankings";
@@ -66,7 +67,7 @@ export function BoardSheet({ today, open, setLens, openFinder, leaders, leadersL
             <span className={dk.label}>Recent</span>
             {recent.slice(0, 8).map((f) => (
               <button key={f.kind === "player" ? `p${f.id}` : f.kind === "team" ? `t${f.abbrev}` : `d${f.date}`} type="button" className={s.benchChip} onClick={() => open(f)}>
-                {f.kind === "player" ? <Headshot nbaId={f.id} name={nameOf(f)} size={20} /> : <span className={s.benchMark}>{f.kind === "team" ? f.abbrev : "D"}</span>}
+                {f.kind === "player" ? <Headshot nbaId={f.id} name={nameOf(f)} size={20} /> : f.kind === "team" ? <TeamLogo abbrev={f.abbrev} size={20} /> : <span className={s.benchMark}>D</span>}
                 <span>{f.kind === "player" ? shortName(nameOf(f)) : nameOf(f)}</span>
               </button>
             ))}

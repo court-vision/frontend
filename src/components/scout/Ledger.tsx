@@ -25,6 +25,7 @@ import {
 } from "@/lib/scout";
 import type { RankingsPlayer, RankingsWindow } from "@/types/rankings";
 import type { ScoringFormat } from "@/types/scoring";
+import { TeamLogo } from "@/components/desk/TeamLogo";
 import { MoveChip, Skeleton } from "./blocks";
 import dk from "@/components/desk/desk.module.css";
 import s from "./scout.module.css";
@@ -287,6 +288,7 @@ function TeamsLedger({ focus, open, cursor, setCursor, onRows, lens }: LedgerPro
                   }}
                   onMouseEnter={() => setCursor(idx)}
                 >
+                  <TeamLogo abbrev={t.abbrev} size={20} />
                   <span className={s.teamAbbrev}>{t.abbrev}</span>
                   <span className={s.rowName}>{t.name}</span>
                 </button>
@@ -366,10 +368,12 @@ function SlateLedger({ focus, open, cursor, setCursor, onRows, today, lens }: Le
                       const status = gameStatusText(g.status, g.period, g.game_clock, g.start_time_et);
                       return (
                         <div key={g.game_id ?? `${g.away_team}-${g.home_team}`} className={s.dayGame}>
+                          <TeamLogo abbrev={g.away_team} size={14} />
                           <button type="button" className={s.teamBtn} onClick={() => open({ kind: "team", abbrev: g.away_team })}>
                             {g.away_team}
                           </button>
                           <span className={s.dim}>@</span>
+                          <TeamLogo abbrev={g.home_team} size={14} />
                           <button type="button" className={s.teamBtn} onClick={() => open({ kind: "team", abbrev: g.home_team })}>
                             {g.home_team}
                           </button>

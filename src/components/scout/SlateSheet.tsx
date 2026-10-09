@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
+import { TeamLogo } from "@/components/desk/TeamLogo";
 import { useGamesOnDateQuery } from "@/hooks/useGames";
 import { userMessage } from "@/lib/api-error";
 import { addDays, clockText, dayName, dow, gameState, gameStatusText, monthDay, periodName, teamInfo, type Focus } from "@/lib/scout";
@@ -106,6 +107,7 @@ export function GameCards({ games, open }: { games: GameInfo[]; open: (f: Focus)
             ).map(([team, score, lead], i) => (
               <div key={team} className={s.gameRow}>
                 <button type="button" className={s.gameTeam} onClick={() => open({ kind: "team", abbrev: team })}>
+                  <TeamLogo abbrev={team} size={22} />
                   <span className={s.teamAbbrev}>{team}</span>
                   <span className={s.gameTeamName}>
                     {i === 0 ? "" : ""}

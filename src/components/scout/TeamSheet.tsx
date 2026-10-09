@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Pin, PinOff } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
+import { TeamLogo } from "@/components/desk/TeamLogo";
 import { useNBATeamLiveGameQuery, useNBATeamRosterQuery, useNBATeamStatsQuery } from "@/hooks/useNBATeam";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
 import { userMessage } from "@/lib/api-error";
@@ -53,9 +54,7 @@ export function TeamSheet({ abbrev, today, open, pinned, togglePin }: TeamSheetP
   return (
     <div className={s.sheetInner}>
       <header className={s.head}>
-        <span className={s.benchMark} style={{ width: 64, height: 64, fontSize: 18, letterSpacing: "0.06em" }} aria-hidden>
-          {abbrev}
-        </span>
+        <TeamLogo abbrev={abbrev} size={64} />
         <div className={s.headBody}>
           <div className={s.headName}>
             <span>{t?.team_name ?? info?.name ?? abbrev}</span>
@@ -329,11 +328,13 @@ function GameBlock({ game, abbrev, open, today }: { game: NBATeamLiveGameData; a
           {state === "scheduled" ? (
             <div className={s.gameRow} style={{ gridTemplateColumns: "auto auto auto", justifyContent: "start", gap: 12 }}>
               <button type="button" className={s.gameTeam} onClick={() => open({ kind: "team", abbrev: game.away_team })}>
+                <TeamLogo abbrev={game.away_team} size={22} />
                 <span className={s.teamAbbrev} style={{ fontSize: 14, color: game.away_team === abbrev ? "var(--accent)" : undefined }}>{game.away_team}</span>
                 <span className={s.gameTeamName}>{teamInfo(game.away_team)?.name ?? ""}</span>
               </button>
               <span className={s.muted}>at</span>
               <button type="button" className={s.gameTeam} onClick={() => open({ kind: "team", abbrev: game.home_team })}>
+                <TeamLogo abbrev={game.home_team} size={22} />
                 <span className={s.teamAbbrev} style={{ fontSize: 14, color: game.home_team === abbrev ? "var(--accent)" : undefined }}>{game.home_team}</span>
                 <span className={s.gameTeamName}>{teamInfo(game.home_team)?.name ?? ""}</span>
               </button>
@@ -358,9 +359,12 @@ function GameBlock({ game, abbrev, open, today }: { game: NBATeamLiveGameData; a
               ).map(([team, per, total]) => (
                 <tr key={team}>
                   <td>
-                    <button type="button" className={s.teamBtn} style={{ fontSize: 12, color: team === abbrev ? "var(--accent)" : undefined }} onClick={() => open({ kind: "team", abbrev: team })}>
-                      {team}
-                    </button>
+                    <span className={s.inline}>
+                      <TeamLogo abbrev={team} size={16} />
+                      <button type="button" className={s.teamBtn} style={{ fontSize: 12, color: team === abbrev ? "var(--accent)" : undefined }} onClick={() => open({ kind: "team", abbrev: team })}>
+                        {team}
+                      </button>
+                    </span>
                   </td>
                   {Array.from({ length: periods }, (_, i) => (
                     <td key={i}>{per[i] ?? ""}</td>
@@ -401,7 +405,8 @@ function GameBlock({ game, abbrev, open, today }: { game: NBATeamLiveGameData; a
 function Performers({ title, list, open }: { title: string; list: TopPerformer[]; open: (f: Focus) => void }) {
   return (
     <div>
-      <div className={dk.label} style={{ marginBottom: 4 }}>
+      <div className={`${dk.label} ${s.inline}`} style={{ marginBottom: 4 }}>
+        <TeamLogo abbrev={title} size={14} />
         {title}
       </div>
       <table className={s.table}>

@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Command } from "cmdk";
-import { CalendarDays, Clock, Shield, User } from "lucide-react";
+import { CalendarDays, Clock, User } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
+import { TeamLogo } from "@/components/desk/TeamLogo";
 import { useDeskPortal } from "@/components/desk/DeskFrame";
 import { usePlayerSearchQuery } from "@/hooks/useScout";
 import { dayName, matchPool, matchTeams, parseDateQuery, teamInfo, type Focus } from "@/lib/scout";
@@ -84,7 +85,7 @@ export function Finder({ open, onOpenChange, pool, recent, today, onPick, nameOf
                       {recent.slice(0, 8).map((f) => (
                         <Command.Item key={`${f.kind}-${"id" in f ? f.id : "abbrev" in f ? f.abbrev : f.date}`} value={`recent-${JSON.stringify(f)}`} className={s.finderItem} onSelect={() => pick(f)}>
                           <span className={s.finderKind}>{f.kind === "player" ? "Player" : f.kind === "team" ? "Team" : "Night"}</span>
-                          {f.kind === "player" ? <Headshot nbaId={f.id} name={nameOf(f)} size={24} /> : <Clock size={14} className={dk.chev} />}
+                          {f.kind === "player" ? <Headshot nbaId={f.id} name={nameOf(f)} size={24} /> : f.kind === "team" ? <TeamLogo abbrev={f.abbrev} size={22} /> : <Clock size={14} className={dk.chev} />}
                           <span className={dk.grow}>{nameOf(f)}</span>
                         </Command.Item>
                       ))}
@@ -133,7 +134,7 @@ export function Finder({ open, onOpenChange, pool, recent, today, onPick, nameOf
                   {teamHits.map((t) => (
                     <Command.Item key={t.abbrev} value={`team-${t.abbrev}`} className={s.finderItem} onSelect={() => pick({ kind: "team", abbrev: t.abbrev })}>
                       <span className={s.finderKind}>{t.abbrev}</span>
-                      <Shield size={14} className={dk.chev} />
+                      <TeamLogo abbrev={t.abbrev} size={20} />
                       <span className={dk.grow}>{t.name}</span>
                       <span className={dk.sub}>
                         {t.conference} · {t.division}
