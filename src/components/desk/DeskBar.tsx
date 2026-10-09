@@ -25,9 +25,14 @@ interface DeskBarProps {
 export function DeskBar({ desk, demo = false, children, right, onRefresh }: DeskBarProps) {
   return (
     <header className={dk.bar}>
-      <Link href="/" className={dk.mark} title="Back to Court Vision">
-        <span className={dk.markGlyph} aria-hidden />
-        <span className={dk.markText}>court vision</span>
+      {/* The old UI's wordmark: the full word from md, its initials on phones. */}
+      <Link href="/" className={dk.mark} title="Back to Court Vision" aria-label="Court Vision">
+        <span className={dk.markCompact} aria-hidden>
+          C<span className={dk.markAccent}>V</span>
+        </span>
+        <span className={dk.markText} aria-hidden>
+          COURT<span className={dk.markAccent}>VISION</span>
+        </span>
       </Link>
       <nav className={dk.tabs} aria-label="Desks">
         {DESKS.map((x) => (

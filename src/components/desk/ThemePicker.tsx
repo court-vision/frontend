@@ -3,19 +3,14 @@
 import * as Popover from "@radix-ui/react-popover";
 import { Check, Palette } from "lucide-react";
 import { useDeskPortal } from "./DeskFrame";
-import { DESK_THEMES, type DeskScheme } from "./themes";
+import { DESK_THEMES } from "./themes";
 import { useDeskTheme } from "./useDeskTheme";
 import dk from "./desk.module.css";
 
-const GROUPS: Array<[DeskScheme, string]> = [
-  ["light", "Light"],
-  ["dark", "Dark"],
-];
-
 /**
- * The bar's theme button: every palette as a small preview drawn in its own
- * tokens. A pick applies at once and the menu stays open, so themes can be
- * clicked through side by side.
+ * The bar's theme button: every theme as a small desk drawn in its own tokens,
+ * light beside dark, each row one pair. A pick applies at once and the menu
+ * stays open, so themes can be clicked through.
  */
 export function ThemePicker() {
   const container = useDeskPortal();
@@ -32,32 +27,29 @@ export function ThemePicker() {
         <Popover.Content className={`${dk.menu} ${dk.themeMenu}`} align="end" sideOffset={6} collisionPadding={8}>
           <div className={dk.menuHead}>
             <span className={dk.menuTitle}>Theme</span>
-            <span className={dk.sub}>T swaps between your light and dark picks</span>
+            <span className={dk.sub}>T swaps a theme with its pair</span>
           </div>
           <div className={dk.menuList}>
-            {GROUPS.map(([scheme, label]) => (
-              <div key={scheme} role="group" aria-label={label}>
-                <div className={`${dk.label} ${dk.menuGroupLabel}`}>{label}</div>
-                <div className={dk.themeGrid}>
-                  {DESK_THEMES.filter((t) => t.scheme === scheme).map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      className={dk.themeCard}
-                      aria-pressed={t.id === theme}
-                      onClick={() => setTheme(t.id)}
-                    >
-                      <ThemeSwatch id={t.id} />
-                      <span className={dk.themeName}>
-                        {t.label}
-                        {t.id === theme ? <Check size={12} /> : null}
-                      </span>
-                      <span className={dk.themeNote}>{t.note}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <div className={dk.themeGrid}>
+              <div className={`${dk.label} ${dk.menuGroupLabel}`}>Light</div>
+              <div className={`${dk.label} ${dk.menuGroupLabel}`}>Dark</div>
+              {DESK_THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={dk.themeCard}
+                  aria-pressed={t.id === theme}
+                  onClick={() => setTheme(t.id)}
+                >
+                  <ThemeSwatch id={t.id} />
+                  <span className={dk.themeName}>
+                    {t.label}
+                    {t.id === theme ? <Check size={12} /> : null}
+                  </span>
+                  <span className={dk.themeNote}>{t.note}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </Popover.Content>
       </Popover.Portal>
@@ -70,7 +62,10 @@ function ThemeSwatch({ id }: { id: string }) {
   return (
     <span className={`${dk.tokens} ${dk.swatch}`} data-theme={id} aria-hidden>
       <span className={dk.swatchBar}>
-        <span className={dk.swatchGlyph} />
+        <span className={dk.swatchWord}>
+          <span />
+          <span className={dk.swatchWordAccent} />
+        </span>
         <span className={dk.swatchTab} />
       </span>
       <span className={dk.swatchHead}>
