@@ -281,6 +281,17 @@
   color: var(--text);
 }
 
+/* The Developer desk's door: an icon at the bar's end, lit while you are inside. */
+.iconLink {
+  color: var(--text-3);
+  text-decoration: none;
+}
+
+.iconLink[aria-current="page"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .liveDot {
   width: 6px;
   height: 6px;

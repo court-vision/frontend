@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Moon, RotateCw, Sparkles, Sun } from "lucide-react";
-import { DESKS, type DeskId } from "./routes";
+import { Braces, Moon, RotateCw, Sparkles, Sun } from "lucide-react";
+import { DESKS, DEVELOPER, type DeskId } from "./routes";
 import { useDeskTheme } from "./useDeskTheme";
 import dk from "./desk.module.css";
 
@@ -61,6 +61,15 @@ export function DeskBar({ desk, demo = false, children, right, onRefresh }: Desk
         <button type="button" className={dk.iconBtn} onClick={toggle} aria-label="Switch theme" title="Theme (T)">
           {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
         </button>
+        <Link
+          href={demo ? `${DEVELOPER.href}?demo` : DEVELOPER.href}
+          className={`${dk.iconBtn} ${dk.iconLink}`}
+          aria-label="Developer desk"
+          aria-current={desk === DEVELOPER.id ? "page" : undefined}
+          title="Developer desk: the API, keys and the query builder"
+        >
+          <Braces size={14} />
+        </Link>
       </div>
     </header>
   );
