@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, Download, PanelRight, Play, Plus, Save, Trash2, X } from "lucide-react";
 import { DeskDialog } from "@/components/desk/DeskDialog";
@@ -190,6 +190,18 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
   }, [model.savedOpen, model.savedData]);
 
   const problem = validate(canvas);
+  const runRef = useRef<() => void>(() => {});
+  // ⌘⏎ runs from anywhere on the view, not only with the canvas focused.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        runRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const run = async () => {
     if (problem || model.running) return;
     setError(null);
@@ -206,6 +218,7 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
     }
     setDrawer(true);
   };
+  runRef.current = () => void run();
 
   const table = result && isResultTable(result.table) ? result.table : null;
   const save = async () => {
@@ -227,15 +240,7 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
   };
 
   return (
-    <div
-      className={s.sheetInner}
-      onKeyDown={(e) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-          e.preventDefault();
-          void run();
-        }
-      }}
-    >
+    <div className={s.sheetInner}>
       <div className={s.runBar}>
         <button type="button" className={`${dk.btn} ${dk.btnPrimary}`} onClick={() => void run()} disabled={!!problem || model.running} title={problem ?? "Run (⌘⏎)"}>
           <Play size={13} />

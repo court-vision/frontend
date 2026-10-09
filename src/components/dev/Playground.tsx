@@ -114,6 +114,18 @@ export function PlaygroundSheet({ doc, op, base, today, replayed }: { doc: OpenA
   const [result, setResult] = useState<Result | null>(null);
   const [sending, setSending] = useState(false);
   const abort = useRef<AbortController | null>(null);
+  const sendRef = useRef<() => void>(() => {});
+  // ⌘⏎ sends from anywhere on the view.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        sendRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // A new route resets the form to its defaults; a replayed request restores what was sent.
   useEffect(() => {
@@ -170,19 +182,12 @@ export function PlaygroundSheet({ doc, op, base, today, replayed }: { doc: OpenA
     setSending(false);
     remember({ opId: op.id, method: op.method, url, status: res.status, ms: res.ms, values, body: bodyText });
   };
+  sendRef.current = () => void send();
 
   const tone = result?.status == null ? "bad" : result.status < 300 ? "ok" : result.status < 500 ? "warn" : "bad";
 
   return (
-    <div
-      className={s.sheetInner}
-      onKeyDown={(e) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-          e.preventDefault();
-          void send();
-        }
-      }}
-    >
+    <div className={s.sheetInner}>
       <header className={s.head}>
         <div className={s.headBody}>
           <span className={s.headTitle}>{op.summary}</span>
