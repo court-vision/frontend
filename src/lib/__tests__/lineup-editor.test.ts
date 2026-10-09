@@ -90,6 +90,7 @@ function board(players: LineupPlayer[], overrides: Partial<LineupState> = {}): L
     write_blocked_reason: null,
     roster_version: "v1",
     fetched_at: "2026-10-20T20:00:00Z",
+    acquisitions: null,
     ...overrides,
   };
 }

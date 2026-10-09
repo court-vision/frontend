@@ -1,6 +1,98 @@
 {
   "components": {
     "schemas": {
+      "AcquisitionState": {
+        "description": "ESPN's limits on adds and what this team has used: `settings.acquisitionSettings`\n(mSettings) and the team's `transactionCounter` (mTeam). A day's own adds (what a\nper-day limit counts) are not in the counter: `services.acquisitions.adds_for_day`.",
+        "properties": {
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "matchup_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchup End"
+          },
+          "matchup_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchup Period Id"
+          },
+          "matchup_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchup Start"
+          },
+          "matchup_used": {
+            "default": 0,
+            "title": "Matchup Used",
+            "type": "integer"
+          },
+          "per": {
+            "enum": [
+              "matchup",
+              "day"
+            ],
+            "title": "Per",
+            "type": "string"
+          },
+          "season_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season Limit"
+          },
+          "season_used": {
+            "default": 0,
+            "title": "Season Used",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "per",
+          "limit",
+          "matchup_period_id",
+          "matchup_start",
+          "matchup_end",
+          "matchup_used",
+          "season_limit",
+          "season_used"
+        ],
+        "title": "AcquisitionState",
+        "type": "object"
+      },
       "AdvancedStatsData": {
         "description": "Advanced stats from pipeline - always season-level.",
         "properties": {
@@ -8971,6 +9063,16 @@
       },
       "LineupState": {
         "properties": {
+          "acquisitions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcquisitionState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "can_write": {
             "default": false,
             "title": "Can Write",
@@ -9149,7 +9251,8 @@
           "can_write",
           "write_blocked_reason",
           "roster_version",
-          "fetched_at"
+          "fetched_at",
+          "acquisitions"
         ],
         "title": "LineupState",
         "type": "object"
