@@ -18,6 +18,7 @@ describe("isDeskDemo", () => {
       "/lab/demo-3/",
       "/lab/demo-3/recap",
       "/scout?demo",
+      "/dev?demo",
     ]) {
       expect(opensSignedOut(url)).toBe(true);
     }
@@ -59,6 +60,8 @@ describe("isDeskDemo", () => {
       "/weekly?demo",
       "/scout/203999?demo",
       "/scouting?demo",
+      "/developer?demo",
+      "/dev/keys?demo",
     ]) {
       expect(opensSignedOut(url)).toBe(false);
     }
@@ -67,13 +70,13 @@ describe("isDeskDemo", () => {
 
 describe("isDeskPath", () => {
   test("the desks and everything under them", () => {
-    for (const path of ["/week", "/week/", "/lab", "/lab/12", "/lab/demo-3/recap", "/scout", "/scout/"]) {
+    for (const path of ["/week", "/week/", "/lab", "/lab/12", "/lab/demo-3/recap", "/scout", "/scout/", "/dev", "/dev/"]) {
       expect(isDeskPath(path)).toBe(true);
     }
   });
 
   test("never a route that only starts with a desk's name", () => {
-    for (const path of ["/", "/weekly", "/weekend", "/labs", "/laboratory", "/draft", "/rankings", "/terminal", "/scouting", null, undefined]) {
+    for (const path of ["/", "/weekly", "/weekend", "/labs", "/laboratory", "/draft", "/rankings", "/terminal", "/scouting", null, undefined, "/developer", "/devices"]) {
       expect(isDeskPath(path)).toBe(false);
     }
   });
