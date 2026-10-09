@@ -1,7 +1,8 @@
 /**
  * The desks: full-screen workspaces that share one shell. Each owns one
- * subject end to end — Week your team's matchup week, Draft a draft room,
- * Developer the API and the data behind the app — and
+ * subject end to end — Week your team's matchup week, Draft a draft room, Scout
+ * one player, NBA team or night of games, Developer the API and the data
+ * behind the app — and
  * anything about that subject is a pane, mode or overlay inside it rather than
  * a page of its own. The rest of the app does not render its chrome around a
  * desk route.
@@ -13,6 +14,13 @@
 export const DRAFT_DESK = "/lab";
 
 /**
+ * The Scout desk's home: the NBA data universe, one player, team or slate
+ * at a time. The old terminal keeps `/terminal` until the cutover, so both
+ * can run side by side; at the cutover this becomes "/terminal".
+ */
+export const SCOUT_DESK = "/scout";
+
+/**
  * The Developer desk's home: the API reference, playground, keys and the
  * query builder. The old developer portal keeps `/developer` and the old
  * query builder `/query-builder` until the cutover; at the cutover this
@@ -20,10 +28,11 @@ export const DRAFT_DESK = "/lab";
  */
 export const DEVELOPER_DESK = "/dev";
 
-/** The desks a tab is shown for: where fantasy work happens. */
+/** The desks a tab is shown for: where fantasy work happens, and the Scout. */
 export const DESKS = [
   { id: "week", label: "Week", href: "/week", key: "1" },
   { id: "draft", label: "Draft", href: DRAFT_DESK, key: "2" },
+  { id: "scout", label: "Scout", href: SCOUT_DESK, key: "3" },
 ] as const;
 
 /** The Developer desk sits behind an icon at the bar's far end, not among the tabs. */

@@ -61,6 +61,16 @@ import type { RankingsMeta, RankingsParams, RankingsPlayer, RankingsResult } fro
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
+import type {
+  ESPNMarketData,
+  ESPNMarketMovementData,
+  MarketDirection,
+  MarketSort,
+  PlayerProfileData,
+  PlayerProjectionData,
+  PlayerSearchData,
+  PlayerTrendsData,
+} from "@/types/scout";
 import type { GamesOnDateData, TeamScheduleData, NBATeamLiveGameData } from "@/types/games";
 import type { NBATeamStatsData, NBATeamRosterData } from "@/types/nba-team";
 import type { PlayoffBracketData } from "@/types/playoff";
@@ -785,6 +795,55 @@ class ApiClient {
     return nullOn404(
       this.getData<PlayerOwnershipData>(`${PLAYERS_API}/${playerId}/ownership${params}`)
     );
+  }
+
+  // The player directory and the per-player extras the Scout desk reads (public)
+
+  /** Search the player dimension by name or id: rookies and players without games included. */
+  async searchPlayers(q: string, limit: number = 10, opts?: RequestOptions): Promise<PlayerSearchData | null> {
+    const params = new URLSearchParams({ q, limit: limit.toString() });
+    return this.getData<PlayerSearchData>(`${PLAYERS_API}/search?${params.toString()}`, opts);
+  }
+
+  /** Identity plus the biographical snapshot; `profile` is null until the pipeline has one. */
+  async getPlayerProfile(playerId: number, opts?: RequestOptions): Promise<PlayerProfileData | null> {
+    return nullOn404(this.getData<PlayerProfileData>(`${PLAYERS_API}/${playerId}/profile`, opts));
+  }
+
+  /** Rolling 7/14/30-day fantasy averages and the ownership change. */
+  async getPlayerTrends(playerId: number, opts?: RequestOptions): Promise<PlayerTrendsData | null> {
+    return nullOn404(this.getData<PlayerTrendsData>(`${PLAYERS_API}/${playerId}/trends`, opts));
+  }
+
+  /** ESPN's preseason per-game projection; null for a player without one. */
+  async getPlayerProjection(playerId: number, opts?: RequestOptions): Promise<PlayerProjectionData | null> {
+    return nullOn404(this.getData<PlayerProjectionData>(`${PLAYERS_API}/${playerId}/projection`, opts));
+  }
+
+  /** ESPN's draft market (editorial rank, ADP, auction values), newest snapshot, optionally by name. */
+  async getEspnMarket(
+    params: { name?: string; sortBy?: MarketSort; limit?: number; offset?: number } = {},
+    opts?: RequestOptions
+  ): Promise<ESPNMarketData | null> {
+    const q = new URLSearchParams();
+    if (params.name) q.set("name", params.name);
+    if (params.sortBy) q.set("sort_by", params.sortBy);
+    if (params.limit !== undefined) q.set("limit", params.limit.toString());
+    if (params.offset !== undefined) q.set("offset", params.offset.toString());
+    const qs = q.toString();
+    return this.getData<ESPNMarketData>(`${RANKINGS_API}/espn${qs ? `?${qs}` : ""}`, opts);
+  }
+
+  /** How the ESPN market moved between the snapshots on or before two dates. */
+  async getEspnMarketMovement(
+    params: { fromAsOf: string; toAsOf: string; metric?: MarketSort; direction?: MarketDirection; limit?: number },
+    opts?: RequestOptions
+  ): Promise<ESPNMarketMovementData | null> {
+    const q = new URLSearchParams({ from_as_of: params.fromAsOf, to_as_of: params.toAsOf });
+    if (params.metric) q.set("metric", params.metric);
+    if (params.direction) q.set("direction", params.direction);
+    if (params.limit !== undefined) q.set("limit", params.limit.toString());
+    return this.getData<ESPNMarketMovementData>(`${RANKINGS_API}/espn/movement?${q.toString()}`, opts);
   }
 
   async getTeamSchedule(teamAbbrev: string, upcoming: boolean = false, limit: number = 12): Promise<TeamScheduleData | null> {
