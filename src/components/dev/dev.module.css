@@ -89,7 +89,6 @@
 }
 
 .sheetInner {
-  max-width: 1080px;
   padding-bottom: 56px;
 }
 
@@ -1030,13 +1029,18 @@
 
 .clause {
   display: grid;
-  grid-template-columns: minmax(140px, 220px) 120px minmax(120px, 1fr) auto;
+  grid-template-columns: minmax(120px, 220px) minmax(96px, 130px) minmax(90px, 1fr) auto;
   align-items: center;
   gap: 6px;
 }
 
 .clauseOrder {
-  grid-template-columns: auto minmax(140px, 220px) 90px auto auto;
+  grid-template-columns: auto minmax(120px, 220px) minmax(90px, 110px) auto auto;
+}
+
+/* Filters and Order side by side only when each half has room for a clause. */
+.twoClauses {
+  grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
 }
 
 .clauseName {
@@ -1288,5 +1292,98 @@
   .clause,
   .clauseOrder {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------------------------------------------------------- results drawer */
+
+.drawer {
+  position: fixed;
+  top: 92px;
+  right: 0;
+  bottom: 28px;
+  z-index: 40;
+  width: min(680px, 58vw);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line-2);
+  background: var(--surface);
+  box-shadow: -16px 0 40px rgba(0, 0, 0, 0.35);
+  animation: drawerIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes drawerIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.drawerHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 8px 12px 8px 16px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.drawerTitle {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.drawerBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.drawerScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.drawerFoot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--line);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.drawerSql {
+  padding: 14px 16px;
+}
+
+.resultsBtnCount {
+  margin-left: 2px;
+  color: var(--text-3);
+}
+
+/* With the drawer out, the grid keeps its full width; inside the drawer the results border goes. */
+.drawer .results {
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+}
+
+@media (max-width: 899.98px) {
+  .drawer {
+    width: 100%;
+    top: 92px;
+    border-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    animation: none;
   }
 }

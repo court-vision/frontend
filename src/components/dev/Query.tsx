@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Download, Play, Plus, Save, Trash2, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, Download, PanelRight, Play, Plus, Save, Trash2, X } from "lucide-react";
 import { DeskDialog } from "@/components/desk/DeskDialog";
+import { useDeskPortal } from "@/components/desk/DeskFrame";
 import { downloadTableAsCSV } from "@/lib/csvUtils";
 import {
   AGGREGATES,
@@ -171,18 +173,19 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [ran, setRan] = useState<{ ms: number; at: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showSql, setShowSql] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState(false);
 
-  // A saved table opened from the ledger shows in the results.
+  // A saved table opened from the ledger shows in the drawer.
   useEffect(() => {
     if (model.savedOpen && model.savedData) {
       setResult(model.savedData);
       setRan(null);
       setError(null);
+      setDrawer(true);
     }
   }, [model.savedOpen, model.savedData]);
 
@@ -201,6 +204,7 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
       setResult(null);
       setError(e instanceof Error ? e.message : "The query failed");
     }
+    setDrawer(true);
   };
 
   const table = result && isResultTable(result.table) ? result.table : null;
@@ -249,6 +253,11 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
           </button>
         ) : null}
         {model.demo ? <span className={`${dk.badge} ${dk.badgeDemo}`}>demo rows</span> : null}
+        <button type="button" className={`${dk.btn} ${dk.btnSmall} ${drawer ? dk.toggleOn : ""}`} onClick={() => setDrawer((v) => !v)} disabled={!table && !error && !model.savedDataLoading} title="The rows and the SQL, in a drawer">
+          <PanelRight size={13} />
+          Results
+          {table ? <span className={s.resultsBtnCount}>{table.rows.length.toLocaleString("en-US")}</span> : null}
+        </button>
       </div>
 
       <Block title="Canvas" note={canvas.tables.length ? `${canvas.tables.length} table${canvas.tables.length === 1 ? "" : "s"} · tick columns, name aliases, aggregate or group` : "add a table from the schema on the left"}>
@@ -266,7 +275,7 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
       </Block>
 
       {canvas.tables.length ? (
-        <div className={s.two}>
+        <div className={`${s.two} ${s.twoClauses}`}>
           <Block title="Filters" note={canvas.constraints.length ? `${canvas.constraints.length} · all must hold` : "none · use ⚡ on a column"}>
             {canvas.constraints.length === 0 ? (
               <div className={s.blockEmpty}>Every row comes back. Add a filter from a column&apos;s ⚡.</div>
@@ -333,15 +342,18 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
         </div>
       ) : null}
 
-      <Block
+      <ResultsDrawer
+        open={drawer}
+        onClose={() => setDrawer(false)}
+        canClose={!saveOpen}
         title={model.savedOpen ? `Saved · ${model.savedOpen}` : "Results"}
-        note={table ? `${table.rows.length.toLocaleString("en-US")} row${table.rows.length === 1 ? "" : "s"} · ${table.columns.length} columns${ran ? ` · ${ran.ms} ms` : ""}${table.rows.length === canvas.limit && !model.savedOpen ? " · at the limit" : ""}` : model.savedDataLoading ? "loading…" : "nothing run yet"}
-        right={
+        note={table ? `${table.rows.length.toLocaleString("en-US")} row${table.rows.length === 1 ? "" : "s"} · ${table.columns.length} column${table.columns.length === 1 ? "" : "s"}${ran ? ` · ${ran.ms} ms` : ""}${table.rows.length >= canvas.limit && !model.savedOpen ? " · at the limit" : ""}` : model.savedDataLoading ? "loading…" : error ? "failed" : "nothing run yet"}
+        table={table}
+        error={error}
+        loading={model.savedDataLoading}
+        actions={
           table ? (
             <>
-              <button type="button" className={`${dk.btn} ${dk.btnSmall} ${showSql ? dk.toggleOn : ""}`} onClick={() => setShowSql((v) => !v)}>
-                SQL
-              </button>
               <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={() => downloadTableAsCSV(table as Table, `${model.savedOpen ?? "query"}.csv`)}>
                 <Download size={12} /> CSV
               </button>
@@ -353,25 +365,7 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
             </>
           ) : null
         }
-      >
-        {error ? <div className={dk.error} style={{ marginBottom: 10 }}>{error}</div> : null}
-        {table && showSql ? (
-          <div style={{ marginBottom: 12 }}>
-            <Code text={table.query} lang="sql" />
-          </div>
-        ) : null}
-        {table ? (
-          table.rows.length === 0 ? (
-            <div className={s.blockEmpty}>No rows match.</div>
-          ) : (
-            <ResultGrid table={table} />
-          )
-        ) : model.savedDataLoading ? (
-          <Skeleton rows={4} className={s.ledgerSkel} />
-        ) : !error ? (
-          <div className={s.blockEmpty}>Run the canvas to see rows here. The SQL that ran comes back with them.</div>
-        ) : null}
-      </Block>
+      />
 
       <DeskDialog
         open={saveOpen}
@@ -452,35 +446,135 @@ function TableCard({ t, canvas, setCanvas }: { t: CanvasTable; canvas: Canvas; s
   );
 }
 
+const PAGE = 100;
+
 function ResultGrid({ table }: { table: Table }) {
+  const [page, setPage] = useState(0);
   const numeric = useMemo(() => table.columns.map((_, i) => table.rows.slice(0, 50).every((r) => r[i] == null || typeof r[i] === "number")), [table]);
-  const rows = table.rows.slice(0, 2000);
+  const pages = Math.max(1, Math.ceil(table.rows.length / PAGE));
+  const at = Math.min(page, pages - 1);
+  const rows = table.rows.slice(at * PAGE, at * PAGE + PAGE);
   return (
-    <div className={s.results}>
-      <table className={s.grid}>
-        <thead>
-          <tr>
-            <th className={s.rowIdx}>#</th>
-            {table.columns.map((c) => (
-              <th key={c}>{c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i}>
-              <td className={s.rowIdx}>{i + 1}</td>
-              {r.map((v: unknown, j: number) => (
-                <td key={j} className={numeric[j] ? s.num : ""} title={cellText(v)}>
-                  {cellText(v)}
-                </td>
+    <>
+      <div className={`${s.results} ${s.drawerScroll}`}>
+        <table className={s.grid}>
+          <thead>
+            <tr>
+              <th className={s.rowIdx}>#</th>
+              {table.columns.map((c) => (
+                <th key={c}>{c}</th>
               ))}
             </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={at * PAGE + i}>
+                <td className={s.rowIdx}>{at * PAGE + i + 1}</td>
+                {r.map((v: unknown, j: number) => (
+                  <td key={j} className={numeric[j] ? s.num : ""} title={cellText(v)}>
+                    {cellText(v)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {pages > 1 ? (
+        <div className={s.drawerFoot}>
+          <button type="button" className={dk.iconBtn} style={{ width: 24, height: 24 }} onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={at === 0} aria-label="Previous page">
+            <ChevronLeft size={13} />
+          </button>
+          <span>
+            rows {(at * PAGE + 1).toLocaleString("en-US")}–{Math.min(table.rows.length, (at + 1) * PAGE).toLocaleString("en-US")} of {table.rows.length.toLocaleString("en-US")}
+          </span>
+          <button type="button" className={dk.iconBtn} style={{ width: 24, height: 24 }} onClick={() => setPage((p) => Math.min(pages - 1, p + 1))} disabled={at >= pages - 1} aria-label="Next page">
+            <ChevronRight size={13} />
+          </button>
+          <span className={dk.spacer} />
+          <span>the CSV has every row</span>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+interface DrawerProps {
+  open: boolean;
+  onClose: () => void;
+  /** False while a dialog sits on top, so its Escape does not also close the drawer. */
+  canClose: boolean;
+  title: string;
+  note: string;
+  table: Table | null;
+  error: string | null;
+  loading: boolean;
+  actions: React.ReactNode;
+}
+
+/** The rows and the SQL that produced them, in a drawer over the right of the sheet. */
+function ResultsDrawer({ open, onClose, canClose, title, note, table, error, loading, actions }: DrawerProps) {
+  const container = useDeskPortal();
+  const [tab, setTab] = useState<"rows" | "sql">("rows");
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && canClose) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, canClose, onClose]);
+  useEffect(() => {
+    if (error && !table) setTab("rows");
+  }, [error, table]);
+  if (!open || !container) return null;
+  return createPortal(
+    <aside className={s.drawer} role="complementary" aria-label="Query results">
+      <div className={s.drawerHead}>
+        <span className={s.drawerTitle}>{title}</span>
+        <span className={s.blockNote}>{note}</span>
+        <span className={dk.spacer} />
+        <div className={dk.rail} role="radiogroup" aria-label="Results view" style={{ padding: 1 }}>
+          {(["rows", "sql"] as const).map((t) => (
+            <button key={t} type="button" role="radio" aria-checked={tab === t} className={`${dk.seg} ${tab === t ? dk.segOn : ""}`} style={{ height: 22, padding: "0 8px", fontSize: 10.5 }} onClick={() => setTab(t)} disabled={t === "sql" && !table}>
+              {tab === t ? <span className={dk.segPill} /> : null}
+              <span className={dk.segLabel}>{t === "rows" ? "ROWS" : "SQL"}</span>
+            </button>
           ))}
-        </tbody>
-      </table>
-      {table.rows.length > rows.length ? <div className={s.ledgerEmpty}>Showing the first {rows.length.toLocaleString("en-US")} of {table.rows.length.toLocaleString("en-US")} rows; the CSV has them all.</div> : null}
-    </div>
+        </div>
+        {actions}
+        <button type="button" className={dk.iconBtn} onClick={onClose} aria-label="Close results" title="Close (esc)">
+          <X size={14} />
+        </button>
+      </div>
+      <div className={s.drawerBody}>
+        {error ? (
+          <div className={dk.error} style={{ padding: "12px 16px", borderBottom: "1px solid var(--line)" }}>
+            {error}
+          </div>
+        ) : null}
+        {loading ? (
+          <Skeleton rows={5} className={s.ledgerSkel} />
+        ) : table ? (
+          tab === "sql" ? (
+            <div className={`${s.drawerSql} ${s.drawerScroll}`}>
+              <Code text={table.query} lang="sql" />
+            </div>
+          ) : table.rows.length === 0 ? (
+            <div className={s.blockEmpty} style={{ padding: 16 }}>
+              No rows match.
+            </div>
+          ) : (
+            <ResultGrid table={table} />
+          )
+        ) : !error ? (
+          <div className={s.blockEmpty} style={{ padding: 16 }}>
+            Run the canvas to see rows here.
+          </div>
+        ) : null}
+      </div>
+    </aside>,
+    container
   );
 }
 

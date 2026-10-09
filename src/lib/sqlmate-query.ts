@@ -220,14 +220,14 @@ export function describe(canvas: Canvas): string {
 /** Whether a column type takes quoted text (SQLMate's STR/DATE) rather than a number. */
 export function isTextType(type: string): boolean {
   const t = type.toUpperCase();
-  return t === "STR" || t === "DATE" || t.includes("CHAR") || t.includes("TEXT") || t === "BOOL";
+  return t === "STR" || t === "BOOL" || t.includes("DATE") || t.includes("TIME") || t.includes("CHAR") || t.includes("TEXT");
 }
 
 export function valuePlaceholder(type: string, operator: Operator): string {
   if (operator === "LIKE") return "%jok%";
   if (operator === "SUBSTRING" || operator === "PREFIX" || operator === "SUFFIX") return "text";
   const t = type.toUpperCase();
-  if (t === "DATE") return "2026-10-20";
+  if (t.includes("DATE") || t.includes("TIME")) return "2026-10-20";
   if (t === "BOOL") return "true";
   return isTextType(type) ? "text" : "0";
 }
