@@ -239,7 +239,11 @@ export function KeysSheet({ model, openPlayground }: { model: KeysModel; openPla
             type="button"
             className={`${dk.btn} ${dk.btnDanger}`}
             onClick={() => {
-              if (confirm) void model.revoke(confirm.id);
+              if (confirm) {
+                void model.revoke(confirm.id);
+                // The reveal of a key just revoked has nothing left to say.
+                if (made?.key.id === confirm.id) setMade(null);
+              }
               setConfirm(null);
             }}
           >
