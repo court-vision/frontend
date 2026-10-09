@@ -1333,3 +1333,497 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* ---------------------------------------------------------------- toolbar, three columns */
+
+@media (min-width: 900px) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    overflow: visible;
+  }
+
+  .toolbar[data-search="true"] .toolLeft,
+  .toolbar[data-search="true"] .toolRight {
+    opacity: 0.55;
+  }
+}
+
+.toolLeft,
+.toolRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden;
+  transition: opacity 160ms ease;
+}
+
+.toolLeft > *,
+.toolRight > * {
+  flex-shrink: 0;
+}
+
+.toolRight {
+  justify-content: flex-end;
+}
+
+.toolCenter {
+  width: clamp(220px, 32vw, 400px);
+  transition: width 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.toolbar[data-search="true"] .toolCenter {
+  width: clamp(300px, 56vw, 760px);
+}
+
+@media (max-width: 899.98px) {
+  .toolCenter {
+    width: 220px;
+  }
+
+  .toolbar[data-search="true"] .toolCenter {
+    width: 320px;
+  }
+}
+
+/* ---------------------------------------------------------------- the search box */
+
+.search {
+  position: relative;
+  width: 100%;
+}
+
+.searchCmd {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 11px;
+  color: var(--text-3);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 32px;
+  padding: 0 34px 0 32px;
+  border-radius: 6px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: var(--text-3);
+}
+
+.searchInput:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.searchKbd {
+  position: absolute;
+  right: 9px;
+  pointer-events: none;
+}
+
+.searchDrop {
+  position: fixed;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  overflow: hidden;
+  animation: menuIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: none; }
+}
+
+.searchFoot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 14px;
+  border-top: 1px solid var(--line);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+.searchFoot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ---------------------------------------------------------------- ledger: overview, nights, matchups */
+
+.rowOverview {
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  min-height: 46px;
+  margin: 2px 0 4px;
+  border-bottom: 1px solid var(--line);
+  color: var(--accent);
+}
+
+.rowOverview .overviewLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.rowOverview .rowSub {
+  white-space: normal;
+}
+
+.rowDay {
+  grid-template-columns: 14px 34px minmax(0, 1fr) auto;
+  color: var(--text-2);
+}
+
+.rowDayOn {
+  color: var(--text);
+}
+
+.rowGame {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 34px;
+  padding-left: 22px;
+  font-size: 12px;
+}
+
+.gamePair {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.dayGames {
+  padding: 0 0 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.teamBtn {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ---------------------------------------------------------------- tapes */
+
+.tape {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.tick {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 18px;
+  border-right: 1px solid var(--line);
+  min-width: max-content;
+}
+
+.tickClick {
+  cursor: pointer;
+}
+
+.tickClick:hover {
+  background: var(--hover);
+}
+
+.tickValue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.tickSub {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+/* ---------------------------------------------------------------- boards */
+
+.three {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+@media (min-width: 720px) {
+  .three > .block + .block {
+    border-left: 1px solid var(--line);
+  }
+}
+
+.board th:first-child,
+.board td:first-child {
+  width: 32px;
+}
+
+.cutline td {
+  border-bottom: 1px dashed var(--line-2);
+}
+
+/* ---------------------------------------------------------------- game cards and the game sheet */
+
+.gameStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-align: left;
+}
+
+.gameStatus:hover {
+  color: var(--accent);
+}
+
+.gameLines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.gameLine {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 30px 38px auto;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.gameLine:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.gameLine .rowName {
+  font-family: var(--desk-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.gameHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.gameSide {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.gameSideHome {
+  justify-content: flex-end;
+}
+
+.gameBig {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.gameBig > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gameBigName {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.gameBig:hover .gameBigName {
+  color: var(--accent);
+}
+
+.scoreBig {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 40px;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--text);
+}
+
+.scoreBig[data-lead="false"] {
+  color: var(--text-3);
+}
+
+.gameMid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.gameState {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+}
+
+.sideTable {
+  padding: 0 12px 0 0;
+}
+
+/* the nights ahead */
+
+.aheadList {
+  display: flex;
+  flex-direction: column;
+}
+
+.aheadRow {
+  display: grid;
+  grid-template-columns: 72px 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.aheadRow:last-child {
+  border-bottom: 0;
+}
+
+.aheadDay {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.aheadCount {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--text);
+  padding-top: 1px;
+}
+
+.aheadGames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.aheadChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.aheadChip:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line-2));
+}
+
+@media (max-width: 639.98px) {
+  .gameHead {
+    grid-template-columns: 1fr;
+  }
+
+  .gameSideHome {
+    justify-content: flex-start;
+    flex-direction: row-reverse;
+  }
+}
+
+/* standings: side by side only with room for ten columns each */
+.twoStandings {
+  grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
+}
+
+.rowStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.rowStack > .rowSub {
+  white-space: normal;
+}

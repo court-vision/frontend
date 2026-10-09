@@ -31,7 +31,7 @@ export function Bench({ pinned, focus, compare, nameOf, open, unpin, clear, togg
         const on = !compare && sameFocus(p, focus);
         const name = nameOf(p);
         return (
-          <span key={p.kind === "player" ? `p${p.id}` : p.kind === "team" ? `t${p.abbrev}` : `d${p.date}`} className={`${s.benchChip} ${on ? s.benchChipOn : ""}`}>
+          <span key={p.kind === "player" ? `p${p.id}` : p.kind === "team" ? `t${p.abbrev}` : `x${nameOf(p)}`} className={`${s.benchChip} ${on ? s.benchChipOn : ""}`}>
             <button type="button" className={s.benchChip} style={{ border: 0, background: "transparent", padding: 0, height: "auto" }} onClick={() => open(p)} title={name}>
               {p.kind === "player" ? <Headshot nbaId={p.id} name={name} size={20} /> : p.kind === "team" ? <TeamLogo abbrev={p.abbrev} size={20} /> : <span className={s.benchMark}>D</span>}
               <span>{p.kind === "player" ? shortName(name) : name}</span>

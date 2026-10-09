@@ -15,7 +15,7 @@ export default async function Page({
 }) {
   const params = await searchParams;
   const q = new URLSearchParams();
-  for (const k of ["p", "t", "d"]) {
+  for (const k of ["p", "t", "g", "m", "o"]) {
     const v = params[k];
     if (typeof v === "string") q.set(k, v);
   }

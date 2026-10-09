@@ -7,7 +7,7 @@ import { TeamLogo } from "@/components/desk/TeamLogo";
 import { useNBATeamLiveGameQuery, useNBATeamRosterQuery, useNBATeamStatsQuery } from "@/hooks/useNBATeam";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
 import { userMessage } from "@/lib/api-error";
-import { asPercent, dow, fmtDelta, fmtStat, gameState, gameStatusText, monthDay, teamInfo, type Focus } from "@/lib/scout";
+import { asPercent, dow, fmtDelta, fmtStat, gameFocus, gameState, gameStatusText, monthDay, teamInfo, type Focus } from "@/lib/scout";
 import type { NBATeamRosterPlayer } from "@/types/nba-team";
 import type { NBATeamLiveGameData, TopPerformer } from "@/types/games";
 import { Block, KV, Skeleton, StatTile } from "./blocks";
@@ -243,7 +243,7 @@ export function TeamSheet({ abbrev, today, open, pinned, togglePin }: TeamSheetP
               </thead>
               <tbody>
                 {ahead.map((g) => (
-                  <tr key={g.date} className={s.click} onClick={() => open({ kind: "slate", date: g.date })}>
+                  <tr key={g.date} className={s.click} onClick={() => open(gameFocus(g.date, null, g.home ? g.opponent : abbrev, g.home ? abbrev : g.opponent))}>
                     <td className={s.text} style={{ color: g.date === today ? "var(--accent)" : undefined }}>
                       {dow(g.date)} {monthDay(g.date)}
                     </td>
@@ -280,7 +280,7 @@ export function TeamSheet({ abbrev, today, open, pinned, togglePin }: TeamSheetP
                 {played.map((g) => {
                   const won = g.team_score != null && g.opponent_score != null ? g.team_score > g.opponent_score : null;
                   return (
-                    <tr key={g.date} className={s.click} onClick={() => open({ kind: "slate", date: g.date })}>
+                    <tr key={g.date} className={s.click} onClick={() => open(gameFocus(g.date, null, g.home ? g.opponent : abbrev, g.home ? abbrev : g.opponent))}>
                       <td className={s.text}>
                         {dow(g.date)} {monthDay(g.date)}
                       </td>

@@ -8,8 +8,8 @@ import { dayName, fmtDelta, gameState, shortName, type Focus, type Lens } from "
 import type { LivePlayerData } from "@/types/live";
 import type { RankingsPlayer } from "@/types/rankings";
 import { Block, Skeleton } from "./blocks";
-import { TRENDING_PARAMS } from "./Ledger";
-import { GameCards, LeadersTable } from "./SlateSheet";
+const TRENDING_PARAMS = { days: 7, limit: 50, sort_by: "change" as const, direction: "both" as const };
+import { GameCards, LeadersTable } from "./Slate";
 import dk from "@/components/desk/desk.module.css";
 import s from "./scout.module.css";
 
@@ -17,17 +17,18 @@ export interface BoardSheetProps {
   today: string;
   open: (focus: Focus) => void;
   setLens: (lens: Lens) => void;
-  openFinder: () => void;
+  openSearch: () => void;
   leaders: LivePlayerData[] | undefined;
   leadersLoading: boolean;
   recent: Focus[];
   nameOf: (focus: Focus) => string;
   pool: RankingsPlayer[];
+  poolById: Map<number, RankingsPlayer>;
   seasonNote: string | null;
 }
 
 /** What the sheet shows with nothing open: tonight, who is scoring, who is moving, where you were. */
-export function BoardSheet({ today, open, setLens, openFinder, leaders, leadersLoading, recent, nameOf, pool, seasonNote }: BoardSheetProps) {
+export function BoardSheet({ today, open, setLens, openSearch, leaders, leadersLoading, recent, nameOf, pool, poolById, seasonNote }: BoardSheetProps) {
   const games = useGamesOnDateQuery(today);
   const trending = useOwnershipTrendingQuery(TRENDING_PARAMS);
   const live = (games.data?.games ?? []).filter((g) => gameState(g.status) === "live").length;
@@ -38,8 +39,8 @@ export function BoardSheet({ today, open, setLens, openFinder, leaders, leadersL
         <span className={s.boardTitle}>Scout</span>
         <span className={s.boardSub}>
           One player, one team or one night at a time, with every public number Court Vision keeps on it. Pick from the ledger on the left, or find anything with{" "}
-          <button type="button" className={s.linkBtn} onClick={openFinder}>
-            the finder
+          <button type="button" className={s.linkBtn} onClick={openSearch}>
+            the search box
           </button>
           .{seasonNote ? ` ${seasonNote}` : ""}
         </span>
@@ -65,9 +66,9 @@ export function BoardSheet({ today, open, setLens, openFinder, leaders, leadersL
         {recent.length ? (
           <div className={s.recent} style={{ marginTop: 10 }}>
             <span className={dk.label}>Recent</span>
-            {recent.slice(0, 8).map((f) => (
-              <button key={f.kind === "player" ? `p${f.id}` : f.kind === "team" ? `t${f.abbrev}` : `d${f.date}`} type="button" className={s.benchChip} onClick={() => open(f)}>
-                {f.kind === "player" ? <Headshot nbaId={f.id} name={nameOf(f)} size={20} /> : f.kind === "team" ? <TeamLogo abbrev={f.abbrev} size={20} /> : <span className={s.benchMark}>D</span>}
+            {recent.slice(0, 8).map((f, i) => (
+              <button key={`${f.kind}-${i}`} type="button" className={s.benchChip} onClick={() => open(f)}>
+                {f.kind === "player" ? <Headshot nbaId={f.id} name={nameOf(f)} size={20} /> : f.kind === "team" ? <TeamLogo abbrev={f.abbrev} size={20} /> : <span className={s.benchMark}>{f.kind === "game" ? "G" : f.kind === "market" ? "M" : "O"}</span>}
                 <span>{f.kind === "player" ? shortName(nameOf(f)) : nameOf(f)}</span>
               </button>
             ))}
@@ -79,8 +80,8 @@ export function BoardSheet({ today, open, setLens, openFinder, leaders, leadersL
         title="Tonight"
         note={games.isLoading ? "…" : `${dayName(today, today)} · ${games.data?.count ?? 0} games${live ? ` · ${live} live` : ""}`}
         right={
-          <button type="button" className={s.linkBtn} style={{ fontSize: 12 }} onClick={() => open({ kind: "slate", date: today })}>
-            Open the night →
+          <button type="button" className={s.linkBtn} style={{ fontSize: 12 }} onClick={() => open({ kind: "overview", lens: "slate" })}>
+            The tracker →
           </button>
         }
       >
@@ -89,13 +90,13 @@ export function BoardSheet({ today, open, setLens, openFinder, leaders, leadersL
         ) : !games.data || games.data.games.length === 0 ? (
           <div className={s.blockEmpty}>
             No games tonight.{" "}
-            <button type="button" className={s.linkBtn} onClick={() => setLens("slate")}>
-              See the week
+            <button type="button" className={s.linkBtn} onClick={() => open({ kind: "overview", lens: "slate" })}>
+              See the nights ahead
             </button>
             .
           </div>
         ) : (
-          <GameCards games={games.data.games} open={open} />
+          <GameCards games={games.data.games} date={today} open={open} leaders={leaders} poolById={poolById} />
         )}
       </Block>
 
@@ -104,13 +105,13 @@ export function BoardSheet({ today, open, setLens, openFinder, leaders, leadersL
           title="On the floor"
           note="top ten by fantasy points · live"
           right={
-            <button type="button" className={s.linkBtn} style={{ fontSize: 12 }} onClick={() => open({ kind: "slate", date: today })}>
+            <button type="button" className={s.linkBtn} style={{ fontSize: 12 }} onClick={() => open({ kind: "overview", lens: "slate" })}>
               Everyone →
             </button>
           }
         >
           <div className={s.tableWrap}>
-            <LeadersTable leaders={leaders} open={open} limit={10} />
+            <LeadersTable leaders={leaders} open={open} limit={10} poolById={poolById} games={games.data?.games} date={today} />
           </div>
         </Block>
       ) : leadersLoading ? null : null}
@@ -120,7 +121,7 @@ export function BoardSheet({ today, open, setLens, openFinder, leaders, leadersL
           title="Being added"
           note="ESPN ownership · 7 days"
           right={
-            <button type="button" className={s.linkBtn} style={{ fontSize: 12 }} onClick={() => setLens("market")}>
+            <button type="button" className={s.linkBtn} style={{ fontSize: 12 }} onClick={() => open({ kind: "overview", lens: "market" })}>
               Market →
             </button>
           }
@@ -137,8 +138,8 @@ export function BoardSheet({ today, open, setLens, openFinder, leaders, leadersL
           title="Top of the pool"
           note="by the rankings"
           right={
-            <button type="button" className={s.linkBtn} style={{ fontSize: 12 }} onClick={() => setLens("pool")}>
-              Pool →
+            <button type="button" className={s.linkBtn} style={{ fontSize: 12 }} onClick={() => open({ kind: "overview", lens: "pool" })}>
+              Rankings →
             </button>
           }
         >

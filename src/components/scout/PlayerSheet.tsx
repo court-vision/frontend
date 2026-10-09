@@ -21,6 +21,7 @@ import {
   fmtDelta,
   fmtPct,
   fmtStat,
+  gameFocus,
   lastGamesOf,
   lineFromAvg,
   monthDay,
@@ -441,7 +442,7 @@ export function PlayerSheet(props: PlayerSheetProps) {
               </thead>
               <tbody>
                 {schedule.data.schedule.map((g) => (
-                  <tr key={g.date} className={s.click} onClick={() => open({ kind: "slate", date: g.date })}>
+                  <tr key={g.date} className={s.click} onClick={() => open(gameFocus(g.date, null, g.home ? g.opponent : team ?? "", g.home ? team ?? "" : g.opponent))}>
                     <td className={s.text}>
                       {dow(g.date)} {monthDay(g.date)}
                     </td>
@@ -483,7 +484,7 @@ export function PlayerSheet(props: PlayerSheetProps) {
       {logs.length ? (
         <Block title="Game log" note={`newest first · ${windowLabel(window)} games in white`}>
           <div className={s.tableWrap}>
-            <GameLogTable logs={logs} window={window} open={open} />
+            <GameLogTable logs={logs} window={window} open={open} team={team} />
           </div>
         </Block>
       ) : null}
@@ -617,7 +618,7 @@ function FormChart({ logs, window, mean }: { logs: GameLog[]; window: Window; me
 // Game log
 // ---------------------------------------------------------------------------
 
-function GameLogTable({ logs, window, open }: { logs: GameLog[]; window: Window; open: (f: Focus) => void }) {
+function GameLogTable({ logs, window, open, team }: { logs: GameLog[]; window: Window; open: (f: Focus) => void; team: string | null }) {
   const k = windowGames(window);
   const from = k === null ? 0 : Math.max(0, logs.length - k);
   const newest = [...logs].reverse();
@@ -644,7 +645,7 @@ function GameLogTable({ logs, window, open }: { logs: GameLog[]; window: Window;
         {newest.map((g, i) => {
           const idx = logs.length - 1 - i;
           return (
-            <tr key={`${g.date}-${g.game_id ?? i}`} className={`${s.click} ${idx >= from ? s.inWindow : ""}`} onClick={() => open({ kind: "slate", date: g.date })}>
+            <tr key={`${g.date}-${g.game_id ?? i}`} className={`${s.click} ${idx >= from ? s.inWindow : ""}`} onClick={() => open(gameFocus(g.date, g.game_id, g.home === false ? team ?? "" : g.opponent ?? "", g.home === false ? g.opponent ?? "" : team ?? ""))}>
               <td className={s.text}>
                 {dow(g.date)} {monthDay(g.date)}
               </td>

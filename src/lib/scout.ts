@@ -14,19 +14,49 @@ import { lastGames } from "@/lib/statWindow";
 // Focus: the one thing the sheet shows
 // ---------------------------------------------------------------------------
 
+export type MarketSection = "adds" | "drops" | "draft";
+
+export const MARKET_SECTIONS: ReadonlyArray<{ id: MarketSection; label: string; title: string }> = [
+  { id: "adds", label: "Adds", title: "Ownership rising over seven days" },
+  { id: "drops", label: "Drops", title: "Ownership falling over seven days" },
+  { id: "draft", label: "Draft market", title: "ESPN rank and ADP, now against a week ago" },
+];
+
 export type Focus =
   | { kind: "player"; id: number }
   | { kind: "team"; abbrev: string }
-  | { kind: "slate"; date: string };
+  /** One matchup of a night. */
+  | { kind: "game"; date: string; gameId: string }
+  /** One of the market's lists. */
+  | { kind: "market"; section: MarketSection }
+  /** A lens's own overview. */
+  | { kind: "overview"; lens: Lens };
 
-/** The focus a URL names: `?p=<nba id>`, `?t=<abbrev>` or `?d=<YYYY-MM-DD>`; nothing opens the board. */
+export function isMarketSection(v: unknown): v is MarketSection {
+  return MARKET_SECTIONS.some((m) => m.id === v);
+}
+
+/**
+ * The focus a URL names: `?p=<nba id>`, `?t=<abbrev>`, `?g=<date>:<game id>`,
+ * `?m=<adds|drops|draft>`, `?o=<lens>`; nothing opens the board.
+ */
 export function focusFromSearch(search: URLSearchParams): Focus | null {
   const p = Number(search.get("p"));
   if (Number.isInteger(p) && p > 0) return { kind: "player", id: p };
   const t = search.get("t")?.trim().toUpperCase();
   if (t && NBA_TEAM_BY_ABBREV[t]) return { kind: "team", abbrev: t };
-  const d = search.get("d")?.trim();
-  if (d && isDate(d)) return { kind: "slate", date: d };
+  const g = search.get("g")?.trim();
+  if (g) {
+    const i = g.indexOf(":");
+    const date = i === -1 ? g : g.slice(0, i);
+    const gameId = i === -1 ? "" : g.slice(i + 1);
+    // An NBA game id, or the fallback "AWAY@HOME" for a game the schedule has no id for.
+    if (isDate(date) && /^[A-Za-z0-9_@-]{1,40}$/.test(gameId)) return { kind: "game", date, gameId };
+  }
+  const m = search.get("m");
+  if (isMarketSection(m)) return { kind: "market", section: m };
+  const o = search.get("o");
+  if (isLens(o)) return { kind: "overview", lens: o };
   return null;
 }
 
@@ -37,8 +67,12 @@ export function focusToSearch(focus: Focus | null): string {
       return `?p=${focus.id}`;
     case "team":
       return `?t=${focus.abbrev}`;
-    case "slate":
-      return `?d=${focus.date}`;
+    case "game":
+      return `?g=${focus.date}:${encodeURIComponent(focus.gameId)}`;
+    case "market":
+      return `?m=${focus.section}`;
+    case "overview":
+      return `?o=${focus.lens}`;
   }
 }
 
@@ -48,8 +82,12 @@ export function focusKey(focus: Focus): string {
       return `player:${focus.id}`;
     case "team":
       return `team:${focus.abbrev}`;
-    case "slate":
-      return `slate:${focus.date}`;
+    case "game":
+      return `game:${focus.date}:${focus.gameId}`;
+    case "market":
+      return `market:${focus.section}`;
+    case "overview":
+      return `overview:${focus.lens}`;
   }
 }
 
@@ -59,18 +97,42 @@ export function sameFocus(a: Focus | null, b: Focus | null): boolean {
   return focusKey(a) === focusKey(b);
 }
 
+/** The lens a focus belongs to. */
+export function lensOf(focus: Focus): Lens {
+  switch (focus.kind) {
+    case "player":
+      return "pool";
+    case "team":
+      return "teams";
+    case "game":
+      return "slate";
+    case "market":
+      return "market";
+    case "overview":
+      return focus.lens;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Lens: the list beside the sheet
 // ---------------------------------------------------------------------------
 
 export type Lens = "pool" | "teams" | "slate" | "market";
 
-export const LENSES: ReadonlyArray<{ id: Lens; label: string; title: string }> = [
-  { id: "pool", label: "POOL", title: "Every ranked player, the way the rankings score them" },
-  { id: "teams", label: "TEAMS", title: "The thirty NBA teams" },
-  { id: "slate", label: "SLATE", title: "A night of games, and who is scoring in them" },
-  { id: "market", label: "MARKET", title: "Who is being added, dropped and drafted" },
+export const LENSES: ReadonlyArray<{ id: Lens; label: string; title: string; overview: string; overviewNote: string }> = [
+  { id: "pool", label: "POOL", title: "Every ranked player, the way the rankings score them", overview: "Rankings", overviewNote: "the whole pool, scored and sorted" },
+  { id: "teams", label: "TEAMS", title: "The thirty NBA teams", overview: "Standings", overviewNote: "both conferences, record and ratings" },
+  { id: "slate", label: "SLATE", title: "A night of games, and who is scoring in them", overview: "Tracker", overviewNote: "the night's games as they run" },
+  { id: "market", label: "MARKET", title: "Who is being added, dropped and drafted", overview: "Market", overviewNote: "adds, drops and the draft market" },
 ];
+
+export function isLens(v: unknown): v is Lens {
+  return LENSES.some((l) => l.id === v);
+}
+
+export function lensInfo(lens: Lens) {
+  return LENSES.find((l) => l.id === lens) ?? LENSES[0];
+}
 
 export function nextLens(lens: Lens, step: 1 | -1): Lens {
   const i = LENSES.findIndex((l) => l.id === lens);
@@ -604,4 +666,53 @@ export function asPercent(value: number | null | undefined): number | null {
 export function teamInfo(abbrev: string | null | undefined): NBATeamInfo | null {
   if (!abbrev) return null;
   return NBA_TEAM_BY_ABBREV[abbrev.toUpperCase()] ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Standings
+// ---------------------------------------------------------------------------
+
+export interface StandingRow {
+  abbrev: string;
+  name: string;
+  conference: string;
+  w: number;
+  l: number;
+  pct: number;
+  /** Games behind the conference leader. */
+  gb: number;
+  net: number | null;
+  off: number | null;
+  def: number | null;
+  pace: number | null;
+  pts: number | null;
+}
+
+/** Teams ordered by winning percentage, games behind measured from each conference's leader. */
+export function standings(
+  rows: ReadonlyArray<{ abbrev: string; name: string; conference: string; w: number | null; l: number | null; net: number | null; off: number | null; def: number | null; pace: number | null; pts: number | null }>
+): Record<"East" | "West", StandingRow[]> {
+  const out: Record<"East" | "West", StandingRow[]> = { East: [], West: [] };
+  for (const r of rows) {
+    const w = r.w ?? 0;
+    const l = r.l ?? 0;
+    const conf: "East" | "West" = /west/i.test(r.conference) ? "West" : "East";
+    out[conf].push({ abbrev: r.abbrev, name: r.name, conference: conf, w, l, pct: w + l > 0 ? w / (w + l) : 0, gb: 0, net: r.net, off: r.off, def: r.def, pace: r.pace, pts: r.pts });
+  }
+  for (const conf of ["East", "West"] as const) {
+    const list = out[conf].sort((a, b) => b.pct - a.pct || b.w - a.w || (b.net ?? -99) - (a.net ?? -99) || a.abbrev.localeCompare(b.abbrev));
+    const lead = list[0];
+    for (const r of list) r.gb = lead ? Math.max(0, (lead.w - r.w + (r.l - lead.l)) / 2) : 0;
+  }
+  return out;
+}
+
+/** ".646" the way standings print it. */
+export function fmtPctDot(p: number): string {
+  return p.toFixed(3).replace(/^0/, "");
+}
+
+/** The night a game belongs to and its id, as a focus. */
+export function gameFocus(date: string, gameId: string | null | undefined, away: string, home: string): Focus {
+  return { kind: "game", date, gameId: gameId || `${away}@${home}` };
 }

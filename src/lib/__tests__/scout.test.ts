@@ -11,11 +11,13 @@ import {
   deltaSign,
   filterPool,
   fmtDelta,
+  fmtPctDot,
   focusFromSearch,
   focusToSearch,
   gameStatusText,
   hasPosition,
   isDate,
+  lensOf,
   lineFromAvg,
   matchPool,
   matchTeams,
@@ -27,6 +29,7 @@ import {
   shortName,
   slateDates,
   splitLines,
+  standings,
   tier,
   tipText,
 } from "@/lib/scout";
@@ -74,32 +77,56 @@ function row(id: number, name: string, over: Partial<RankingsPlayer> = {}): Rank
 }
 
 describe("focus ↔ URL", () => {
-  test("a player, a team, a slate, or nothing", () => {
+  test("a player, a team, a game, a market list, an overview, or nothing", () => {
     expect(focusFromSearch(new URLSearchParams("p=203999"))).toEqual({ kind: "player", id: 203999 });
     expect(focusFromSearch(new URLSearchParams("t=den"))).toEqual({ kind: "team", abbrev: "DEN" });
-    expect(focusFromSearch(new URLSearchParams("d=2026-10-20"))).toEqual({ kind: "slate", date: "2026-10-20" });
+    expect(focusFromSearch(new URLSearchParams("g=2026-10-20:0022600001"))).toEqual({ kind: "game", date: "2026-10-20", gameId: "0022600001" });
+    expect(focusFromSearch(new URLSearchParams("m=drops"))).toEqual({ kind: "market", section: "drops" });
+    expect(focusFromSearch(new URLSearchParams("o=teams"))).toEqual({ kind: "overview", lens: "teams" });
+    expect(focusFromSearch(new URLSearchParams("o=slate&d=2026-10-20"))).toEqual({ kind: "overview", lens: "slate" });
     expect(focusFromSearch(new URLSearchParams(""))).toBeNull();
     expect(focusFromSearch(new URLSearchParams("p=abc"))).toBeNull();
     expect(focusFromSearch(new URLSearchParams("t=XXX"))).toBeNull();
-    expect(focusFromSearch(new URLSearchParams("d=2026-02-31"))).toBeNull();
+    expect(focusFromSearch(new URLSearchParams("g=2026-02-31:1"))).toBeNull();
+    expect(focusFromSearch(new URLSearchParams("m=sells"))).toBeNull();
+    expect(focusFromSearch(new URLSearchParams("o=nope"))).toBeNull();
   });
 
   test("round trips", () => {
     for (const f of [
       { kind: "player" as const, id: 7 },
       { kind: "team" as const, abbrev: "BOS" },
-      { kind: "slate" as const, date: "2026-11-01" },
+      { kind: "game" as const, date: "2026-11-01", gameId: "0022600123" },
+      { kind: "game" as const, date: "2026-11-01", gameId: "BOS@NYK" },
+      { kind: "market" as const, section: "draft" as const },
+      { kind: "overview" as const, lens: "market" as const },
+      { kind: "overview" as const, lens: "slate" as const },
     ]) {
       expect(focusFromSearch(new URLSearchParams(focusToSearch(f)))).toEqual(f);
     }
     expect(focusToSearch(null)).toBe("");
   });
 
-  test("sameFocus compares by identity, not reference", () => {
+  test("sameFocus compares by identity, not reference; lensOf names the lens", () => {
     expect(sameFocus({ kind: "player", id: 1 }, { kind: "player", id: 1 })).toBe(true);
     expect(sameFocus({ kind: "player", id: 1 }, { kind: "team", abbrev: "DEN" })).toBe(false);
+    expect(sameFocus({ kind: "overview", lens: "slate" }, { kind: "overview", lens: "pool" })).toBe(false);
     expect(sameFocus(null, null)).toBe(true);
     expect(sameFocus(null, { kind: "player", id: 1 })).toBe(false);
+    expect(lensOf({ kind: "game", date: "2026-10-20", gameId: "x" })).toBe("slate");
+    expect(lensOf({ kind: "market", section: "adds" })).toBe("market");
+  });
+});
+
+describe("standings", () => {
+  test("orders by winning percentage within each conference and measures games behind", () => {
+    const row = (abbrev: string, conference: string, w: number, l: number, net: number) => ({ abbrev, name: abbrev, conference, w, l, net, off: null, def: null, pace: null, pts: null });
+    const table = standings([row("OKC", "West", 68, 14, 12.1), row("DEN", "West", 50, 32, 3.8), row("CLE", "East", 64, 18, 9.2), row("BOS", "East", 61, 21, 8.0), row("NYK", "East", 61, 21, 6.0)]);
+    expect(table.West.map((r) => r.abbrev)).toEqual(["OKC", "DEN"]);
+    expect(table.West[1].gb).toBe(18);
+    expect(table.East.map((r) => r.abbrev)).toEqual(["CLE", "BOS", "NYK"]);
+    expect(table.East[1].gb).toBe(3);
+    expect(fmtPctDot(table.West[0].pct)).toBe(".829");
   });
 });
 
