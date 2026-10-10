@@ -1,12 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
 import { DashboardView } from "@/components/dashboard/core/DashboardView";
-import { WelcomeView } from "@/components/dashboard/WelcomeView";
+import { Landing } from "@/components/landing/Landing";
 
 export default async function Home() {
   const { userId } = await auth();
 
   if (!userId) {
-    return <WelcomeView />;
+    return <Landing />;
   }
 
   return <DashboardView />;

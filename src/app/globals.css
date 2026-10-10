@@ -267,3 +267,10 @@
 .react-resizable-handle::after {
   border-color: hsl(var(--primary) / 0.6) !important;
 }
+
+/* The signed-out front page brings its own frame (src/components/landing). From
+   the first paint, before Clerk can say who is visiting, the app shell's chrome
+   under it is hidden; Base drops it once Clerk says signed out. */
+body:has([data-landing]) [data-app-chrome] {
+  display: none !important;
+}
