@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { isDeskDemo } from "@/components/desk/routes";
+import { isDeskDemo, isDeskPath, withFlagValues } from "@/components/desk/routes";
 
 // Desks that need an account. Week shows its own sign-in prompt (and a demo),
 // Scout and Developer are public.
@@ -16,13 +16,23 @@ export default clerkMiddleware(async (auth, req) => {
     await auth.protect();
   }
 
+  // On Vercel a bare flag (`/week?demo`) never reaches the page, so give it a
+  // value there; the address bar keeps the URL as it was.
+  const flagged = isDeskPath(req.nextUrl.pathname) ? withFlagValues(req.nextUrl.searchParams) : null;
+  let response: NextResponse | undefined;
+  if (flagged) {
+    const url = req.nextUrl.clone();
+    url.search = flagged.toString();
+    response = NextResponse.rewrite(url);
+  }
+
   // Clerk's middleware adds X-Robots-Tag: noindex to all routes it processes.
   // Remove it for public pages so Google can index them.
   if (isIndexableRoute(req)) {
-    const response = NextResponse.next();
+    response ??= NextResponse.next();
     response.headers.delete("X-Robots-Tag");
-    return response;
   }
+  return response;
 });
 
 export const config = {
