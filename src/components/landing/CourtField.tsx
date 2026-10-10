@@ -57,13 +57,25 @@ function hexRgb(value: string): [number, number, number] {
 /** Opacity steps per tone: dots are drawn in one path per (tone, step). */
 const STEPS = 6;
 
-export function CourtField({ className, onLive }: { className?: string; onLive?: () => void }) {
+interface CourtFieldProps {
+  className?: string;
+  /** Called once the field has drawn its first frame. */
+  onLive?: () => void;
+  /** False keeps it on the ball (dribbling) after it gathers, instead of the full loop. */
+  cycle?: boolean;
+  /** Where across a wide screen the scene sits (0..1), overriding each shape's own. */
+  across?: number;
+}
+
+export function CourtField({ className, onLive, cycle = true, across }: CourtFieldProps) {
   const ref = useRef<HTMLCanvasElement>(null);
   const theme = useDeskTheme((s) => s.theme);
   const paint = useRef<{ colors: string[][]; lit: boolean }>({ colors: [], lit: false });
   const redraw = useRef<() => void>(() => {});
   const live = useRef(onLive);
   live.current = onLive;
+  const opts = useRef({ cycle, across });
+  opts.current = { cycle, across };
 
   // The theme's ink, accent and quiet text, at each opacity step.
   useEffect(() => {
@@ -172,12 +184,13 @@ export function CourtField({ className, onLive }: { className?: string; onLive?:
 
       // Which shape, or which two and how far between.
       let local = t - phaseStart;
-      while (!still && local > HOLD[phase] + MORPH) {
+      const loops = opts.current.cycle;
+      while (!still && loops && local > HOLD[phase] + MORPH) {
         phaseStart += HOLD[phase] + MORPH;
         local -= HOLD[phase] + MORPH;
         phase = (phase + 1) % 3;
       }
-      const morphing = !still && local > HOLD[phase];
+      const morphing = !still && loops && local > HOLD[phase];
       const T = morphing ? (local - HOLD[phase]) / MORPH : 0;
       const next = (phase + 1) % 3;
       const camT = ease(clamp(T * 1.15 - 0.1, 0, 1));
@@ -232,7 +245,7 @@ export function CourtField({ className, onLive }: { className?: string; onLive?:
       const uz = rx * fy;
 
       const wide = w > 900;
-      const cx = w * (wide ? c0.across + (c1.across - c0.across) * camT : 0.5);
+      const cx = w * (wide ? opts.current.across ?? c0.across + (c1.across - c0.across) * camT : 0.5);
       const cy = h * (wide ? 0.47 : 0.38);
       // Fit the court across the width (a phone lets it run a little past the
       // edges) and the ball within the height, whichever is smaller.
@@ -377,7 +390,7 @@ export function CourtField({ className, onLive }: { className?: string; onLive?:
     };
     // A click moves on to the next shape.
     const onClick = () => {
-      if (still || clock < INTRO) return;
+      if (still || clock < INTRO || !opts.current.cycle) return;
       const local = clock - phaseStart;
       if (local < HOLD[phase]) phaseStart = clock - HOLD[phase];
     };

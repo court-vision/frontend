@@ -25,7 +25,7 @@ const DESKS = [
     name: "Draft",
     short: "Draft live, or mock first",
     long: "Follow your ESPN draft as it happens, or run a mock against the field. At every pick the board ranks who is left for your roster, and the recap grades each pick when it is over.",
-    href: "/lab?demo",
+    href: "/draft?demo",
     open: "Open the Draft demo",
   },
   {
@@ -41,7 +41,7 @@ const DESKS = [
     name: "Developer",
     short: "Use the data yourself",
     long: "The same numbers through a public API. Read the reference, send requests from the playground, make keys, and query the tables directly.",
-    href: "/dev",
+    href: "/developer",
     open: "Open the Developer desk",
   },
 ] as const;

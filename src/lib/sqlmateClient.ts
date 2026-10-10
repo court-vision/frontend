@@ -6,8 +6,6 @@ import type {
   SaveTableRequest,
   SaveTableResponse,
   SchemaTable,
-  UpdateTableRequest,
-  UpdateTableResponse,
 } from "@/types/sqlmate";
 import { SQLMATE_API, SQLMATE_INTERNAL_API } from "@/endpoints";
 
@@ -109,12 +107,3 @@ export async function deleteTables(
   });
 }
 
-export async function updateTable(
-  token: string,
-  params: UpdateTableRequest
-): Promise<UpdateTableResponse> {
-  return apiFetch<UpdateTableResponse>(token, SQLMATE_INTERNAL_API, "/users/update_table", {
-    method: "POST",
-    body: params,
-  });
-}

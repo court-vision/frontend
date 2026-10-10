@@ -2,7 +2,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
-import { getTodayET } from "@/lib/utils";
 import type { AvgWindow } from "@/types/matchup";
 
 // Query keys
@@ -53,41 +52,6 @@ export function useLiveMatchupQuery(teamId: number | null) {
   });
 }
 
-export function useDailyMatchupQuery(
-  teamId: number | null,
-  date: string | null
-) {
-  const { getToken, isSignedIn } = useAuth();
-
-  // Poll every 60s when viewing today (live data), otherwise static
-  const isToday = date === getTodayET();
-
-  return useQuery({
-    queryKey: matchupKeys.daily(teamId!, date!),
-    queryFn: ({ signal }) => apiClient.getDailyMatchup(getToken, teamId!, date!, { signal }),
-    enabled: !!teamId && !!date && isSignedIn === true,
-    staleTime: isToday ? 0 : 1000 * 60 * 10,
-    refetchInterval: isToday ? 60 * 1000 : undefined,
-    refetchOnWindowFocus: true,
-    // Live polling: the next poll is the retry, and the panel shows its own badge
-    ...(isToday ? { retry: false, meta: { toast: false } } : {}),
-  });
-}
-
-export function useMatchupScoreHistoryQuery(
-  teamId: number | null,
-  matchupPeriod?: number
-) {
-  const { getToken, isSignedIn } = useAuth();
-
-  return useQuery({
-    queryKey: matchupKeys.historyDetail(teamId!, matchupPeriod),
-    queryFn: () => apiClient.getMatchupScoreHistory(getToken, teamId!, matchupPeriod),
-    enabled: !!teamId && isSignedIn === true,
-    staleTime: 1000 * 60 * 5, // 5 minutes - historical data doesn't change often
-  });
-}
-
 /**
  * Fetches all days in the current matchup period in a single request.
  * Replaces the N-parallel getDailyMatchup batch in MatchupPanel.
@@ -123,13 +87,3 @@ export function useWeeklyMatchupQuery(teamId: number | null) {
   return query;
 }
 
-export function useSeasonSummaryQuery(teamId: number | null) {
-  const { getToken, isSignedIn } = useAuth();
-
-  return useQuery({
-    queryKey: matchupKeys.seasonSummary(teamId!),
-    queryFn: () => apiClient.getSeasonSummary(getToken, teamId!),
-    enabled: !!teamId && isSignedIn === true,
-    staleTime: 1000 * 60 * 60, // 1 hour — season is over, data won't change
-  });
-}

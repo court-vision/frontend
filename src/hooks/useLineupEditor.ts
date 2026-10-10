@@ -47,21 +47,6 @@ export function useTeamLineupQuery(
   });
 }
 
-/** The fill-only plan. Fetched on demand: enable it, or call `refetch`. */
-export function useLineupPlanQuery(teamId: number | null, opts: { enabled?: boolean } = {}) {
-  const { getToken, isSignedIn } = useAuth();
-
-  return useQuery({
-    queryKey: lineupKeys.plan(teamId!),
-    queryFn: ({ signal }) => apiClient.getTeamLineupPlan(getToken, teamId!, { signal }),
-    enabled: (opts.enabled ?? false) && !!teamId && isSignedIn === true,
-    staleTime: 0,
-    gcTime: 60_000,
-    // The apply bar shows the plan's own failure inline.
-    meta: { toast: false },
-  });
-}
-
 /**
  * Send staged moves to ESPN. Reports its own outcome (`meta.toast: false`):
  * success and "sent but not confirmed" as toasts; a stale board (409

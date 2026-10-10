@@ -1,109 +1,25 @@
+/*
+ * Document-wide styles. Tailwind's preflight is the reset the desks build on;
+ * nothing uses Tailwind utilities. Everything else is styled by CSS modules in
+ * the desk tokens (components/desk/desk.module.css), which live on the desk
+ * frame, so the rules here that use them only apply inside it.
+ */
 @tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 @layer base {
-  /* "Warm Court": one warm hue (24) for every surface, stepped in lightness
-     so background → card → popover → muted read as layers instead of one
-     blue-black void. Text is bone rather than blue-white. The amber brand
-     colour is unchanged; ink on amber is dark for contrast (7:1 vs 2.9:1). */
-  :root {
-    color-scheme: dark;
-
-    /* Core backgrounds - layered depth */
-    --background: 24 10% 12%;
-    --foreground: 32 24% 93%;
-
-    /* Surface hierarchy */
-    --card: 24 9% 15%;
-    --card-foreground: 32 24% 93%;
-    --popover: 24 9% 18%;
-    --popover-foreground: 32 24% 93%;
-
-    /* Primary - warm amber-orange (basketball / ESPN energy) */
-    --primary: 28 92% 52%;
-    --primary-foreground: 24 10% 12%;
-
-    /* Secondary */
-    --secondary: 24 8% 19%;
-    --secondary-foreground: 32 24% 93%;
-
-    /* Tertiary - operational green (softened to sit on a warm base) */
-    --tertiary: 152 55% 45%;
-    --tertiary-foreground: 24 10% 12%;
-
-    /* Muted */
-    --muted: 24 8% 21%;
-    --muted-foreground: 26 8% 60%;
-
-    /* Accent */
-    --accent: 24 8% 19%;
-    --accent-foreground: 32 24% 93%;
-
-    /* Destructive - coral rather than pure red */
-    --destructive: 8 72% 60%;
-    --destructive-foreground: 24 10% 12%;
-
-    /* Borders - visible structure */
-    --border: 24 8% 26%;
-    --input: 24 8% 26%;
-    --ring: 28 92% 52%;
-
-    --radius: 0.625rem;
-
-    /* Chart colors */
-    --chart-1: 28 92% 52%;
-    --chart-2: 152 55% 45%;
-    --chart-3: 42 92% 58%;
-    --chart-4: 200 60% 55%;
-    --chart-5: 280 50% 60%;
-
-    /* Status colors */
-    --status-win: 152 55% 45%;
-    --status-loss: 8 72% 60%;
-    --status-projected: 42 92% 58%;
-    --status-neutral: 26 8% 50%;
-
-    /* Signal colors */
-    --signal-hot: 15 88% 58%;
-    --signal-cold: 210 60% 58%;
-    --signal-live: 152 55% 45%;
-    --signal-stale: 26 8% 36%;
-
-    /* Grid system */
-    --grid-line: 24 8% 16%;
-
-    /* Shell chrome height: header (48) + status bar (28). See Base.tsx. */
-    --chrome-h: 4.75rem;
-  }
-
-  /* Phones: header (48) + tab bar (56) + home-indicator inset. */
-  @media (max-width: 767.98px) {
-    :root {
-      --chrome-h: calc(3rem + 3.5rem + env(safe-area-inset-bottom, 0px));
-    }
-  }
-
-  /* Yahoo provider theme override */
-  [data-provider="yahoo"] {
-    --primary: 270 70% 60%;
-    --ring: 270 70% 60%;
-    --chart-1: 270 70% 60%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
+  *,
+  ::before,
+  ::after {
+    border-color: var(--line, currentColor);
   }
 
   body {
-    @apply bg-background text-foreground;
-    /* No rubber-band gap above the header on iOS; pages scroll inside <main>. */
+    /* Midnight, the default theme, under the frame (iOS overscroll, first paint). */
+    background: #0f1729;
     overscroll-behavior-y: none;
   }
 
-  /* Phones: 16 px inputs so iOS Safari doesn't zoom on focus (beats `.text-xs`). */
+  /* Phones: 16 px inputs so iOS Safari doesn't zoom on focus. */
   @media (max-width: 767.98px) {
     input:not([type="checkbox"]):not([type="radio"]),
     select,
@@ -112,20 +28,7 @@
     }
   }
 
-  /* 44 px hit areas on touch screens without changing the visual size.
-     Lives in `base` so positioning utilities (`absolute`, `fixed`) still win. */
-  @media (pointer: coarse) {
-    .touch-hit {
-      position: relative;
-    }
-    .touch-hit::after {
-      content: "";
-      position: absolute;
-      inset: -8px;
-    }
-  }
-
-  /* Custom scrollbar */
+  /* Thin scrollbars in the theme's quiet ink. */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -136,141 +39,11 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(24 8% 30%);
+    background: color-mix(in srgb, var(--text-3, #8696b4) 45%, transparent);
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.4);
+    background: color-mix(in srgb, var(--accent, #5cc8ff) 50%, transparent);
   }
-}
-
-@layer utilities {
-  /* Page transition: a short fade. Pages add their own `animate-slide-up-fade`
-     rise, so the shell only fades — the old full-width horizontal slide
-     dragged the whole page across the screen on every navigation. */
-  .page-enter {
-    animation: pageEnter 180ms ease-out both;
-  }
-
-  @keyframes pageEnter {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .page-enter {
-      animation: none;
-    }
-  }
-
-  /* Loading sweep. A directional highlight reads as work in progress where a
-     pulse reads as idle, and it stays neutral so amber keeps meaning "live or
-     interactive". Numeric cells never use this — they hold their own width
-     with `PendingValue` so nothing reflows when the value lands. */
-  .skeleton-shimmer {
-    position: relative;
-    overflow: hidden;
-    background: hsl(var(--muted));
-  }
-
-  .skeleton-shimmer::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    transform: translateX(-100%);
-    background: linear-gradient(
-      90deg,
-      transparent,
-      hsl(var(--foreground) / 0.07),
-      transparent
-    );
-    animation: skeleton-sweep 1.6s ease-in-out infinite;
-  }
-
-  @keyframes skeleton-sweep {
-    to {
-      transform: translateX(100%);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .skeleton-shimmer::after {
-      animation: none;
-    }
-  }
-
-  /* Brand wordmark */
-  .brand-text {
-    background: linear-gradient(
-      135deg,
-      hsl(32 24% 97%) 0%,
-      hsl(32 24% 93%) 40%,
-      hsl(var(--primary)) 100%
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    filter: drop-shadow(0 0 6px hsl(var(--primary) / 0.2));
-  }
-
-  /* Panel bezel effect */
-  .panel-bezel {
-    border: 1px solid hsl(var(--border));
-    box-shadow:
-      inset 0 0 0 1px hsl(24 9% 13%),
-      0 0 0 1px hsl(24 10% 6%);
-  }
-
-  /* Ticker marquee — clean translateX(-50%) with no seam correction */
-  @keyframes ticker-marquee {
-    to { transform: translateX(-50%); }
-  }
-
-  /* Vignette overlay */
-  .vignette::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(
-      ellipse 80% 60% at 50% 40%,
-      transparent 0%,
-      hsl(24 10% 5% / 0.3) 100%
-    );
-    pointer-events: none;
-    z-index: 0;
-  }
-}
-
-/* react-grid-layout overrides */
-.react-grid-item.react-grid-placeholder {
-  background: hsl(var(--primary) / 0.1);
-  border: 1px dashed hsl(var(--primary) / 0.4);
-  border-radius: var(--radius);
-  transition-duration: 100ms;
-}
-
-.react-resizable-handle {
-  opacity: 0;
-  transition: opacity 150ms;
-}
-
-.react-grid-item:hover .react-resizable-handle,
-.react-grid-item.react-grid-item--resizing .react-resizable-handle {
-  opacity: 1;
-}
-
-.react-resizable-handle::after {
-  border-color: hsl(var(--primary) / 0.6) !important;
-}
-
-/* The signed-out front page brings its own frame (src/components/landing). From
-   the first paint, before Clerk can say who is visiting, the app shell's chrome
-   under it is hidden; Base drops it once Clerk says signed out. */
-body:has([data-landing]) [data-app-chrome] {
-  display: none !important;
 }

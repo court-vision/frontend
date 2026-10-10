@@ -912,7 +912,7 @@ export function WeekTerminal({
               Add a team
             </button>
           ) : (
-            <Link href="/me?add" className={`${dk.btn} ${dk.btnPrimary}`} style={{ textDecoration: "none" }}>
+            <Link href="/account?add" className={`${dk.btn} ${dk.btnPrimary}`} style={{ textDecoration: "none" }}>
               Add a team
             </Link>
           )

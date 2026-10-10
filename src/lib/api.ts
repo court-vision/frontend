@@ -11,9 +11,7 @@ import {
   API_BASE,
   LIVE_API,
   TEAMS_API,
-  LINEUPS_API,
   RANKINGS_API,
-  RANKINGS_INTERNAL_API,
   PLAYERS_API,
   MATCHUPS_API,
   STREAMERS_API,
@@ -21,14 +19,12 @@ import {
   GAMES_API,
   OWNERSHIP_API,
   SCHEDULE_API,
-  PLAYOFF_API,
   NOTIFICATIONS_API,
   API_KEYS_API,
   DRAFTS_API,
   CONNECTIONS_API,
 } from "@/endpoints";
 import type {
-  RosterPlayer,
   LeagueInfoRequest,
   TeamResponseData,
   TeamGetResponse,
@@ -49,12 +45,6 @@ import type {
   ProviderConnectionResponse,
 } from "@/types/connections";
 import type {
-  Lineup,
-  LineupGenerationRequest,
-  GenerateLineupResponse,
-  GetLineupsResponse,
-  SaveLineupResponse,
-  DeleteLineupResponse,
   ScheduleWeeksData,
 } from "@/types/lineup";
 import type { RankingsMeta, RankingsParams, RankingsPlayer, RankingsResult } from "@/types/rankings";
@@ -73,22 +63,16 @@ import type {
 } from "@/types/scout";
 import type { GamesOnDateData, TeamScheduleData, NBATeamLiveGameData } from "@/types/games";
 import type { NBATeamStatsData, NBATeamRosterData } from "@/types/nba-team";
-import type { PlayoffBracketData } from "@/types/playoff";
-import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actions";
 import type {
   MatchupData,
   MatchupResponse,
   AvgWindow,
-  MatchupScoreHistory,
-  MatchupScoreHistoryResponse,
   LiveMatchupData,
   LiveMatchupResponse,
   DailyMatchupData,
   DailyMatchupResponse,
   WeeklyMatchupData,
   WeeklyMatchupResponse,
-  SeasonSummaryData,
-  SeasonSummaryResponse,
 } from "@/types/matchup";
 import type { StreamerData, StreamerFindRequest, StreamerResponse } from "@/types/streamer";
 import type {
@@ -115,7 +99,6 @@ import type {
   NotificationTeamPreferenceListResponse,
   NotificationTeamPreferenceSingleResponse,
 } from "@/types/notifications";
-import type { TeamInsightsData, TeamInsightsResponse } from "@/types/team-insights";
 import type {
   ApplyLineupMovesData,
   ApplyLineupMovesRequest,
@@ -230,27 +213,6 @@ class ApiClient {
     });
   }
 
-  async getTeamRoster(
-    getToken: GetTokenFn,
-    teamId: number
-  ): Promise<RosterPlayer[]> {
-    const env = await fetchJson<BaseApiResponse<RosterPlayer[]>>(
-      `${TEAMS_API}/view?team_id=${teamId}`,
-      { getToken }
-    );
-    return unwrap(env, []);
-  }
-
-  async getTeamInsights(
-    getToken: GetTokenFn,
-    teamId: number
-  ): Promise<TeamInsightsData> {
-    const env = await fetchJson<TeamInsightsResponse>(`${TEAMS_API}/${teamId}/insights`, {
-      getToken,
-    });
-    return unwrap(env);
-  }
-
   // League settings (provider-detected scoring format) for an owned team
   async getTeamLeague(
     getToken: GetTokenFn,
@@ -298,23 +260,6 @@ class ApiClient {
     opts?: RequestOptions
   ): Promise<LineupPlanData> {
     const env = await fetchJson<LineupPlanResponse>(`${TEAMS_API}/${teamId}/lineup/plan`, {
-      ...opts,
-      getToken,
-    });
-    return unwrap(env);
-  }
-
-  /**
-   * Today's recommended roster actions for an ESPN team, with the board they
-   * were computed against. `data` is always populated (a non-ESPN team gets a
-   * read-only reason, not null). Never writes.
-   */
-  async getTeamDailyActions(
-    getToken: GetTokenFn,
-    teamId: number,
-    opts?: RequestOptions
-  ): Promise<DailyActionsData> {
-    const env = await fetchJson<DailyActionsResponse>(`${TEAMS_API}/${teamId}/actions`, {
       ...opts,
       getToken,
     });
@@ -403,51 +348,6 @@ class ApiClient {
     return unwrap(env);
   }
 
-  // Lineups API - calls backend directly
-  async getLineups(getToken: GetTokenFn, teamId: number): Promise<Lineup[]> {
-    const env = await fetchJson<GetLineupsResponse>(`${LINEUPS_API}?team_id=${teamId}`, {
-      getToken,
-    });
-    return unwrap(env, []);
-  }
-
-  async generateLineup(
-    getToken: GetTokenFn,
-    data: LineupGenerationRequest
-  ): Promise<GenerateLineupResponse> {
-    return fetchJson<GenerateLineupResponse>(`${LINEUPS_API}/generate`, {
-      getToken,
-      method: "POST",
-      body: data,
-      raw: true,
-      timeoutMs: LINEUP_GENERATION_TIMEOUT_MS,
-    });
-  }
-
-  async saveLineup(
-    getToken: GetTokenFn,
-    teamId: number,
-    lineup: Lineup
-  ): Promise<SaveLineupResponse> {
-    return fetchJson<SaveLineupResponse>(`${LINEUPS_API}/save`, {
-      getToken,
-      method: "PUT",
-      body: { team_id: teamId, lineup_info: lineup },
-      raw: true,
-    });
-  }
-
-  async deleteLineup(
-    getToken: GetTokenFn,
-    lineupId: number
-  ): Promise<DeleteLineupResponse> {
-    return fetchJson<DeleteLineupResponse>(`${LINEUPS_API}/remove?lineup_id=${lineupId}`, {
-      getToken,
-      method: "DELETE",
-      raw: true,
-    });
-  }
-
   // Matchups API
   async getMatchup(
     getToken: GetTokenFn,
@@ -460,22 +360,6 @@ class ApiClient {
       { ...opts, getToken }
     );
     return unwrap(env);
-  }
-
-  async getMatchupScoreHistory(
-    getToken: GetTokenFn,
-    teamId: number,
-    matchupPeriod?: number
-  ): Promise<MatchupScoreHistory | null> {
-    const params = new URLSearchParams();
-    if (matchupPeriod !== undefined) {
-      params.append("matchup_period", matchupPeriod.toString());
-    }
-    const queryString = params.toString();
-    const url = `${MATCHUPS_API}/history/${teamId}${queryString ? `?${queryString}` : ""}`;
-    return nullOn404(
-      fetchJson<MatchupScoreHistoryResponse>(url, { getToken }).then((env) => unwrap(env, null))
-    );
   }
 
   async getLiveMatchup(
@@ -511,17 +395,6 @@ class ApiClient {
       getToken,
     });
     return unwrap(env);
-  }
-
-  async getSeasonSummary(
-    getToken: GetTokenFn,
-    teamId: number
-  ): Promise<SeasonSummaryData | null> {
-    return nullOn404(
-      fetchJson<SeasonSummaryResponse>(`${MATCHUPS_API}/season-summary/${teamId}`, {
-        getToken,
-      }).then((env) => unwrap(env, null))
-    );
   }
 
   // Breakout Streamers API (internal, Clerk auth)
@@ -730,30 +603,6 @@ class ApiClient {
     return { players: data, meta: env.meta ?? null, message };
   }
 
-  /**
-   * Rankings scored by a team's league settings rather than the platform
-   * default. `format` and `categories` are not sent: the league decides those,
-   * and the response reports which in `meta.scoring`.
-   */
-  async getLeagueRankingsWithMeta(
-    getToken: GetTokenFn,
-    teamId: number,
-    params?: Partial<RankingsParams> | null,
-    opts?: RequestOptions
-  ): Promise<RankingsResult> {
-    const p = normalizeParams(params);
-    const q = new URLSearchParams();
-    if (p.window !== null) q.set("window", String(p.window));
-    if (p.minGames !== null) q.set("min_games", String(p.minGames));
-    const qs = q.toString();
-    const env = await fetchJson<BaseApiResponse<RankingsPlayer[]> & { meta?: RankingsMeta | null }>(
-      `${RANKINGS_INTERNAL_API}/${teamId}${qs ? `?${qs}` : ""}`,
-      { ...opts, getToken }
-    );
-    const { data, message } = unwrapWithMessage(env, []);
-    return { players: data, meta: env.meta ?? null, message };
-  }
-
   // Players API (public - no auth required)
   async getPlayerStats(
     id: number,
@@ -766,18 +615,6 @@ class ApiClient {
       searchParams.append("window", window);
     }
     return nullOn404(this.getData<PlayerStats>(`${PLAYERS_API}/stats?${searchParams.toString()}`));
-  }
-
-  async getPlayerStatsByName(
-    name: string,
-    team: string,
-    window: string = "season"
-  ): Promise<PlayerStats | null> {
-    const params = new URLSearchParams({ name, team });
-    if (window !== "season") {
-      params.append("window", window);
-    }
-    return nullOn404(this.getData<PlayerStats>(`${PLAYERS_API}/stats?${params.toString()}`));
   }
 
   async getPlayerPercentiles(
@@ -936,13 +773,6 @@ class ApiClient {
     });
   }
 
-  async getPlayoffBracket(season?: string): Promise<PlayoffBracketData | null> {
-    const url = season
-      ? `${PLAYOFF_API}/bracket?season=${season}`
-      : `${PLAYOFF_API}/bracket`;
-    return nullOn404(this.getData<PlayoffBracketData>(url));
-  }
-
   // Drafts API (internal - Clerk auth required)
 
   async getDraftSessions(getToken: GetTokenFn): Promise<DraftSession[]> {
@@ -1010,41 +840,6 @@ class ApiClient {
         roster?: DraftRosterEntry[] | null;
       }
     >(`${DRAFTS_API}/${sessionId}/board?${q.toString()}`, { ...opts, getToken });
-    const { data, message } = unwrapWithMessage(env, []);
-    return {
-      rows: data,
-      recommendations: env.recommendations ?? [],
-      roster: env.roster ?? [],
-      meta: env.meta ?? null,
-      message,
-    };
-  }
-
-  /**
-   * The stateless big board for a team, with pick state passed in. No session
-   * required, and it carries no recommendations — use `getDraftBoard` once a
-   * room is open.
-   */
-  async getTeamDraftBoard(
-    getToken: GetTokenFn,
-    teamId: number,
-    picked: number[] = [],
-    mine: number[] = [],
-    boardSource: BoardSource = "espn",
-    playoffWeight: number | null = null,
-    opts?: RequestOptions
-  ): Promise<DraftBoardResult> {
-    const q = new URLSearchParams({ team_id: String(teamId), board: boardSource });
-    if (playoffWeight !== null) q.set("playoff_weight", String(playoffWeight));
-    for (const id of picked) q.append("picked", String(id));
-    for (const id of mine) q.append("mine", String(id));
-    const env = await fetchJson<
-      BaseApiResponse<DraftBoardRow[]> & {
-        meta?: DraftBoardMeta | null;
-        recommendations?: DraftRecommendation[] | null;
-        roster?: DraftRosterEntry[] | null;
-      }
-    >(`${DRAFTS_API}/board?${q.toString()}`, { ...opts, getToken });
     const { data, message } = unwrapWithMessage(env, []);
     return {
       rows: data,

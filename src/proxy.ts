@@ -2,27 +2,12 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { isDeskDemo } from "@/components/desk/routes";
 
-// Define routes that require authentication
-const isProtectedRoute = createRouteMatcher([
-  "/your-teams(.*)",
-  "/lineup-generation(.*)",
-  "/manage-lineups(.*)",
-  "/manage-teams(.*)",
-  "/draft(.*)",
-  "/lab(.*)",
-  "/me(.*)",
-  "/matchup(.*)",
-  "/streamers(.*)",
-  "/query-builder/manage-tables(.*)",
-]);
+// Desks that need an account. Week shows its own sign-in prompt (and a demo),
+// Scout and Developer are public.
+const isProtectedRoute = createRouteMatcher(["/draft(.*)", "/account(.*)"]);
 
-// Public routes that should be crawlable by search engines
-const isIndexableRoute = createRouteMatcher([
-  "/",
-  "/rankings(.*)",
-  "/playoffs(.*)",
-  "/terminal(.*)",
-]);
+// Public pages search engines may index.
+const isIndexableRoute = createRouteMatcher(["/", "/scout(.*)", "/developer(.*)", "/sign-up(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
   // Protect routes that require authentication. A desk's demo runs on sample

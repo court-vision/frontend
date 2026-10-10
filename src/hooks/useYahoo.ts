@@ -12,17 +12,6 @@ export const yahooKeys = {
     [...yahooKeys.all, "teams", connectionId, leagueKey] as const,
 };
 
-export function useYahooAuthUrl() {
-  const { getToken, isSignedIn } = useAuth();
-
-  return useQuery({
-    queryKey: yahooKeys.authUrl(),
-    queryFn: () => apiClient.getYahooAuthUrl(getToken),
-    enabled: false, // Only fetch when explicitly triggered via refetch()
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-}
-
 export function useYahooLeagues(connectionId: number | null) {
   const { getToken, isSignedIn } = useAuth();
 

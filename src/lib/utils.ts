@@ -1,10 +1,3 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
 /**
  * Get today's date in YYYY-MM-DD format using the fantasy scheduling convention:
  * before 2 AM ET counts as yesterday — aligns with when ESPN's batch update runs

@@ -67,6 +67,3 @@ export function useSelectedTeam(teamIdOverride?: number | null): SelectedTeamSta
   }, [teamId, teams, isLoading, teamsError, refetch]);
 }
 
-export function useScoringFormat(teamId?: number | null): ScoringFormat {
-  return useSelectedTeam(teamId).format;
-}

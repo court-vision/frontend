@@ -5,18 +5,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/rankings", "/playoffs", "/terminal", "/sign-in", "/sign-up"],
-        disallow: [
-          "/your-teams",
-          "/lineup-generation",
-          "/manage-lineups",
-          "/manage-teams",
-          "/matchup",
-          "/streamers",
-          "/query-builder",
-          "/account",
-          "/settings",
-        ],
+        allow: ["/", "/scout", "/developer", "/sign-in", "/sign-up"],
+        disallow: ["/week", "/draft", "/account"],
       },
     ],
     sitemap: "https://www.courtvision.dev/sitemap.xml",

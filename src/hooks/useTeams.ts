@@ -9,7 +9,6 @@ import { matchupKeys } from "@/hooks/useMatchup";
 import { rankingsKeys } from "@/hooks/useRankings";
 import type { LeagueInfoRequest } from "@/types/team";
 
-import type { TeamInsightsData } from "@/types/team-insights";
 
 // Query keys
 export const teamsKeys = {
@@ -34,28 +33,6 @@ export function useTeamsQuery() {
     queryFn: () => apiClient.getTeams(getToken),
     enabled: isSignedIn === true,
     staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-}
-
-export function useTeamRosterQuery(teamId: number | null) {
-  const { getToken, isSignedIn } = useAuth();
-
-  return useQuery({
-    queryKey: teamsKeys.roster(teamId!),
-    queryFn: () => apiClient.getTeamRoster(getToken, teamId!),
-    enabled: !!teamId && isSignedIn === true,
-    staleTime: 1000 * 60 * 2, // 2 minutes for roster data
-  });
-}
-
-export function useTeamInsightsQuery(teamId: number | null) {
-  const { getToken, isSignedIn } = useAuth();
-
-  return useQuery<TeamInsightsData>({
-    queryKey: teamsKeys.insights(teamId!),
-    queryFn: () => apiClient.getTeamInsights(getToken, teamId!),
-    enabled: !!teamId && isSignedIn === true,
-    staleTime: 1000 * 60 * 3, // 3 minutes
   });
 }
 

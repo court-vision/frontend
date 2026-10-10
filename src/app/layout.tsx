@@ -2,39 +2,21 @@ import type { Metadata, Viewport } from "next";
 
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { ClerkProvider } from "@clerk/nextjs";
+import { Outfit } from "next/font/google";
 
-import { Plus_Jakarta_Sans, JetBrains_Mono, Outfit } from "next/font/google";
+import { DeskFrame } from "@/components/desk/DeskFrame";
+import { deskMono, deskSans } from "@/components/desk/fonts";
+import { ACCOUNT_DESK, WEEK_DESK } from "@/components/desk/routes";
+import { QueryProvider } from "@/providers/QueryProvider";
+import "./globals.css";
 
-const jakartaSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-jakarta",
-  weight: ["400", "500", "600", "700"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains",
-  weight: ["400", "500", "700"],
-});
-
+// The wordmark's face. Everything else is the desks' Geist (desk/fonts.ts).
 const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-outfit",
-  weight: ["500", "600", "700", "800"],
+  weight: ["700", "800"],
 });
-
-import { ThemeProvider } from "@/components/theme-provider";
-import { TeamsProvider } from "./context/TeamsContext";
-import { LineupProvider } from "./context/LineupContext";
-import { QueryProvider } from "@/providers/QueryProvider";
-import { CommandPaletteProvider } from "@/providers/CommandPaletteProvider";
-import { ProviderThemeSync } from "@/components/ProviderThemeSync";
-
-import { Toaster } from "@/components/ui/sonner";
-import "./globals.css";
-import Layout from "@/components/Base";
-
-import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.courtvision.dev"),
@@ -96,10 +78,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // Extend under the iOS home indicator / notch; Base.tsx pads with safe-area insets.
+  // Extend under the iOS home indicator / notch.
   viewportFit: "cover",
-  themeColor: "#221f1c",
-  colorScheme: "dark",
+  // Midnight, the default desk theme; each theme sets its own color-scheme.
+  themeColor: "#0f1729",
 };
 
 export default function RootLayout({
@@ -108,7 +90,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
@@ -132,29 +114,15 @@ export default function RootLayout({
         />
       </head>
 
-      <body className={`${jakartaSans.variable} ${jetbrainsMono.variable} ${outfit.variable} font-sans`}>
+      <body className={`${outfit.variable} ${deskSans.variable} ${deskMono.variable}`}>
         <ClerkProvider
-          signInFallbackRedirectUrl="/your-teams"
-          signUpFallbackRedirectUrl="/manage-teams"
+          signInFallbackRedirectUrl={WEEK_DESK}
+          signUpFallbackRedirectUrl={`${ACCOUNT_DESK}?add`}
           afterSignOutUrl="/"
         >
           <QueryProvider>
-            <TeamsProvider>
-              <ProviderThemeSync />
-              <LineupProvider>
-                <ThemeProvider
-                  attribute="class"
-                  defaultTheme="dark"
-                  forcedTheme="dark"
-                  enableSystem={false}
-                >
-                  <CommandPaletteProvider>
-                    <Layout>{children}</Layout>
-                    <Toaster richColors />
-                  </CommandPaletteProvider>
-                </ThemeProvider>
-              </LineupProvider>
-            </TeamsProvider>
+            {/* Every page is a desk-framed page: the desks, the landing, sign-in, errors. */}
+            <DeskFrame>{children}</DeskFrame>
           </QueryProvider>
         </ClerkProvider>
 

@@ -10,10 +10,7 @@ if (process.env.NODE_ENV === "development" && !process.env.NEXT_PUBLIC_API_BASE)
 }
 
 // API v1 Internal endpoints
-export const AUTH_API = `${API_BASE}/v1/internal/auth`;
-export const USERS_API = `${API_BASE}/v1/internal/users`;
 export const TEAMS_API = `${API_BASE}/v1/internal/teams`;
-export const LINEUPS_API = `${API_BASE}/v1/internal/lineups`;
 export const MATCHUPS_API = `${API_BASE}/v1/internal/matchups`;
 export const STREAMERS_API = `${API_BASE}/v1/internal/streamers`;
 export const YAHOO_API = `${API_BASE}/v1/internal/yahoo`;
@@ -24,7 +21,6 @@ export const API_KEYS_API = `${API_BASE}/v1/internal/api-keys`;
 // Draft Lab: sessions, picks, and the board scored for either.
 export const DRAFTS_API = `${API_BASE}/v1/internal/drafts`;
 // Rankings scored by a team's own league settings (the public one is below).
-export const RANKINGS_INTERNAL_API = `${API_BASE}/v1/internal/rankings`;
 export const SQLMATE_INTERNAL_API = `${API_BASE}/v1/internal/sqlmate`;
 
 // The Draft Tap extension's id (pinned by its manifest "key"). Live ESPN draft
@@ -39,5 +35,4 @@ export const PLAYERS_API = `${API_BASE}/v1/players`;
 export const GAMES_API = `${API_BASE}/v1/games`;
 export const OWNERSHIP_API = `${API_BASE}/v1/ownership`;
 export const SCHEDULE_API = `${API_BASE}/v1/schedule`;
-export const PLAYOFF_API = `${API_BASE}/v1/playoff`;
 export const SQLMATE_API = `${API_BASE}/v1/sqlmate`;

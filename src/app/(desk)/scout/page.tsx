@@ -5,7 +5,6 @@ import { focusFromSearch } from "@/lib/scout";
 export const metadata: Metadata = {
   title: "Scout",
   description: "One player, team or night at a time: every public number Court Vision keeps.",
-  robots: { index: false, follow: false },
 };
 
 export default async function Page({
