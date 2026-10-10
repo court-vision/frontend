@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Braces, LogOut, Moon, Sun, UserRoundCog } from "lucide-react";
+import { Braces, Check, LogOut, UserRoundCog } from "lucide-react";
+import { DESK_THEMES } from "@/components/desk/themes";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import { DEVELOPER_DESK } from "@/components/desk/routes";
 import type { AccountModel } from "./model";
@@ -58,18 +59,20 @@ export function AccountSheet({ model }: { model: AccountModel }) {
       </Block>
 
       <Block title="Theme" note="every desk">
-        <div className={dk.rail} style={{ display: "inline-flex" }}>
-          {(["dark", "light"] as const).map((t) => (
-            <button key={t} type="button" className={`${dk.seg} ${theme === t ? dk.segOn : ""}`} onClick={() => setTheme(t)}>
-              {theme === t ? <span className={dk.segPill} /> : null}
-              <span className={dk.segLabel}>
-                {t === "dark" ? <Moon size={12} /> : <Sun size={12} />} {t}
+        <div className={s.trayOptions} style={{ maxWidth: 520 }}>
+          {DESK_THEMES.map((t) => (
+            <button key={t.id} type="button" className={s.trayOption} data-on={theme === t.id ? "true" : undefined} aria-pressed={theme === t.id} onClick={() => setTheme(t.id)}>
+              <span className={s.trayOptionTitle}>
+                {t.label}
+                <span className={`${dk.chip} ${dk.flat}`}>{t.scheme}</span>
+                {theme === t.id ? <Check size={13} className={s.trayOptionCheck} /> : null}
               </span>
+              <span className={s.trayOptionSub}>{t.note}</span>
             </button>
           ))}
         </div>
         <span className={s.fieldHint} style={{ display: "block", marginTop: 8 }}>
-          Or press <span className={dk.kbd}>T</span> on any desk.
+          <span className={dk.kbd}>T</span> on any desk swaps a theme with its pair.
         </span>
       </Block>
 

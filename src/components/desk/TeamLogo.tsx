@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { teamLogoUrl } from "@/lib/nbaTeams";
-import { useDeskTheme } from "./useDeskTheme";
+import { useDeskScheme } from "./useDeskTheme";
 import dk from "./desk.module.css";
 
 /**
@@ -12,11 +12,11 @@ import dk from "./desk.module.css";
  * small, few, and a lazy one never arrives while the page is hidden.
  */
 export function TeamLogo({ abbrev, size = 20, className }: { abbrev: string | null | undefined; size?: number; className?: string }) {
-  const theme = useDeskTheme((s) => s.theme);
+  const scheme = useDeskScheme();
   const [failed, setFailed] = useState<string | null>(null);
   const img = useRef<HTMLImageElement>(null);
-  const key = abbrev ? `${abbrev.toUpperCase()}:${theme}` : null;
-  const url = abbrev ? teamLogoUrl(abbrev, theme) : null;
+  const key = abbrev ? `${abbrev.toUpperCase()}:${scheme}` : null;
+  const url = abbrev ? teamLogoUrl(abbrev, scheme) : null;
 
   // An image that failed before hydration never fires React's onError.
   useEffect(() => {

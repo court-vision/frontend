@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { AlertTriangle, CheckCircle2, Info, Loader2, XCircle } from "lucide-react";
-import { useDeskTheme } from "./useDeskTheme";
+import { useDeskScheme, useDeskTheme } from "./useDeskTheme";
 import dk from "./desk.module.css";
 
 const PortalContext = createContext<HTMLElement | null>(null);
@@ -19,15 +19,16 @@ export function useDeskPortal(): HTMLElement | null {
  */
 export function DeskFrame({ className, children }: { className?: string; children: React.ReactNode }) {
   const theme = useDeskTheme((s) => s.theme);
+  const scheme = useDeskScheme();
   const [el, setEl] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     void useDeskTheme.persist.rehydrate();
   }, []);
   return (
-    <div ref={setEl} className={`${dk.root} ${className ?? ""}`} data-theme={theme}>
+    <div ref={setEl} className={`${dk.root} ${dk.tokens} ${className ?? ""}`} data-theme={theme}>
       <PortalContext.Provider value={el}>{children}</PortalContext.Provider>
       <Toaster
-        theme={theme}
+        theme={scheme}
         position="bottom-right"
         offset={40}
         gap={8}

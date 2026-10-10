@@ -187,7 +187,7 @@ export function TeamSheet({ model, team, alerts, onOpen, onRemoved }: TeamSheetP
             </button>
             {creds.connection.status === "expired" ? (
               <div className={s.formNote} data-tone="warn">
-                {providerLabel(creds.connection.provider)} rejected this account&apos;s credentials, so reads for this team fail until they are updated. Open the account to paste new cookies.
+                {providerLabel(creds.connection.provider)} rejected this account&apos;s {creds.connection.provider === "yahoo" ? "login" : "cookies"}, so reads for this team fail until {creds.connection.provider === "yahoo" ? "it is reconnected" : "they are updated"}. Open the account to {creds.connection.provider === "yahoo" ? "reconnect" : "paste new cookies"}.
               </div>
             ) : null}
           </div>

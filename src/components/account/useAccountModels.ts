@@ -18,6 +18,7 @@ import { teamsKeys, useAddTeamMutation, useDeleteTeamMutation, useSyncTeamLeague
 import { useYahooLeagues, useYahooTeams } from "@/hooks/useYahoo";
 import { apiClient } from "@/lib/api";
 import { userMessage } from "@/lib/api-error";
+import { scoringLabel } from "@/lib/category-format";
 import {
   DEMO_ACCOUNT_TEAMS,
   DEMO_CONNECTIONS,
@@ -59,6 +60,7 @@ const useLiveTeamPrefs = (): Loaded<NotificationTeamPreference[]> => loaded(useT
 /** The add-team flow's needs, from the API. The Week desk uses this on its own. */
 export function useLiveAddTeam(): AddTeamModel {
   const { getToken } = useAuth();
+  const queryClient = useQueryClient();
   const connections = useConnectionsQuery();
   const season = useSeason();
   const connect = useConnectEspnMutation();
@@ -80,9 +82,15 @@ export function useLiveAddTeam(): AddTeamModel {
       if (res.status !== "success") throw new Error(res.message || "The team was not added");
       const teamId = res.team_id ?? res.data?.team_id;
       if (teamId == null) throw new Error("The team was not added");
+      // The caller selects and opens the team: the list must hold it by then,
+      // or the desks read the new id as a team that is gone.
+      await queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
+      const league = res.data?.league ?? null;
+      if (res.already_exists) toast.info(`${body.team_name} is already here.`);
+      else toast.success(league?.settings_synced ? `${body.team_name} added: ${scoringLabel(league)}.` : `${body.team_name} added.`);
       return { teamId, alreadyExists: !!res.already_exists, team: res.data ?? null };
     },
-    [addAsync]
+    [addAsync, queryClient]
   );
   const startYahoo = useCallback(
     async (returnTo: string) => {

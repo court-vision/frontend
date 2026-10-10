@@ -54,7 +54,7 @@ export function Ledger({ teams, connections, focus, cursor, rows, alertsOn, emai
 
   return (
     <aside className={s.ledger} aria-label="Account">
-      <div className={s.rows} role="listbox" aria-label="Teams, accounts and settings">
+      <div className={s.rows} aria-label="Teams, accounts and settings">
         <button type="button" className={cls("overview", focus.kind === "overview")} onClick={() => onOpen({ kind: "overview" })} onMouseEnter={() => onCursor(indexOf("overview"))}>
           <span className={s.rowIcon}>
             <LayoutDashboard size={14} />

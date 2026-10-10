@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { Braces, Moon, RotateCw, Sparkles, Sun, UserRound } from "lucide-react";
+import { Braces, RotateCw, Sparkles, UserRound } from "lucide-react";
 import { ACCOUNT, DESKS, DEVELOPER, type DeskId } from "./routes";
-import { useDeskTheme } from "./useDeskTheme";
+import { ThemePicker } from "./ThemePicker";
 import dk from "./desk.module.css";
 
 interface DeskBarProps {
@@ -24,13 +24,16 @@ interface DeskBarProps {
  * when it does not fit, so no control is squeezed or pushed off screen.
  */
 export function DeskBar({ desk, demo = false, children, right, onRefresh }: DeskBarProps) {
-  const theme = useDeskTheme((s) => s.theme);
-  const toggle = useDeskTheme((s) => s.toggle);
   return (
     <header className={dk.bar}>
-      <Link href="/" className={dk.mark} title="Back to Court Vision">
-        <span className={dk.markGlyph} aria-hidden />
-        <span className={dk.markText}>court vision</span>
+      {/* The old UI's wordmark: the full word from md, its initials on phones. */}
+      <Link href="/" className={dk.mark} title="Back to Court Vision" aria-label="Court Vision">
+        <span className={dk.markCompact} aria-hidden>
+          C<span className={dk.markAccent}>V</span>
+        </span>
+        <span className={dk.markText} aria-hidden>
+          COURT<span className={dk.markAccent}>VISION</span>
+        </span>
       </Link>
       <nav className={dk.tabs} aria-label="Desks">
         {DESKS.map((x) => (
@@ -59,9 +62,7 @@ export function DeskBar({ desk, demo = false, children, right, onRefresh }: Desk
             <RotateCw size={14} />
           </button>
         ) : null}
-        <button type="button" className={dk.iconBtn} onClick={toggle} aria-label="Switch theme" title="Theme (T)">
-          {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-        </button>
+        <ThemePicker />
         <Link
           href={demo ? `${DEVELOPER.href}?demo` : DEVELOPER.href}
           className={`${dk.iconBtn} ${dk.iconLink}`}

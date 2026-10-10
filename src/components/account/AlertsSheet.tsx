@@ -106,11 +106,6 @@ export function AlertsSheet({ model }: { model: AccountModel }) {
   const shown = draft ?? base;
   const dirty = !!draft && !!base && JSON.stringify(draft) !== JSON.stringify(base);
 
-  // A fresh read replaces an unedited draft.
-  useEffect(() => {
-    setDraft(null);
-  }, [base]);
-
   const save = async () => {
     if (!draft) return;
     setSaving(true);

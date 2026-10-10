@@ -124,6 +124,8 @@ export function AddTeamTray({ open, onOpenChange, model, start, returnTo, onAdde
     setNote(null);
     setLeague(null);
     setNameChoices([]);
+    setS2("");
+    setSwid("");
     const t = setTimeout(() => root.current?.focus({ preventScroll: true }), 50);
     return () => clearTimeout(t);
   }, [open, start]);
@@ -134,6 +136,8 @@ export function AddTeamTray({ open, onOpenChange, model, start, returnTo, onAdde
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
+        setS2("");
+        setSwid("");
         onOpenChange(false);
       }
     };
@@ -155,7 +159,12 @@ export function AddTeamTray({ open, onOpenChange, model, start, returnTo, onAdde
 
   if (!open) return null;
 
-  const close = () => onOpenChange(false);
+  const close = () => {
+    // Cookies typed for a public-league add never outlive the tray.
+    setS2("");
+    setSwid("");
+    onOpenChange(false);
+  };
 
   const pick = (provider: FantasyProvider) => {
     if (!providerEnabled(provider)) return;

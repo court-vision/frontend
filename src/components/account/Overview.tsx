@@ -108,7 +108,17 @@ export function Overview({ model, alertsOn, onOpen, onAdd, onTarget }: OverviewP
                 {teams.map((t) => {
                   const c = connectionForTeam(connections, t.team_id);
                   return (
-                    <tr key={t.team_id} onClick={() => onOpen({ kind: "team", id: t.team_id })}>
+                    <tr
+                      key={t.team_id}
+                      tabIndex={0}
+                      onClick={() => onOpen({ kind: "team", id: t.team_id })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onOpen({ kind: "team", id: t.team_id });
+                        }
+                      }}
+                    >
                       <td className={s.tableName}>
                         {teamName(t)}
                         {t.team_id === model.selectedTeamId ? (

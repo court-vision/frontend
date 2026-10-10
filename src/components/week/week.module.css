@@ -636,7 +636,7 @@ button.headCell:hover {
 .row[data-drop="over"] .slotChip {
   border-color: var(--accent);
   background: var(--accent);
-  color: var(--bg);
+  color: var(--accent-ink);
 }
 
 .dragChip {
@@ -2412,7 +2412,7 @@ button.marketRow:hover {
   height: 16px;
   border: 1.5px solid var(--line-2);
   border-radius: 4px;
-  color: var(--bg);
+  color: var(--accent-ink);
   transition: background 120ms ease, border-color 120ms ease;
 }
 
@@ -2589,7 +2589,7 @@ button.marketRow:hover {
   border: 0;
   border-radius: 22px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   cursor: grab;
   touch-action: none;

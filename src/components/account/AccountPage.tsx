@@ -116,12 +116,17 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
     const clean = withoutYahooReturn(new URLSearchParams(window.location.search));
     const qs = clean.toString().replace(/=(&|$)/g, "$1");
     window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
-    if (arrival.kind === "connected") {
+    if (arrival.kind !== "connected") {
+      toast.error(yahooConnectErrorMessage(arrival.code));
+    } else if (focus.kind === "connection" && focus.id === arrival.connectionId) {
+      // A reconnect started from the account's own sheet: it is back, nothing to pick.
+      toast.success("Yahoo account reconnected.");
+    } else {
       toast.success("Yahoo account connected. Pick the league and the team.");
       setAdd({ step: "yahoo-league", connectionId: arrival.connectionId });
-    } else {
-      toast.error(yahooConnectErrorMessage(arrival.code));
     }
+    // `focus` is the page's focus at arrival; the effect runs once per arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arrival]);
 
   // ---- a team or an account that is gone (removed, or never there) falls back to the overview
@@ -167,9 +172,10 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
       const el = t as HTMLElement | null;
       return !!el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
     };
+    const inDialog = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest?.('[role="dialog"]');
     const onKey = (e: KeyboardEvent) => {
       const L = latest.current;
-      if (L.add || e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
+      if (L.add || e.metaKey || e.ctrlKey || e.altKey || typing(e.target) || inDialog(e.target)) return;
       if (e.key === "ArrowDown" || e.key === "j") {
         e.preventDefault();
         setCursor((c) => Math.min(L.rows.length - 1, c + 1));

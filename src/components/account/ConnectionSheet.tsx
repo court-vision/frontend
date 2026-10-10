@@ -110,9 +110,11 @@ export function ConnectionSheet({ model, connection, onOpen, onRefresh, onAddYah
           </span>
         </div>
         <div className={s.headActions}>
-          <button type="button" className={dk.btn} disabled={model.verifying === connection.id} onClick={() => void verify()}>
-            {model.verifying === connection.id ? <Loader2 size={13} className={dk.spin} /> : <ShieldCheck size={13} />} Check
-          </button>
+          {espn ? (
+            <button type="button" className={dk.btn} disabled={model.verifying === connection.id} onClick={() => void verify()}>
+              {model.verifying === connection.id ? <Loader2 size={13} className={dk.spin} /> : <ShieldCheck size={13} />} Check
+            </button>
+          ) : null}
           {espn ? (
             <button type="button" className={`${dk.btn} ${connection.status === "expired" ? dk.btnPrimary : ""}`} onClick={onRefresh}>
               <KeyRound size={13} /> Update cookies
