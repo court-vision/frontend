@@ -39,16 +39,3 @@ export function usePlayerPercentilesQuery(playerId: number | null) {
   });
 }
 
-export function usePlayerStatsByNameQuery(
-  name: string | null,
-  team: string | null,
-  window: string = "season"
-) {
-  return useQuery({
-    queryKey: playerKeys.statsByName(name!, team!, window),
-    queryFn: () => apiClient.getPlayerStatsByName(name!, team!, window),
-    enabled: !!name && !!team,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    placeholderData: keepPreviousData,
-  });
-}

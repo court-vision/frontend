@@ -2,41 +2,48 @@
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
-import "./globals.css";
 
-// Replaces the root layout when it throws, so it must render its own html/body.
-export default function GlobalError({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+// Replaces the root layout when it throws, so it renders its own html/body and
+// can't lean on the desk frame's tokens or fonts: Midnight's colours, inline.
+export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error(error);
     Sentry.captureException(error);
   }, [error]);
 
   return (
-    <html lang="en" className="dark">
-      <body className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center text-foreground">
-        <span className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          Something broke
+    <html lang="en">
+      <body
+        style={{
+          margin: 0,
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          padding: "0 clamp(20px, 4vw, 56px)",
+          background: "#0f1729",
+          color: "#e8eef8",
+          fontFamily: "ui-sans-serif, system-ui, sans-serif",
+        }}
+      >
+        <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 14, color: "#5cc8ff" }}>
+          {error.digest ? `Error · ref ${error.digest}` : "Error"}
         </span>
-        <h1 className="text-3xl font-semibold">Court Vision couldn&apos;t load</h1>
-        <p className="max-w-md text-sm text-muted-foreground">
-          An unexpected error stopped the app from rendering.
-          {error.digest && (
-            <span className="mt-2 block font-mono text-xs">ref {error.digest}</span>
-          )}
+        <h1 style={{ margin: "10px 0 0", fontSize: "clamp(2.5rem, 6vw, 5rem)", fontWeight: 800, letterSpacing: "-0.05em", lineHeight: 0.92 }}>
+          Court Vision couldn&apos;t load.
+        </h1>
+        <p style={{ maxWidth: "46ch", marginTop: 18, fontSize: 17, lineHeight: 1.55, color: "#adbad2" }}>
+          Something stopped the app from starting. Reloading usually fixes it.
         </p>
-        <button
-          type="button"
-          onClick={reset}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          Reload
-        </button>
+        <div style={{ marginTop: 28 }}>
+          <button
+            type="button"
+            onClick={reset}
+            style={{ height: 44, padding: "0 18px", border: 0, borderRadius: 8, background: "#5cc8ff", color: "#04121f", font: "inherit", fontSize: 15, fontWeight: 500, cursor: "pointer" }}
+          >
+            Reload
+          </button>
+        </div>
       </body>
     </html>
   );

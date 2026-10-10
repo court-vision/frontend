@@ -68,10 +68,10 @@ export function KeysSheet({ model, openPlayground }: { model: KeysModel; openPla
             Keys belong to an account. Sign in to make one; the public routes need none, and the playground works without signing in.
           </span>
           <div className={s.linkRow} style={{ marginTop: 10 }}>
-            <Link href="/sign-in?redirect_url=%2Fdev%3Fview%3Dkeys" className={`${dk.btn} ${dk.btnPrimary}`}>
+            <Link href="/sign-in?redirect_url=%2Fdeveloper%3Fview%3Dkeys" className={`${dk.btn} ${dk.btnPrimary}`}>
               Sign in
             </Link>
-            <Link href="/dev?view=keys&demo" className={dk.btn}>
+            <Link href="/developer?view=keys&demo" className={dk.btn}>
               See the demo
             </Link>
           </div>

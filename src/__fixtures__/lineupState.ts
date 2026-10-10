@@ -1,8 +1,7 @@
 /**
- * Dev-only fixture: today's ESPN lineup for a 13-player roster (PG SG SF PF C
- * G F, 3 UT, 3 BE, 1 IR — one bench spot open), used by
- * `/your-teams?mock=lineup` (non-production builds only) to exercise the
- * editor without a backend. It has the situations the editor must handle:
+ * Test fixture: today's ESPN lineup for a 13-player roster (PG SG SF PF C
+ * G F, 3 UT, 3 BE, 1 IR — one bench spot open), used by the lineup-editor and
+ * roster-transaction tests to exercise the editor without a backend. It has the situations the editor must handle:
  * a locked starter (game started), a starter with no game, an OUT starter
  * with a game, a DTD starter, two bench players with games, and an IR player.
  *

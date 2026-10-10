@@ -2,7 +2,7 @@
  * Rankings query parameters: URL <-> params <-> API query. Pure.
  *
  * URL keys: `scope`, `format`, `window`, `cats` (csv), `min_games`. Defaults are
- * omitted from the URL so `/rankings` stays canonical for the points view.
+ * omitted from the URL so the plain URL stays canonical for the points view.
  *
  * `scope` never reaches `toApiQuery`: it selects which endpoint to call, not a
  * query parameter. It is in `paramsKey` regardless, or the two scopes would

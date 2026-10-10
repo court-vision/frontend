@@ -3,7 +3,7 @@ import { ImageResponse } from "next/og";
 export const size = { width: 512, height: 512 };
 export const contentType = "image/png";
 
-/** The wordmark's own initials: bone "C", amber "V", on the app background. */
+/** The wordmark's own initials in Midnight, the default theme: an ink "C" and a sky "V" on navy. */
 export default function Icon() {
   return new ImageResponse(
     (
@@ -14,7 +14,7 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#221f1c",
+          background: "#0f1729",
           borderRadius: 112,
         }}
       >
@@ -23,13 +23,13 @@ export default function Icon() {
             display: "flex",
             fontSize: 300,
             fontWeight: 900,
-            color: "#f1ede9",
+            color: "#e8eef8",
             letterSpacing: -24,
             lineHeight: 1,
             marginTop: 12,
           }}
         >
-          C<span style={{ color: "#f57d14" }}>V</span>
+          C<span style={{ color: "#5cc8ff" }}>V</span>
         </span>
       </div>
     ),

@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { DeskFrame } from "@/components/desk/DeskFrame";
-import { deskMono, deskSans } from "@/components/desk/fonts";
 import { ThemePicker } from "@/components/desk/ThemePicker";
 import { useDeskScheme, useDeskTheme } from "@/components/desk/useDeskTheme";
 import { CourtField } from "./CourtField";
@@ -12,18 +10,11 @@ import { SPECKS, STAT_WALL } from "./stat-wall";
 import s from "./landing.module.css";
 
 /**
- * The signed-out front page, in the desks' own frame and theme: the moving
- * court and one line up top, the desks below, then a way in.
+ * The signed-out front page, in the desks' frame and theme (the root layout's
+ * DeskFrame): the moving court and one line up top, the desks below, then a
+ * way in.
  */
 export function Landing() {
-  return (
-    <DeskFrame className={`${deskSans.variable} ${deskMono.variable}`}>
-      <Page />
-    </DeskFrame>
-  );
-}
-
-function Page() {
   const scheme = useDeskScheme();
   const toggle = useDeskTheme((st) => st.toggle);
   const hero = useRef<HTMLElement>(null);
@@ -127,8 +118,8 @@ function Page() {
           COURT<span className={s.markAccent}>VISION</span>
         </span>
         <nav className={s.footNav} aria-label="More">
-          <Link href="/rankings">Rankings</Link>
-          <Link href="/dev">API</Link>
+          <Link href="/scout">Scout</Link>
+          <Link href="/developer">API</Link>
           <a href="https://github.com/court-vision" target="_blank" rel="noreferrer">
             GitHub
           </a>

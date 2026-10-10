@@ -1,44 +1,19 @@
 /**
- * The desks: full-screen workspaces that share one shell. Each owns one
+ * The desks: full-screen workspaces that share one frame. Each owns one
  * subject end to end — Week your team's matchup week, Draft a draft room, Scout
  * one player, NBA team or night of games, Developer the API and the data
- * behind the app — and
- * anything about that subject is a pane, mode or overlay inside it rather than
- * a page of its own. The rest of the app does not render its chrome around a
- * desk route.
+ * behind the app, Account your teams and alerts — and anything about that
+ * subject is a pane, mode or overlay inside it rather than a page of its own.
  */
-/**
- * The Draft desk's home. The old Draft Lab keeps `/draft` until the cutover, so
- * both can run side by side; at the cutover this becomes "/draft".
- */
-export const DRAFT_DESK = "/lab";
-
-/**
- * The Scout desk's home: the NBA data universe, one player, team or slate
- * at a time. The old terminal keeps `/terminal` until the cutover, so both
- * can run side by side; at the cutover this becomes "/terminal".
- */
+export const WEEK_DESK = "/week";
+export const DRAFT_DESK = "/draft";
 export const SCOUT_DESK = "/scout";
-
-/**
- * The Developer desk's home: the API reference, playground, keys and the
- * query builder. The old developer portal keeps `/developer` and the old
- * query builder `/query-builder` until the cutover; at the cutover this
- * becomes "/developer".
- */
-export const DEVELOPER_DESK = "/dev";
-
-/**
- * The Account desk's home: your teams, the ESPN and Yahoo accounts they draw
- * on, lineup alerts and the account itself. The old pages keep `/account`,
- * `/manage-teams`, `/your-teams` and `/settings` until the cutover; at the
- * cutover this becomes "/account".
- */
-export const ACCOUNT_DESK = "/me";
+export const DEVELOPER_DESK = "/developer";
+export const ACCOUNT_DESK = "/account";
 
 /** The desks a tab is shown for: where fantasy work happens, and the Scout. */
 export const DESKS = [
-  { id: "week", label: "Week", href: "/week", key: "1" },
+  { id: "week", label: "Week", href: WEEK_DESK, key: "1" },
   { id: "draft", label: "Draft", href: DRAFT_DESK, key: "2" },
   { id: "scout", label: "Scout", href: SCOUT_DESK, key: "3" },
 ] as const;
@@ -61,9 +36,9 @@ export function isDeskPath(pathname: string | null | undefined): boolean {
 /**
  * A desk demo's URL, which runs on sample data in the browser and so opens
  * signed out. Only these: a desk's own page with `?demo` (`/week?demo`,
- * `/lab?demo`, `/me?demo`) and the Draft desk's demo rooms (`/lab/demo-3`,
- * `/lab/demo-3/recap`). `?demo` anywhere else, a live room included, leaves
- * that route's sign-in as it is.
+ * `/draft?demo`, `/account?demo`) and the Draft desk's demo rooms
+ * (`/draft/demo-3`, `/draft/demo-3/recap`). `?demo` anywhere else, a live room
+ * included, leaves that route's sign-in as it is.
  */
 export function isDeskDemo(pathname: string, search: URLSearchParams): boolean {
   const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;

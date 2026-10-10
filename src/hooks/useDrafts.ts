@@ -103,25 +103,6 @@ export function useDraftBoardQuery(sessionId: number | null) {
   });
 }
 
-/** The stateless big board: a pre-draft look with no session behind it. */
-export function useTeamDraftBoardQuery(
-  teamId: number | null,
-  picked: number[] = [],
-  mine: number[] = []
-) {
-  const { getToken, isSignedIn } = useAuth();
-  const boardSource = useDraftRoomStore((state) => state.boardSource);
-  const playoffWeight = useDraftRoomStore((state) => state.playoffWeight);
-
-  return useQuery<DraftBoardResult>({
-    queryKey: draftKeys.teamBoard(teamId, picked, mine, boardSource, playoffWeight),
-    queryFn: ({ signal }) =>
-      apiClient.getTeamDraftBoard(getToken, teamId!, picked, mine, boardSource, playoffWeight, { signal }),
-    enabled: !!teamId && isSignedIn === true,
-    staleTime: 1000 * 60 * 5,
-  });
-}
-
 /**
  * The finished draft read back. Every write path invalidates it, so it can sit
  * for a while between reads: the page is a report, not a live board.

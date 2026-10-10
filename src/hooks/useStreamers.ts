@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
-import { DEFAULT_AVG_DAYS } from "@/components/streamers-components/StreamerFilterControls";
 import type { StreamerData, StreamerMode } from "@/types/streamer";
+
+/** Days of recent games a streamer's average covers unless the caller says otherwise. */
+export const DEFAULT_AVG_DAYS = 7;
 
 export interface StreamersQueryOptions {
   faCount?: number;

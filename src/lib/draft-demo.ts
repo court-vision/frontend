@@ -63,7 +63,7 @@ export interface DemoRoom {
   updatedAt: number;
 }
 
-/** The URL segment for a demo room: `/lab/demo-3`. */
+/** The URL segment for a demo room: `/draft/demo-3`. */
 export const demoSlug = (id: number) => `demo-${Math.abs(id)}`;
 export function demoIdFromSlug(slug: string): number | null {
   const m = /^demo-(\d+)$/.exec(slug);

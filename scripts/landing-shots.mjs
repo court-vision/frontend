@@ -16,9 +16,9 @@ const out = join(process.cwd(), "public", "landing");
 const THEMES = ["paper", "ember", "noon", "midnight"];
 const DESKS = [
   ["week", "/week?demo", 2500],
-  ["draft", "/lab/demo-1", 3000],
+  ["draft", "/draft/demo-1", 3000],
   ["scout", "/scout", 5000],
-  ["dev", "/dev", 4000],
+  ["dev", "/developer", 4000],
 ];
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const PORT = 9399;

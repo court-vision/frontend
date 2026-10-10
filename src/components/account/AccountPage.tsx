@@ -215,10 +215,10 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
         <span className={s.heroTitle}>Sign in to see your account</span>
         <span className={s.heroSub}>Your teams, the ESPN and Yahoo accounts they read through, and the alerts are all yours alone.</span>
         <div className={s.linkRow}>
-          <Link href="/sign-in?redirect_url=%2Fme" className={`${dk.btn} ${dk.btnPrimary}`}>
+          <Link href="/sign-in?redirect_url=%2Faccount" className={`${dk.btn} ${dk.btnPrimary}`}>
             Sign in
           </Link>
-          <Link href="/me?demo" className={dk.btn}>
+          <Link href="/account?demo" className={dk.btn}>
             See the demo
           </Link>
         </div>
