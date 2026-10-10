@@ -129,3 +129,102 @@ describe("PortHandle.send", () => {
     expect(h.send({ type: "select", playerId: 1, requestId: "r" })).toBe(false);
   });
 });
+
+// A runtime where each id is installed or not, with one port per connect.
+function stubInstalled(installed: Set<string>) {
+  const ports: { id: string; fireMessage: (m: unknown) => void; fireDisconnect: (err?: string) => void; posted: unknown[] }[] = [];
+  let lastError: { message?: string } | undefined;
+  const runtime = {
+    connect: (id: string) => {
+      const listeners = { message: [] as ((m: unknown) => void)[], disconnect: [] as (() => void)[] };
+      const posted: unknown[] = [];
+      const port = {
+        postMessage: (m: unknown) => posted.push(m),
+        disconnect() {},
+        onMessage: {
+          addListener: (cb: (m: unknown) => void) => listeners.message.push(cb),
+          removeListener: (cb: (m: unknown) => void) => (listeners.message = listeners.message.filter((l) => l !== cb)),
+        },
+        onDisconnect: {
+          addListener: (cb: () => void) => listeners.disconnect.push(cb),
+          removeListener: (cb: () => void) => (listeners.disconnect = listeners.disconnect.filter((l) => l !== cb)),
+        },
+      };
+      const entry = {
+        id,
+        posted,
+        fireMessage: (m: unknown) => listeners.message.forEach((l) => l(m)),
+        fireDisconnect: (err?: string) => {
+          lastError = err ? { message: err } : undefined;
+          listeners.disconnect.forEach((l) => l());
+          lastError = undefined;
+        },
+      };
+      ports.push(entry);
+      return port;
+    },
+    get lastError() {
+      return lastError;
+    },
+  };
+  (globalThis as { chrome?: unknown }).chrome = { runtime };
+  const missing = "Could not establish connection. Receiving end does not exist.";
+  // Chrome reports a missing extension asynchronously, on the port.
+  const settle = () => {
+    for (const p of [...ports]) if (!installed.has(p.id) && !(p as { done?: boolean }).done) {
+      (p as { done?: boolean }).done = true;
+      p.fireDisconnect(missing);
+    }
+  };
+  return { ports, settle };
+}
+
+describe("connectToAnyExtension", () => {
+  test("falls through a missing id to the next, and sends on the one that answers", async () => {
+    const { connectToAnyExtension } = await import("../espn-draft/extension");
+    const rt = stubInstalled(new Set(["dev-id"]));
+    const got: unknown[] = [];
+    const drops: string[] = [];
+    const handle = connectToAnyExtension(["store-id", "dev-id"], { onMessage: (m) => got.push(m), onDisconnect: (r) => drops.push(r) });
+    rt.settle(); // store-id: not installed → tries dev-id
+    expect(rt.ports.map((p) => p.id)).toEqual(["store-id", "dev-id"]);
+    expect(drops).toEqual([]);
+    rt.ports[1].fireMessage({ type: "hello", version: "1.0.0" });
+    expect(got).toEqual([{ type: "hello", version: "1.0.0" }]);
+    expect(handle!.send({ type: "select", playerId: 1, requestId: "r" })).toBe(true);
+    expect(rt.ports[1].posted).toHaveLength(1);
+  });
+
+  test("not-installed only once every id is missing", async () => {
+    const { connectToAnyExtension } = await import("../espn-draft/extension");
+    const rt = stubInstalled(new Set());
+    const drops: string[] = [];
+    connectToAnyExtension(["a", "b"], { onMessage() {}, onDisconnect: (r) => drops.push(r) });
+    rt.settle();
+    rt.settle();
+    expect(rt.ports.map((p) => p.id)).toEqual(["a", "b"]);
+    expect(drops).toEqual(["not-installed"]);
+  });
+
+  test("a drop after an answer is a drop, not a reason to try the next id", async () => {
+    const { connectToAnyExtension } = await import("../espn-draft/extension");
+    const rt = stubInstalled(new Set(["a", "b"]));
+    const drops: string[] = [];
+    connectToAnyExtension(["a", "b"], { onMessage() {}, onDisconnect: (r) => drops.push(r) });
+    rt.ports[0].fireMessage({ type: "hello", version: "1.0.0" });
+    rt.ports[0].fireDisconnect();
+    expect(rt.ports.map((p) => p.id)).toEqual(["a"]);
+    expect(drops).toEqual(["closed"]);
+  });
+
+  test("the id that answered last time is tried first", async () => {
+    const { connectToAnyExtension } = await import("../espn-draft/extension");
+    let rt = stubInstalled(new Set(["dev-id"]));
+    connectToAnyExtension(["store-id", "dev-id"], { onMessage() {}, onDisconnect() {} });
+    rt.settle();
+    rt.ports[1].fireMessage({ type: "hello", version: "1.0.0" });
+    rt = stubInstalled(new Set(["dev-id"]));
+    connectToAnyExtension(["store-id", "dev-id"], { onMessage() {}, onDisconnect() {} });
+    expect(rt.ports.map((p) => p.id)).toEqual(["dev-id"]);
+  });
+});

@@ -120,6 +120,7 @@ export function Landing() {
         <nav className={s.footNav} aria-label="More">
           <Link href="/scout">Scout</Link>
           <Link href="/developer">API</Link>
+          <Link href="/privacy">Privacy</Link>
           <a href="https://github.com/court-vision" target="_blank" rel="noreferrer">
             GitHub
           </a>

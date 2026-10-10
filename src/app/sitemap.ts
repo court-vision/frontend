@@ -9,5 +9,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority,
   });
 
-  return [page("", "daily", 1.0), page("/scout", "daily", 0.9), page("/developer", "weekly", 0.6), page("/sign-up", "monthly", 0.4)];
+  return [page("", "daily", 1.0), page("/scout", "daily", 0.9), page("/developer", "weekly", 0.6), page("/sign-up", "monthly", 0.4), page("/privacy", "monthly", 0.2)];
 }

@@ -20,13 +20,21 @@ export const NOTIFICATIONS_API = `${API_BASE}/v1/internal/notifications`;
 export const API_KEYS_API = `${API_BASE}/v1/internal/api-keys`;
 // Draft Lab: sessions, picks, and the board scored for either.
 export const DRAFTS_API = `${API_BASE}/v1/internal/drafts`;
-// Rankings scored by a team's own league settings (the public one is below).
 export const SQLMATE_INTERNAL_API = `${API_BASE}/v1/internal/sqlmate`;
 
-// The Draft Tap extension's id (pinned by its manifest "key"). Live ESPN draft
-// sync connects to this extension; unset means the feature is off and the room
-// stays fully manual.
-export const DRAFT_TAP_EXTENSION_ID = process.env.NEXT_PUBLIC_DRAFT_TAP_EXTENSION_ID || "";
+// The Draft Tap extension. Live ESPN draft sync connects to it; unset means the
+// feature is off and the room stays fully manual.
+// Comma-separated: the Chrome Web Store id first (the install link points at
+// it), then any others to try, such as the id an unpacked development copy has.
+export const DRAFT_TAP_EXTENSION_IDS = (process.env.NEXT_PUBLIC_DRAFT_TAP_EXTENSION_ID || "")
+  .split(",")
+  .map((id) => id.trim())
+  .filter(Boolean);
+
+/** The Draft Tap's Chrome Web Store listing, or null when no id is configured. */
+export const DRAFT_TAP_STORE_URL = DRAFT_TAP_EXTENSION_IDS[0]
+  ? `https://chromewebstore.google.com/detail/${DRAFT_TAP_EXTENSION_IDS[0]}`
+  : null;
 
 // API v1 Public endpoints
 export const LIVE_API = `${API_BASE}/v1/live`;

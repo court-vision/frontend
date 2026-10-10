@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { DRAFT_TAP_EXTENSION_ID } from "@/endpoints";
+import { DRAFT_TAP_EXTENSION_IDS } from "@/endpoints";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { parseExtensionMessage, type SelectCommand } from "@/lib/espn-draft/protocol";
 import {
   backoffDelay,
   chromeRuntimeAvailable,
-  connectToExtension,
+  connectToAnyExtension,
   type PortHandle,
 } from "@/lib/espn-draft/extension";
 import {
@@ -436,7 +436,7 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
       dispatch({ type: "port", status: "unconfigured" });
       return;
     }
-    if (!DRAFT_TAP_EXTENSION_ID) {
+    if (!DRAFT_TAP_EXTENSION_IDS.length) {
       dispatch({ type: "port", status: "unconfigured" });
       return;
     }
@@ -451,10 +451,10 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     const connect = () => {
       if (cancelled) return;
       dispatch({ type: "port", status: "connecting" });
-      // `connectToExtension` reports a synchronous connect failure through
+      // `connectToAnyExtension` reports a synchronous connect failure through
       // onDisconnect *and* returns null; only an unreported null is "unsupported".
       let reported = false;
-      handleRef.current = connectToExtension(DRAFT_TAP_EXTENSION_ID, {
+      handleRef.current = connectToAnyExtension(DRAFT_TAP_EXTENSION_IDS, {
         onMessage: (msg) => {
           const parsed = parseExtensionMessage(msg);
           if (!parsed) return;
@@ -462,8 +462,12 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
             dispatch({ type: "port", status: "connected" });
             // A pre-0.3 extension advertises nothing: it can read, and that is all.
             dispatch({ type: "capabilities", capabilities: parsed.capabilities ?? ["read"] });
+            // A pre-1.0 extension has no sharing switch: it always shares.
+            dispatch({ type: "sharing", enabled: parsed.sharing ?? true });
           } else if (parsed.type === "capabilities") {
             dispatch({ type: "capabilities", capabilities: parsed.capabilities });
+          } else if (parsed.type === "sharing") {
+            dispatch({ type: "sharing", enabled: parsed.enabled });
           } else if (parsed.type === "replay") {
             dispatch({ type: "port", status: "connected" });
             dispatch({ type: "replay", records: parsed.records });
@@ -507,7 +511,7 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
     setPaused,
     reconnect,
     resume,
-    configured: Boolean(DRAFT_TAP_EXTENSION_ID),
+    configured: DRAFT_TAP_EXTENSION_IDS.length > 0,
     canDraft,
     pending: state.pending,
     draftPlayer,
