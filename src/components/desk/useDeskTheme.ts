@@ -13,11 +13,11 @@ interface DeskThemeStore {
   toggle: () => void;
 }
 
-/** One theme for every desk, remembered per browser. Paper until storage says otherwise. */
+/** One theme for every desk, remembered per browser. Midnight until storage says otherwise. */
 export const useDeskTheme = create<DeskThemeStore>()(
   persist(
     (set) => ({
-      theme: DEFAULT_LIGHT,
+      theme: DEFAULT_DARK,
       setTheme: (id) => set({ theme: id }),
       toggle: () => set((s) => ({ theme: themePair(s.theme) })),
     }),
