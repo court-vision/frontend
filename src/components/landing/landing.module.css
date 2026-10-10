@@ -1,0 +1,503 @@
+/*
+ * The landing page. Every color is a desk token (desk.module.css), so the page
+ * wears the visitor's desk theme; type is the wordmark's Outfit for display
+ * and the desks' Geist for text.
+ */
+
+.page {
+  --gutter: clamp(20px, 4vw, 56px);
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  font-family: var(--desk-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+}
+
+/* ---------------------------------------------------------------- hero */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  /* A pool of light where the court is, falling off to the edges, and melting into the page below. */
+  background:
+    linear-gradient(to bottom, transparent 72%, var(--bg) 100%),
+    radial-gradient(ellipse 85% 75% at 57% 46%, var(--raised) 0%, var(--bg) 58%, var(--surface) 100%);
+}
+
+.page[data-scheme="dark"] .hero {
+  background:
+    linear-gradient(to bottom, transparent 72%, var(--bg) 100%),
+    radial-gradient(
+      ellipse 85% 75% at 57% 46%,
+      color-mix(in srgb, var(--accent) 9%, var(--surface)) 0%,
+      var(--bg) 58%,
+      color-mix(in srgb, var(--bg) 55%, #000000) 100%
+    );
+}
+
+/* Film grain over the light, under the type. */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  opacity: 0.18;
+  mix-blend-mode: multiply;
+  mask-image: linear-gradient(to bottom, #000 68%, transparent);
+}
+
+.page[data-scheme="dark"] .hero::after {
+  filter: invert(1);
+  opacity: 0.06;
+  mix-blend-mode: screen;
+}
+
+/*
+ * The backdrop: a stat sheet printed faintly across the top, fading out before
+ * the court and the headline, and drifting a little against the camera's lean.
+ */
+.wall {
+  position: absolute;
+  top: -24px;
+  left: -32px;
+  right: -32px;
+  height: 75%;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 18px;
+  letter-spacing: 0.02em;
+  white-space: pre;
+  color: var(--text);
+  opacity: 0.13;
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.6) 42%, transparent 95%);
+  transform: translate3d(calc(var(--lean-x, 0) * -18px), calc(var(--lean-y, 0) * -10px), 0);
+  transition: transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  user-select: none;
+}
+
+.page[data-scheme="dark"] .wall {
+  opacity: 0.085;
+}
+
+/* A phone shows less of the sheet, set smaller and quieter, so it stays a texture. */
+@media (max-width: 767.98px) {
+  .wall {
+    font-size: 9px;
+    line-height: 15px;
+    opacity: 0.1;
+  }
+
+  .page[data-scheme="dark"] .wall {
+    opacity: 0.07;
+  }
+}
+
+/* The closing band prints the same sheet from the bottom up, so the page ends as it began. */
+.closingWall {
+  top: auto;
+  bottom: -24px;
+  height: 100%;
+  mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.5) 30%, transparent 85%);
+}
+
+/* Before the dot field draws: loose specks where the ball will gather, drifting. */
+.specks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  fill: var(--text-3);
+  opacity: 0.55;
+  animation: specksDrift 18s ease-in-out infinite alternate;
+  transition: opacity 1200ms ease;
+}
+
+@media (min-width: 901px) {
+  .specks {
+    left: 7%;
+  }
+}
+
+.speckAccent {
+  fill: var(--accent);
+}
+
+.hero[data-live] .specks {
+  opacity: 0;
+}
+
+@keyframes specksDrift {
+  to {
+    transform: translate3d(-14px, 10px, 0) scale(1.02);
+  }
+}
+
+.field {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(14px, 2.4vw, 28px) var(--gutter);
+}
+
+/* The wordmark, as on the desks' bar: Outfit at its heaviest, VISION in the accent. */
+.mark,
+.footMark {
+  font-family: var(--font-outfit), var(--desk-sans), sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.mark {
+  font-size: 22px;
+}
+
+.markAccent {
+  color: var(--accent);
+}
+
+.topNav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topLink {
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.topLink:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--hover) 70%, transparent);
+}
+
+.heroCopy {
+  position: absolute;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: clamp(28px, 6vh, 72px);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.heroCopy > * {
+  pointer-events: auto;
+}
+
+.headline {
+  max-width: 8.5ch;
+  margin: 0;
+  font-family: var(--font-outfit), var(--desk-sans), sans-serif;
+  font-size: clamp(3.25rem, 8.2vw, 8.25rem);
+  font-weight: 800;
+  line-height: 0.88;
+  letter-spacing: -0.05em;
+  word-spacing: 0.1em;
+  color: var(--text);
+  text-wrap: balance;
+}
+
+.lede {
+  max-width: 34ch;
+  margin: 22px 0 0;
+  font-size: clamp(1rem, 0.94rem + 0.3vw, 1.2rem);
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  height: 46px;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--glow);
+}
+
+.primary:hover {
+  background: color-mix(in srgb, var(--accent) 88%, var(--text));
+}
+
+.secondary {
+  border: 1px solid var(--line-2);
+  background: color-mix(in srgb, var(--raised) 60%, transparent);
+  color: var(--text);
+}
+
+.secondary:hover {
+  border-color: var(--text-3);
+}
+
+/* Phones: the court sits up top and the words get a floor of their own. */
+@media (max-width: 767.98px) {
+  .heroCopy::before {
+    content: "";
+    position: absolute;
+    inset: -96px calc(-1 * var(--gutter)) calc(-1 * clamp(28px, 6vh, 72px));
+    z-index: -1;
+    background: linear-gradient(to top, var(--bg) 52%, transparent);
+  }
+}
+
+/* ---------------------------------------------------------------- desks */
+
+.desks,
+.closing {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: clamp(72px, 10vw, 136px) var(--gutter);
+}
+
+.h2 {
+  margin: 0;
+  font-family: var(--font-outfit), var(--desk-sans), sans-serif;
+  font-size: clamp(2.25rem, 4.6vw, 4rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: var(--text);
+}
+
+.intro,
+.closingText {
+  max-width: 52ch;
+  margin: 18px 0 0;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: clamp(40px, 5vw, 64px);
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 16px 18px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tabName {
+  font-family: var(--font-outfit), var(--desk-sans), sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-3);
+}
+
+.tabShort {
+  font-size: 14px;
+  color: var(--text-3);
+}
+
+.tab:hover .tabName,
+.tab[aria-selected="true"] .tabName {
+  color: var(--text);
+}
+
+.tab[aria-selected="true"] .tabShort {
+  color: var(--text-2);
+}
+
+.tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 16px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent);
+  box-shadow: var(--glow);
+}
+
+.panel {
+  display: grid;
+  gap: 24px;
+  margin-top: 28px;
+}
+
+.shot {
+  margin: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line-2), 0 40px 80px -40px rgba(0, 0, 0, 0.45);
+}
+
+.shotImg {
+  display: block;
+  width: 100%;
+  height: auto;
+  animation: shotIn 280ms ease-out;
+}
+
+@keyframes shotIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.panelText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px 40px;
+}
+
+.panelText p {
+  max-width: 62ch;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
+@media (max-width: 767.98px) {
+  .tabs {
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    margin-left: calc(-1 * var(--gutter));
+    margin-right: calc(-1 * var(--gutter));
+    padding: 0 var(--gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabName {
+    font-size: 20px;
+  }
+}
+
+/* ---------------------------------------------------------------- closing + footer */
+
+.closing {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  /* Full bleed, so the sheet behind it runs edge to edge; the words keep the desks' measure. */
+  max-width: none;
+  padding-inline: max(var(--gutter), calc((100% - 1320px) / 2 + var(--gutter)));
+  border-top: 1px solid var(--line);
+}
+
+.closing > :not(.wall) {
+  position: relative;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+  padding: 28px var(--gutter) 36px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.footMark {
+  font-size: 16px;
+}
+
+.footNav {
+  display: flex;
+  gap: 22px;
+}
+
+.footNav a {
+  color: var(--text-2);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.footNav a:hover {
+  color: var(--text);
+}
+
+.footNote {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------------- focus + motion */
+
+.mark:focus-visible,
+.topLink:focus-visible,
+.primary:focus-visible,
+.secondary:focus-visible,
+.tab:focus-visible,
+.footNav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shotImg,
+  .specks {
+    animation: none;
+  }
+
+  .wall {
+    transform: none;
+    transition: none;
+  }
+}

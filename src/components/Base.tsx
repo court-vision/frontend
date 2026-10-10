@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 
@@ -42,14 +42,19 @@ const CLERK_LOAD_TIMEOUT_MS = 8_000;
 
 const Layout: FC<{ children: React.ReactNode }> = ({ children }) => {
   const pathname = usePathname();
+  const { isLoaded, isSignedIn } = useAuth();
   // The desks bring their own shell (bar, status line, theme, toasts). The
   // app's shell is a component of its own so it mounts afresh after a desk:
   // its listeners (the scroll-tap guard) attach to the <main> it renders.
   if (isDeskPath(pathname)) return <>{children}</>;
-  return <Shell>{children}</Shell>;
+  // So does the signed-out front page (the landing, in a desk frame). It covers
+  // the whole window, so until Clerk says who this is the shell under it is
+  // never seen; once Clerk says signed out, the shell drops its chrome, in
+  // place, so the landing is not mounted twice.
+  return <Shell bare={pathname === "/" && isLoaded && !isSignedIn}>{children}</Shell>;
 };
 
-const Shell: FC<{ children: React.ReactNode }> = ({ children }) => {
+const Shell: FC<{ children: React.ReactNode; bare: boolean }> = ({ children, bare }) => {
   const { isLoaded } = useUser();
   const pathname = usePathname();
   const [authTimedOut, setAuthTimedOut] = useState(false);
@@ -81,7 +86,7 @@ const Shell: FC<{ children: React.ReactNode }> = ({ children }) => {
       className="flex flex-col h-screen supports-[height:100dvh]:h-dvh w-full overflow-hidden bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
     >
       {/* Command Strip */}
-      <CommandStrip />
+      {bare ? null : <Chrome><CommandStrip /></Chrome>}
 
       {/* Sign-in service slow: keep the page usable, say why signed-in data may be missing */}
       {showAuthBanner && (
@@ -97,7 +102,7 @@ const Shell: FC<{ children: React.ReactNode }> = ({ children }) => {
           court parked behind it (hence its opaque background); the box keeps
           the court below the header and clips the slid page at the bottom. */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        <PullToRefresh scrollerRef={mainRef} />
+        {bare ? null : <Chrome><PullToRefresh scrollerRef={mainRef} /></Chrome>}
         <main ref={mainRef} className={`flex-1 overflow-y-auto overflow-x-clip overscroll-y-contain relative bg-background ${isFullHeightPage ? '' : 'p-4 md:p-5 lg:p-8'}`}>
           <div key={pathname} className="relative z-10 page-enter">
             {loading ? <SkeletonCard /> : children}
@@ -106,19 +111,30 @@ const Shell: FC<{ children: React.ReactNode }> = ({ children }) => {
       </div>
 
       {/* Phone dock (below md): page actions pinned flush on the tab bar, see MobileDockPortal */}
-      <div ref={setDock} className="md:hidden relative z-20 shrink-0" />
+      {bare ? null : <div ref={setDock} data-app-chrome="" className="md:hidden relative z-20 shrink-0" />}
 
       {/* Phone tab bar (below md) — in flow, so no page needs bottom padding */}
-      <MobileTabBar />
+      {bare ? null : <Chrome><MobileTabBar /></Chrome>}
 
       {/* Status Strip (md and up) */}
-      <StatusBar />
+      {bare ? null : <Chrome><StatusBar /></Chrome>}
 
       {/* Keyboard Shortcut Overlay */}
-      <KeyboardShortcutOverlay />
+      {bare ? null : <Chrome><KeyboardShortcutOverlay /></Chrome>}
     </div>
     </MobileDockProvider>
   );
 };
+
+/**
+ * The shell's chrome, marked so that a page bringing its own frame (the
+ * landing) can hide it in CSS from the first paint, before Clerk has loaded
+ * and `bare` can drop it (globals.css).
+ */
+const Chrome: FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div data-app-chrome="" className="contents">
+    {children}
+  </div>
+);
 
 export default Layout;

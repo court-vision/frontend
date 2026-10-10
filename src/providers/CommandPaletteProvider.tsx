@@ -250,7 +250,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     // Alt uses e.code (physical key) because macOS transforms Option+digit in e.key.
     const handleKeyDown = (e: KeyboardEvent) => {
       // The desks own their keyboard; this palette and its jumps belong to the old shell.
-      if (isDeskPath(window.location.pathname)) return;
+      if (isDeskPath(window.location.pathname) || document.querySelector("[data-landing]")) return;
       // Ignore if user is typing in an input
       const target = e.target as HTMLElement;
       if (
