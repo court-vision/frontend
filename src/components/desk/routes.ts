@@ -45,3 +45,23 @@ export function isDeskDemo(pathname: string, search: URLSearchParams): boolean {
   if (search.has("demo") && ALL_DESKS.some((d) => d.href === path)) return true;
   return path.startsWith(`${DRAFT_DESK}/`) && /^demo-\d+(\/recap)?$/.test(path.slice(DRAFT_DESK.length + 1));
 }
+
+/**
+ * Query flags a desk page reads by presence alone: `?demo` (every desk),
+ * `?add` (Account opens the add-team flow) and `?market` (Week opens the
+ * market on its default list).
+ */
+export const DESK_FLAGS = ["demo", "add", "market"] as const;
+
+/**
+ * The query with every bare flag given a value (`?demo` → `?demo=1`), or null
+ * when none is bare. Vercel drops a query parameter with no value before the
+ * page renders (the proxy still sees it), so the proxy rewrites with this.
+ */
+export function withFlagValues(search: URLSearchParams): URLSearchParams | null {
+  const bare = DESK_FLAGS.filter((f) => search.has(f) && search.getAll(f).every((v) => v === ""));
+  if (bare.length === 0) return null;
+  const out = new URLSearchParams(search);
+  for (const f of bare) out.set(f, "1");
+  return out;
+}
