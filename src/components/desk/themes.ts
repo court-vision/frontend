@@ -18,16 +18,17 @@ export interface DeskThemeInfo {
 }
 
 export const DESK_THEMES = [
-  { id: "paper", label: "Paper", scheme: "light", pair: "ember", note: "Warm newsprint, ink and court orange" },
-  { id: "ember", label: "Ember", scheme: "dark", pair: "paper", note: "Warm charcoal and amber" },
   { id: "noon", label: "Noon", scheme: "light", pair: "midnight", note: "Pale sky, navy ink, a cerulean accent" },
   { id: "midnight", label: "Midnight", scheme: "dark", pair: "noon", note: "Deep navy, sky accent, a soft glow" },
+  { id: "paper", label: "Paper", scheme: "light", pair: "ember", note: "Warm newsprint, ink and court orange" },
+  { id: "ember", label: "Ember", scheme: "dark", pair: "paper", note: "Warm charcoal and amber" },
 ] as const satisfies readonly DeskThemeInfo[];
 
 export type DeskThemeId = (typeof DESK_THEMES)[number]["id"];
 
-export const DEFAULT_LIGHT: DeskThemeId = "paper";
-export const DEFAULT_DARK: DeskThemeId = "ember";
+/** The default pair: a first visit opens in Midnight. */
+export const DEFAULT_LIGHT: DeskThemeId = "noon";
+export const DEFAULT_DARK: DeskThemeId = "midnight";
 
 const BY_ID = new Map<string, DeskThemeInfo>(DESK_THEMES.map((t) => [t.id, t]));
 
