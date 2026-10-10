@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell, LayoutDashboard, Plus, UserRound } from "lucide-react";
-import { connectionForTeam, connectionState, connectionTitle, focusKey, leagueName, teamName, teamTag, type AccountFocus } from "@/lib/account";
+import { YAHOO_ENABLED, YAHOO_SOON, connectionForTeam, connectionState, connectionTitle, focusKey, leagueName, teamName, teamTag, type AccountFocus } from "@/lib/account";
 import type { ProviderConnection } from "@/types/connections";
 import type { TeamResponseData } from "@/types/team";
 import dk from "@/components/desk/desk.module.css";
@@ -162,7 +162,14 @@ export function Ledger({ teams, connections, focus, cursor, rows, alertsOn, emai
             </span>
           </span>
         </button>
-        <button type="button" className={cls("connect:yahoo", false, s.rowAdd)} onClick={() => onAction({ kind: "connect", provider: "yahoo" })} onMouseEnter={() => onCursor(indexOf("connect:yahoo"))}>
+        <button
+          type="button"
+          className={cls("connect:yahoo", false, s.rowAdd)}
+          disabled={!YAHOO_ENABLED}
+          title={YAHOO_ENABLED ? undefined : YAHOO_SOON}
+          onClick={() => onAction({ kind: "connect", provider: "yahoo" })}
+          onMouseEnter={() => onCursor(indexOf("connect:yahoo"))}
+        >
           <span className={s.rowIcon}>
             <Plus size={14} />
           </span>
@@ -170,7 +177,13 @@ export function Ledger({ teams, connections, focus, cursor, rows, alertsOn, emai
             <span className={s.rowName}>
               <span>Connect Yahoo…</span>
             </span>
+            {!YAHOO_ENABLED ? <span className={s.rowSub}>waiting on Yahoo&apos;s developer access</span> : null}
           </span>
+          {!YAHOO_ENABLED ? (
+            <span className={s.rowRight}>
+              <span className={`${dk.chip} ${dk.warnChip}`}>soon</span>
+            </span>
+          ) : null}
         </button>
 
         <div className={s.group}>

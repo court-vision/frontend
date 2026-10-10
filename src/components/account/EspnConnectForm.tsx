@@ -16,6 +16,8 @@ interface EspnConnectFormProps {
   /** Rendered before the submit button, e.g. a way out to the manual form. */
   aside?: React.ReactNode;
   submitLabel?: string;
+  /** A narrow column: the three steps in fewer words. */
+  compact?: boolean;
 }
 
 /**
@@ -24,7 +26,7 @@ interface EspnConnectFormProps {
  * ESPN before anything is saved and says what it found; a refusal stays in
  * the form, where the fix is.
  */
-export function EspnConnectForm({ connect, onDone, refreshHint, aside, submitLabel = "Check and save" }: EspnConnectFormProps) {
+export function EspnConnectForm({ connect, onDone, refreshHint, aside, submitLabel = "Check and save", compact = false }: EspnConnectFormProps) {
   const [mode, setMode] = useState<"paste" | "fields">("paste");
   const [pasted, setPasted] = useState("");
   const [s2, setS2] = useState("");
@@ -55,7 +57,7 @@ export function EspnConnectForm({ connect, onDone, refreshHint, aside, submitLab
       <ol className={s.steps}>
         <li>
           <div className={s.stepBody}>
-            <span>Drag this to your bookmarks bar, once.</span>
+            <span>{compact ? "Drag to your bookmarks bar, once:" : "Drag this to your bookmarks bar, once."}</span>
             <span
               dangerouslySetInnerHTML={{
                 __html: `<a href="${ESPN_COOKIE_BOOKMARKLET}" class="${s.bookmarklet}" draggable="true" onclick="event.preventDefault()">Get ESPN cookies</a>`,
@@ -65,7 +67,7 @@ export function EspnConnectForm({ connect, onDone, refreshHint, aside, submitLab
         </li>
         <li>
           <div className={s.stepBody}>
-            <span>Open espn.com signed in, click the bookmark, copy what it shows.</span>
+            <span>{compact ? "On espn.com, signed in, click it and copy." : "Open espn.com signed in, click the bookmark, copy what it shows."}</span>
           </div>
         </li>
         <li>
@@ -127,7 +129,9 @@ export function EspnConnectForm({ connect, onDone, refreshHint, aside, submitLab
         {aside}
       </div>
       <span className={s.fieldHint}>
-        The cookies are checked against one of the account&apos;s private leagues before they are saved, then stored encrypted and never shown again. Every team on the account reads through them.
+        {compact
+          ? "Checked against a private league before saving; stored encrypted, never shown again."
+          : "The cookies are checked against one of the account's private leagues before they are saved, then stored encrypted and never shown again. Every team on the account reads through them."}
       </span>
     </div>
   );

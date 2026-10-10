@@ -4,9 +4,9 @@ import { useState } from "react";
 import { KeyRound, Loader2, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
 import { DeskDialog } from "@/components/desk/DeskDialog";
 import { userMessage } from "@/lib/api-error";
-import { connectionLine, connectionState, connectionTitle, leagueName, providerLabel, seasonLabel, type AccountFocus } from "@/lib/account";
+import { YAHOO_ENABLED, YAHOO_SOON, connectionLine, connectionState, connectionTitle, leagueName, providerLabel, seasonLabel, type AccountFocus } from "@/lib/account";
 import type { ProviderConnection } from "@/types/connections";
-import { AccountTeamList } from "./AddTeamDialog";
+import { AccountTeamList } from "./AccountTeams";
 import type { AccountModel } from "./model";
 import { Block, Facts, ago, useNow } from "./blocks";
 import dk from "@/components/desk/desk.module.css";
@@ -118,7 +118,13 @@ export function ConnectionSheet({ model, connection, onOpen, onRefresh, onAddYah
               <KeyRound size={13} /> Update cookies
             </button>
           ) : (
-            <button type="button" className={`${dk.btn} ${connection.status === "expired" ? dk.btnPrimary : ""}`} disabled={busy === "yahoo"} onClick={() => void reconnect()}>
+            <button
+              type="button"
+              className={`${dk.btn} ${connection.status === "expired" && YAHOO_ENABLED ? dk.btnPrimary : ""}`}
+              disabled={busy === "yahoo" || !YAHOO_ENABLED}
+              title={YAHOO_ENABLED ? undefined : YAHOO_SOON}
+              onClick={() => void reconnect()}
+            >
               {busy === "yahoo" ? <Loader2 size={13} className={dk.spin} /> : <RefreshCw size={13} />} Reconnect
             </button>
           )}
@@ -192,12 +198,18 @@ export function ConnectionSheet({ model, connection, onOpen, onRefresh, onAddYah
         </Block>
       ) : (
         <Block title="Add a team from this account">
-          <div className={s.row2}>
-            <span className={s.prose}>Pick one of the account&apos;s leagues, then the team that is yours.</span>
-            <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={onAddYahoo}>
-              Choose a league
-            </button>
-          </div>
+          {YAHOO_ENABLED ? (
+            <div className={s.row2}>
+              <span className={s.prose}>Pick one of the account&apos;s leagues, then the team that is yours.</span>
+              <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={onAddYahoo}>
+                Choose a league
+              </button>
+            </div>
+          ) : (
+            <div className={s.formNote} data-tone="warn">
+              {YAHOO_SOON}
+            </div>
+          )}
         </Block>
       )}
 

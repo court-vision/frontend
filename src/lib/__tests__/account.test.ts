@@ -13,6 +13,7 @@ import {
   formatTag,
   issues,
   leagueName,
+  providerEnabled,
   returnPath,
   sameFocus,
   seasonLabel,
@@ -217,6 +218,13 @@ describe("issues", () => {
   test("a Yahoo team without inline tokens is not a cookie problem", () => {
     const t = team({ info: { provider: "yahoo", has_espn_credentials: false } });
     expect(issues([t], []).map((i) => i.action)).toEqual([]);
+  });
+});
+
+describe("providers", () => {
+  test("ESPN is on; Yahoo waits for its developer access", () => {
+    expect(providerEnabled("espn")).toBe(true);
+    expect(providerEnabled("yahoo")).toBe(false);
   });
 });
 

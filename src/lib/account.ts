@@ -61,11 +61,24 @@ export function sameFocus(a: AccountFocus, b: AccountFocus): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Describing a team
+// Providers
 // ---------------------------------------------------------------------------
 
 export function providerLabel(provider: FantasyProvider | null | undefined): string {
   return provider === "yahoo" ? "Yahoo" : "ESPN";
+}
+
+/**
+ * Yahoo is off until Yahoo grants the developer access it is sitting on
+ * (2026-10). The connect, the league picker and the reconnect stay built and
+ * come back by flipping this; a Yahoo team already on the account still shows.
+ */
+export const YAHOO_ENABLED = false;
+
+export const YAHOO_SOON = "Yahoo is coming. Yahoo is still reviewing Court Vision's developer access; Yahoo teams can be added once it lands.";
+
+export function providerEnabled(provider: FantasyProvider): boolean {
+  return provider === "yahoo" ? YAHOO_ENABLED : true;
 }
 
 /**

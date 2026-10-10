@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -17,7 +17,8 @@ import { useUIStore } from "@/stores/useUIStore";
 import { userMessage } from "@/lib/api-error";
 import { connectionForTeam, connectionTitle, providerLabel, returnPath, teamName, teamTag, withoutYahooReturn, yahooReturn, type YahooReturn } from "@/lib/account";
 import { yahooConnectErrorMessage } from "@/lib/yahoo-connect";
-import { AddTeamDialog, type AddStart } from "@/components/account/AddTeamDialog";
+import { AddTeamTray, type AddStart } from "@/components/account/AddTeamTray";
+import { ACCOUNT_DESK } from "@/components/desk/routes";
 import { useLiveAddTeam } from "@/components/account/useAccountModels";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
 import { staleLineup } from "@/lib/lineup-editor";
@@ -255,6 +256,7 @@ const START_PROVIDER: AddStart = { step: "provider" };
 function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const { isSignedIn, isLoaded } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const selected = useSelectedTeam();
   const setSelectedTeam = useUIStore((s) => s.setSelectedTeam);
   const connections = useConnectionsQuery();
@@ -392,7 +394,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const notice: BarNotice | null =
     expired && expired.status === "expired"
       ? expired.provider === "yahoo"
-        ? { text: "Yahoo rejected the login", action: "Reconnect", onAction: () => setAdd({ step: "yahoo-connect", connectionId: expired.id }) }
+        ? { text: "Yahoo rejected the login", action: "Open account", onAction: () => router.push(`${ACCOUNT_DESK}?c=${expired.id}`) }
         : { text: "ESPN rejected the cookies", action: "Update", onAction: () => setAdd({ step: "espn-connect", connectionId: expired.id, refresh: true }) }
       : null;
 
@@ -444,7 +446,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   return (
     <>
       <WeekTerminal key={teamId ?? "none"} data={data} initialView={view} initialMarket={market} />
-      <AddTeamDialog
+      <AddTeamTray
         open={add != null}
         onOpenChange={(o) => {
           if (!o) setAdd(null);

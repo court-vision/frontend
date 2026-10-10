@@ -7,10 +7,10 @@ import { LayoutList } from "lucide-react";
 import { toast } from "sonner";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
-import { focusFromSearch, focusKey, focusToSearch, returnPath, sameFocus, withoutYahooReturn, type AccountFocus, type IssueTarget, type YahooReturn } from "@/lib/account";
+import { focusFromSearch, focusKey, focusToSearch, providerEnabled, returnPath, sameFocus, withoutYahooReturn, type AccountFocus, type IssueTarget, type YahooReturn } from "@/lib/account";
 import { yahooConnectErrorMessage } from "@/lib/yahoo-connect";
 import { AccountSheet } from "./AccountSheet";
-import { AddTeamDialog, type AddStart } from "./AddTeamDialog";
+import { AddTeamTray, type AddStart } from "./AddTeamTray";
 import { AlertsSheet, effectivePrefs } from "./AlertsSheet";
 import { ConnectionSheet } from "./ConnectionSheet";
 import { Ledger, ledgerRows, rowKey, type LedgerAction } from "./Ledger";
@@ -143,7 +143,7 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
   const onAction = useCallback(
     (action: LedgerAction) => {
       if (action.kind === "add") setAdd(START_PROVIDER);
-      else setAdd({ step: action.provider === "espn" ? "espn-connect" : "yahoo-connect" });
+      else if (providerEnabled(action.provider)) setAdd({ step: action.provider === "espn" ? "espn-connect" : "yahoo-connect" });
     },
     []
   );
@@ -305,7 +305,7 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
       <DeskStatus keys={KEYS}>{demo ? <span>Demo · a sample account · nothing is saved</span> : null}</DeskStatus>
 
       {root ? (
-        <AddTeamDialog
+        <AddTeamTray
           open={add != null}
           onOpenChange={(o) => {
             if (!o) setAdd(null);

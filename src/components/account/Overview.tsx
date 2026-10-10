@@ -2,6 +2,8 @@
 
 import { AlertTriangle, Info, Plus } from "lucide-react";
 import {
+  YAHOO_ENABLED,
+  YAHOO_SOON,
   connectionForTeam,
   connectionTitle,
   formatLabel,
@@ -137,7 +139,15 @@ export function Overview({ model, alertsOn, onOpen, onAdd, onTarget }: OverviewP
             <b>ESPN</b> has no sign-in for apps, so its two cookies stand in. They are checked against one of the account&apos;s private leagues, stored encrypted, and shared by every team on that account. When ESPN rotates them, the account shows as expired here and on the Week desk, and one paste fixes every team.
           </p>
           <p>
-            <b>Yahoo</b> signs you in itself. Court Vision holds read access there today, so a Yahoo team&apos;s week shows but its lineup is not sent.
+            {YAHOO_ENABLED ? (
+              <>
+                <b>Yahoo</b> signs you in itself. Court Vision holds read access there today, so a Yahoo team&apos;s week shows but its lineup is not sent.
+              </>
+            ) : (
+              <>
+                <b>Yahoo</b> is on its way. {YAHOO_SOON.replace("Yahoo is coming. ", "")}
+              </>
+            )}
           </p>
           <p>
             A team in a <b>public league</b> needs no account at all; it can be added by its league id.
