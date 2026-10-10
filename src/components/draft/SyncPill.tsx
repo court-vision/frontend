@@ -4,6 +4,7 @@ import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { useDeskPortal } from "@/components/desk/DeskFrame";
 import dk from "@/components/desk/desk.module.css";
+import { DRAFT_TAP_STORE_URL } from "@/endpoints";
 import type { EspnDraftSync } from "@/hooks/useEspnDraftSync";
 import { canDraftLabel, chipStatus } from "@/lib/espn-draft/sync-state";
 import s from "./draft.module.css";
@@ -54,6 +55,21 @@ export function SyncPill({ sync, onLink }: { sync: EspnDraftSync; onLink: () => 
             <dd style={{ color: sync.canDraft.ok ? "var(--up)" : "var(--text-3)" }}>{sync.canDraft.ok ? "ready" : canDraftLabel(sync.canDraft.reason)}</dd>
           </dl>
           <div className={dk.dialogFoot} style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+            {st.connection === "not-installed" && DRAFT_TAP_STORE_URL ? (
+              <a
+                href={DRAFT_TAP_STORE_URL}
+                target="_blank"
+                rel="noreferrer"
+                className={`${dk.btn} ${dk.btnSmall} ${dk.btnPrimary}`}
+              >
+                Add to Chrome
+              </a>
+            ) : null}
+            {st.connection === "connected" && !st.sharing ? (
+              <span className={dk.sub} style={{ flexBasis: "100%" }}>
+                Open the Draft Tap from Chrome&apos;s extensions menu and switch on sharing.
+              </span>
+            ) : null}
             {sync.unbound && !sync.unbound.dismissed ? (
               <>
                 <button type="button" className={`${dk.btn} ${dk.btnSmall} ${dk.btnPrimary}`} onClick={onLink}>

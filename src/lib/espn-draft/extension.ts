@@ -97,6 +97,62 @@ export function connectToExtension(extensionId: string, handlers: ConnectHandler
   };
 }
 
+/**
+ * Try several extension ids in turn (the store listing's, then a development
+ * copy's) and keep the first one that answers. An id that resolves to nothing
+ * falls through to the next; only when every id is missing is the caller told
+ * `not-installed`. Once an id has answered, it is tried first next time.
+ */
+let lastAnswered: string | null = null;
+
+export function connectToAnyExtension(extensionIds: string[], handlers: ConnectHandlers): PortHandle | null {
+  const ids = lastAnswered && extensionIds.includes(lastAnswered)
+    ? [lastAnswered, ...extensionIds.filter((id) => id !== lastAnswered)]
+    : [...extensionIds];
+  if (!ids.length || !chromeRuntimeAvailable()) return null;
+
+  let current: PortHandle | null = null;
+  let settled = false;
+
+  // Sets `current` rather than returning it: a synchronous failure moves on to
+  // the next id from inside the callback, before this call returns null.
+  const attempt = (i: number) => {
+    let answered = false;
+    const handle = connectToExtension(ids[i], {
+      onMessage(message) {
+        if (!answered) {
+          answered = true;
+          lastAnswered = ids[i];
+        }
+        handlers.onMessage(message);
+      },
+      onDisconnect(reason, detail) {
+        if (settled) return;
+        if (reason === "not-installed" && !answered && i + 1 < ids.length) {
+          attempt(i + 1);
+          return;
+        }
+        settled = true;
+        handlers.onDisconnect(reason, detail);
+      },
+    });
+    if (handle) current = handle;
+  };
+
+  attempt(0);
+  if (current === null && settled) return null;
+
+  return {
+    disconnect() {
+      settled = true;
+      current?.disconnect();
+    },
+    send(message) {
+      return current ? current.send(message) : false;
+    },
+  };
+}
+
 /** Reconnect backoff: 1s, 2s, 4s, 8s, 16s, then a 30s ceiling. No jitter (testable). */
 export function backoffDelay(attempt: number): number {
   return Math.min(1000 * 2 ** Math.max(0, attempt - 1), 30_000);

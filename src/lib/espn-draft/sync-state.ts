@@ -90,6 +90,8 @@ export interface SyncState {
   lastError: string | null;
   /** What the extension advertised: `read`, plus `write` while its popup toggle is on. */
   capabilities: string[];
+  /** False while the user has sharing switched off in the extension (1.0+): it sends nothing. */
+  sharing: boolean;
   /** A SELECT sent on the room's socket that ESPN has not yet answered. */
   pending: { playerId: number; requestId: string; since: number } | null;
   lastSend: {
@@ -119,6 +121,7 @@ export type SyncEvent =
   /** The user declined to link the room in `unbound`; its frames stay shelved. */
   | { type: "dismiss-room" }
   | { type: "capabilities"; capabilities: string[] }
+  | { type: "sharing"; enabled: boolean }
   | { type: "draft-sent"; playerId: number; requestId: string }
   /** A send the hook itself gave up on (the port went away before ESPN answered). */
   | { type: "draft-result"; requestId: string; reason: string; detail?: string }
@@ -176,6 +179,7 @@ export function initialState(): SyncState {
     },
     lastError: null,
     capabilities: [],
+    sharing: true,
     pending: null,
     lastSend: null,
   };
@@ -388,6 +392,8 @@ export function reduce(state: SyncState, event: SyncEvent, ctx: SyncContext): { 
     }
     case "capabilities":
       return { state: { ...state, capabilities: event.capabilities }, effects };
+    case "sharing":
+      return { state: { ...state, sharing: event.enabled }, effects };
     case "replay": {
       let s = state;
       for (const record of event.records) s = applyRecord(s, record, ctx, effects, false);
@@ -485,6 +491,7 @@ export function frontFromSession(session: Pick<DraftSession, "picks" | "next_ove
 
 export type DraftGateReason =
   | "not-connected"
+  | "sharing-off"
   | "no-write"
   | "no-room"
   | "unlinked"
@@ -516,6 +523,7 @@ export function canDraft(state: SyncState, paused: boolean, now: number): DraftG
   // A dropped port clears capabilities too, so connection comes first: the
   // honest message then is "not connected", not "turn on the toggle".
   if (state.connection !== "connected") return no("not-connected");
+  if (!state.sharing) return no("sharing-off");
   if (!state.capabilities.includes("write")) return no("no-write");
   if (!state.room) return no("no-room");
   if (state.unbound) return no("unlinked");
@@ -535,6 +543,8 @@ export function canDraft(state: SyncState, paused: boolean, now: number): DraftG
 /** One line for a disabled Draft button's tooltip or a refused keystroke's toast. */
 export function canDraftLabel(reason: DraftGateReason): string {
   switch (reason) {
+    case "sharing-off":
+      return "Turn on sharing in the Draft Tap popup";
     case "no-write":
       return "Turn on “Allow drafting from Court Vision” in the Draft Tap popup";
     case "not-connected":
@@ -571,6 +581,8 @@ export function sendFailureMessage(reason: string, detail?: string | null): stri
   switch (reason) {
     case "espn-error":
       return detail ? `ESPN refused the pick: ${detail}` : "ESPN refused the pick";
+    case "sharing-off":
+      return "Sharing is switched off in the Draft Tap popup";
     case "write-disabled":
       return "Drafting is switched off in the Draft Tap popup";
     case "sse":
@@ -600,7 +612,7 @@ export type ChipTone = "muted" | "ok" | "warn" | "error";
 export function chipStatus(state: SyncState, paused: boolean): { tone: ChipTone; label: string; detail: string | null } {
   if (state.connection === "unsupported") return { tone: "muted", label: "ESPN sync: Chrome only", detail: null };
   if (state.connection === "not-installed")
-    return { tone: "warn", label: "ESPN sync: tap not found", detail: "Load the Draft Tap extension, then reload" };
+    return { tone: "warn", label: "ESPN sync: add the Draft Tap", detail: "Add the Court Vision Draft Tap to Chrome to bring your ESPN draft in live" };
   if (paused)
     return {
       tone: "warn",
@@ -620,6 +632,8 @@ export function chipStatus(state: SyncState, paused: boolean): { tone: ChipTone;
     return { tone: "warn", label: "Tap disconnected — retrying", detail: state.attempt > 1 ? `attempt ${state.attempt}` : null };
 
   // connected
+  if (!state.sharing)
+    return { tone: "warn", label: "ESPN sync: sharing is off", detail: "Turn on sharing in the Draft Tap popup to bring your ESPN picks in" };
   if (!state.room || state.room.closed)
     return {
       tone: state.room?.closed ? "warn" : "muted",

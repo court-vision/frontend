@@ -66,10 +66,12 @@ export interface SelectCommand {
 
 /**
  * Why a `select` did not reach the wire. The worker refuses before the tab
- * (`bad-request`, `write-disabled`, `no-tab`); the tap refuses at the socket.
+ * (`bad-request`, `sharing-off`, `write-disabled`, `no-tab`); the tap refuses
+ * at the socket.
  */
 export type SendFailureReason =
   | "bad-request"
+  | "sharing-off"
   | "write-disabled"
   | "no-tab"
   | "unknown-command"
@@ -80,8 +82,16 @@ export type SendFailureReason =
   | "send-failed";
 
 export const ExtensionMessageSchema = z.discriminatedUnion("type", [
-  // `capabilities` is absent from a pre-0.3 extension, which can only read.
-  z.object({ type: z.literal("hello"), version: z.string(), capabilities: z.array(z.string()).optional() }),
+  // `capabilities` is absent from a pre-0.3 extension, which can only read;
+  // `sharing` from a pre-1.0 one, which always shares.
+  z.object({
+    type: z.literal("hello"),
+    version: z.string(),
+    capabilities: z.array(z.string()).optional(),
+    sharing: z.boolean().optional(),
+  }),
+  // 1.0: the user turned sharing on or off in the extension.
+  z.object({ type: z.literal("sharing"), enabled: z.boolean() }),
   z.object({ type: z.literal("capabilities"), capabilities: z.array(z.string()) }),
   z.object({ type: z.literal("replay"), records: z.array(TapRecordSchema) }),
   z.object({ type: z.literal("record"), record: TapRecordSchema }),

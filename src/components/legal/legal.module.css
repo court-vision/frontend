@@ -1,0 +1,114 @@
+/* Long-form pages (privacy): a readable column in the desk frame and theme. */
+
+.page {
+  --gutter: clamp(20px, 4vw, 56px);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  font-family: var(--desk-sans), ui-sans-serif, system-ui, sans-serif;
+  color: var(--text);
+}
+
+.top {
+  padding: clamp(14px, 2.4vw, 28px) var(--gutter);
+}
+
+.mark {
+  font-family: var(--font-outfit), var(--desk-sans), sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.accent {
+  color: var(--accent);
+}
+
+.doc {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding: clamp(16px, 4vw, 48px) var(--gutter) 96px;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--text-2);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-outfit), var(--desk-sans), sans-serif;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  color: var(--text);
+}
+
+.updated {
+  margin: 12px 0 0;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+.lede {
+  margin: 24px 0 0;
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.doc section {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 24px;
+}
+
+.doc h2 {
+  margin: 0 0 12px;
+  font-family: var(--font-outfit), var(--desk-sans), sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.doc p {
+  margin: 12px 0 0;
+}
+
+.doc ul {
+  margin: 12px 0 0;
+  padding-left: 20px;
+}
+
+.doc li + li {
+  margin-top: 10px;
+}
+
+.doc b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.doc a {
+  color: var(--accent);
+}
+
+.doc code {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 0.9em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.mark:focus-visible,
+.doc a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}

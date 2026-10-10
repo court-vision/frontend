@@ -7,7 +7,7 @@ import { isDeskDemo } from "@/components/desk/routes";
 const isProtectedRoute = createRouteMatcher(["/draft(.*)", "/account(.*)"]);
 
 // Public pages search engines may index.
-const isIndexableRoute = createRouteMatcher(["/", "/scout(.*)", "/developer(.*)", "/sign-up(.*)"]);
+const isIndexableRoute = createRouteMatcher(["/", "/scout(.*)", "/developer(.*)", "/sign-up(.*)", "/privacy"]);
 
 export default clerkMiddleware(async (auth, req) => {
   // Protect routes that require authentication. A desk's demo runs on sample

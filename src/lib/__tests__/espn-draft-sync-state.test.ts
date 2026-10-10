@@ -228,7 +228,7 @@ describe("chipStatus", () => {
     expect(chipStatus({ ...base, reconciled: "ok", initSeen: true, front: 7 }, false).label).toContain("Live · next pick 7");
     expect(chipStatus({ ...base, reconciled: "failed", initSeen: true, front: 7 }, false).label).toContain("unreconciled");
     expect(chipStatus({ ...base, reset: true }, false).tone).toBe("error");
-    expect(chipStatus({ ...initialState(), connection: "not-installed" }, false).label).toContain("tap not found");
+    expect(chipStatus({ ...initialState(), connection: "not-installed" }, false).label).toContain("add the Draft Tap");
     expect(chipStatus(base, true).label).toBe("Sync paused");
   });
 });
@@ -520,3 +520,32 @@ describe("once ESPN says the draft is over", () => {
     expect(reasonOf(s)).toBe("draft-over");
   });
 });
+
+describe("sharing (Draft Tap 1.0)", () => {
+  const connected = (): SyncState => reduce(initialState(), { type: "port", status: "connected" }, CTX()).state;
+
+  test("an extension with sharing off reads as such, and drafting waits on it first", () => {
+    let s = reduce(connected(), { type: "capabilities", capabilities: [] }, CTX()).state;
+    s = reduce(s, { type: "sharing", enabled: false }, CTX()).state;
+    expect(chipStatus(s, false)).toMatchObject({ tone: "warn", label: "ESPN sync: sharing is off" });
+    expect(canDraft(s, false, 0)).toEqual({ ok: false, reason: "sharing-off" });
+    expect(canDraftLabel("sharing-off")).toContain("sharing");
+  });
+
+  test("turning it on clears the state", () => {
+    let s = reduce(connected(), { type: "sharing", enabled: false }, CTX()).state;
+    s = reduce(s, { type: "sharing", enabled: true }, CTX()).state;
+    expect(s.sharing).toBe(true);
+    expect(chipStatus(s, false).label).not.toContain("sharing");
+  });
+
+  test("a refused send names the switch", () => {
+    expect(sendFailureMessage("sharing-off")).toContain("Sharing");
+  });
+
+  test("a missing tap asks to add it", () => {
+    const s = reduce(initialState(), { type: "port", status: "not-installed" }, CTX()).state;
+    expect(chipStatus(s, false).label).toBe("ESPN sync: add the Draft Tap");
+  });
+});
+
