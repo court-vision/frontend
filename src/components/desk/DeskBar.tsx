@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Braces, RotateCw, Sparkles } from "lucide-react";
-import { DESKS, DEVELOPER, type DeskId } from "./routes";
+import { useUser } from "@clerk/nextjs";
+import { Braces, RotateCw, Sparkles, UserRound } from "lucide-react";
+import { ACCOUNT, DESKS, DEVELOPER, type DeskId } from "./routes";
 import { ThemePicker } from "./ThemePicker";
 import dk from "./desk.module.css";
 
@@ -71,8 +72,38 @@ export function DeskBar({ desk, demo = false, children, right, onRefresh }: Desk
         >
           <Braces size={14} />
         </Link>
+        <AccountDoor desk={desk} demo={demo} />
       </div>
     </header>
+  );
+}
+
+/**
+ * The Account desk's door: your avatar, last on the bar. Signed out it is a
+ * plain figure; the desk behind it asks you to sign in.
+ */
+function AccountDoor({ desk, demo }: { desk: DeskId; demo: boolean }) {
+  const { user, isSignedIn } = useUser();
+  const initials = (user?.firstName?.[0] ?? "") + (user?.lastName?.[0] ?? "");
+  const email = user?.primaryEmailAddress?.emailAddress;
+  const fallback = initials || (email ? email[0].toUpperCase() : "");
+  return (
+    <Link
+      href={demo ? `${ACCOUNT.href}?demo` : ACCOUNT.href}
+      className={`${dk.iconBtn} ${dk.iconLink}`}
+      aria-label="Account desk"
+      aria-current={desk === ACCOUNT.id ? "page" : undefined}
+      title="Account: your teams, the accounts they read through, alerts"
+    >
+      {isSignedIn && user?.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className={dk.avatar} src={user.imageUrl} alt="" draggable={false} />
+      ) : isSignedIn && fallback ? (
+        <span className={dk.avatarInitials}>{fallback}</span>
+      ) : (
+        <UserRound size={14} />
+      )}
+    </Link>
   );
 }
 

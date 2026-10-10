@@ -28,6 +28,14 @@ export const SCOUT_DESK = "/scout";
  */
 export const DEVELOPER_DESK = "/dev";
 
+/**
+ * The Account desk's home: your teams, the ESPN and Yahoo accounts they draw
+ * on, lineup alerts and the account itself. The old pages keep `/account`,
+ * `/manage-teams`, `/your-teams` and `/settings` until the cutover; at the
+ * cutover this becomes "/account".
+ */
+export const ACCOUNT_DESK = "/me";
+
 /** The desks a tab is shown for: where fantasy work happens, and the Scout. */
 export const DESKS = [
   { id: "week", label: "Week", href: "/week", key: "1" },
@@ -38,7 +46,10 @@ export const DESKS = [
 /** The Developer desk sits behind an icon at the bar's far end, not among the tabs. */
 export const DEVELOPER = { id: "developer", label: "Developer", href: DEVELOPER_DESK } as const;
 
-export const ALL_DESKS = [...DESKS, DEVELOPER] as const;
+/** The Account desk sits behind your avatar, last on the bar. */
+export const ACCOUNT = { id: "account", label: "Account", href: ACCOUNT_DESK } as const;
+
+export const ALL_DESKS = [...DESKS, DEVELOPER, ACCOUNT] as const;
 
 export type DeskId = (typeof ALL_DESKS)[number]["id"];
 
@@ -50,7 +61,7 @@ export function isDeskPath(pathname: string | null | undefined): boolean {
 /**
  * A desk demo's URL, which runs on sample data in the browser and so opens
  * signed out. Only these: a desk's own page with `?demo` (`/week?demo`,
- * `/lab?demo`) and the Draft desk's demo rooms (`/lab/demo-3`,
+ * `/lab?demo`, `/me?demo`) and the Draft desk's demo rooms (`/lab/demo-3`,
  * `/lab/demo-3/recap`). `?demo` anywhere else, a live room included, leaves
  * that route's sign-in as it is.
  */

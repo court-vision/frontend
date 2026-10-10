@@ -72,18 +72,27 @@ export function useTeamLeagueQuery(teamId: number | null) {
 }
 
 // Mutations
-export function useAddTeamMutation() {
+/**
+ * Add a team. With `silent` the caller reports the result and picks the team
+ * itself: nothing is toasted (the add tray shows a refusal inline, where the
+ * fix is: a wrong team name lists the league's teams to pick from) and the
+ * selection is left alone until the caller has the refreshed list.
+ */
+export function useAddTeamMutation(opts: { silent?: boolean } = {}) {
   const queryClient = useQueryClient();
   const { getToken } = useAuth();
 
   return useMutation({
     mutationFn: (teamData: LeagueInfoRequest) =>
       apiClient.addTeam(getToken, teamData),
+    meta: opts.silent ? { toast: false } : undefined,
     onSuccess: (response) => {
       if (response.status === "success") {
         const league = response.data?.league ?? null;
         const format = league?.settings_synced ? scoringLabel(league) : null;
-        if (response.already_exists) {
+        if (opts.silent) {
+          // The caller says what happened.
+        } else if (response.already_exists) {
           toast.info("Team already exists in your account.");
         } else {
           toast.success(
@@ -93,13 +102,13 @@ export function useAddTeamMutation() {
           );
         }
         const newTeamId = response.team_id ?? response.data?.team_id ?? null;
-        if (newTeamId) {
+        if (newTeamId && !opts.silent) {
           useUIStore.getState().setSelectedTeam(newTeamId);
         }
         queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
         // The team joins a connection's team list (and leaves the "to add" picker)
         queryClient.invalidateQueries({ queryKey: connectionKeys.all });
-      } else {
+      } else if (!opts.silent) {
         toast.error(response.message || "Failed to add team.");
       }
     },

@@ -391,6 +391,48 @@
   background: var(--accent-soft);
 }
 
+/* The Account desk's door: the signed-in avatar, lit while you are inside. */
+.avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--line-2);
+}
+
+.avatarInitials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text-2);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.iconLink[aria-current="page"] .avatar {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.iconLink[aria-current="page"] .avatarInitials {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* Something needs doing where this sits: an account the provider rejected. */
+.warnDot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warn);
+}
+
 .liveDot {
   width: 6px;
   height: 6px;
@@ -425,6 +467,21 @@
 .badgeDemo {
   border-color: color-mix(in srgb, var(--preview) 50%, transparent);
   color: var(--preview);
+}
+
+/* Something the desk's subject needs before the work can go on; the badge is the way there. */
+.badgeWarn {
+  border-color: color-mix(in srgb, var(--warn) 55%, transparent);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  color: var(--warn);
+  font: inherit;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.badgeWarn:hover {
+  background: color-mix(in srgb, var(--warn) 16%, transparent);
 }
 
 /* ---------------------------------------------------------------- chips */
