@@ -109,9 +109,23 @@ describe("laneCells", () => {
       DAYS
     );
     expect(cells[1]).toMatchObject({ state: "missed", player: { name: "Holder" } });
-    expect(cells[2]).toMatchObject({ state: "failed", player: { name: "Holder" }, note: "Alpha: unavailable" });
+    expect(cells[2]).toMatchObject({ state: "failed", player: { name: "Holder" }, note: "Alpha: he was no longer available" });
     expect(cells[3]).toMatchObject({ state: "scheduled", player: { name: "Bravo" }, switch: true });
     expect(cells[4]).toMatchObject({ state: "projected", player: { name: "Bravo" } });
+  });
+
+  test("a switch never scheduled (that player's pickup already was) is a day not made, not the projection", () => {
+    const cells = laneCells(
+      lane([event("blocked", DATES[2], { add: A, drop: HOLDER, reason: "already_scheduled" })], projection(2, [A, A, A])),
+      DAYS
+    );
+    expect(cells[2]).toMatchObject({
+      state: "failed",
+      player: { name: "Holder" },
+      switch: false,
+      note: "Alpha: that player was already scheduled",
+    });
+    expect(cells[3]).toMatchObject({ state: "projected", player: { name: "Alpha" } });
   });
 });
 

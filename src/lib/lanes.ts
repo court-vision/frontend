@@ -58,14 +58,15 @@ export function laneCells(lane: StreamLane, days: ReadonlyArray<WeekDay>): Array
       decided.set(e.nba_date, { player: holder, state: "kept", switch: false, value: null, note: null });
     } else if (e.action === "blocked" && e.reason === "missed") {
       decided.set(e.nba_date, { player: holder, state: "missed", switch: false, value: null, note: e.detail ?? null });
-    } else if (e.action === "blocked" && e.pickup_id != null) {
-      // A switch whose pickup settled without going through: the spot's player stayed.
+    } else if (e.action === "blocked") {
+      // A switch that didn't go through: its pickup settled without being made, or it was never
+      // scheduled (that player's pickup already was). The spot's player stayed.
       decided.set(e.nba_date, {
         player: holder,
         state: "failed",
         switch: false,
         value: null,
-        note: e.add ? `${e.add.name}: ${e.reason ?? "not made"}` : e.reason ?? null,
+        note: e.add ? `${e.add.name}: ${laneReason(e.reason) ?? "not made"}` : laneReason(e.reason),
       });
     }
   }
