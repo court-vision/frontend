@@ -46,7 +46,7 @@ import {
   isTransactionAction,
   rowButton,
   sortActions,
-  stageAllOrder,
+  stageAllFold,
   stageRow,
   streamersHint,
   unstageRow,
@@ -389,18 +389,19 @@ export function WeekTerminal({
     },
     [todayDay, boards, staging, setDay, actionsData]
   );
-  const lineupLeft = useMemo(
-    () => (todayBoardNow && !actionsStale ? unstagedLineupActions(actionsData?.actions ?? [], todayStaging) : []),
+  // Stage all takes the rows that fit together; one that would overfill a slot keeps its own button.
+  const stageAll = useMemo(
+    () =>
+      todayBoardNow && !actionsStale
+        ? stageAllFold(todayBoardNow, todayStaging, unstagedLineupActions(actionsData?.actions ?? [], todayStaging))
+        : null,
     [todayBoardNow, actionsStale, actionsData, todayStaging]
   );
+  const stageAllCount = stageAll?.rows.length ?? 0;
   const stageAllToday = useCallback(() => {
-    if (todayDay == null) return;
-    const b = boards[todayDay];
-    if (!b) return;
-    let next = staging[todayDay];
-    for (const a of stageAllOrder(lineupLeft)) next = stageRow(b, next, a);
-    setDay(todayDay, next);
-  }, [todayDay, boards, staging, lineupLeft, setDay]);
+    if (todayDay == null || !stageAll) return;
+    setDay(todayDay, stageAll.staged);
+  }, [todayDay, stageAll, setDay]);
 
   // ---- cursor and menus ----
   const [cursor, setCursor] = useState<Cursor | null>(null);
@@ -1042,8 +1043,8 @@ export function WeekTerminal({
                 open={movesOpen}
                 onOpen={setMovesOpen}
                 onButton={onTodayButton}
-                onStageAll={lineupLeft.length >= 2 ? stageAllToday : null}
-                stageAllCount={lineupLeft.length}
+                onStageAll={stageAllCount >= 2 ? stageAllToday : null}
+                stageAllCount={stageAllCount}
                 onRetry={data.actions.refetch}
                 container={root}
               />

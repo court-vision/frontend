@@ -4,8 +4,8 @@
  * and how a row reads on the strip's split-flap board. The server writes the
  * row copy; this file decides what the buttons do. Pure.
  */
-import { IR_SLOT_ID, stageMoves, unstageMoves, type Staged } from "./lineup-editor";
-import type { LineupState } from "@/types/lineup-editor";
+import { IR_SLOT_ID, stageMoves, unstageMoves, validateStaged, type Staged } from "./lineup-editor";
+import type { LineupState, MoveError } from "@/types/lineup-editor";
 import type {
   DailyAction,
   DailyActionBlockedReason,
@@ -116,6 +116,34 @@ export function unstageRow(board: LineupState, staged: Staged, a: DailyAction, r
     next = stageMoves(board, next, movesOf(r).filter((m) => m.player_id in staged && !(m.player_id in next)));
   }
   return next;
+}
+
+const problemKey = (e: MoveError) => `${e.code}:${e.player_id}:${e.message}`;
+
+/**
+ * What "stage all" stages of `actions` (the unstaged lineup rows): each in
+ * `stageAllOrder`, kept only when it adds no problem the staging didn't
+ * already have. The server judges every row against the current board, so a
+ * player off IR and a start can both claim the same open slot; the later one
+ * keeps its own Stage button. `rows` are the ones that landed.
+ */
+export function stageAllFold(
+  board: LineupState,
+  staged: Staged,
+  actions: readonly DailyAction[]
+): { staged: Staged; rows: DailyAction[] } {
+  let next = staged;
+  let known = new Set(validateStaged(board, next).map(problemKey));
+  const rows: DailyAction[] = [];
+  for (const a of stageAllOrder(actions)) {
+    const tried = stageRow(board, next, a);
+    const problems = validateStaged(board, tried).map(problemKey);
+    if (problems.some((k) => !known.has(k))) continue;
+    next = tried;
+    known = new Set(problems);
+    rows.push(a);
+  }
+  return { staged: next, rows };
 }
 
 export const ROW_BLOCKED_COPY: Record<DailyActionBlockedReason, string> = {

@@ -12,6 +12,7 @@ import {
   isTransactionAction,
   rowButton,
   sortActions,
+  stageAllFold,
   stageAllOrder,
   stageRow,
   streamersHint,
@@ -158,6 +159,24 @@ describe("rows and staging", () => {
     expect(validateStaged(BOARD, noIr)).toEqual([]);
     // Alone, a row comes back whole.
     expect(unstageRow(BOARD, { 11: UT, 8: BE }, START, rows)).toEqual({});
+  });
+
+  test("stage all leaves out a row that would overfill the slot an earlier row filled", () => {
+    // C is open: 14 is healthy on IR and 12 waits on the bench, and each row was worked out to take C.
+    const open = board([player(12, BE, [C, UT, BE]), player(14, IR, [C, UT, BE, IR]), player(9, UT, [UT, BE]), player(11, UT, [UT, BE])]);
+    const IR_OUT_C = action("ir_out", 14, [[14, IR, C]]);
+    const all = stageAllFold(open, {}, [IR_OUT_C, START_EARLY]);
+    expect(all.staged).toEqual({ 12: C });
+    expect(all.rows.map((a) => a.id)).toEqual(["start:12"]);
+    expect(validateStaged(open, all.staged)).toEqual([]);
+    // A problem the staging already had doesn't hold a row back.
+    const overfull = stageAllFold(open, { 14: UT }, [START_EARLY]);
+    expect(overfull.staged).toEqual({ 14: UT, 12: C });
+    expect(overfull.rows).toHaveLength(1);
+    // Rows that fit together all land.
+    const overlap = stageAllFold(BOARD, {}, [IR_IN, START]);
+    expect(overlap.staged).toEqual({ 11: UT, 8: IR });
+    expect(overlap.rows.map((a) => a.id)).toEqual(["start:11", "ir_in:8"]);
   });
 
   test("an add row is staged while its free agent waits in the dock with its drop, made now", () => {
