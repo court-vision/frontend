@@ -26,6 +26,7 @@ import {
   type WeekGrid as Grid,
 } from "@/lib/week-grid";
 import type { PickupView } from "@/lib/pickups";
+import { LaneGroupRow, LaneRow, type LaneRowModel } from "./LaneRow";
 import type { LineupState } from "@/types/lineup-editor";
 import { Headshot } from "@/components/desk/Headshot";
 import { type Cursor, type DropTarget } from "./WeekGrid";
@@ -65,6 +66,8 @@ interface DailyGridProps {
   /** Hovering a pending pickup previews it in the grid. */
   onPreviewPickup?: (id: number | null) => void;
   onCancelPickup?: (id: number) => void;
+  /** The open stream lane: a row above the scheduled pickups, the spot's holder each day. */
+  lane?: LaneRowModel | null;
   /** The pickup being cancelled, while that request is out. */
   cancelling?: number | null;
 }
@@ -116,6 +119,7 @@ export function DailyGrid({
   onPreviewPickup,
   onCancelPickup,
   cancelling = null,
+  lane = null,
 }: DailyGridProps) {
   const { slots, seats } = grid.lineups;
   const days = grid.days;
@@ -313,9 +317,17 @@ export function DailyGrid({
             })}
           </div>
 
-          {/* Scheduled pickups lead, like a calendar's all-day lane: a preview below never moves them. */}
-          {pickups.length ? (
+          {/* The stream lane and scheduled pickups lead, like a calendar's all-day lane: a preview below never moves them. */}
+          {pickups.length || lane ? (
             <div className={s.pickupLane}>
+              {lane ? (
+                <>
+                  <LaneGroupRow model={lane} />
+                  <LaneRow model={lane} days={days} focusDay={focusDay} todayIndex={todayIndex} />
+                </>
+              ) : null}
+              {pickups.length ? (
+              <>
               <div className={s.groupRow} role="presentation">
                 <div className={s.groupLabel}>
                   <span className={dk.label} style={{ color: "var(--preview)" }}>
@@ -340,6 +352,8 @@ export function DailyGrid({
                   onCancel={onCancelPickup}
                 />
               ))}
+              </>
+              ) : null}
             </div>
           ) : null}
 
