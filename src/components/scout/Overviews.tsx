@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { ArrowRight } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import { AlertTriangle, ArrowRight, Check, ChevronDown } from "lucide-react";
+import { useDeskPortal } from "@/components/desk/DeskFrame";
 import { Headshot } from "@/components/desk/Headshot";
 import { TeamLogo } from "@/components/desk/TeamLogo";
 import { nbaTeamKeys } from "@/hooks/useNBATeam";
@@ -13,19 +15,24 @@ import { formatCategoryValue } from "@/lib/category-format";
 import { NBA_TEAMS } from "@/lib/nbaTeams";
 import {
   MARKET_SECTIONS,
+  basisLabel,
   filterPool,
   fmtDelta,
   fmtPctDot,
   fmtStat,
   standings,
+  scoredBy,
+  scoringWarning,
   type Focus,
+  type LeagueChoice,
   type MarketSection,
+  type PoolScore,
   type PoolSort,
   type PosFilter,
   type StandingRow,
 } from "@/lib/scout";
 import type { RankingsMeta, RankingsPlayer, RankingsWindow } from "@/types/rankings";
-import type { CategoryDef, ScoringFormat } from "@/types/scoring";
+import type { CategoryDef } from "@/types/scoring";
 import { Block, MoveChip, Skeleton } from "./blocks";
 import type { PoolConfig } from "./useScoutStore";
 import dk from "@/components/desk/desk.module.css";
@@ -49,11 +56,11 @@ function Tape({ ticks }: { ticks: Array<{ label: string; value: React.ReactNode;
   );
 }
 
-function MiniRail<T extends string | number | null>({ value, options, onChange, label }: { value: T; options: Array<{ v: T; label: string; title?: string }>; onChange: (v: T) => void; label: string }) {
+function MiniRail<T extends string | number | null>({ value, options, onChange, label }: { value: T; options: Array<{ v: T; label: string; title?: string; disabled?: boolean }>; onChange: (v: T) => void; label: string }) {
   return (
     <div className={dk.rail} role="radiogroup" aria-label={label} style={{ padding: 1 }}>
       {options.map((o) => (
-        <button key={String(o.v)} type="button" role="radio" aria-checked={o.v === value} className={`${dk.seg} ${o.v === value ? dk.segOn : ""}`} style={{ height: 24, padding: "0 8px", fontSize: 10.5 }} onClick={() => onChange(o.v)} title={o.title}>
+        <button key={String(o.v)} type="button" role="radio" aria-checked={o.v === value} disabled={o.disabled} className={`${dk.seg} ${o.v === value ? dk.segOn : ""}`} style={{ height: 24, padding: "0 8px", fontSize: 10.5 }} onClick={() => onChange(o.v)} title={o.title}>
           {o.v === value ? <span className={dk.segPill} /> : null}
           <span className={dk.segLabel}>{o.label}</span>
         </button>
@@ -76,6 +83,65 @@ const SORTS: Array<{ v: PoolSort; label: string; title: string }> = [
 
 const CAT_ORDER = ["pts", "reb", "ast", "stl", "blk", "tov", "fg3m", "fg_pct", "ft_pct"];
 
+/** The pool's league score: which league, the others to pick from, and why there is none. */
+export interface PoolLeague {
+  choice: LeagueChoice | null;
+  choices: LeagueChoice[];
+  /** Why the league score is off ("Sign in to…"); null when it can be chosen. */
+  note: string | null;
+  /** Score by this team's league (it becomes the selected team, as on the Week desk). */
+  pick: (teamId: number) => void;
+}
+
+/** Which of the user's leagues scores the pool, when there is more than one. */
+function LeaguePicker({ league }: { league: PoolLeague }) {
+  const [open, setOpen] = useState(false);
+  const container = useDeskPortal();
+  const on = league.choice;
+  if (!on) return null;
+  if (league.choices.length < 2) return <span className={dk.sub}>{on.league}</span>;
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button type="button" className={dk.ghost} style={{ height: 26, padding: "0 8px", fontSize: 12 }} aria-label={`League: ${on.league}`}>
+          <span style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{on.league}</span>
+          <ChevronDown size={13} className={dk.chev} />
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal container={container}>
+        <Popover.Content className={dk.menu} align="start" sideOffset={6} style={{ width: 300 }}>
+          <div className={dk.menuList}>
+            {league.choices.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                className={dk.menuItem}
+                onClick={() => {
+                  if (c.key !== on.key) league.pick(c.teamId);
+                  setOpen(false);
+                }}
+              >
+                <span className={dk.grow} style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.league}</span>
+                  <span className={dk.sub} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.team}</span>
+                </span>
+                <span className={dk.sub}>{c.tag}</span>
+                {c.key === on.key ? <Check size={13} /> : <span style={{ width: 13 }} />}
+              </button>
+            ))}
+          </div>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+/** The board's columns for these categories: the standard nine in their usual order, then the league's others. */
+function categoryColumns(categories: CategoryDef[]): CategoryDef[] {
+  const known = CAT_ORDER.map((k) => categories.find((c) => c.key === k)).filter((c): c is CategoryDef => !!c);
+  return [...known, ...categories.filter((c) => !CAT_ORDER.includes(c.key))];
+}
+
 export interface PoolOverviewProps {
   rows: RankingsPlayer[];
   loading: boolean;
@@ -83,26 +149,37 @@ export interface PoolOverviewProps {
   message: string;
   meta: RankingsMeta | null;
   config: PoolConfig;
+  /** The score in force: the league's only when there is a league to score by. */
+  score: PoolScore;
   setConfig: (patch: Partial<PoolConfig>) => void;
+  league: PoolLeague;
   categories: CategoryDef[];
   focus: Focus | null;
   open: (focus: Focus) => void;
 }
 
-export function PoolOverview({ rows, loading, error, message, meta, config, setConfig, categories, focus, open }: PoolOverviewProps) {
+const SCORES: Array<{ v: PoolScore; label: string; title: string }> = [
+  { v: "points", label: "PTS", title: "Fantasy points, the platform formula" },
+  { v: "categories", label: "9-CAT", title: "Summed category z-scores" },
+  { v: "league", label: "LEAGUE", title: "Your league's own scoring: its point values, or its categories" },
+];
+
+export function PoolOverview({ rows, loading, error, message, meta, config, score, setConfig, league, categories, focus, open }: PoolOverviewProps) {
   const shown = useMemo(() => filterPool(rows, "", config.pos, config.sort), [rows, config.pos, config.sort]);
-  const cats = config.format === "categories";
-  const catCols = useMemo(() => {
-    const byKey = new Map(categories.map((c) => [c.key, c]));
-    return CAT_ORDER.map((k) => byKey.get(k)).filter((c): c is CategoryDef => !!c);
-  }, [categories]);
+  // The numbers say how they were scored: a league decides its own format.
+  const cats = meta?.scoring ? meta.scoring.basis === "categories" : score === "categories";
+  const catCols = useMemo(() => categoryColumns(categories), [categories]);
   const hasCats = cats && rows.some((r) => r.categories);
   const movers = useMemo(() => {
     const up = [...rows].sort((a, b) => b.rank_change - a.rank_change)[0];
     const down = [...rows].sort((a, b) => a.rank_change - b.rank_change)[0];
     return { up: up && up.rank_change > 0 ? up : null, down: down && down.rank_change < 0 ? down : null };
   }, [rows]);
-  const basis = meta?.scoring?.basis === "categories" ? "9-cat z-scores" : meta?.scoring?.basis === "league_points" ? "league points" : "fantasy points";
+  const roto = score === "league" && !!league.choice?.roto;
+  const basis = basisLabel(meta?.scoring, roto);
+  const warning = score === "league" ? scoringWarning(meta?.scoring, league.choice, meta?.categories) : null;
+  const by = score === "league" ? scoredBy(meta?.scoring, roto) : null;
+  const scores = SCORES.map((o) => (o.v === "league" && league.note ? { ...o, disabled: true, title: league.note } : o));
 
   return (
     <div className={s.sheetInner}>
@@ -114,12 +191,14 @@ export function PoolOverview({ rows, loading, error, message, meta, config, setC
               {meta?.season ?? ""}
               {meta?.as_of ? ` · as of ${meta.as_of}` : ""}
               {meta?.window ? ` · last ${meta.window} days` : " · full season"}
+              {by ? ` · scored by ${by}` : ""}
             </span>
           </div>
           <div className={s.headMeta} style={{ gap: 10 }}>
             <span className={s.inline} style={{ gap: 6 }}>
               <span className={dk.label}>Score</span>
-              <MiniRail label="Scoring" value={config.format} options={[{ v: "points" as ScoringFormat, label: "PTS", title: "Fantasy points, the platform formula" }, { v: "categories" as ScoringFormat, label: "9-CAT", title: "Summed category z-scores" }]} onChange={(v) => setConfig({ format: v })} />
+              <MiniRail label="Scoring" value={score} options={scores} onChange={(v) => setConfig(v === "league" ? { scope: "league" } : { scope: "global", format: v })} />
+              {score === "league" ? <LeaguePicker league={league} /> : null}
             </span>
             <span className={s.inline} style={{ gap: 6 }}>
               <span className={dk.label}>Span</span>
@@ -140,7 +219,17 @@ export function PoolOverview({ rows, loading, error, message, meta, config, setC
       <Tape
         ticks={[
           { label: "Pool", value: rows.length ? rows.length.toLocaleString("en-US") : "—", sub: "ranked players" },
-          { label: "Basis", value: basis, sub: meta?.scoring?.league_name ?? "platform default" },
+          {
+            label: "Basis",
+            value: basis,
+            sub: warning ? (
+              <span className={s.inline} style={{ gap: 5, color: "var(--warn)" }} title={warning.long}>
+                <AlertTriangle size={11} /> {warning.short}
+              </span>
+            ) : (
+              meta?.scoring?.league_name ?? "platform default"
+            ),
+          },
           { label: "Floor", value: meta?.min_games ? `${meta.min_games} GP` : "none", sub: meta?.max_gp ? `most played ${meta.max_gp}` : undefined },
           {
             label: "Riser of the week",

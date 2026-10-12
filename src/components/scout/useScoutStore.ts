@@ -3,13 +3,15 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { focusKey, sameFocus, type Focus, type Lens, type PoolSort, type PosFilter, type Window } from "@/lib/scout";
-import type { RankingsWindow } from "@/types/rankings";
+import type { RankingsScope, RankingsWindow } from "@/types/rankings";
 import type { ScoringFormat } from "@/types/scoring";
 
 export const MAX_PINNED = 8;
 const MAX_RECENT = 10;
 
 export interface PoolConfig {
+  /** `league`: scored by the signed-in user's league (which decides the format); `global`: by `format`. */
+  scope: RankingsScope;
   format: ScoringFormat;
   span: RankingsWindow;
   pos: PosFilter;
@@ -36,6 +38,8 @@ interface ScoutStore {
 
 const pinnable = (f: Focus) => f.kind === "player" || f.kind === "team";
 
+const DEFAULT_POOL: PoolConfig = { scope: "global", format: "points", span: null, pos: "ALL", sort: "rank" };
+
 /**
  * What the Scout desk remembers per browser: the list showing, the stat
  * window, the pool's controls, the bench and the recently opened. The focus
@@ -46,7 +50,7 @@ export const useScoutStore = create<ScoutStore>()(
     (set) => ({
       lens: "pool",
       window: "season",
-      pool: { format: "points", span: null, pos: "ALL", sort: "rank" },
+      pool: DEFAULT_POOL,
       pinned: [],
       recent: [],
       setLens: (lens) => set({ lens }),
@@ -68,13 +72,15 @@ export const useScoutStore = create<ScoutStore>()(
     }),
     {
       name: "cv.scout",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ lens: s.lens, window: s.window, pool: s.pool, pinned: s.pinned, recent: s.recent }),
       // v2 changed the focus shapes (a night became an overview); anything older is dropped.
+      // v3 added the pool's scope (the league score option).
       migrate: (persisted, version) => {
         const st = (persisted ?? {}) as Partial<ScoutStore>;
-        if (version < 2) return { lens: st.lens ?? "pool", window: st.window ?? "season", pool: { format: "points", span: null, pos: "ALL", sort: "rank" }, pinned: [], recent: [] };
+        if (version < 2) return { lens: st.lens ?? "pool", window: st.window ?? "season", pool: DEFAULT_POOL, pinned: [], recent: [] };
+        if (version < 3) return { ...st, pool: { ...DEFAULT_POOL, ...st.pool, scope: "global" } };
         return st;
       },
       // Rehydrated by the page after mount: the server renders the defaults, and so must the first client render.
