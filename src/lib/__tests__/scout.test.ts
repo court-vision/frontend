@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { GameLog } from "@/types/player";
 import type { RankingsPlayer, RankingsScoring } from "@/types/rankings";
+import type { CategoryDef } from "@/types/scoring";
 import type { TeamResponseData } from "@/types/team";
+import { DEFAULT_9CAT } from "@/lib/category-format";
 import {
   addDays,
   ageOn,
@@ -445,15 +447,33 @@ describe("the pool's league score", () => {
 
     const asPoints = scoring({ league_name: "Roto League" });
     expect(basisLabel(asPoints, true)).toBe("fantasy points");
-    expect(scoringWarning(asPoints, true)?.short).toBe("roto · platform points");
+    expect(scoringWarning(asPoints, { roto: true, categories: [] })?.short).toBe("roto · platform points");
     expect(scoredBy(asPoints, true)).toBeNull();
     expect(scoredBy(asPoints)).toBe("Roto League");
     expect(scoredBy(scoring({ basis: "default_points", league_id: null, league_name: null }))).toBeNull();
     // Once rankings score roto as categories, the numbers are the league's again.
     const asCategories = scoring({ basis: "categories", league_name: "Roto League" });
     expect(basisLabel(asCategories, true)).toBe("league categories");
-    expect(scoringWarning(asCategories, true)).toBeNull();
+    expect(scoringWarning(asCategories, { roto: true, categories: [] })).toBeNull();
     expect(scoredBy(asCategories, true)).toBe("Roto League");
+  });
+
+  test("a category league's categories the ranking can't score are named", () => {
+    const cat = (key: string, label: string): CategoryDef => ({ key, label, higher_is_better: true, is_rate: false });
+    const elevenCat = [...DEFAULT_9CAT, cat("dd", "DD"), cat("ato", "A/TO")];
+    const summary = { id: 9, name: "Cats League", scoring_type: "categories", settings_synced: true, categories: elevenCat } as NonNullable<TeamResponseData["league"]>;
+    const league = leagueChoices([team(5, 300, { league: summary })])[0];
+    expect(league.categories.map((c) => c.key)).toEqual(elevenCat.map((c) => c.key));
+
+    const cats = scoring({ basis: "categories" });
+    expect(scoringWarning(cats, league, DEFAULT_9CAT)?.short).toBe("DD, A/TO left out");
+    expect(scoringWarning(cats, { roto: false, categories: [...DEFAULT_9CAT, cat("dd", "DD")] }, DEFAULT_9CAT)?.long).toContain("leaves it out");
+    expect(scoringWarning(cats, { roto: false, categories: DEFAULT_9CAT }, DEFAULT_9CAT)).toBeNull();
+    // None of them rankable: the ranking falls back to the standard nine.
+    expect(scoringWarning(cats, { roto: false, categories: [cat("dd", "DD"), cat("td", "TD")] }, DEFAULT_9CAT)?.short).toBe("standard 9-cat");
+    // Nothing ranked to compare with, or a points ranking: nothing to say.
+    expect(scoringWarning(cats, league, [])).toBeNull();
+    expect(scoringWarning(scoring(), league, DEFAULT_9CAT)).toBeNull();
   });
 
   test("a league's settings that couldn't be read, or keys it can't score, are said", () => {

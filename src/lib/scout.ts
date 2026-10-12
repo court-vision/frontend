@@ -7,7 +7,7 @@
 import type { AvgStats, GameLog } from "@/types/player";
 import type { RankingsPlayer, RankingsScope, RankingsScoring } from "@/types/rankings";
 import type { ProjectionStats } from "@/types/scout";
-import type { ScoringFormat } from "@/types/scoring";
+import type { CategoryDef, ScoringFormat } from "@/types/scoring";
 import type { TeamResponseData } from "@/types/team";
 import { NBA_TEAMS, NBA_TEAM_BY_ABBREV, type NBATeamInfo } from "@/lib/nbaTeams";
 import { lastGames } from "@/lib/statWindow";
@@ -664,6 +664,8 @@ export interface LeagueChoice {
   tag: string;
   /** Read as roto, which rankings don't score yet: the backend ranks it by points, and a roto league has no point values. */
   roto: boolean;
+  /** The categories the team plays: its league's, or the standard nine for a categories preview; none for points. */
+  categories: CategoryDef[];
 }
 
 function leagueKey(t: TeamResponseData): string {
@@ -688,7 +690,7 @@ function choiceTag(t: TeamResponseData): string {
 
 function choiceOf(t: TeamResponseData, key: string): LeagueChoice {
   const roto = !!t.league?.settings_synced && t.league.scoring_type === "roto";
-  return { key, teamId: t.team_id, league: choiceLeagueName(t), team: t.league_info?.team_name?.trim() || `Team ${t.team_id}`, tag: choiceTag(t), roto };
+  return { key, teamId: t.team_id, league: choiceLeagueName(t), team: t.league_info?.team_name?.trim() || `Team ${t.team_id}`, tag: choiceTag(t), roto, categories: t.league?.categories ?? [] };
 }
 
 /**
@@ -735,9 +737,17 @@ export function scoredBy(scoring: RankingsScoring | null | undefined, roto = fal
   return scoring?.league_name && !rotoAsPoints(scoring, roto) ? scoring.league_name : null;
 }
 
-/** Why a league's numbers aren't quite its own (short, and the long form), or null when they are. */
-export function scoringWarning(scoring: RankingsScoring | null | undefined, roto = false): { short: string; long: string } | null {
-  if (rotoAsPoints(scoring, roto)) {
+/**
+ * Why a league's numbers aren't quite its own (short, and the long form), or
+ * null when they are. `league` is the chosen league, `ranked` the categories
+ * the ranking used (`meta.categories`).
+ */
+export function scoringWarning(
+  scoring: RankingsScoring | null | undefined,
+  league: Pick<LeagueChoice, "roto" | "categories"> | null = null,
+  ranked: readonly CategoryDef[] = []
+): { short: string; long: string } | null {
+  if (rotoAsPoints(scoring, !!league?.roto)) {
     return { short: "roto · platform points", long: "Roto isn't supported for rankings yet, so the pool is ranked by the platform's points formula." };
   }
   if (!scoring || scoring.league_id == null) return null;
@@ -747,6 +757,17 @@ export function scoringWarning(scoring: RankingsScoring | null | undefined, roto
   if (scoring.unsupported.length) {
     const keys = scoring.unsupported.map((k) => k.toUpperCase()).join(", ");
     return { short: `${keys} left out`, long: `${keys} can't be scored from per-game averages, so the ranking leaves ${scoring.unsupported.length === 1 ? "it" : "them"} out.` };
+  }
+  // A category ranking drops the league's categories it can't rank from stored
+  // stats (DD, A/TO, …) without naming them in `unsupported`, and ranks the
+  // standard nine when that leaves none.
+  const missing = scoring.basis === "categories" && league && ranked.length ? league.categories.filter((c) => !ranked.some((r) => r.key === c.key)) : [];
+  if (missing.length && missing.length === league?.categories.length) {
+    return { short: "standard 9-cat", long: "None of the league's categories can be ranked from the stored stats, so the pool is ranked by the standard nine." };
+  }
+  if (missing.length) {
+    const labels = missing.map((c) => c.label).join(", ");
+    return { short: `${labels} left out`, long: `${labels} can't be ranked from the stored stats, so the ranking leaves ${missing.length === 1 ? "it" : "them"} out.` };
   }
   return null;
 }

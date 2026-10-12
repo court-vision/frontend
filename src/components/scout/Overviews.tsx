@@ -177,7 +177,7 @@ export function PoolOverview({ rows, loading, error, message, meta, config, scor
   }, [rows]);
   const roto = score === "league" && !!league.choice?.roto;
   const basis = basisLabel(meta?.scoring, roto);
-  const warning = score === "league" ? scoringWarning(meta?.scoring, roto) : null;
+  const warning = score === "league" ? scoringWarning(meta?.scoring, league.choice, meta?.categories) : null;
   const by = score === "league" ? scoredBy(meta?.scoring, roto) : null;
   const scores = SCORES.map((o) => (o.v === "league" && league.note ? { ...o, disabled: true, title: league.note } : o));
 
