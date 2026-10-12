@@ -6,7 +6,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { lineupKeys } from "@/hooks/useLineupEditor";
-import { useLiveMatchupQuery, useMatchupQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
+import { useLiveMatchupQuery, useMatchupQuery, useMatchupScoreHistoryQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { useCancelPickupMutation, useSchedulePickupMutation, useScheduledPickupsQuery } from "@/hooks/useScheduledPickups";
 import { useConnectionsQuery } from "@/hooks/useConnections";
@@ -33,6 +33,7 @@ import {
   demoAssignment,
   demoBoard,
   demoDailyActions,
+  demoScoreHistory,
   demoDailyStreamers,
   demoPeriod,
   demoPlan,
@@ -46,6 +47,7 @@ import type { ScheduleGame } from "@/types/games";
 import type { StreamerPlayer } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
 import type { DailyActionsData } from "@/types/daily-actions";
+import type { DailyScorePoint } from "@/types/matchup";
 import type { ScheduledPickup, ScheduledPickupList } from "@/types/scheduled-pickup";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import type { WeekSource } from "@/lib/week-grid";
@@ -122,6 +124,8 @@ export interface TerminalData {
   cancelling: number | null;
   /** Today's moves (ESPN teams); null where there are none to read. */
   actions: TodayActions | null;
+  /** The matchup's nightly score snapshots (the edge's race); null while there is no week to ask about. */
+  history: { points: DailyScorePoint[] | null; loading: boolean } | null;
 }
 
 export function WeekPage({ demo, view, market }: { demo: boolean; view?: WeekView; market?: MarketMode }) {
@@ -261,6 +265,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     cancelPickup,
     cancelling: null,
     actions: { data: actions, loading: false, error: null, refetch: () => {} },
+    history: { points: demoScoreHistory(source), loading: false },
   };
 
   return <WeekTerminal data={data} initialView={view} initialMarket={market} />;
@@ -333,6 +338,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const transaction = useRosterTransactionMutation(teamId ?? 0);
   const pickups = useScheduledPickupsQuery(selected.provider === "espn" ? teamId : null);
   const actions = useDailyActionsQuery(teamId, selected.provider);
+  const history = useMatchupScoreHistoryQuery(teamId, week.data?.matchup_period ?? null);
   const pickupSchedule = useSchedulePickupMutation(teamId ?? 0);
   const pickupCancel = useCancelPickupMutation(teamId ?? 0);
 
@@ -467,6 +473,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
             refetch: () => void actions.refetch(),
           }
         : null,
+    history: week.data ? { points: history.data?.history ?? null, loading: history.isLoading } : null,
   };
 
   // Everything the terminal holds (staged moves, a picked free agent and its

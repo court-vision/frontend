@@ -75,6 +75,8 @@ import type {
   DailyMatchupResponse,
   WeeklyMatchupData,
   WeeklyMatchupResponse,
+  MatchupScoreHistory,
+  MatchupScoreHistoryResponse,
 } from "@/types/matchup";
 import type { StreamerData, StreamerFindRequest, StreamerResponse } from "@/types/streamer";
 import type {
@@ -403,6 +405,26 @@ class ApiClient {
       getToken,
     });
     return unwrap(env);
+  }
+
+  /**
+   * Both teams' running totals at each night's snapshot of a matchup period
+   * (the snapshot dated day k holds the totals through day k − 1). Null until
+   * the first snapshot of the period exists.
+   */
+  async getMatchupScoreHistory(
+    getToken: GetTokenFn,
+    teamId: number,
+    matchupPeriod: number,
+    opts?: RequestOptions
+  ): Promise<MatchupScoreHistory | null> {
+    const env = await nullOn404(
+      fetchJson<MatchupScoreHistoryResponse>(`${MATCHUPS_API}/history/${teamId}?matchup_period=${matchupPeriod}`, {
+        ...opts,
+        getToken,
+      })
+    );
+    return env?.data ?? null;
   }
 
   // Breakout Streamers API (internal, Clerk auth)

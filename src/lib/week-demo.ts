@@ -13,6 +13,7 @@ import type { BreakoutCandidateResp } from "@/types/breakout";
 import type { ScheduleGame } from "@/types/games";
 import type { ScheduledPickup } from "@/types/scheduled-pickup";
 import type { DailyAction, DailyActionPlayer, DailyActionsData } from "@/types/daily-actions";
+import type { DailyScorePoint } from "@/types/matchup";
 import type { DayGame, SourceOpponent, SourcePlayer, StatLine, WeekDay, WeekSource } from "./week-grid";
 import { SLOT_NAMES, assignment, type Staged } from "./lineup-editor";
 
@@ -250,6 +251,22 @@ export function demoPlan(board: LineupState): LineupPlanData {
     roster_version: board.roster_version,
     scoring_period_id: board.scoring_period_id,
   };
+}
+
+/**
+ * The nightly score snapshots the demo week would have: one per morning, the
+ * running totals through the day before (day 0's is the 0-0 start).
+ */
+export function demoScoreHistory(source: WeekSource): DailyScorePoint[] {
+  const out: DailyScorePoint[] = [{ date: DATES[0], day_of_matchup: 0, your_score: 0, opponent_score: 0, your_categories: null, opponent_categories: null }];
+  let you = 0;
+  let opp = 0;
+  for (let i = 0; i < TODAY; i++) {
+    you += source.pastTotals.you[i] ?? 0;
+    opp += source.pastTotals.opp[i] ?? 0;
+    out.push({ date: DATES[i + 1], day_of_matchup: i + 1, your_score: you, opponent_score: opp, your_categories: null, opponent_categories: null });
+  }
+  return out;
 }
 
 /** A demo player as a moves row names him. */

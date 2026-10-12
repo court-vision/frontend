@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
-import { Check, ChevronDown, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
 import { KIND_WORD, fitFlap, flapSteps, flapText, flapWidth, type RowButton } from "@/lib/daily-actions";
 import type { DailyAction, DailyActionKind } from "@/types/daily-actions";
 import { tip } from "./format";
+import { TickBox, useReducedMotion, useTickHover, type TickOpen } from "./TickBox";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
@@ -16,8 +16,6 @@ export interface TodayRow {
   button: RowButton;
 }
 
-/** How the moves box is open: under the pointer (leaves with it), pinned by a click, or by the keyboard (takes focus). */
-export type MovesOpen = "hover" | "pinned" | "keyboard" | null;
 
 export interface TodayStripProps {
   status: "loading" | "error" | "ready";
@@ -27,8 +25,8 @@ export interface TodayStripProps {
   hint: string | null;
   /** "Tue 10/20": the day the moves are for. */
   dayLabel: string;
-  open: MovesOpen;
-  onOpen: (open: MovesOpen) => void;
+  open: TickOpen;
+  onOpen: (open: TickOpen) => void;
   onButton: (row: TodayRow) => void;
   /** Stage every unstaged lineup row; null when fewer than two are left. */
   onStageAll: (() => void) | null;
@@ -40,9 +38,6 @@ export interface TodayStripProps {
 const CYCLE_MS = 4500;
 const STEP_MS = 140;
 const STAGGER_MS = 22;
-const BOX_MIN_W = 560;
-/** Narrowest box that may still start at the strip's left edge. */
-const BOX_FIT_W = 440;
 
 const TONE: Record<DailyActionKind, string> = {
   start: "var(--up)",
@@ -52,20 +47,6 @@ const TONE: Record<DailyActionKind, string> = {
   add_drop: "var(--accent)",
 };
 
-function subscribeReduced(cb: () => void) {
-  const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-  mq.addEventListener("change", cb);
-  return () => mq.removeEventListener("change", cb);
-}
-
-function useReducedMotion(): boolean {
-  return useSyncExternalStore(
-    subscribeReduced,
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    () => false
-  );
-}
-
 /**
  * Today's moves, one at a time on a split-flap board in the week's tape, with
  * the shown move's Stage button beside it. Hovering (or D, or a click) opens
@@ -74,49 +55,22 @@ function useReducedMotion(): boolean {
  * the dock.
  */
 export function TodayStrip(props: TodayStripProps) {
-  const { status, rows, error, open, onOpen, onButton, container } = props;
+  const { status, rows, error, open, onOpen, onButton } = props;
   const reduced = useReducedMotion();
   const [picked, setPicked] = useState(0);
-  const [hovering, setHovering] = useState(false);
   const [strip, setStrip] = useState<HTMLDivElement | null>(null);
-  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hover = useTickHover(open, onOpen);
   const at = rows.length ? picked % rows.length : 0;
   const current = status === "ready" ? rows[at] ?? null : null;
 
   // One move after another while nobody is looking closer (and motion is welcome).
   useEffect(() => {
-    if (rows.length < 2 || open || hovering || reduced) return;
+    if (rows.length < 2 || open || hover.hovering || reduced) return;
     const t = setInterval(() => {
       if (document.visibilityState === "visible") setPicked((i) => i + 1);
     }, CYCLE_MS);
     return () => clearInterval(t);
-  }, [rows.length, open, hovering, reduced]);
-
-  const clearTimers = () => {
-    if (openTimer.current) clearTimeout(openTimer.current);
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    openTimer.current = closeTimer.current = null;
-  };
-  useEffect(() => clearTimers, []);
-
-  const hoverIn = (e: React.PointerEvent) => {
-    if (e.pointerType !== "mouse") return;
-    setHovering(true);
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = null;
-    if (!open && !openTimer.current) openTimer.current = setTimeout(() => {
-      openTimer.current = null;
-      onOpen("hover");
-    }, 140);
-  };
-  const hoverOut = (e: React.PointerEvent) => {
-    if (e.pointerType !== "mouse") return;
-    setHovering(false);
-    if (openTimer.current) clearTimeout(openTimer.current);
-    openTimer.current = null;
-    if (open === "hover") closeTimer.current = setTimeout(() => onOpen(null), 200);
-  };
+  }, [rows.length, open, hover.hovering, reduced]);
 
   const lines = rows.map((r) => flapText(r.action));
   const width = flapWidth(lines);
@@ -128,17 +82,7 @@ export function TodayStrip(props: TodayStripProps) {
 
   return (
     <>
-      <div
-        ref={setStrip}
-        className={`${s.tick} ${s.todayTick}`}
-        data-open={open ? true : undefined}
-        onPointerEnter={hoverIn}
-        onPointerLeave={hoverOut}
-        onClick={(e) => {
-          if ((e.target as HTMLElement).closest("button")) return;
-          onOpen(open && open !== "hover" ? null : "pinned");
-        }}
-      >
+      <div ref={setStrip} className={`${s.tick} ${s.todayTick}`} data-open={open ? true : undefined} {...hover.tick}>
         <span className={s.todayHead}>
           <span className={dk.label}>Today&apos;s moves</span>
           {rows.length > 1 && status === "ready" ? (
@@ -166,22 +110,7 @@ export function TodayStrip(props: TodayStripProps) {
           {current ? <StageButton row={current} onButton={onButton} /> : null}
         </span>
       </div>
-      {open && container ? (
-        <MovesBox
-          {...props}
-          at={at}
-          onPick={setPicked}
-          anchor={strip}
-          reduced={reduced}
-          hoverIn={() => {
-            if (closeTimer.current) clearTimeout(closeTimer.current);
-            closeTimer.current = null;
-          }}
-          hoverOut={() => {
-            if (open === "hover") closeTimer.current = setTimeout(() => onOpen(null), 220);
-          }}
-        />
-      ) : null}
+      {open ? <MovesBox {...props} at={at} onPick={setPicked} anchor={strip} reduced={reduced} hover={hover.box} /> : null}
     </>
   );
 }
@@ -283,109 +212,34 @@ interface BoxProps extends TodayStripProps {
   onPick: (i: number) => void;
   anchor: HTMLElement | null;
   reduced: boolean;
-  hoverIn: () => void;
-  hoverOut: () => void;
+  hover: { onEnter: () => void; onLeave: () => void };
 }
 
-function MovesBox({ status, rows, error, hint, dayLabel, open, onOpen, onButton, onStageAll, stageAllCount, onRetry, container, at, onPick, anchor, reduced, hoverIn, hoverOut }: BoxProps) {
-  const box = useRef<HTMLDivElement>(null);
-  const [place, setPlace] = useState<{ left: number; top: number; width: number } | null>(null);
-
-  const measure = useCallback(() => {
-    if (!anchor) return;
-    const r = anchor.getBoundingClientRect();
-    const vw = window.innerWidth;
-    // Over the strip from its left edge, as wide as the window lets it be; when
-    // that leaves too little room, from the strip's right edge instead.
-    const room = vw - 16 - r.left;
-    const width = room >= BOX_FIT_W ? Math.max(r.width, Math.min(BOX_MIN_W, room)) : Math.min(Math.max(r.width, BOX_MIN_W), vw - 32);
-    const left = room >= BOX_FIT_W ? r.left : Math.max(16, r.right - width);
-    setPlace({ left, top: r.top, width });
-  }, [anchor]);
-
-  useLayoutEffect(() => {
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [measure]);
-
-  // Grow out of the strip: the clip starts at the strip's own rectangle.
-  const grown = useRef(false);
-  useLayoutEffect(() => {
-    const el = box.current;
-    if (!el || !place || !anchor || grown.current) return;
-    grown.current = true;
-    if (reduced || typeof el.animate !== "function") return;
-    const r = anchor.getBoundingClientRect();
-    const right = Math.max(0, place.width - (r.right - place.left));
-    const bottom = Math.max(0, el.offsetHeight - r.height);
-    el.animate(
-      [{ clipPath: `inset(0px ${right}px ${bottom}px ${Math.max(0, r.left - place.left)}px round 6px)` }, { clipPath: "inset(0px 0px 0px 0px round 8px)" }],
-      { duration: 220, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
-    );
-  }, [place, anchor, reduced]);
-
-  // Opened from the keyboard: focus goes to the first button that can act.
-  useEffect(() => {
-    if (open !== "keyboard" || !place) return;
-    const el = box.current;
-    (el?.querySelector<HTMLButtonElement>("[data-row] button:not(:disabled)") ?? el?.querySelector<HTMLButtonElement>("button:not(:disabled)"))?.focus();
-  }, [open, place]);
-
-  // Pinned open: a press anywhere else closes it.
-  useEffect(() => {
-    if (open === "hover") return;
-    const onDown = (e: PointerEvent) => {
-      const t = e.target as Node;
-      if (box.current?.contains(t) || anchor?.contains(t)) return;
-      onOpen(null);
-    };
-    document.addEventListener("pointerdown", onDown);
-    return () => document.removeEventListener("pointerdown", onDown);
-  }, [open, anchor, onOpen]);
-
-  if (!place) return null;
-  const lineupLeft = stageAllCount;
-  return createPortal(
-    <div
-      ref={box}
-      className={s.todayBox}
-      style={{ left: place.left, top: place.top, width: place.width }}
-      data-moves
-      role="region"
-      aria-label="Today's moves"
-      onPointerEnter={(e) => e.pointerType === "mouse" && hoverIn()}
-      onPointerLeave={(e) => e.pointerType === "mouse" && hoverOut()}
-      onPointerDown={() => open === "hover" && onOpen("pinned")}
-      onKeyDown={(e) => {
-        // The desk's keys skip the box, so its own key (D) and Esc close it here.
-        if (e.key === "Escape" || (e.key.toLowerCase() === "d" && !e.metaKey && !e.ctrlKey && !e.altKey)) {
-          e.stopPropagation();
-          onOpen(null);
-          anchor?.querySelector<HTMLButtonElement>("[aria-expanded]")?.focus();
-        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-          const buttons = [...(box.current?.querySelectorAll<HTMLButtonElement>("[data-row] button") ?? [])];
-          const i = buttons.indexOf(document.activeElement as HTMLButtonElement);
-          const next = buttons[Math.max(0, Math.min(buttons.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
-          if (next) {
-            e.preventDefault();
-            next.focus();
-          }
-        }
-      }}
+function MovesBox({ status, rows, error, hint, dayLabel, open, onOpen, onButton, onStageAll, stageAllCount, onRetry, container, at, onPick, anchor, reduced, hover }: BoxProps) {
+  return (
+    <TickBox
+      anchor={anchor}
+      container={container}
+      open={open}
+      onOpen={onOpen}
+      hover={hover}
+      reduced={reduced}
+      label="Today's moves"
+      keyHint="D"
+      sub={`${dayLabel}${status === "ready" ? ` · ${rows.length ? `${rows.length} move${rows.length === 1 ? "" : "s"}` : "nothing to do"}` : ""}`}
+      foot={
+        <>
+          {onStageAll ? (
+            <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={onStageAll}>
+              Stage all {stageAllCount} lineup moves
+            </button>
+          ) : null}
+          <span className={s.note} title="Nothing is sent from here: staged lineup moves wait in the tray, a staged add in the dock.">
+            {hint ?? "Staged moves wait in the tray, adds in the dock."}
+          </span>
+        </>
+      }
     >
-      <div className={s.todayBoxHead}>
-        <span className={dk.label}>Today&apos;s moves</span>
-        <span className={dk.sub}>
-          {dayLabel}
-          {status === "ready" ? ` · ${rows.length ? `${rows.length} move${rows.length === 1 ? "" : "s"}` : "nothing to do"}` : ""}
-        </span>
-        <span className={dk.grow} />
-        <span className={dk.kbd}>D</span>
-        <button type="button" className={dk.iconBtn} style={{ width: 24, height: 24 }} onClick={() => onOpen(null)} aria-label="Close today's moves">
-          <X size={13} />
-        </button>
-      </div>
       {status === "loading" ? (
         <div className={s.todayEmpty}>Reading today&apos;s board and the free agents…</div>
       ) : status === "error" ? (
@@ -418,17 +272,6 @@ function MovesBox({ status, rows, error, hint, dayLabel, open, onOpen, onButton,
           })}
         </div>
       )}
-      <div className={s.todayFoot}>
-        {onStageAll ? (
-          <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={onStageAll}>
-            Stage all {lineupLeft} lineup moves
-          </button>
-        ) : null}
-        <span className={s.note} title="Nothing is sent from here: staged lineup moves wait in the tray, a staged add in the dock.">
-          {hint ?? "Staged moves wait in the tray, adds in the dock."}
-        </span>
-      </div>
-    </div>,
-    container!
+    </TickBox>
   );
 }
