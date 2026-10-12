@@ -655,7 +655,7 @@ export function poolScore(scope: RankingsScope, format: ScoringFormat): PoolScor
 
 /** A league the pool can be scored by. The route is per team, so it names the team it asks through. */
 export interface LeagueChoice {
-  /** One per league: two teams in one league score the pool alike. */
+  /** One per league and format: two teams in one league score the pool alike, unless one previews another format. */
   key: string;
   teamId: number;
   league: string;
@@ -666,7 +666,10 @@ export interface LeagueChoice {
 
 function leagueKey(t: TeamResponseData): string {
   const info = t.league_info;
-  return t.league?.id != null ? `id:${t.league.id}` : `${info?.provider ?? "espn"}:${info?.league_id ?? `team${t.team_id}`}:${info?.year ?? ""}`;
+  // A preview on a team with no league row yet comes back as league 0, which is no league's id.
+  const league = t.league?.id ? `id:${t.league.id}` : `${info?.provider ?? "espn"}:${info?.league_id ?? `team${t.team_id}`}:${info?.year ?? ""}`;
+  // The summary's type already has the team's scoring preview applied.
+  return t.league ? `${league}:${t.league.scoring_type}` : league;
 }
 
 function choiceLeagueName(t: TeamResponseData): string {
@@ -681,22 +684,30 @@ function choiceTag(t: TeamResponseData): string {
   return l.scoring_type === "categories" ? "CATS" : l.scoring_type === "roto" ? "ROTO" : "PTS";
 }
 
-/** One choice per league among the user's teams, in the teams' order. */
-export function leagueChoices(teams: readonly TeamResponseData[]): LeagueChoice[] {
+function choiceOf(t: TeamResponseData, key: string): LeagueChoice {
+  return { key, teamId: t.team_id, league: choiceLeagueName(t), team: t.league_info?.team_name?.trim() || `Team ${t.team_id}`, tag: choiceTag(t) };
+}
+
+/**
+ * One choice per league among the user's teams, in the teams' order. A league
+ * asks through its first team, or through the selected team when that is one
+ * of its own, so picking it doesn't move the Week desk to another team.
+ */
+export function leagueChoices(teams: readonly TeamResponseData[], selected: number | null = null): LeagueChoice[] {
   const out: LeagueChoice[] = [];
   for (const t of teams) {
     const key = leagueKey(t);
-    if (out.some((c) => c.key === key)) continue;
-    out.push({ key, teamId: t.team_id, league: choiceLeagueName(t), team: t.league_info?.team_name?.trim() || `Team ${t.team_id}`, tag: choiceTag(t) });
+    const at = out.findIndex((c) => c.key === key);
+    if (at < 0) out.push(choiceOf(t, key));
+    else if (t.team_id === selected) out[at] = choiceOf(t, key);
   }
   return out;
 }
 
 /** The league the pool is scored by: the selected team's, else the first team's. */
 export function leagueChoiceFor(teams: readonly TeamResponseData[], selected: number | null): LeagueChoice | null {
-  const choices = leagueChoices(teams);
-  const team = teams.find((t) => t.team_id === selected);
-  return (team ? choices.find((c) => c.key === leagueKey(team)) : undefined) ?? choices[0] ?? null;
+  const choices = leagueChoices(teams, selected);
+  return choices.find((c) => c.teamId === selected) ?? choices[0] ?? null;
 }
 
 /** What produced the pool's numbers, in a word or two. */

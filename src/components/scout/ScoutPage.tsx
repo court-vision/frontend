@@ -110,7 +110,7 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
   const selectedTeam = useUIStore((st) => st.selectedTeam);
   const setSelectedTeam = useUIStore((st) => st.setSelectedTeam);
   const teams = useMemo(() => teamsQuery.data ?? [], [teamsQuery.data]);
-  const choices = useMemo(() => leagueChoices(teams), [teams]);
+  const choices = useMemo(() => leagueChoices(teams, selectedTeam), [teams, selectedTeam]);
   const leagueChoice = useMemo(() => leagueChoiceFor(teams, selectedTeam), [teams, selectedTeam]);
   // A league score chosen earlier waits for sign-in and the teams instead of flashing the platform's.
   const leagueWaiting = poolConfig.scope === "league" && (!authLoaded || (isSignedIn === true && teamsQuery.isLoading));

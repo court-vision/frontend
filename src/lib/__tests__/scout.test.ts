@@ -391,18 +391,41 @@ describe("the pool's league score", () => {
   test("the synced league's id keys it, and its type tags it", () => {
     const league = { id: 9, name: "Cats League", scoring_type: "categories", settings_synced: true } as TeamResponseData["league"];
     const [c] = leagueChoices([team(5, 300, { league })]);
-    expect(c.key).toBe("id:9");
+    expect(c.key).toBe("id:9:categories");
     expect(c.league).toBe("Cats League");
     expect(c.tag).toBe("CATS");
   });
 
   test("the selected team's league, else the first", () => {
     const teams = [team(1, 100), team(2, 200), team(3, 200)];
-    expect(leagueChoiceFor(teams, 3)?.teamId).toBe(2);
+    expect(leagueChoiceFor(teams, 2)?.teamId).toBe(2);
     expect(leagueChoiceFor(teams, 1)?.teamId).toBe(1);
     expect(leagueChoiceFor(teams, 99)?.teamId).toBe(1);
     expect(leagueChoiceFor(teams, null)?.teamId).toBe(1);
     expect(leagueChoiceFor([], 1)).toBeNull();
+  });
+
+  test("a league asks through the selected team when it is one of its own, so picking it keeps that team", () => {
+    const teams = [team(1, 100), team(2, 200), team(3, 200)];
+    const c = leagueChoiceFor(teams, 3);
+    expect([c?.teamId, c?.team]).toEqual([3, "Team 3 name"]);
+    expect(leagueChoices(teams, 3).map((x) => x.teamId)).toEqual([1, 3]);
+    expect(leagueChoices(teams, 1).map((x) => x.teamId)).toEqual([1, 2]);
+  });
+
+  test("a team previewing another format scores the pool its own way, so it is a choice of its own", () => {
+    const points = { id: 5, name: "Goblins", scoring_type: "points", settings_synced: true } as TeamResponseData["league"];
+    const preview = { ...points, scoring_type: "categories", scoring_preview: "categories" } as TeamResponseData["league"];
+    const choices = leagueChoices([team(2, 200, { league: points }), team(3, 200, { league: preview }), team(4, 200, { league: points })]);
+    expect(choices.map((c) => [c.teamId, c.tag])).toEqual([
+      [2, "PTS"],
+      [3, "CATS"],
+    ]);
+  });
+
+  test("previews on teams with no league row yet (league 0) stay apart", () => {
+    const zero = { id: 0, name: null, scoring_type: "categories", settings_synced: true } as TeamResponseData["league"];
+    expect(leagueChoices([team(1, 100, { league: zero }), team(2, 200, { league: zero })]).map((c) => c.teamId)).toEqual([1, 2]);
   });
 
   test("the basis says what scored the pool", () => {

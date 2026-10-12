@@ -116,7 +116,7 @@ function LeaguePicker({ league }: { league: PoolLeague }) {
                 type="button"
                 className={dk.menuItem}
                 onClick={() => {
-                  league.pick(c.teamId);
+                  if (c.key !== on.key) league.pick(c.teamId);
                   setOpen(false);
                 }}
               >
