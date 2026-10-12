@@ -4,7 +4,7 @@
  * and how a row reads on the strip's split-flap board. The server writes the
  * row copy; this file decides what the buttons do. Pure.
  */
-import type { Staged } from "./lineup-editor";
+import { IR_SLOT_ID, stageMoves, unstageMoves, type Staged } from "./lineup-editor";
 import type { LineupState } from "@/types/lineup-editor";
 import type {
   DailyAction,
@@ -59,7 +59,8 @@ export function isTransactionAction(a: DailyAction): boolean {
 /**
  * A lineup row is staged when its subject sits on its target. Subject-only on
  * purpose: when a start row benches X and the IR row sends X to IR, both rows
- * report staged, and a second press on either never silently undoes the other.
+ * report staged; `stageRow` and `unstageRow` keep a press on either from
+ * undoing the other.
  */
 export function isRowStaged(staged: Staged, a: DailyAction): boolean {
   const first = movesOf(a)[0];
@@ -90,6 +91,31 @@ const STAGE_ALL_ORDER: Record<DailyActionKind, number> = { start: 0, ir_in: 1, i
 
 export function stageAllOrder(actions: readonly DailyAction[]): DailyAction[] {
   return [...actions].sort((a, b) => STAGE_ALL_ORDER[a.kind] - STAGE_ALL_ORDER[b.kind]);
+}
+
+/**
+ * Stage one lineup row. Its subject always lands; another player it moves
+ * stays put when he's staged on IR, so a start pressed after the IR row
+ * doesn't pull the OUT starter back to the bench (he's out of the slot
+ * either way).
+ */
+export function stageRow(board: LineupState, staged: Staged, a: DailyAction): Staged {
+  return stageMoves(board, staged, movesOf(a).filter((m, i) => i === 0 || staged[m.player_id] !== IR_SLOT_ID));
+}
+
+/**
+ * Take one lineup row back: only the players still where it put them, then
+ * whoever that took off another staged row goes back where that row puts
+ * him. Taking back the start row leaves the IR row's player on IR; taking
+ * back the IR row benches him, as the start row still staged says.
+ */
+export function unstageRow(board: LineupState, staged: Staged, a: DailyAction, rows: readonly DailyAction[]): Staged {
+  let next = unstageMoves(board, staged, movesOf(a).filter((m) => staged[m.player_id] === m.to_slot_id));
+  const others = rows.filter((r) => r.id !== a.id && isLineupAction(r) && isRowStaged(next, r));
+  for (const r of stageAllOrder(others)) {
+    next = stageMoves(board, next, movesOf(r).filter((m) => m.player_id in staged && !(m.player_id in next)));
+  }
+  return next;
 }
 
 export const ROW_BLOCKED_COPY: Record<DailyActionBlockedReason, string> = {

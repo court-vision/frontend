@@ -20,7 +20,6 @@ import {
   stageMoves as stageMovesPure,
   swapPartner,
   unstage as unstagePure,
-  unstageMoves as unstageMovesPure,
   validateStaged,
   type Staged,
 } from "@/lib/lineup-editor";
@@ -48,7 +47,9 @@ import {
   rowButton,
   sortActions,
   stageAllOrder,
+  stageRow,
   streamersHint,
+  unstageRow,
   unstagedLineupActions,
 } from "@/lib/daily-actions";
 import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar, type WeekView } from "./Chrome";
@@ -382,10 +383,11 @@ export function WeekTerminal({
       }
       const b = boards[todayDay];
       if (!b) return;
-      if (row.button.intent === "unstage") setDay(todayDay, unstageMovesPure(b, staging[todayDay], a.moves));
-      else stageMovesOn(todayDay, a.moves);
+      // One player can be named by two rows (a start benches him, the IR row sends him to IR): a press on one keeps the other.
+      if (row.button.intent === "unstage") setDay(todayDay, unstageRow(b, staging[todayDay], a, actionsData?.actions ?? []));
+      else setDay(todayDay, stageRow(b, staging[todayDay], a));
     },
-    [todayDay, boards, staging, setDay, stageMovesOn]
+    [todayDay, boards, staging, setDay, actionsData]
   );
   const lineupLeft = useMemo(
     () => (todayBoardNow && !actionsStale ? unstagedLineupActions(actionsData?.actions ?? [], todayStaging) : []),
@@ -396,7 +398,7 @@ export function WeekTerminal({
     const b = boards[todayDay];
     if (!b) return;
     let next = staging[todayDay];
-    for (const a of stageAllOrder(lineupLeft)) next = stageMovesPure(b, next, a.moves);
+    for (const a of stageAllOrder(lineupLeft)) next = stageRow(b, next, a);
     setDay(todayDay, next);
   }, [todayDay, boards, staging, lineupLeft, setDay]);
 
