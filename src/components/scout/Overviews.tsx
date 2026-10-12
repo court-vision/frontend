@@ -21,6 +21,7 @@ import {
   fmtPctDot,
   fmtStat,
   standings,
+  scoredBy,
   scoringWarning,
   type Focus,
   type LeagueChoice,
@@ -174,8 +175,10 @@ export function PoolOverview({ rows, loading, error, message, meta, config, scor
     const down = [...rows].sort((a, b) => a.rank_change - b.rank_change)[0];
     return { up: up && up.rank_change > 0 ? up : null, down: down && down.rank_change < 0 ? down : null };
   }, [rows]);
-  const basis = basisLabel(meta?.scoring);
-  const warning = score === "league" ? scoringWarning(meta?.scoring) : null;
+  const roto = score === "league" && !!league.choice?.roto;
+  const basis = basisLabel(meta?.scoring, roto);
+  const warning = score === "league" ? scoringWarning(meta?.scoring, roto) : null;
+  const by = score === "league" ? scoredBy(meta?.scoring, roto) : null;
   const scores = SCORES.map((o) => (o.v === "league" && league.note ? { ...o, disabled: true, title: league.note } : o));
 
   return (
@@ -188,7 +191,7 @@ export function PoolOverview({ rows, loading, error, message, meta, config, scor
               {meta?.season ?? ""}
               {meta?.as_of ? ` · as of ${meta.as_of}` : ""}
               {meta?.window ? ` · last ${meta.window} days` : " · full season"}
-              {score === "league" && meta?.scoring?.league_name ? ` · scored by ${meta.scoring.league_name}` : ""}
+              {by ? ` · scored by ${by}` : ""}
             </span>
           </div>
           <div className={s.headMeta} style={{ gap: 10 }}>

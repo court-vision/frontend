@@ -15,7 +15,7 @@ import { useTeamsQuery } from "@/hooks/useTeams";
 import { useUIStore } from "@/stores/useUIStore";
 import { userMessage } from "@/lib/api-error";
 import { DEFAULT_9CAT } from "@/lib/category-format";
-import { LENSES, dayName, focusFromSearch, focusKey, focusToSearch, leagueChoiceFor, leagueChoices, lensInfo, lensOf, nextLens, nextWindow, poolScore, sameFocus, teamInfo, windowLabel, type Focus, type Window } from "@/lib/scout";
+import { LENSES, dayName, focusFromSearch, focusKey, focusToSearch, leagueChoiceFor, leagueChoices, lensInfo, lensOf, nextLens, nextWindow, poolScore, sameFocus, scoredBy, teamInfo, windowLabel, type Focus, type Window } from "@/lib/scout";
 import type { RankingsParams } from "@/types/rankings";
 import { Bench } from "./Bench";
 import { BoardSheet } from "./BoardSheet";
@@ -135,6 +135,7 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
   const poolRows = useMemo(() => pool.data?.players ?? [], [pool.data]);
   const poolById = useMemo(() => new Map(poolRows.map((r) => [r.id, r])), [poolRows]);
   const categories = pool.data?.meta?.categories?.length ? pool.data.meta.categories : DEFAULT_9CAT;
+  const poolScoredBy = scoredBy(pool.data?.meta?.scoring, scope === "league" && !!leagueChoice?.roto);
   const poolState: PoolState = {
     rows: poolRows,
     loading: pool.isLoading || (leagueWaiting && !pool.data),
@@ -490,7 +491,7 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
         {pool.data?.meta ? (
           <span>
             Pool · {pool.data.meta.season ?? season.label} · {pool.data.meta.pool_size} players
-            {pool.data.meta.scoring?.league_name ? ` · scored by ${pool.data.meta.scoring.league_name}` : ""}
+            {poolScoredBy ? ` · scored by ${poolScoredBy}` : ""}
             {pool.data.meta.as_of ? ` · as of ${pool.data.meta.as_of}` : ""}
           </span>
         ) : null}

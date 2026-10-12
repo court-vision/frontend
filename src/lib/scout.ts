@@ -662,6 +662,8 @@ export interface LeagueChoice {
   team: string;
   /** "PTS", "CATS", "ROTO"; "PTS?" until the league's settings have been read. */
   tag: string;
+  /** Read as roto, which rankings don't score yet: the backend ranks it by points, and a roto league has no point values. */
+  roto: boolean;
 }
 
 function leagueKey(t: TeamResponseData): string {
@@ -685,7 +687,8 @@ function choiceTag(t: TeamResponseData): string {
 }
 
 function choiceOf(t: TeamResponseData, key: string): LeagueChoice {
-  return { key, teamId: t.team_id, league: choiceLeagueName(t), team: t.league_info?.team_name?.trim() || `Team ${t.team_id}`, tag: choiceTag(t) };
+  const roto = !!t.league?.settings_synced && t.league.scoring_type === "roto";
+  return { key, teamId: t.team_id, league: choiceLeagueName(t), team: t.league_info?.team_name?.trim() || `Team ${t.team_id}`, tag: choiceTag(t), roto };
 }
 
 /**
@@ -710,20 +713,33 @@ export function leagueChoiceFor(teams: readonly TeamResponseData[], selected: nu
   return choices.find((c) => c.teamId === selected) ?? choices[0] ?? null;
 }
 
-/** What produced the pool's numbers, in a word or two. */
-export function basisLabel(scoring: RankingsScoring | null | undefined): string {
+/** A roto league's pool, ranked by the platform's points formula rather than anything of the league's. */
+function rotoAsPoints(scoring: RankingsScoring | null | undefined, roto: boolean): boolean {
+  return roto && !!scoring && scoring.basis !== "categories";
+}
+
+/** What produced the pool's numbers, in a word or two. `roto`: the chosen league is roto. */
+export function basisLabel(scoring: RankingsScoring | null | undefined, roto = false): string {
   switch (scoring?.basis) {
     case "categories":
       return scoring.league_name ? "league categories" : "9-cat z-scores";
     case "league_points":
-      return "league points";
+      return roto ? "fantasy points" : "league points";
     default:
       return "fantasy points";
   }
 }
 
+/** The league named as having scored the pool, or null: none did, or (roto) its numbers aren't the league's. */
+export function scoredBy(scoring: RankingsScoring | null | undefined, roto = false): string | null {
+  return scoring?.league_name && !rotoAsPoints(scoring, roto) ? scoring.league_name : null;
+}
+
 /** Why a league's numbers aren't quite its own (short, and the long form), or null when they are. */
-export function scoringWarning(scoring: RankingsScoring | null | undefined): { short: string; long: string } | null {
+export function scoringWarning(scoring: RankingsScoring | null | undefined, roto = false): { short: string; long: string } | null {
+  if (rotoAsPoints(scoring, roto)) {
+    return { short: "roto · platform points", long: "Roto isn't supported for rankings yet, so the pool is ranked by the platform's points formula." };
+  }
   if (!scoring || scoring.league_id == null) return null;
   if (scoring.settings_synced === false) {
     return { short: "settings unread · standard scoring", long: "Couldn't read the league's settings from the provider, so the pool is scored the standard way." };

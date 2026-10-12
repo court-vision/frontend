@@ -31,6 +31,7 @@ import {
   poolScore,
   projectionRows,
   sameFocus,
+  scoredBy,
   scoringWarning,
   shortName,
   slateDates,
@@ -434,6 +435,25 @@ describe("the pool's league score", () => {
     expect(basisLabel(scoring())).toBe("league points");
     expect(basisLabel(scoring({ basis: "categories" }))).toBe("league categories");
     expect(basisLabel(scoring({ basis: "categories", league_id: null, league_name: null }))).toBe("9-cat z-scores");
+  });
+
+  test("a roto league is ranked by the platform's points, and says so instead of naming the league", () => {
+    const roto = { id: 9, name: "Roto League", scoring_type: "roto", settings_synced: true } as NonNullable<TeamResponseData["league"]>;
+    expect(leagueChoices([team(5, 300, { league: roto })])[0].roto).toBe(true);
+    expect(leagueChoices([team(5, 300, { league: { ...roto, settings_synced: false } })])[0].roto).toBe(false);
+    expect(leagueChoices([team(5, 300)])[0].roto).toBe(false);
+
+    const asPoints = scoring({ league_name: "Roto League" });
+    expect(basisLabel(asPoints, true)).toBe("fantasy points");
+    expect(scoringWarning(asPoints, true)?.short).toBe("roto · platform points");
+    expect(scoredBy(asPoints, true)).toBeNull();
+    expect(scoredBy(asPoints)).toBe("Roto League");
+    expect(scoredBy(scoring({ basis: "default_points", league_id: null, league_name: null }))).toBeNull();
+    // Once rankings score roto as categories, the numbers are the league's again.
+    const asCategories = scoring({ basis: "categories", league_name: "Roto League" });
+    expect(basisLabel(asCategories, true)).toBe("league categories");
+    expect(scoringWarning(asCategories, true)).toBeNull();
+    expect(scoredBy(asCategories, true)).toBe("Roto League");
   });
 
   test("a league's settings that couldn't be read, or keys it can't score, are said", () => {
