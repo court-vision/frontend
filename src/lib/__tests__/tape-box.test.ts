@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { openTick, type TapeBox, type TapeTick, type TickOpen } from "@/components/week/tape-box";
+import { keyStaysIn, openTick, type TapeBox, type TapeTick, type TickOpen } from "@/components/week/tape-box";
 
 /** The box after each tick's asks in turn, as tickOf's setter applies them. */
 function after(box: TapeBox, ...asks: Array<[TapeTick, TickOpen]>): TapeBox {
@@ -31,5 +31,32 @@ describe("openTick", () => {
     expect(after({ tick: "moves", how: "hover" }, ["edge", "hover"])).toEqual({ tick: "edge", how: "hover" });
     expect(after({ tick: "moves", how: "pinned" }, ["edge", "pinned"])).toEqual({ tick: "edge", how: "pinned" });
     expect(after({ tick: "edge", how: "keyboard" }, ["moves", "keyboard"])).toEqual({ tick: "moves", how: "keyboard" });
+  });
+});
+
+/** An element inside the given markers, as `closest` sees it (a selector list matches when any part does). */
+function inside(...markers: string[]) {
+  return { closest: (selector: string) => (selector.split(",").some((part) => markers.includes(part.trim())) ? {} : null) };
+}
+
+describe("keyStaysIn", () => {
+  test("the other box's key reaches the desk from inside a box, so it switches boxes", () => {
+    for (const key of ["d", "e"]) expect(keyStaysIn(inside("[data-tickbox]", "button"), key)).toBe(false);
+  });
+
+  test("the desk's other keys do nothing inside a box", () => {
+    for (const key of ["a", "l", "v", "p", "h", "t", "ArrowDown", "Escape", "E"]) expect(keyStaysIn(inside("[data-tickbox]"), key)).toBe(true);
+  });
+
+  test("a field, a menu, a dialog, the market or the tray keeps every key, the tape's too", () => {
+    for (const marker of ["input", "[cmdk-root]", "[role='dialog']", "[data-market]", "[data-tray]"]) {
+      expect(keyStaysIn(inside(marker), "e")).toBe(true);
+      expect(keyStaysIn(inside(marker), "a")).toBe(true);
+    }
+  });
+
+  test("anywhere else every key is the desk's", () => {
+    expect(keyStaysIn(null, "e")).toBe(false);
+    expect(keyStaysIn(inside("button"), "a")).toBe(false);
   });
 });

@@ -60,6 +60,7 @@ import { Tray, type PendingDay, type TrayDay } from "./Tray";
 import { TodayStrip, type TodayRow } from "./TodayStrip";
 import { EdgeTick } from "./EdgeTick";
 import { tickOf, type TapeBox } from "./TickBox";
+import { keyStaysIn } from "./tape-box";
 import { buildRace, categoryRace, categoryRacePoints } from "@/lib/matchup-race";
 import { MoveMenu, ReplaceMenu, type MoveTarget, type ReplaceOption } from "./Menus";
 import { WeekGrid, type Cursor, type DragApi, type DropTarget } from "./WeekGrid";
@@ -812,7 +813,7 @@ export function WeekTerminal({
       // Keys typed in a field or a menu belong to it (a menu's Enter also reaches
       // window after the menu has closed and this listener has re-subscribed).
       const target = e.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable='true'], [cmdk-root], [role='dialog'], [data-market], [data-tray], [data-tickbox]")) return;
+      if (keyStaysIn(target, e.key)) return;
       if ((e.key === "Enter" || e.key === " ") && target?.closest("button, a")) return;
 
       // Keys that work the same in both views.

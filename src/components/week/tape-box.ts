@@ -1,6 +1,6 @@
 /**
- * The Week tape's one open box (today's moves or the edge's race) and how it
- * was opened. Pure.
+ * The Week tape's one open box (today's moves or the edge's race), how it
+ * was opened, and the keys the desk leaves to it. Pure.
  */
 
 /** How a tick's box is open: under the pointer, pinned by a click, or from the keyboard. */
@@ -20,4 +20,21 @@ export type TapeBox = { tick: TapeTick; how: Exclude<TickOpen, null> } | null;
 export function openTick(box: TapeBox, tick: TapeTick, how: TickOpen): TapeBox {
   if (how === "hover" && box && box.how !== "hover") return box;
   return how ? { tick, how } : box?.tick === tick ? null : box;
+}
+
+/** The desk's keys for the tape's boxes: D today's moves, E the edge's race. */
+const TAPE_KEYS = ["d", "e"];
+
+/** Where a key belongs to what it was typed in: a field, a menu, a dialog, the market or the tray. */
+const KEY_OWNERS = "input, textarea, select, [contenteditable='true'], [cmdk-root], [role='dialog'], [data-market], [data-tray]";
+
+/**
+ * Whether the Week desk leaves a key to the element it was pressed in. Inside
+ * a tape box the box keeps Esc, its own key and the arrows (and stops them)
+ * and the desk's other keys do nothing, but the tape's keys still reach the
+ * desk: the other box's key switches to it even with focus inside this one.
+ */
+export function keyStaysIn(target: { closest(selector: string): unknown } | null, key: string): boolean {
+  if (target?.closest(KEY_OWNERS)) return true;
+  return target?.closest("[data-tickbox]") != null && !TAPE_KEYS.includes(key);
 }
