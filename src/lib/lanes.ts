@@ -81,21 +81,33 @@ export function laneCells(lane: StreamLane, days: ReadonlyArray<WeekDay>): Array
 }
 
 /**
+ * The days the lane decided to leave its spot as it was: a keep, a switch that
+ * didn't go through, a day missed. The stored projection was made before the
+ * outcome, so it can still have a free agent there.
+ */
+export function passedDates(cells: ReadonlyArray<LaneCell | null>, days: ReadonlyArray<WeekDay>): Set<string> {
+  const passed = (c: LaneCell | null) => c != null && (c.state === "failed" || c.state === "kept" || c.state === "missed");
+  return new Set(days.filter((d, i) => passed(cells[i] ?? null)).map((d) => d.date));
+}
+
+/**
  * The projection as previewed free agents for the grid: each run of days a free
  * agent holds the spot, replacing the lane's holder (who must be on the roster).
- * Days already played, and days the holder keeps, add nothing.
+ * Days already played, days the lane passed on (`passedDates`), and days the
+ * holder keeps, add nothing.
  */
 export function laneStretches(
   projection: LaneProjection | null | undefined,
   holderId: number,
   days: ReadonlyArray<WeekDay>,
-  sourceOf: (player: LanePlayer, from: number) => SourcePlayer
+  sourceOf: (player: LanePlayer, from: number) => SourcePlayer,
+  passed: ReadonlySet<string> = new Set()
 ): Incoming[] {
   if (!projection) return [];
   const holderOn = new Map<number, LanePlayer>();
   for (const pd of projection.days) {
     const day = days.find((d) => d.date === pd.nba_date);
-    if (day && day.kind !== "past") holderOn.set(day.index, pd.player);
+    if (day && day.kind !== "past" && !passed.has(day.date)) holderOn.set(day.index, pd.player);
   }
   const out: Incoming[] = [];
   let run: { player: LanePlayer; from: number } | null = null;

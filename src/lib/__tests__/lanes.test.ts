@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { demoLanePlan, eventLine, laneCells, laneReason, laneStretches, projectedSource } from "../lanes";
+import { demoLanePlan, eventLine, laneCells, laneReason, laneStretches, passedDates, projectedSource } from "../lanes";
 import type { LanePlayer, LaneProjection, StreamLane, StreamLaneEvent } from "@/types/stream-lane";
 import type { SourcePlayer, WeekDay } from "../week-grid";
 import { DEMO_STREAMERS, demoSource } from "../week-demo";
@@ -147,6 +147,33 @@ describe("laneStretches", () => {
       ["Bravo", 2, 3],
     ]);
     expect(laneStretches(null, HOLDER.player_id, DAYS, sourceOf)).toEqual([]);
+  });
+
+  test("a day the lane passed on keeps the spot's player, whatever the projection made before it said", () => {
+    const stretches = (l: StreamLane) =>
+      laneStretches(l.projection, HOLDER.player_id, DAYS, sourceOf, passedDates(laneCells(l, DAYS), DAYS)).map((x) => [
+        x.player.name,
+        x.from,
+        x.until,
+      ]);
+    // Wednesday's pickup of Alpha failed: the projection still has him from Wednesday.
+    const failed = lane(
+      [
+        event("switch", DATES[2], { add: A, drop: HOLDER, pickup_id: 5, pickup_status: "failed" }),
+        event("blocked", DATES[2], { add: A, drop: HOLDER, reason: "espn_rejected", pickup_id: 5 }),
+      ],
+      projection(2, [A, A, A])
+    );
+    expect(stretches(failed)).toEqual([["Alpha", 3, 5]]);
+    // Never scheduled (his pickup already was), or kept: the same.
+    expect(stretches(lane([event("blocked", DATES[2], { add: A, reason: "already_scheduled" })], projection(2, [A, A, A])))).toEqual([
+      ["Alpha", 3, 5],
+    ]);
+    expect(stretches(lane([event("keep", DATES[2])], projection(2, [A, A, A])))).toEqual([["Alpha", 3, 5]]);
+    // A pickup still to be made previews from its day.
+    expect(
+      stretches(lane([event("switch", DATES[2], { add: A, pickup_id: 5, pickup_status: "pending" })], projection(2, [A, A, A])))
+    ).toEqual([["Alpha", 2, 5]]);
   });
 
   test("a free agent the pool doesn't list plays the days he adds something", () => {

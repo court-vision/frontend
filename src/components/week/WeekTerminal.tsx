@@ -40,7 +40,7 @@ import {
 } from "@/lib/week-grid";
 import { sourceFromStreamer } from "@/lib/week-source";
 import { pickupTiming, pickupViews } from "@/lib/pickups";
-import { eventLine, laneCells, laneReason, laneStretches, projectedSource } from "@/lib/lanes";
+import { eventLine, laneCells, laneReason, laneStretches, passedDates, projectedSource } from "@/lib/lanes";
 import type { LanePlayer, StreamLane } from "@/types/stream-lane";
 import { LaneSheet } from "./LaneSheet";
 import type { LaneRowModel } from "./LaneRow";
@@ -169,13 +169,16 @@ export function WeekTerminal({
     },
     [faById, source, openLane]
   );
+  const openLaneCells = useMemo(() => (openLane && source ? laneCells(openLane, source.days) : null), [openLane, source]);
   const laneIncoming: Incoming[] | null = useMemo(() => {
-    if (!laneHover || !source || !openLane || openLane.status !== "active" || !openLane.projection) return null;
+    if (!laneHover || !source || !openLane || !openLaneCells || openLane.status !== "active" || !openLane.projection) return null;
     // The lane replaces its holder, who must be on the roster the grid knows.
     if (!source.mine.some((p) => p.id === openLane.holder.player_id)) return null;
-    const stretches = laneStretches(openLane.projection, openLane.holder.player_id, source.days, laneSourceOf);
+    // A day it already passed on (a pickup that failed, say) keeps him, whatever the projection said.
+    const passed = passedDates(openLaneCells, source.days);
+    const stretches = laneStretches(openLane.projection, openLane.holder.player_id, source.days, laneSourceOf, passed);
     return stretches.length ? stretches : null;
-  }, [laneHover, source, openLane, laneSourceOf]);
+  }, [laneHover, source, openLane, openLaneCells, laneSourceOf]);
 
   const incoming: IncomingPreview | null = useMemo(
     () =>
@@ -761,7 +764,7 @@ export function WeekTerminal({
   );
   const { updateLane, clearLaneError } = data;
   const laneModel: LaneRowModel | null = useMemo(() => {
-    if (!openLane || !source) return null;
+    if (!openLane || !source || !openLaneCells) return null;
     const proj = openLane.projection;
     const label = (date: string) => source.days.find((d) => d.date === date)?.dow ?? monthDay(date);
     let summary: string;
@@ -773,7 +776,7 @@ export function WeekTerminal({
     } else summary = "waiting for its first decision";
     return {
       lane: openLane,
-      cells: laneCells(openLane, source.days),
+      cells: openLaneCells,
       summary,
       history: [...openLane.events].sort((a, b) => b.id - a.id).map((e) => eventLine(e, label)),
       busy: data.laneBusy,
@@ -787,7 +790,7 @@ export function WeekTerminal({
       onNotify: (mode) => updateLane(openLane.id, { notify: mode }),
       onStop: () => setConfirm("stop-lane"),
     };
-  }, [openLane, source, data.laneBusy, root, requestPool, updateLane]);
+  }, [openLane, source, openLaneCells, data.laneBusy, root, requestPool, updateLane]);
   const closeLaneSheet = useCallback(() => {
     setLaneFor(null);
     clearLaneError();
