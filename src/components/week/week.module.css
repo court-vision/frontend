@@ -2798,8 +2798,8 @@ button.marketRow:hover {
   }
 }
 
-/* The box: every move, grown out of the strip and lying over the grid. */
-.todayBox {
+/* A tape tick's box (today's moves, the edge's race), grown out of the tick and lying over the grid. */
+.tickBox {
   position: fixed;
   z-index: 40;
   display: flex;
@@ -2811,7 +2811,7 @@ button.marketRow:hover {
   overflow: hidden;
 }
 
-.todayBoxHead {
+.tickBoxHead {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2889,11 +2889,137 @@ button.marketRow:hover {
   line-height: 1.5;
 }
 
-.todayFoot {
+.tickBoxFoot {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 8px 12px 8px 18px;
   border-top: 1px solid var(--line);
   background: var(--surface);
+}
+
+/* ---------------------------------------------------------------- the edge's race */
+
+.edgeTick {
+  cursor: default;
+  gap: 4px;
+  padding-top: 8px;
+  padding-bottom: 6px;
+}
+
+.edgeTick[data-open] {
+  background: var(--hover);
+}
+
+.edgeEnd {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.edgeEndNote {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+.spark {
+  display: block;
+}
+
+.raceRead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 10px 18px 0;
+}
+
+.raceScore {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+}
+
+.raceSummary {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.raceChart {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 4px 8px 0;
+  touch-action: none;
+}
+
+.raceAxis {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  fill: var(--text-3);
+}
+
+.raceAxis[data-today] {
+  fill: var(--accent);
+}
+
+.raceTable {
+  display: grid;
+  align-items: center;
+  column-gap: 2px;
+  row-gap: 4px;
+  padding: 10px 18px 12px;
+  border-top: 1px solid var(--line);
+  overflow-y: auto;
+}
+
+.raceRow {
+  display: contents;
+}
+
+.raceHead {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-align: right;
+  color: var(--text-3);
+}
+
+.raceHead[data-today] {
+  color: var(--accent);
+}
+
+.raceCell {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text);
+}
+
+.raceCell[data-projected] {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.raceTotal {
+  font-weight: 600;
+}
+
+.raceUp {
+  color: var(--up);
+}
+
+.raceDown {
+  color: var(--down);
+}
+
+.raceUp[data-projected],
+.raceDown[data-projected] {
+  opacity: 0.7;
 }

@@ -87,3 +87,20 @@ export function useWeeklyMatchupQuery(teamId: number | null) {
   return query;
 }
 
+
+/**
+ * Both teams' running totals at each night's snapshot of one matchup period
+ * (the Week desk's Edge race). A snapshot lands once a night after ESPN's
+ * scores settle, so this is slow-moving; null before the period's first one.
+ */
+export function useMatchupScoreHistoryQuery(teamId: number | null, matchupPeriod: number | null) {
+  const { getToken, isSignedIn } = useAuth();
+  return useQuery({
+    queryKey: matchupKeys.historyDetail(teamId!, matchupPeriod ?? undefined),
+    queryFn: ({ signal }) => apiClient.getMatchupScoreHistory(getToken, teamId!, matchupPeriod!, { signal }),
+    enabled: !!teamId && matchupPeriod != null && isSignedIn === true,
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: true,
+    meta: { toast: false },
+  });
+}
