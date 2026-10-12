@@ -7071,6 +7071,11 @@
             ],
             "title": "Detail"
           },
+          "ended": {
+            "default": false,
+            "title": "Ended",
+            "type": "boolean"
+          },
           "holder": {
             "$ref": "#/components/schemas/ScheduledPickupPlayer"
           },
@@ -7138,7 +7143,8 @@
           "detail",
           "holder",
           "scoring_period_id",
-          "nba_date"
+          "nba_date",
+          "ended"
         ],
         "title": "LaneNotice",
         "type": "object"
@@ -12596,6 +12602,11 @@
             "title": "Lane Id",
             "type": "integer"
           },
+          "last_day": {
+            "default": false,
+            "title": "Last Day",
+            "type": "boolean"
+          },
           "notify": {
             "enum": [
               "email",
@@ -12630,7 +12641,8 @@
           "lane_id",
           "notify",
           "projected",
-          "why"
+          "why",
+          "last_day"
         ],
         "title": "PickupLane",
         "type": "object"
@@ -25383,7 +25395,7 @@
         ]
       },
       "patch": {
-        "description": "Pause (`status: paused`) or resume (`status: active`) a lane, or change `notify`.\nResuming needs the spot's player still on the roster (422 STREAM_LANE_INVALID\n`holder_gone`); a lane resumed after its matchup's last open day ends instead.\n404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.",
+        "description": "Pause (`status: paused`) or resume (`status: active`) a lane, or change `notify`.\nPausing cancels a pickup the lane scheduled that hasn't run, and that day is decided\nagain on resume; 409 STREAM_LANE_BUSY while the pickup is being made. Resuming needs\nthe spot's player still on the roster (422 STREAM_LANE_INVALID `holder_gone`) and no\npickup scheduled that drops them (`scheduled_out`); a lane resumed after its matchup's\nlast open day ends instead. 404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.",
         "operationId": "update_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__patch",
         "parameters": [
           {

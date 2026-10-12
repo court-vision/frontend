@@ -1641,9 +1641,11 @@ export interface paths {
         /**
          * Update Stream Lane
          * @description Pause (`status: paused`) or resume (`status: active`) a lane, or change `notify`.
-         *     Resuming needs the spot's player still on the roster (422 STREAM_LANE_INVALID
-         *     `holder_gone`); a lane resumed after its matchup's last open day ends instead.
-         *     404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.
+         *     Pausing cancels a pickup the lane scheduled that hasn't run, and that day is decided
+         *     again on resume; 409 STREAM_LANE_BUSY while the pickup is being made. Resuming needs
+         *     the spot's player still on the roster (422 STREAM_LANE_INVALID `holder_gone`) and no
+         *     pickup scheduled that drops them (`scheduled_out`); a lane resumed after its matchup's
+         *     last open day ends instead. 404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.
          */
         patch: operations["update_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__patch"];
         trace?: never;
@@ -5035,6 +5037,11 @@ export interface components {
             action: "paused" | "blocked";
             /** Detail */
             detail: string | null;
+            /**
+             * Ended
+             * @default false
+             */
+            ended: boolean;
             holder: components["schemas"]["ScheduledPickupPlayer"];
             /** Lane Id */
             lane_id: number;
@@ -6982,6 +6989,11 @@ export interface components {
         PickupLane: {
             /** Lane Id */
             lane_id: number;
+            /**
+             * Last Day
+             * @default false
+             */
+            last_day: boolean;
             /**
              * Notify
              * @enum {string}
