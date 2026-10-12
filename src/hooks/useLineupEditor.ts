@@ -21,7 +21,7 @@ export const lineupKeys = {
   /** A later day's lineup (ESPN scoring period); today's stays under `state`. */
   days: (teamId: number) => [...lineupKeys.all, "day", teamId] as const,
   day: (teamId: number, period: number) => [...lineupKeys.all, "day", teamId, period] as const,
-  /** Today's recommended actions (the home widget); lives in the lineup family so a write invalidates it here. */
+  /** Today's moves (the Week desk's strip); in the lineup family so a write invalidates them too. */
   actions: (teamId: number) => [...lineupKeys.all, "actions", teamId] as const,
 };
 

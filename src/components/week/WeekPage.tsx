@@ -10,6 +10,7 @@ import { useLiveMatchupQuery, useMatchupQuery, useWeeklyMatchupQuery } from "@/h
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { useCancelPickupMutation, useSchedulePickupMutation, useScheduledPickupsQuery } from "@/hooks/useScheduledPickups";
 import { useConnectionsQuery } from "@/hooks/useConnections";
+import { useDailyActionsQuery } from "@/hooks/useDailyActions";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
@@ -31,6 +32,7 @@ import {
   DEMO_TODAY,
   demoAssignment,
   demoBoard,
+  demoDailyActions,
   demoDailyStreamers,
   demoPeriod,
   demoPlan,
@@ -43,6 +45,7 @@ import type { LineupMove, LineupState } from "@/types/lineup-editor";
 import type { ScheduleGame } from "@/types/games";
 import type { StreamerPlayer } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
+import type { DailyActionsData } from "@/types/daily-actions";
 import type { ScheduledPickup, ScheduledPickupList } from "@/types/scheduled-pickup";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import type { WeekSource } from "@/lib/week-grid";
@@ -60,6 +63,14 @@ export interface BarNotice {
   text: string;
   action: string;
   onAction: () => void;
+}
+
+/** Today's moves (the strip in the tape), and how to read them again. */
+export interface TodayActions {
+  data: DailyActionsData | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
 }
 
 /** Everything the terminal needs from outside: data, each day's lineup, and the writes. */
@@ -109,6 +120,8 @@ export interface TerminalData {
   cancelPickup: (id: number) => void;
   /** The pickup being cancelled, while that request is out. */
   cancelling: number | null;
+  /** Today's moves (ESPN teams); null where there are none to read. */
+  actions: TodayActions | null;
 }
 
 export function WeekPage({ demo, view, market }: { demo: boolean; view?: WeekView; market?: MarketMode }) {
@@ -206,6 +219,11 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   }, []);
 
   const rosterIds = useMemo(() => new Set(roster.map((r) => r.id)), [roster]);
+  const todayBoard = boards[DEMO_TODAY];
+  const actions = useMemo(
+    () => (todayBoard ? demoDailyActions(todayBoard, demoDailyStreamers(DEMO_TODAY)) : null),
+    [todayBoard]
+  );
   const data: TerminalData = {
     demo: true,
     status: "ready",
@@ -242,6 +260,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     clearScheduleError: () => setScheduleError(null),
     cancelPickup,
     cancelling: null,
+    actions: { data: actions, loading: false, error: null, refetch: () => {} },
   };
 
   return <WeekTerminal data={data} initialView={view} initialMarket={market} />;
@@ -313,6 +332,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const schedule = useTeamScheduleQuery(scheduleTeam, true, 10);
   const transaction = useRosterTransactionMutation(teamId ?? 0);
   const pickups = useScheduledPickupsQuery(selected.provider === "espn" ? teamId : null);
+  const actions = useDailyActionsQuery(teamId, selected.provider);
   const pickupSchedule = useSchedulePickupMutation(teamId ?? 0);
   const pickupCancel = useCancelPickupMutation(teamId ?? 0);
 
@@ -438,6 +458,15 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     clearScheduleError: pickupSchedule.reset,
     cancelPickup: (id) => cancelMutate(id),
     cancelling: pickupCancel.isPending ? pickupCancel.variables ?? null : null,
+    actions:
+      selected.provider === "espn"
+        ? {
+            data: actions.data ?? null,
+            loading: actions.isLoading,
+            error: actions.error ? userMessage(actions.error, "Couldn't work out today's moves") : null,
+            refetch: () => void actions.refetch(),
+          }
+        : null,
   };
 
   // Everything the terminal holds (staged moves, a picked free agent and its
