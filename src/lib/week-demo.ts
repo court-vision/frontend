@@ -12,6 +12,8 @@ import type { StreamerPlayer } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
 import type { ScheduleGame } from "@/types/games";
 import type { ScheduledPickup } from "@/types/scheduled-pickup";
+import type { DailyAction, DailyActionPlayer, DailyActionsData } from "@/types/daily-actions";
+import type { DailyScorePoint } from "@/types/matchup";
 import type { DayGame, SourceOpponent, SourcePlayer, StatLine, WeekDay, WeekSource } from "./week-grid";
 import { SLOT_NAMES, assignment, type Staged } from "./lineup-editor";
 
@@ -249,6 +251,114 @@ export function demoPlan(board: LineupState): LineupPlanData {
     nba_date: board.nba_date,
     roster_version: board.roster_version,
     scoring_period_id: board.scoring_period_id,
+  };
+}
+
+/**
+ * The nightly score snapshots the demo week would have: one per morning, the
+ * running totals through the day before (day 0's is the 0-0 start).
+ */
+export function demoScoreHistory(source: WeekSource): DailyScorePoint[] {
+  const out: DailyScorePoint[] = [{ date: DATES[0], day_of_matchup: 0, your_score: 0, opponent_score: 0, your_categories: null, opponent_categories: null }];
+  let you = 0;
+  let opp = 0;
+  for (let i = 0; i < TODAY; i++) {
+    you += source.pastTotals.you[i] ?? 0;
+    opp += source.pastTotals.opp[i] ?? 0;
+    out.push({ date: DATES[i + 1], day_of_matchup: i + 1, your_score: you, opponent_score: opp, your_categories: null, opponent_categories: null });
+  }
+  return out;
+}
+
+/** A demo player as a moves row names him. */
+function actionPlayer(p: LineupPlayer | StreamerPlayer): DailyActionPlayer {
+  const roster = "lineup_slot_id" in p;
+  return {
+    player_id: p.player_id,
+    nba_player_id: p.nba_player_id ?? null,
+    name: p.name,
+    team: p.team,
+    injury_status: p.injury_status ?? null,
+    lineup_slot_id: roster ? p.lineup_slot_id : null,
+    lineup_slot: roster ? p.lineup_slot : null,
+    avg_points: roster ? p.avg_points : p.avg_points_last_n ?? null,
+  };
+}
+
+/**
+ * What the server's today's-moves read answers for the demo board, worked out
+ * the same way: an OUT starter to an open IR seat, the planner's start, and
+ * the day's streamer swap (the best free agent playing today for the weakest
+ * idle player). Rows leave as the board changes.
+ */
+export function demoDailyActions(board: LineupState, pool: StreamerPlayer[]): DailyActionsData {
+  const actions: DailyAction[] = [];
+  const irOpen = !board.players.some((p) => p.lineup_slot_id === IR);
+  const out = board.players.find((p) => p.injury_status === "OUT" && p.lineup_slot_id !== IR && p.lineup_slot_id !== BE);
+  if (out && irOpen) {
+    actions.push({
+      id: `ir_in:${out.player_id}`,
+      kind: "ir_in",
+      title: `Move ${out.name} to IR`,
+      detail: `Ruled out · frees ${out.lineup_slot}`,
+      player: actionPlayer(out),
+      counterpart: null,
+      moves: [{ player_id: out.player_id, name: out.name, from_slot_id: out.lineup_slot_id, from_slot: out.lineup_slot, to_slot_id: IR, to_slot: "IR", role: "shift", note: "Ruled out" }],
+      transaction: null,
+      blocked_reason: null,
+      game_time_et: out.game_time_et,
+    });
+  }
+  const plan = demoPlan(board);
+  const start = plan.moves.find((m) => m.role === "start");
+  const benched = plan.moves.find((m) => m.role === "bench");
+  const filler = start ? board.players.find((p) => p.player_id === start.player_id) : undefined;
+  const evicted = benched ? board.players.find((p) => p.player_id === benched.player_id) : undefined;
+  if (start && filler) {
+    actions.push({
+      id: `start:${filler.player_id}`,
+      kind: "start",
+      title: `Start ${filler.name}`,
+      detail: `${start.note} · ${start.to_slot}${evicted && benched ? ` over ${evicted.name} (${benched.note})` : ""}`,
+      player: actionPlayer(filler),
+      counterpart: evicted ? actionPlayer(evicted) : null,
+      moves: plan.moves,
+      transaction: null,
+      blocked_reason: null,
+      game_time_et: filler.game_time_et,
+    });
+  }
+  const rostered = new Set(board.players.map((p) => p.player_id));
+  const pick = pool.find((f) => !rostered.has(f.player_id) && f.game_days.includes(TODAY) && f.acquisition_status !== "waivers" && !f.injured);
+  const idle = board.players
+    .filter((p) => !p.has_game_today && p.lineup_slot_id !== IR && !p.injured)
+    .sort((a, b) => a.avg_points - b.avg_points)[0];
+  if (pick && idle && (pick.avg_points_last_n ?? 0) >= 0.85 * idle.avg_points) {
+    const game = gameOn(pick.team, TODAY);
+    actions.push({
+      id: `add_drop:${pick.player_id}:${idle.player_id}`,
+      kind: "add_drop",
+      title: `Drop ${idle.name}, pick up ${pick.name}`,
+      detail: `${idle.name} has no game today · ${pick.name} plays tonight${game ? ` ${game.opp}` : ""} · ${idle.avg_points.toFixed(1)} vs ${(pick.avg_points_last_n ?? 0).toFixed(1)}`,
+      player: actionPlayer(pick),
+      counterpart: actionPlayer(idle),
+      moves: [],
+      transaction: { pickup: pick, drop_player_id: idle.player_id },
+      blocked_reason: null,
+      game_time_et: game?.time ?? null,
+    });
+  }
+  return {
+    actions,
+    can_write: true,
+    lineup: board,
+    nba_date: board.nba_date,
+    roster_version: board.roster_version,
+    scoring_period_id: board.scoring_period_id,
+    streamers_error: null,
+    unfilled: [],
+    value_kind: "fpts",
+    write_blocked_reason: null,
   };
 }
 

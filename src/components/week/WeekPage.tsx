@@ -6,7 +6,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { lineupKeys } from "@/hooks/useLineupEditor";
-import { useLiveMatchupQuery, useMatchupQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
+import { useLiveMatchupQuery, useMatchupQuery, useMatchupScoreHistoryQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { useCancelPickupMutation, useSchedulePickupMutation, useScheduledPickupsQuery } from "@/hooks/useScheduledPickups";
 import {
@@ -18,6 +18,7 @@ import {
 import { apiClient } from "@/lib/api";
 import { demoLanePlan } from "@/lib/lanes";
 import { useConnectionsQuery } from "@/hooks/useConnections";
+import { useDailyActionsQuery } from "@/hooks/useDailyActions";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
@@ -39,6 +40,8 @@ import {
   DEMO_TODAY,
   demoAssignment,
   demoBoard,
+  demoDailyActions,
+  demoScoreHistory,
   demoDailyStreamers,
   demoPeriod,
   demoPlan,
@@ -51,6 +54,8 @@ import type { LineupMove, LineupState } from "@/types/lineup-editor";
 import type { ScheduleGame } from "@/types/games";
 import type { StreamerPlayer } from "@/types/streamer";
 import type { BreakoutCandidateResp } from "@/types/breakout";
+import type { DailyActionsData } from "@/types/daily-actions";
+import type { DailyScorePoint } from "@/types/matchup";
 import type { ScheduledPickup, ScheduledPickupList } from "@/types/scheduled-pickup";
 import type { LaneNotify, StreamLane, StreamLaneList, StreamLanePlan, StreamLaneUpdateRequest } from "@/types/stream-lane";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
@@ -69,6 +74,14 @@ export interface BarNotice {
   text: string;
   action: string;
   onAction: () => void;
+}
+
+/** Today's moves (the strip in the tape), and how to read them again. */
+export interface TodayActions {
+  data: DailyActionsData | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
 }
 
 /** Everything the terminal needs from outside: data, each day's lineup, and the writes. */
@@ -132,6 +145,10 @@ export interface TerminalData {
   stopLane: (laneId: number) => Promise<"ok" | "refused">;
   /** A lane change (pause, resume, notify, stop) while that request is out. */
   laneBusy: boolean;
+  /** Today's moves (ESPN teams); null where there are none to read. */
+  actions: TodayActions | null;
+  /** The matchup's nightly score snapshots (the edge's race); null while there is no week to ask about. */
+  history: { points: DailyScorePoint[] | null; loading: boolean } | null;
 }
 
 export function WeekPage({ demo, view, market }: { demo: boolean; view?: WeekView; market?: MarketMode }) {
@@ -291,6 +308,11 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     return "ok" as const;
   }, []);
 
+  const todayBoard = boards[DEMO_TODAY];
+  const actions = useMemo(
+    () => (todayBoard ? demoDailyActions(todayBoard, demoDailyStreamers(DEMO_TODAY)) : null),
+    [todayBoard]
+  );
   const data: TerminalData = {
     demo: true,
     status: "ready",
@@ -336,6 +358,8 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     updateLane,
     stopLane,
     laneBusy: false,
+    actions: { data: actions, loading: false, error: null, refetch: () => {} },
+    history: { points: demoScoreHistory(source), loading: false },
   };
 
   return <WeekTerminal data={data} initialView={view} initialMarket={market} />;
@@ -407,6 +431,8 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const schedule = useTeamScheduleQuery(scheduleTeam, true, 10);
   const transaction = useRosterTransactionMutation(teamId ?? 0);
   const pickups = useScheduledPickupsQuery(selected.provider === "espn" ? teamId : null);
+  const actions = useDailyActionsQuery(teamId, selected.provider);
+  const history = useMatchupScoreHistoryQuery(teamId, week.data?.matchup_period ?? null);
   const pickupSchedule = useSchedulePickupMutation(teamId ?? 0);
   const pickupCancel = useCancelPickupMutation(teamId ?? 0);
   const lanes = useStreamLanesQuery(selected.provider === "espn" ? teamId : null);
@@ -574,6 +600,16 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     updateLane: (laneId, body) => updateLaneMutate({ laneId, body }),
     stopLane,
     laneBusy: laneUpdate.isPending || laneStop.isPending,
+    actions:
+      selected.provider === "espn"
+        ? {
+            data: actions.data ?? null,
+            loading: actions.isLoading,
+            error: actions.error ? userMessage(actions.error, "Couldn't work out today's moves") : null,
+            refetch: () => void actions.refetch(),
+          }
+        : null,
+    history: week.data ? { points: history.data?.history ?? null, loading: history.isLoading } : null,
   };
 
   // Everything the terminal holds (staged moves, a picked free agent and its

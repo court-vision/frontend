@@ -13,6 +13,8 @@ if (process.env.NODE_ENV === "development" && !process.env.NEXT_PUBLIC_API_BASE)
 export const TEAMS_API = `${API_BASE}/v1/internal/teams`;
 export const MATCHUPS_API = `${API_BASE}/v1/internal/matchups`;
 export const STREAMERS_API = `${API_BASE}/v1/internal/streamers`;
+// The rankings pool scored by a team's league
+export const RANKINGS_INTERNAL_API = `${API_BASE}/v1/internal/rankings`;
 export const YAHOO_API = `${API_BASE}/v1/internal/yahoo`;
 // Provider connections: an ESPN account's cookies, stored once for every team on it
 export const CONNECTIONS_API = `${API_BASE}/v1/internal/connections`;

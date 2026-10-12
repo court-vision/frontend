@@ -79,6 +79,10 @@ interface TapeProps {
   /** Projected change from the previewed free agent. */
   previewDelta: number | null;
   tonight: { live: number; toTip: number; nextTip: string | null };
+  /** Today's moves, beside Tonight. */
+  today?: React.ReactNode;
+  /** The edge's race (replaces the plain edge bar). */
+  edge?: React.ReactNode;
 }
 
 function Diff({ value, className }: { value: number; className?: string }) {
@@ -86,7 +90,7 @@ function Diff({ value, className }: { value: number; className?: string }) {
   return <span className={`${dk.chip} ${cls}`}>{signed(value)}</span>;
 }
 
-export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: TapeProps) {
+export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight, today, edge }: TapeProps) {
   const nowDiff = grid.now.you - grid.now.opp;
   const projDiff = grid.projected.you - grid.projected.opp;
   const share = grid.projected.you + grid.projected.opp > 0 ? grid.projected.you / (grid.projected.you + grid.projected.opp) : 0.5;
@@ -111,13 +115,15 @@ export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: 
           <Diff value={projDiff} />
         </span>
       </div>
-      <div className={s.tick} style={{ justifyContent: "center" }}>
-        <span className={dk.label}>Edge</span>
-        <span className={s.edgeBar} title={`${Math.round(share * 1000) / 10}% of projected points`}>
-          <span className={s.edgeFill} style={{ width: `${shown * 100}%` }} />
-          <span className={s.edgeMid} />
-        </span>
-      </div>
+      {edge ?? (
+        <div className={s.tick} style={{ justifyContent: "center" }}>
+          <span className={dk.label}>Edge</span>
+          <span className={s.edgeBar} title={`${Math.round(share * 1000) / 10}% of projected points`}>
+            <span className={s.edgeFill} style={{ width: `${shown * 100}%` }} />
+            <span className={s.edgeMid} />
+          </span>
+        </div>
+      )}
       <div className={s.tick}>
         <span className={dk.label}>Starts left</span>
         <span className={s.tickValue}>
@@ -140,6 +146,7 @@ export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: 
           </span>
         </span>
       </div>
+      {today}
       {stagedCount > 0 || previewDelta != null ? (
         <div className={s.tick}>
           <span className={dk.label}>Pending</span>
@@ -332,6 +339,8 @@ const WEEK_KEYS: Array<[string, string]> = [
   ["[ ]", "day"],
   ["H", "heat"],
   ["P", "market"],
+  ["D", "today's moves"],
+  ["E", "edge"],
   ["T", "theme"],
   ["esc", "clear"],
 ];

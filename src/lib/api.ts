@@ -12,6 +12,7 @@ import {
   LIVE_API,
   TEAMS_API,
   RANKINGS_API,
+  RANKINGS_INTERNAL_API,
   PLAYERS_API,
   MATCHUPS_API,
   STREAMERS_API,
@@ -48,6 +49,7 @@ import type {
   ScheduleWeeksData,
 } from "@/types/lineup";
 import type { RankingsMeta, RankingsParams, RankingsPlayer, RankingsResult } from "@/types/rankings";
+import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actions";
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
@@ -73,6 +75,8 @@ import type {
   DailyMatchupResponse,
   WeeklyMatchupData,
   WeeklyMatchupResponse,
+  MatchupScoreHistory,
+  MatchupScoreHistoryResponse,
 } from "@/types/matchup";
 import type { StreamerData, StreamerFindRequest, StreamerResponse } from "@/types/streamer";
 import type {
@@ -294,6 +298,12 @@ class ApiClient {
     return unwrap(env);
   }
 
+  /** Today's recommended moves for an ESPN team, and the board they were computed against. */
+  async getTeamDailyActions(getToken: GetTokenFn, teamId: number, opts?: RequestOptions): Promise<DailyActionsData> {
+    const env = await fetchJson<DailyActionsResponse>(`${TEAMS_API}/${teamId}/actions`, { ...opts, getToken });
+    return unwrap(env);
+  }
+
   /**
    * Pick up and/or release one player as a single ESPN transaction. Same
    * contract as `applyLineupMoves` — deliberately NOT `raw`, so the real
@@ -476,6 +486,26 @@ class ApiClient {
       getToken,
     });
     return unwrap(env);
+  }
+
+  /**
+   * Both teams' running totals at each night's snapshot of a matchup period
+   * (the snapshot dated day k holds the totals through day k − 1). Null until
+   * the first snapshot of the period exists.
+   */
+  async getMatchupScoreHistory(
+    getToken: GetTokenFn,
+    teamId: number,
+    matchupPeriod: number,
+    opts?: RequestOptions
+  ): Promise<MatchupScoreHistory | null> {
+    const env = await nullOn404(
+      fetchJson<MatchupScoreHistoryResponse>(`${MATCHUPS_API}/history/${teamId}?matchup_period=${matchupPeriod}`, {
+        ...opts,
+        getToken,
+      })
+    );
+    return env?.data ?? null;
   }
 
   // Breakout Streamers API (internal, Clerk auth)
@@ -679,6 +709,30 @@ class ApiClient {
     const env = await fetchJson<BaseApiResponse<RankingsPlayer[]> & { meta?: RankingsMeta | null }>(
       `${RANKINGS_API}/${qs ? `?${qs}` : ""}`,
       opts
+    );
+    const { data, message } = unwrapWithMessage(env, []);
+    return { players: data, meta: env.meta ?? null, message };
+  }
+
+  /**
+   * Rankings scored by a team's league settings rather than the platform
+   * default. `format` and `categories` are not sent: the league decides those,
+   * and the response reports which in `meta.scoring`.
+   */
+  async getLeagueRankingsWithMeta(
+    getToken: GetTokenFn,
+    teamId: number,
+    params?: Partial<RankingsParams> | null,
+    opts?: RequestOptions
+  ): Promise<RankingsResult> {
+    const p = normalizeParams(params);
+    const q = new URLSearchParams();
+    if (p.window !== null) q.set("window", String(p.window));
+    if (p.minGames !== null) q.set("min_games", String(p.minGames));
+    const qs = q.toString();
+    const env = await fetchJson<BaseApiResponse<RankingsPlayer[]> & { meta?: RankingsMeta | null }>(
+      `${RANKINGS_INTERNAL_API}/${teamId}${qs ? `?${qs}` : ""}`,
+      { ...opts, getToken }
     );
     const { data, message } = unwrapWithMessage(env, []);
     return { players: data, meta: env.meta ?? null, message };

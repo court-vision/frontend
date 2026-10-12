@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import type { GameLog } from "@/types/player";
-import type { RankingsPlayer } from "@/types/rankings";
+import type { RankingsPlayer, RankingsScoring } from "@/types/rankings";
+import type { CategoryDef } from "@/types/scoring";
+import type { TeamResponseData } from "@/types/team";
+import { DEFAULT_9CAT } from "@/lib/category-format";
 import {
   addDays,
   ageOn,
   averageLine,
+  basisLabel,
   bestOf,
   clockText,
   dayName,
@@ -17,6 +21,8 @@ import {
   gameStatusText,
   hasPosition,
   isDate,
+  leagueChoiceFor,
+  leagueChoices,
   lensOf,
   lineFromAvg,
   matchPool,
@@ -24,8 +30,11 @@ import {
   nextLens,
   nextWindow,
   parseDateQuery,
+  poolScore,
   projectionRows,
   sameFocus,
+  scoredBy,
+  scoringWarning,
   shortName,
   slateDates,
   splitLines,
@@ -338,5 +347,140 @@ describe("names", () => {
     expect(shortName("Nikola Jokić")).toBe("N. Jokić");
     expect(shortName("Jaren Jackson Jr.")).toBe("J. Jackson");
     expect(shortName("Nenê")).toBe("Nenê");
+  });
+});
+
+function team(id: number, leagueId: number, over: { name?: string; league?: TeamResponseData["league"]; year?: number } = {}): TeamResponseData {
+  return {
+    team_id: id,
+    league: over.league ?? null,
+    league_info: {
+      league_id: leagueId,
+      league_name: over.name ?? "N/A",
+      provider: "espn",
+      team_name: `Team ${id} name`,
+      year: over.year ?? 2027,
+      espn_team_id: null,
+      has_espn_credentials: false,
+      has_yahoo_credentials: false,
+      scoring_preview: null,
+      yahoo_team_key: null,
+    },
+  } as unknown as TeamResponseData;
+}
+
+function scoring(over: Partial<RankingsScoring> = {}): RankingsScoring {
+  return { basis: "league_points", league_id: 7, league_name: "Lvl. 3 Goblins", point_weights: null, settings_synced: true, unsupported: [], ...over };
+}
+
+describe("the pool's league score", () => {
+  test("the rail's value: the league wins over the format", () => {
+    expect(poolScore("league", "categories")).toBe("league");
+    expect(poolScore("global", "categories")).toBe("categories");
+    expect(poolScore("global", "points")).toBe("points");
+  });
+
+  test("one choice per league, in the teams' order, named or numbered", () => {
+    const choices = leagueChoices([team(1, 100, { name: "Goblins" }), team(2, 200), team(3, 100, { name: "Goblins" }), team(4, 100, { name: "Goblins", year: 2026 })]);
+    expect(choices.map((c) => [c.teamId, c.league])).toEqual([
+      [1, "Goblins"],
+      [2, "League 200"],
+      [4, "Goblins"],
+    ]);
+    expect(choices[0].tag).toBe("PTS?");
+    expect(choices[0].team).toBe("Team 1 name");
+  });
+
+  test("the synced league's id keys it, and its type tags it", () => {
+    const league = { id: 9, name: "Cats League", scoring_type: "categories", settings_synced: true } as TeamResponseData["league"];
+    const [c] = leagueChoices([team(5, 300, { league })]);
+    expect(c.key).toBe("id:9:categories");
+    expect(c.league).toBe("Cats League");
+    expect(c.tag).toBe("CATS");
+  });
+
+  test("the selected team's league, else the first", () => {
+    const teams = [team(1, 100), team(2, 200), team(3, 200)];
+    expect(leagueChoiceFor(teams, 2)?.teamId).toBe(2);
+    expect(leagueChoiceFor(teams, 1)?.teamId).toBe(1);
+    expect(leagueChoiceFor(teams, 99)?.teamId).toBe(1);
+    expect(leagueChoiceFor(teams, null)?.teamId).toBe(1);
+    expect(leagueChoiceFor([], 1)).toBeNull();
+  });
+
+  test("a league asks through the selected team when it is one of its own, so picking it keeps that team", () => {
+    const teams = [team(1, 100), team(2, 200), team(3, 200)];
+    const c = leagueChoiceFor(teams, 3);
+    expect([c?.teamId, c?.team]).toEqual([3, "Team 3 name"]);
+    expect(leagueChoices(teams, 3).map((x) => x.teamId)).toEqual([1, 3]);
+    expect(leagueChoices(teams, 1).map((x) => x.teamId)).toEqual([1, 2]);
+  });
+
+  test("a team previewing another format scores the pool its own way, so it is a choice of its own", () => {
+    const points = { id: 5, name: "Goblins", scoring_type: "points", settings_synced: true } as TeamResponseData["league"];
+    const preview = { ...points, scoring_type: "categories", scoring_preview: "categories" } as TeamResponseData["league"];
+    const choices = leagueChoices([team(2, 200, { league: points }), team(3, 200, { league: preview }), team(4, 200, { league: points })]);
+    expect(choices.map((c) => [c.teamId, c.tag])).toEqual([
+      [2, "PTS"],
+      [3, "CATS"],
+    ]);
+  });
+
+  test("previews on teams with no league row yet (league 0) stay apart", () => {
+    const zero = { id: 0, name: null, scoring_type: "categories", settings_synced: true } as TeamResponseData["league"];
+    expect(leagueChoices([team(1, 100, { league: zero }), team(2, 200, { league: zero })]).map((c) => c.teamId)).toEqual([1, 2]);
+  });
+
+  test("the basis says what scored the pool", () => {
+    expect(basisLabel(null)).toBe("fantasy points");
+    expect(basisLabel(scoring({ basis: "default_points", league_id: null, league_name: null }))).toBe("fantasy points");
+    expect(basisLabel(scoring())).toBe("league points");
+    expect(basisLabel(scoring({ basis: "categories" }))).toBe("league categories");
+    expect(basisLabel(scoring({ basis: "categories", league_id: null, league_name: null }))).toBe("9-cat z-scores");
+  });
+
+  test("a roto league is ranked by the platform's points, and says so instead of naming the league", () => {
+    const roto = { id: 9, name: "Roto League", scoring_type: "roto", settings_synced: true } as NonNullable<TeamResponseData["league"]>;
+    expect(leagueChoices([team(5, 300, { league: roto })])[0].roto).toBe(true);
+    expect(leagueChoices([team(5, 300, { league: { ...roto, settings_synced: false } })])[0].roto).toBe(false);
+    expect(leagueChoices([team(5, 300)])[0].roto).toBe(false);
+
+    const asPoints = scoring({ league_name: "Roto League" });
+    expect(basisLabel(asPoints, true)).toBe("fantasy points");
+    expect(scoringWarning(asPoints, { roto: true, categories: [] })?.short).toBe("roto · platform points");
+    expect(scoredBy(asPoints, true)).toBeNull();
+    expect(scoredBy(asPoints)).toBe("Roto League");
+    expect(scoredBy(scoring({ basis: "default_points", league_id: null, league_name: null }))).toBeNull();
+    // Once rankings score roto as categories, the numbers are the league's again.
+    const asCategories = scoring({ basis: "categories", league_name: "Roto League" });
+    expect(basisLabel(asCategories, true)).toBe("league categories");
+    expect(scoringWarning(asCategories, { roto: true, categories: [] })).toBeNull();
+    expect(scoredBy(asCategories, true)).toBe("Roto League");
+  });
+
+  test("a category league's categories the ranking can't score are named", () => {
+    const cat = (key: string, label: string): CategoryDef => ({ key, label, higher_is_better: true, is_rate: false });
+    const elevenCat = [...DEFAULT_9CAT, cat("dd", "DD"), cat("ato", "A/TO")];
+    const summary = { id: 9, name: "Cats League", scoring_type: "categories", settings_synced: true, categories: elevenCat } as NonNullable<TeamResponseData["league"]>;
+    const league = leagueChoices([team(5, 300, { league: summary })])[0];
+    expect(league.categories.map((c) => c.key)).toEqual(elevenCat.map((c) => c.key));
+
+    const cats = scoring({ basis: "categories" });
+    expect(scoringWarning(cats, league, DEFAULT_9CAT)?.short).toBe("DD, A/TO left out");
+    expect(scoringWarning(cats, { roto: false, categories: [...DEFAULT_9CAT, cat("dd", "DD")] }, DEFAULT_9CAT)?.long).toContain("leaves it out");
+    expect(scoringWarning(cats, { roto: false, categories: DEFAULT_9CAT }, DEFAULT_9CAT)).toBeNull();
+    // None of them rankable: the ranking falls back to the standard nine.
+    expect(scoringWarning(cats, { roto: false, categories: [cat("dd", "DD"), cat("td", "TD")] }, DEFAULT_9CAT)?.short).toBe("standard 9-cat");
+    // Nothing ranked to compare with, or a points ranking: nothing to say.
+    expect(scoringWarning(cats, league, [])).toBeNull();
+    expect(scoringWarning(scoring(), league, DEFAULT_9CAT)).toBeNull();
+  });
+
+  test("a league's settings that couldn't be read, or keys it can't score, are said", () => {
+    expect(scoringWarning(scoring())).toBeNull();
+    expect(scoringWarning(scoring({ league_id: null }))).toBeNull();
+    expect(scoringWarning(scoring({ settings_synced: false }))?.short).toBe("settings unread · standard scoring");
+    expect(scoringWarning(scoring({ unsupported: ["dd", "td"] }))?.short).toBe("DD, TD left out");
+    expect(scoringWarning(scoring({ unsupported: ["dd"] }))?.long).toContain("leaves it out");
   });
 });

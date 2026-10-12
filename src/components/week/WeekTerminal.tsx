@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ROSTER_MOVE_INVALID, toApiError, userMessage } from "@/lib/api-error";
@@ -44,12 +44,30 @@ import { eventLine, laneCells, laneReason, laneStretches, passedDates, projected
 import type { LanePlayer, StreamLane } from "@/types/stream-lane";
 import { LaneSheet } from "./LaneSheet";
 import type { LaneRowModel } from "./LaneRow";
+import {
+  boardMismatch,
+  isAddStaged,
+  isRowStaged,
+  isTransactionAction,
+  rowButton,
+  sortActions,
+  stageAllFold,
+  stageRow,
+  streamersHint,
+  unstageRow,
+  unstagedLineupActions,
+} from "@/lib/daily-actions";
 import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar, type WeekView } from "./Chrome";
 import { MatchupView } from "./MatchupView";
 import { MarketPane, type MarketMode, type MarketPick } from "./Market";
 import { NO_DROP, addsCountFrom, dropCandidates, gainOf, openSpots, rosterRoom } from "@/lib/market";
 import { ConfirmDialog, Dock, type PendingSwap, type SwapTiming } from "./Dock";
 import { Tray, type PendingDay, type TrayDay } from "./Tray";
+import { TodayStrip, type TodayRow } from "./TodayStrip";
+import { EdgeTick } from "./EdgeTick";
+import { tickOf, type TapeBox } from "./TickBox";
+import { keyStaysIn } from "./tape-box";
+import { buildRace, categoryRace, categoryRacePoints } from "@/lib/matchup-race";
 import { MoveMenu, ReplaceMenu, type MoveTarget, type ReplaceOption } from "./Menus";
 import { WeekGrid, type Cursor, type DragApi, type DropTarget } from "./WeekGrid";
 import { DailyGrid, type SeatDragApi } from "./DailyGrid";
@@ -149,10 +167,16 @@ export function WeekTerminal({
   const preview = hoverLive ?? pinned;
   // After today's first tip an add counts from tomorrow; the previews and the market both obey.
   const addFrom = useMemo(() => (source ? addsCountFrom(source, board) : null), [source, board]);
-  // Free agents the desk has loaded: the rest-of-week pool, and the one-day search.
+  // Free agents the desk has loaded: today's moves' pickups, the one-day search, and
+  // the rest-of-week pool (later wins: the pool knows his whole week).
+  const actionsData = data.actions?.data ?? null;
+  const actionPickups = useMemo(
+    () => (actionsData?.actions ?? []).flatMap((a) => (a.transaction ? [a.transaction.pickup as StreamerPlayer] : [])),
+    [actionsData]
+  );
   const faById = useMemo(
-    () => new Map([...data.daily, ...data.streamers].map((f) => [f.player_id, f])),
-    [data.daily, data.streamers]
+    () => new Map([...actionPickups, ...data.daily, ...data.streamers].map((f) => [f.player_id, f])),
+    [actionPickups, data.daily, data.streamers]
   );
   const previewFa = preview ? faById.get(preview.faId) ?? null : null;
   const { setScheduleTeam } = data;
@@ -356,6 +380,88 @@ export function WeekTerminal({
   const moveCount = pending.reduce((n, p) => n + p.moves.length, 0);
   const blockedBoard = pending.map((p) => boards[p.day]).find((b) => b && !b.can_write) ?? null;
   const movesBlocked = !data.demo && blockedBoard ? writeBlockedCopy(blockedBoard.write_blocked_reason) : null;
+
+  // ---- today's moves: the strip in the tape, staged from there ----
+  // One box open in the tape at a time: today's moves (D) or the edge's race (E).
+  const [tapeBox, setTapeBox] = useState<TapeBox>(null);
+  const movesTick = tickOf(tapeBox, "moves", setTapeBox);
+  const edgeTick = tickOf(tapeBox, "edge", setTapeBox);
+  const todayBoardNow = todayDay != null ? boards[todayDay] ?? null : null;
+  const todayStaging = todayDay != null ? staging[todayDay] : NO_STAGING;
+  // Rows worked out against an older board (a send, another day) are read again, once per pair of boards.
+  const actionsStale = !!actionsData && boardMismatch(actionsData, todayBoardNow);
+  const refetchActions = data.actions?.refetch;
+  const askedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!actionsStale || !actionsData || !todayBoardNow || !refetchActions) return;
+    const key = `${actionsData.roster_version}:${actionsData.scoring_period_id}>${todayBoardNow.roster_version}:${todayBoardNow.scoring_period_id}`;
+    if (askedFor.current === key) return;
+    askedFor.current = key;
+    refetchActions();
+  }, [actionsStale, actionsData, todayBoardNow, refetchActions]);
+  const todayRows = useMemo<TodayRow[]>(() => {
+    const cannot = !todayBoardNow
+      ? "Today isn't on this week's grid"
+      : actionsStale
+        ? "Your lineup changed since these were worked out: reading them again"
+        : null;
+    return sortActions(actionsData?.actions ?? []).map((a) => {
+      const staged = isTransactionAction(a) ? isAddStaged(a, pinned, NO_DROP) : isRowStaged(todayStaging, a);
+      const drop = a.transaction?.drop_player_id ?? null;
+      const gone = drop != null && !source?.mine.some((p) => p.id === drop) ? "The player to drop is no longer on your roster" : null;
+      return { action: a, button: rowButton(a, { staged, cannot: cannot ?? gone }) };
+    });
+  }, [actionsData, todayBoardNow, actionsStale, pinned, todayStaging, source]);
+  const onTodayButton = useCallback(
+    (row: TodayRow) => {
+      const a = row.action;
+      if (row.button.intent === "none" || todayDay == null) return;
+      if (a.transaction) {
+        // An add is staged in the dock: it previews in the grid and is reviewed and sent from there.
+        if (row.button.intent === "unstage") setPinned(null);
+        else {
+          setHover(null);
+          setPinned({ faId: a.transaction.pickup.player_id, replaces: a.transaction.drop_player_id ?? NO_DROP, from: null });
+        }
+        return;
+      }
+      const b = boards[todayDay];
+      if (!b) return;
+      // One player can be named by two rows (a start benches him, the IR row sends him to IR): a press on one keeps the other.
+      if (row.button.intent === "unstage") setDay(todayDay, unstageRow(b, staging[todayDay], a, actionsData?.actions ?? []));
+      else setDay(todayDay, stageRow(b, staging[todayDay], a));
+    },
+    [todayDay, boards, staging, setDay, actionsData]
+  );
+  // Stage all takes the rows that fit together; one that would overfill a slot keeps its own button.
+  const stageAll = useMemo(
+    () =>
+      todayBoardNow && !actionsStale
+        ? stageAllFold(todayBoardNow, todayStaging, unstagedLineupActions(actionsData?.actions ?? [], todayStaging))
+        : null,
+    [todayBoardNow, actionsStale, actionsData, todayStaging]
+  );
+  const stageAllCount = stageAll?.rows.length ?? 0;
+
+  // ---- the edge's race: the margin across the week ----
+  const historyPoints = data.history?.points ?? null;
+  const raceColumns = useMemo(
+    () =>
+      grid && source?.format === "categories" && source.categories?.length
+        ? categoryRace(source.categories, grid.days, historyPoints, source.weekCategories)
+        : [],
+    [grid, source, historyPoints]
+  );
+  const race = useMemo(() => {
+    if (!grid || !source) return null;
+    if (source.format === "categories" && source.categories?.length) return categoryRacePoints(raceColumns);
+    return buildRace({ days: grid.days, you: grid.you, opp: grid.opp, now: grid.now, history: historyPoints });
+  }, [grid, source, raceColumns, historyPoints]);
+
+  const stageAllToday = useCallback(() => {
+    if (todayDay == null || !stageAll) return;
+    setDay(todayDay, stageAll.staged);
+  }, [todayDay, stageAll, setDay]);
 
   // ---- cursor and menus ----
   const [cursor, setCursor] = useState<Cursor | null>(null);
@@ -800,7 +906,7 @@ export function WeekTerminal({
       // Keys typed in a field or a menu belong to it (a menu's Enter also reaches
       // window after the menu has closed and this listener has re-subscribed).
       const target = e.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable='true'], [cmdk-root], [role='dialog'], [data-market], [data-tray]")) return;
+      if (keyStaysIn(target, e.key)) return;
       if ((e.key === "Enter" || e.key === " ") && target?.closest("button, a")) return;
 
       // Keys that work the same in both views.
@@ -823,8 +929,16 @@ export function WeekTerminal({
         case "t":
           toggleTheme();
           return;
+        case "d":
+        case "e": {
+          const tick = e.key === "d" ? "moves" : "edge";
+          if (tick === "moves" && !data.actions) return;
+          setTapeBox((b) => (b?.tick === tick && b.how !== "hover" ? null : { tick, how: "keyboard" }));
+          return;
+        }
         case "Escape":
-          if (pinned) setPinned(null);
+          if (tapeBox) setTapeBox(null);
+          else if (pinned) setPinned(null);
           else setCursor(null);
           return;
       }
@@ -958,7 +1072,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, toggleMarket, streamable, laneFor]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, toggleMarket, streamable, laneFor, tapeBox, data.actions]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
@@ -1041,6 +1155,41 @@ export function WeekTerminal({
           stagedCount={moveCount}
           previewDelta={previewDelta}
           tonight={tonight}
+          edge={
+            race ? (
+              <EdgeTick
+                race={race}
+                format={source.format === "categories" && source.categories?.length ? "categories" : "points"}
+                categories={source.categories ?? []}
+                columns={raceColumns}
+                days={grid.days}
+                youName={source.you.name}
+                oppName={source.opp.name}
+                lineupNote={mode === "best" ? "best lineups" : "lineups as set"}
+                open={edgeTick.open}
+                onOpen={edgeTick.onOpen}
+                container={root}
+              />
+            ) : null
+          }
+          today={
+            data.actions ? (
+              <TodayStrip
+                status={actionsData ? "ready" : data.actions.error ? "error" : "loading"}
+                rows={todayRows}
+                error={data.actions.error}
+                hint={actionsStale ? "Your lineup changed since these were worked out: reading them again." : actionsData ? streamersHint(actionsData) : null}
+                dayLabel={todayDay != null ? dayLabel(todayDay) : "Today"}
+                open={movesTick.open}
+                onOpen={movesTick.onOpen}
+                onButton={onTodayButton}
+                onStageAll={stageAllCount >= 2 ? stageAllToday : null}
+                stageAllCount={stageAllCount}
+                onRetry={data.actions.refetch}
+                container={root}
+              />
+            ) : null
+          }
         />
         <Toolbar
           days={grid.days}

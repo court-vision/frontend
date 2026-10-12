@@ -2,17 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import { motion } from "motion/react";
 import { LayoutList } from "lucide-react";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import { getTodayDate } from "@/hooks/useGames";
-import { useRankingsListQuery } from "@/hooks/useRankings";
+import { useLeagueRankingsQuery, useRankingsListQuery } from "@/hooks/useRankings";
 import { useLiveLeadersQuery } from "@/hooks/useScout";
 import { useSeason } from "@/hooks/useSeason";
+import { useTeamsQuery } from "@/hooks/useTeams";
+import { useUIStore } from "@/stores/useUIStore";
 import { userMessage } from "@/lib/api-error";
 import { DEFAULT_9CAT } from "@/lib/category-format";
-import { LENSES, dayName, focusFromSearch, focusKey, focusToSearch, lensInfo, lensOf, nextLens, nextWindow, sameFocus, teamInfo, windowLabel, type Focus, type Window } from "@/lib/scout";
+import { LENSES, dayName, focusFromSearch, focusKey, focusToSearch, leagueChoiceFor, leagueChoices, lensInfo, lensOf, nextLens, nextWindow, poolScore, sameFocus, scoredBy, teamInfo, windowLabel, type Focus, type Window } from "@/lib/scout";
 import type { RankingsParams } from "@/types/rankings";
 import { Bench } from "./Bench";
 import { BoardSheet } from "./BoardSheet";
@@ -100,15 +103,42 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
     [setLensStore]
   );
 
+  // The league the pool can be scored by: the selected team's (shared with
+  // the Week desk), else the first team's. Signed out, there is none.
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  const teamsQuery = useTeamsQuery();
+  const selectedTeam = useUIStore((st) => st.selectedTeam);
+  const setSelectedTeam = useUIStore((st) => st.setSelectedTeam);
+  const teams = useMemo(() => teamsQuery.data ?? [], [teamsQuery.data]);
+  const choices = useMemo(() => leagueChoices(teams, selectedTeam), [teams, selectedTeam]);
+  const leagueChoice = useMemo(() => leagueChoiceFor(teams, selectedTeam), [teams, selectedTeam]);
+  // A league score chosen earlier waits for sign-in and the teams instead of flashing the platform's.
+  const leagueWaiting = poolConfig.scope === "league" && (!authLoaded || (isSignedIn === true && teamsQuery.isLoading));
+  const scope = poolConfig.scope === "league" && (leagueChoice || leagueWaiting) ? "league" : "global";
+  const leagueNote = !authLoaded || leagueChoice
+    ? null
+    : !isSignedIn
+      ? "Sign in to score the pool by your league."
+      : teamsQuery.error
+        ? "Couldn't load your teams."
+        : "Add a team to score the pool by its league.";
+
   // The pool: every ranked player, scored the way the rankings board says.
-  const params = useMemo<RankingsParams>(() => ({ scope: "global", format: poolConfig.format, window: poolConfig.span, categories: null, minGames: null }), [poolConfig.format, poolConfig.span]);
-  const pool = useRankingsListQuery(params);
+  // A league decides its own format, so the format stays out of its params (and its cache key).
+  const params = useMemo<RankingsParams>(
+    () => ({ scope, format: scope === "league" ? "points" : poolConfig.format, window: poolConfig.span, categories: null, minGames: null }),
+    [scope, poolConfig.format, poolConfig.span]
+  );
+  const globalPool = useRankingsListQuery(params);
+  const leaguePool = useLeagueRankingsQuery(leagueChoice?.teamId ?? null, params);
+  const pool = scope === "league" ? leaguePool : globalPool;
   const poolRows = useMemo(() => pool.data?.players ?? [], [pool.data]);
   const poolById = useMemo(() => new Map(poolRows.map((r) => [r.id, r])), [poolRows]);
   const categories = pool.data?.meta?.categories?.length ? pool.data.meta.categories : DEFAULT_9CAT;
+  const poolScoredBy = scoredBy(pool.data?.meta?.scoring, scope === "league" && !!leagueChoice?.roto);
   const poolState: PoolState = {
     rows: poolRows,
-    loading: pool.isLoading,
+    loading: pool.isLoading || (leagueWaiting && !pool.data),
     error: pool.error ? userMessage(pool.error, "Couldn't load the pool") : null,
     message: pool.data?.message ?? "",
   };
@@ -361,7 +391,22 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
   } else if (focus.kind === "market") {
     sheetBody = <MarketSheet key={focus.section} section={focus.section} open={(f) => open(f)} focus={focus} />;
   } else if (focus.lens === "pool") {
-    sheetBody = <PoolOverview rows={poolRows} loading={pool.isLoading} error={poolState.error} message={poolState.message} meta={pool.data?.meta ?? null} config={poolConfig} setConfig={setPoolConfig} categories={categories} focus={focus} open={(f) => open(f)} />;
+    sheetBody = (
+      <PoolOverview
+        rows={poolRows}
+        loading={poolState.loading}
+        error={poolState.error}
+        message={poolState.message}
+        meta={pool.data?.meta ?? null}
+        config={poolConfig}
+        score={poolScore(scope, poolConfig.format)}
+        setConfig={setPoolConfig}
+        league={{ choice: leagueChoice, choices, note: leagueNote, pick: setSelectedTeam }}
+        categories={categories}
+        focus={focus}
+        open={(f) => open(f)}
+      />
+    );
   } else if (focus.lens === "teams") {
     sheetBody = <TeamsOverview focus={focus} open={(f) => open(f)} />;
   } else if (focus.lens === "slate") {
@@ -446,6 +491,7 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
         {pool.data?.meta ? (
           <span>
             Pool · {pool.data.meta.season ?? season.label} · {pool.data.meta.pool_size} players
+            {poolScoredBy ? ` · scored by ${poolScoredBy}` : ""}
             {pool.data.meta.as_of ? ` · as of ${pool.data.meta.as_of}` : ""}
           </span>
         ) : null}
