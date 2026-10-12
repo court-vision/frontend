@@ -125,6 +125,16 @@ import type {
   ScheduledPickupResponse,
 } from "@/types/scheduled-pickup";
 import type {
+  StreamLane,
+  StreamLaneList,
+  StreamLaneListResponse,
+  StreamLanePlan,
+  StreamLanePlanResponse,
+  StreamLaneResponse,
+  StreamLaneStartRequest,
+  StreamLaneUpdateRequest,
+} from "@/types/stream-lane";
+import type {
   DraftBoardMeta,
   DraftBoardResult,
   DraftBoardRow,
@@ -356,6 +366,77 @@ class ApiClient {
       method: "DELETE",
     });
     return unwrap(env);
+  }
+
+  /**
+   * What a stream lane started now on `playerId`'s spot would do: the
+   * projection, a dry run (nothing is stored). 422 STREAM_LANE_INVALID carries
+   * `data.reason` and a user sentence. Reads ESPN's board and pool, so it gets
+   * the write timeout.
+   */
+  async planStreamLane(
+    getToken: GetTokenFn,
+    teamId: number,
+    playerId: number,
+    opts?: RequestOptions
+  ): Promise<StreamLanePlan> {
+    const env = await fetchJson<StreamLanePlanResponse>(`${TEAMS_API}/${teamId}/stream-lanes/plan`, {
+      ...opts,
+      getToken,
+      method: "POST",
+      body: { player_id: playerId },
+      timeoutMs: LINEUP_WRITE_TIMEOUT_MS,
+    });
+    return unwrap(env);
+  }
+
+  /** Start a lane: 409 STREAM_LANE_EXISTS (one per team), 422 STREAM_LANE_INVALID. */
+  async startStreamLane(
+    getToken: GetTokenFn,
+    teamId: number,
+    body: StreamLaneStartRequest
+  ): Promise<{ lane: StreamLane; message: string }> {
+    const env = await fetchJson<StreamLaneResponse>(`${TEAMS_API}/${teamId}/stream-lanes`, {
+      getToken,
+      method: "POST",
+      body,
+      timeoutMs: LINEUP_WRITE_TIMEOUT_MS,
+    });
+    return { lane: unwrap(env), message: env.message };
+  }
+
+  /** The open lane (active or paused) and lanes that ended in the last week, each with its events. */
+  async getStreamLanes(getToken: GetTokenFn, teamId: number, opts?: RequestOptions): Promise<StreamLaneList> {
+    const env = await fetchJson<StreamLaneListResponse>(`${TEAMS_API}/${teamId}/stream-lanes`, {
+      ...opts,
+      getToken,
+    });
+    return unwrap(env, { open: [], recent: [] });
+  }
+
+  /** Pause, resume (needs the spot's player still on the roster) or change how the lane tells you. */
+  async updateStreamLane(
+    getToken: GetTokenFn,
+    teamId: number,
+    laneId: number,
+    body: StreamLaneUpdateRequest
+  ): Promise<{ lane: StreamLane; message: string }> {
+    const env = await fetchJson<StreamLaneResponse>(`${TEAMS_API}/${teamId}/stream-lanes/${laneId}`, {
+      getToken,
+      method: "PATCH",
+      body,
+      timeoutMs: LINEUP_WRITE_TIMEOUT_MS,
+    });
+    return { lane: unwrap(env), message: env.message };
+  }
+
+  /** Stop a lane (its pending pickup goes too); 409 STREAM_LANE_BUSY while that pickup is being made. */
+  async stopStreamLane(getToken: GetTokenFn, teamId: number, laneId: number): Promise<{ lane: StreamLane; message: string }> {
+    const env = await fetchJson<StreamLaneResponse>(`${TEAMS_API}/${teamId}/stream-lanes/${laneId}`, {
+      getToken,
+      method: "DELETE",
+    });
+    return { lane: unwrap(env), message: env.message };
   }
 
   // Matchups API

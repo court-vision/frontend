@@ -228,6 +228,7 @@ export function demoBoard(
       matchup_used: 1,
       season_limit: null,
       season_used: 9,
+      waiver_hours: 24,
     },
   };
 }
@@ -607,6 +608,7 @@ export function demoScheduledPickup(
     seated_slot: null,
     created_at: now.toISOString(),
     executed_at: null,
+    lane_id: null,
   };
 }
 

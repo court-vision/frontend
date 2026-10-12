@@ -34,11 +34,16 @@ import {
   type DayBoard,
   type GridInput,
   type Incoming,
+  type IncomingPreview,
   type LineupMode,
   type WeekSource,
 } from "@/lib/week-grid";
 import { sourceFromStreamer } from "@/lib/week-source";
 import { pickupTiming, pickupViews } from "@/lib/pickups";
+import { eventLine, laneCells, laneReason, laneStretches, passedDates, projectedSource } from "@/lib/lanes";
+import type { LanePlayer, StreamLane } from "@/types/stream-lane";
+import { LaneSheet } from "./LaneSheet";
+import type { LaneRowModel } from "./LaneRow";
 import {
   boardMismatch,
   isAddStaged,
@@ -67,7 +72,7 @@ import { MoveMenu, ReplaceMenu, type MoveTarget, type ReplaceOption } from "./Me
 import { WeekGrid, type Cursor, type DragApi, type DropTarget } from "./WeekGrid";
 import { DailyGrid, type SeatDragApi } from "./DailyGrid";
 import type { TerminalData } from "./WeekPage";
-import { monthDay, shortName, signed } from "./format";
+import { monthDay, shortName, signed, whenTime } from "./format";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
@@ -177,12 +182,34 @@ export function WeekTerminal({
   const { setScheduleTeam } = data;
   useEffect(() => setScheduleTeam(previewFa?.team ?? null), [previewFa?.team, setScheduleTeam]);
 
-  const incoming: Incoming | null = useMemo(
+  // ---- the stream lane: one open per team; hovering its row previews the projection ----
+  const openLane: StreamLane | null = data.lanes.open[0] ?? null;
+  const [laneHover, setLaneHover] = useState(false);
+  const laneSourceOf = useCallback(
+    (player: LanePlayer, from: number) => {
+      const fa = faById.get(player.player_id);
+      if (fa && source) return sourceFromStreamer(fa, source.days, null, from);
+      return projectedSource(player, openLane!.projection!, source?.days ?? []);
+    },
+    [faById, source, openLane]
+  );
+  const openLaneCells = useMemo(() => (openLane && source ? laneCells(openLane, source.days) : null), [openLane, source]);
+  const laneIncoming: Incoming[] | null = useMemo(() => {
+    if (!laneHover || !source || !openLane || !openLaneCells || openLane.status !== "active" || !openLane.projection) return null;
+    // The lane replaces its holder, who must be on the roster the grid knows.
+    if (!source.mine.some((p) => p.id === openLane.holder.player_id)) return null;
+    // A day it already passed on (a pickup that failed, say) keeps him, whatever the projection said.
+    const passed = passedDates(openLaneCells, source.days);
+    const stretches = laneStretches(openLane.projection, openLane.holder.player_id, source.days, laneSourceOf, passed);
+    return stretches.length ? stretches : null;
+  }, [laneHover, source, openLane, openLaneCells, laneSourceOf]);
+
+  const incoming: IncomingPreview | null = useMemo(
     () =>
       source && preview && previewFa
         ? incomingFor(sourceFromStreamer(previewFa, source.days, data.schedule, preview.from ?? addFrom), preview.replaces, preview.from)
-        : null,
-    [source, preview, previewFa, data.schedule, addFrom]
+        : laneIncoming,
+    [source, preview, previewFa, data.schedule, addFrom, laneIncoming]
   );
 
   const build = useCallback(
@@ -222,7 +249,12 @@ export function WeekTerminal({
     },
     [source, gridNoPreview, build, addFrom]
   );
-  const previewDelta = preview && previewFa ? faGain(previewFa, preview.replaces, preview.from) : null;
+  const previewDelta =
+    preview && previewFa
+      ? faGain(previewFa, preview.replaces, preview.from)
+      : laneIncoming && grid && gridNoPreview
+        ? grid.projected.you - gridNoPreview.projected.you
+        : null;
 
   // ---- scheduling: a pickup made for you before a later day's games ----
   const { periodOf } = lineup;
@@ -247,7 +279,12 @@ export function WeekTerminal({
     () => new Map(pendingPickups.map((p) => [p.add.player_id, pickupDayLabel(p.nba_date)])),
     [pendingPickups, pickupDayLabel]
   );
-  const pickupRows = useMemo(() => (source ? pickupViews(data.pickups, source.days) : []), [data.pickups, source]);
+  // The open lane's pickups show in its own row, not here (with a source, its row is drawn).
+  const shownLane = openLane?.id ?? null;
+  const pickupRows = useMemo(
+    () => (source ? pickupViews(data.pickups, source.days, shownLane) : []),
+    [data.pickups, source, shownLane]
+  );
 
   // ---- the market: free agents ranked by what they add to this week ----
   const [marketOpen, setMarketOpen] = useState(initialMarket != null);
@@ -429,7 +466,9 @@ export function WeekTerminal({
   // ---- cursor and menus ----
   const [cursor, setCursor] = useState<Cursor | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
-  const [confirm, setConfirm] = useState<"swap" | null>(null);
+  const [confirm, setConfirm] = useState<"swap" | "stop-lane" | null>(null);
+  // The spot a stream lane is being set up on.
+  const [laneFor, setLaneFor] = useState<{ id: number; name: string } | null>(null);
 
   const toggleView = useCallback(() => {
     setView((v) => (v === "daily" ? "players" : v === "players" ? "matchup" : "daily"));
@@ -808,11 +847,61 @@ export function WeekTerminal({
     [pendingPickups, pickupDay, requestPool, faById]
   );
 
+  // ---- stream lanes: set one up on a spot, run the open one from its row ----
+  const lastDow = source ? source.days[source.days.length - 1]?.dow ?? null : null;
+  /** Why this player's spot can't be streamed, or null when it can. */
+  const streamable = useCallback(
+    (playerId: number): string | null => {
+      if (!data.demo && !todayBoard) return "Stream lanes need an ESPN team.";
+      if (openLane) {
+        return openLane.holder.player_id === playerId
+          ? "A stream lane is streaming this spot."
+          : `A stream lane is streaming ${shortName(openLane.holder.name)}'s spot: one per team.`;
+      }
+      if (boardById.get(playerId)?.lineup_slot_id === IR_SLOT_ID) return "A player on IR holds no spot to stream.";
+      return null;
+    },
+    [data.demo, todayBoard, openLane, boardById]
+  );
+  const { updateLane, clearLaneError } = data;
+  const laneModel: LaneRowModel | null = useMemo(() => {
+    if (!openLane || !source || !openLaneCells) return null;
+    const proj = openLane.projection;
+    const label = (date: string) => source.days.find((d) => d.date === date)?.dow ?? monthDay(date);
+    let summary: string;
+    if (openLane.status === "paused") summary = `paused: ${laneReason(openLane.reason) ?? "paused"}`;
+    else if (proj) {
+      const adds = `${proj.adds} add${proj.adds === 1 ? "" : "s"} planned${proj.adds_left != null ? ` of ${proj.adds_left} left` : ""}`;
+      const next = openLane.next_decision_at ? ` · next decision ${whenTime(openLane.next_decision_at)}` : "";
+      summary = `${signed(proj.gain)} projected · ${adds} · as of ${whenTime(proj.as_of)}${next} · re-planned before each day`;
+    } else summary = "waiting for its first decision";
+    return {
+      lane: openLane,
+      cells: openLaneCells,
+      summary,
+      history: [...openLane.events].sort((a, b) => b.id - a.id).map((e) => eventLine(e, label)),
+      busy: data.laneBusy,
+      container: root,
+      onPreview: (on) => {
+        if (on) requestPool();
+        setLaneHover(on);
+      },
+      onPause: () => updateLane(openLane.id, { status: "paused" }),
+      onResume: () => updateLane(openLane.id, { status: "active" }),
+      onNotify: (mode) => updateLane(openLane.id, { notify: mode }),
+      onStop: () => setConfirm("stop-lane"),
+    };
+  }, [openLane, source, openLaneCells, data.laneBusy, root, requestPool, updateLane]);
+  const closeLaneSheet = useCallback(() => {
+    setLaneFor(null);
+    clearLaneError();
+  }, [clearLaneError]);
+
   // ---- keyboard ----
   useEffect(() => {
     if (!grid) return;
     const onKey = (e: KeyboardEvent) => {
-      if (menu || confirm || e.defaultPrevented) return;
+      if (menu || confirm || laneFor || e.defaultPrevented) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // Keys typed in a field or a menu belong to it (a menu's Enter also reaches
       // window after the menu has closed and this listener has re-subscribed).
@@ -921,6 +1010,13 @@ export function WeekTerminal({
             if (seat && !seat.incoming && !seat.outgoing && cursor) openReplace(`player-${seat.player.id}`, seatEl(), cursor.col);
             return;
           }
+          case "s": {
+            const seat = seatHere();
+            if (seat && !seat.incoming && !seat.outgoing && streamable(seat.player.id) === null) {
+              setLaneFor({ id: seat.player.id, name: seat.player.name });
+            }
+            return;
+          }
         }
         return;
       }
@@ -976,7 +1072,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, toggleMarket, tapeBox, data.actions]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, toggleMarket, streamable, laneFor, tapeBox, data.actions]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
@@ -1154,6 +1250,7 @@ export function WeekTerminal({
             onPreviewPickup={previewPickup}
             onCancelPickup={data.cancelPickup}
             cancelling={data.cancelling}
+            lane={laneModel}
           />
         ) : (
           <WeekGrid
@@ -1271,6 +1368,17 @@ export function WeekTerminal({
           targets={moveInfo.targets}
           blocked={moveInfo.blocked}
           scheduleFor={view === "daily" && canSchedule(menu.day) ? source?.days[menu.day]?.dow ?? null : null}
+          onStream={
+            streamable(menuPlayer.id) === null
+              ? () => {
+                  const who = { id: menuPlayer.id, name: menuPlayer.name };
+                  closeMenu();
+                  setLaneFor(who);
+                }
+              : undefined
+          }
+          streamThrough={lastDow}
+          streamNote={streamable(menuPlayer.id)}
           onPick={(slot) => {
             stageOneOn(moveInfo.day, menuPlayer.id, slot);
             closeMenu();
@@ -1346,6 +1454,40 @@ export function WeekTerminal({
         busy={swap?.from != null ? data.scheduling : data.transacting}
         error={swap?.from != null ? data.scheduleError : data.transactError}
         onConfirm={() => void sendSwap()}
+      />
+
+      <LaneSheet
+        player={laneFor}
+        container={root}
+        demo={data.demo}
+        onClose={closeLaneSheet}
+        load={() => data.planLane(laneFor!.id, firstOpenDay)}
+        onStart={(notify, plan) => data.startLane(laneFor!.id, notify, plan)}
+        starting={data.startingLane}
+        error={data.laneError}
+      />
+      <ConfirmDialog
+        open={confirm === "stop-lane" && !!openLane}
+        onOpenChange={(open) => !open && setConfirm(null)}
+        container={root}
+        title={openLane ? `Stop streaming ${shortName(openLane.holder.name)}'s spot?` : ""}
+        body={
+          data.demo
+            ? "Demo: the lane stops here only."
+            : "The lane stops deciding. The player holding the spot stays on your roster, and a pickup the lane scheduled that hasn't run yet is cancelled."
+        }
+        lines={
+          openLane?.projection
+            ? [{ key: "gain", left: <span className={dk.sub}>Its projection for the rest of the matchup</span>, right: <span className={`${dk.chip} ${dk.pv}`}>{signed(openLane.projection.gain)}</span> }]
+            : []
+        }
+        confirmLabel="Stop the lane"
+        busy={data.laneBusy}
+        error={null}
+        onConfirm={() => {
+          if (!openLane) return;
+          void data.stopLane(openLane.id).then((outcome) => outcome === "ok" && setConfirm(null));
+        }}
       />
     </div>
   );

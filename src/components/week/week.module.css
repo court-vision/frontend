@@ -2616,6 +2616,273 @@ button.marketRow:hover {
   outline-offset: 2px;
 }
 
+/* ---------------------------------------------------------------- stream lane */
+
+/*
+ * The open lane leads the sticky band: who holds its spot each day. Decided
+ * days are solid; the projection ahead is dashed, since it can change. Its
+ * colour is the theme's accent, apart from the preview's violet.
+ */
+.groupRow[data-group="lane"] {
+  border-top: 0;
+}
+
+.laneHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.laneSummary {
+  flex: 1;
+  min-width: 0;
+  padding-left: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.laneControls {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.laneBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.laneBtn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line-2));
+  color: var(--text);
+}
+
+.laneBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.laneStop:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--down) 50%, transparent);
+  color: var(--down);
+}
+
+.laneHistory {
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.laneHistoryLine {
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.laneHistoryLine + .laneHistoryLine {
+  border-top: 1px solid var(--line);
+}
+
+.slotChip[data-group="lane"] {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 9.5px;
+}
+
+.row[data-group="lane"] {
+  min-height: 40px;
+}
+
+.row[data-group="lane"][data-status="paused"] {
+  opacity: 0.6;
+}
+
+.laneCell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 8px;
+  border-left: 1px solid var(--line-2);
+}
+
+.laneCell[data-today="true"] {
+  background: var(--today);
+}
+
+/* The day a new player takes the spot. */
+.laneCell[data-switch="true"] {
+  box-shadow: inset 2px 0 0 var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg));
+}
+
+.laneName {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.laneCell[data-switch="true"] .laneName {
+  color: var(--accent);
+}
+
+/* The projection ahead: dashed, a plan rather than a fact. */
+.laneCell[data-state="projected"] .laneName {
+  font-weight: 400;
+  color: color-mix(in srgb, var(--accent) 55%, var(--text-3));
+  text-decoration: underline dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  text-underline-offset: 3px;
+}
+
+.laneCell[data-state="projected"][data-switch="true"] {
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  background: transparent;
+  outline: 1px dashed color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: -4px;
+}
+
+.laneCell[data-state="failed"] .laneName,
+.laneCell[data-state="missed"] .laneName {
+  color: var(--text-3);
+}
+
+.row[data-group="lane"][data-status="active"]:hover .laneCell[data-state="projected"] {
+  background: color-mix(in srgb, var(--preview) 8%, var(--bg));
+}
+
+.laneValue {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--accent) 55%, var(--text-3));
+}
+
+.laneTag {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.laneTag[data-state="made"] {
+  color: var(--up);
+}
+
+.laneTag[data-state="kept"] {
+  color: var(--text-3);
+}
+
+.laneTag[data-state="failed"],
+.laneTag[data-state="missed"] {
+  color: var(--down);
+}
+
+/* The setup sheet. */
+.laneSheetEmpty {
+  padding: 18px 0;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+.laneSheetDays {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.laneSheetDay {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 64px 58px;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.laneSheetDay + .laneSheetDay {
+  border-top: 1px solid var(--line);
+}
+
+.laneSheetDay[data-switch="true"] {
+  box-shadow: inset 2px 0 0 var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg));
+}
+
+.laneSheetDow {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.laneSheetWho {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.laneSheetTag {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.laneSheetValue {
+  text-align: right;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.laneSheetSum {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.laneNotify {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.laneNotify label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
 /* ---------------------------------------------------------------- today's moves */
 
 /* A tick in the tape: one move at a time on a split-flap board, its Stage button beside it. */

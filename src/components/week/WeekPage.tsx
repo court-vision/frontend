@@ -9,6 +9,14 @@ import { lineupKeys } from "@/hooks/useLineupEditor";
 import { useLiveMatchupQuery, useMatchupQuery, useMatchupScoreHistoryQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { useCancelPickupMutation, useSchedulePickupMutation, useScheduledPickupsQuery } from "@/hooks/useScheduledPickups";
+import {
+  useStartStreamLaneMutation,
+  useStopStreamLaneMutation,
+  useStreamLanesQuery,
+  useUpdateStreamLaneMutation,
+} from "@/hooks/useStreamLanes";
+import { apiClient } from "@/lib/api";
+import { demoLanePlan } from "@/lib/lanes";
 import { useConnectionsQuery } from "@/hooks/useConnections";
 import { useDailyActionsQuery } from "@/hooks/useDailyActions";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
@@ -49,6 +57,7 @@ import type { BreakoutCandidateResp } from "@/types/breakout";
 import type { DailyActionsData } from "@/types/daily-actions";
 import type { DailyScorePoint } from "@/types/matchup";
 import type { ScheduledPickup, ScheduledPickupList } from "@/types/scheduled-pickup";
+import type { LaneNotify, StreamLane, StreamLaneList, StreamLanePlan, StreamLaneUpdateRequest } from "@/types/stream-lane";
 import { useBreakoutStreamersQuery } from "@/hooks/useBreakoutStreamers";
 import type { WeekSource } from "@/lib/week-grid";
 import { useDayBoards, type DayLineups } from "./useDayBoards";
@@ -122,6 +131,20 @@ export interface TerminalData {
   cancelPickup: (id: number) => void;
   /** The pickup being cancelled, while that request is out. */
   cancelling: number | null;
+  /** Stream lanes (ESPN teams): the open one (a team has at most one) and those ended this week. */
+  lanes: StreamLaneList;
+  /** What a lane on this player's spot would do (a dry run); `firstDay` is the demo's first open day. */
+  planLane: (playerId: number, firstDay: number) => Promise<StreamLanePlan>;
+  /** Start one. Resolves "ok", or "refused" with `laneError` set. */
+  startLane: (playerId: number, notify: LaneNotify, plan: StreamLanePlan) => Promise<"ok" | "refused">;
+  startingLane: boolean;
+  laneError: string | null;
+  clearLaneError: () => void;
+  /** Pause, resume, or change how it tells you. */
+  updateLane: (laneId: number, body: StreamLaneUpdateRequest) => void;
+  stopLane: (laneId: number) => Promise<"ok" | "refused">;
+  /** A lane change (pause, resume, notify, stop) while that request is out. */
+  laneBusy: boolean;
   /** Today's moves (ESPN teams); null where there are none to read. */
   actions: TodayActions | null;
   /** The matchup's nightly score snapshots (the edge's race); null while there is no week to ask about. */
@@ -151,6 +174,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const [scheduling, setScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const nextPickupId = useRef(1);
+  const [lanes, setLanes] = useState<StreamLaneList>({ open: [], recent: [] });
 
   const boardFor = useCallback(
     (r: typeof roster, day: number, v: number) =>
@@ -223,6 +247,67 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   }, []);
 
   const rosterIds = useMemo(() => new Set(roster.map((r) => r.id)), [roster]);
+  const pool = useMemo(() => DEMO_STREAMERS.filter((x) => !rosterIds.has(x.player_id)), [rosterIds]);
+  const planLane = useCallback(
+    async (playerId: number, firstDay: number) => {
+      await wait(450);
+      const plan = demoLanePlan(source, playerId, pool, firstDay, 3, demoPeriod, new Date(`${DEMO_DAYS[DEMO_TODAY].date}T19:00:00Z`));
+      if (!plan) throw new Error("The matchup has no day left a pickup could count for");
+      return plan;
+    },
+    [source, pool]
+  );
+  const startLane = useCallback(async (playerId: number, notify: LaneNotify, plan: StreamLanePlan) => {
+    await wait(350);
+    const now = new Date(`${DEMO_DAYS[DEMO_TODAY].date}T19:05:00Z`).toISOString();
+    const lane: StreamLane = {
+      id: 1,
+      team_id: 1,
+      status: "active",
+      notify,
+      holder: plan.holder,
+      original: plan.holder,
+      start_period: plan.start_period,
+      end_period: plan.end_period,
+      end_date: plan.end_date,
+      next_period: plan.start_period,
+      next_decision_at: plan.first_decision_at,
+      reason: null,
+      detail: null,
+      projection: plan.projection,
+      events: [{
+        id: 1, action: "started", nba_date: plan.projection.days[0]?.nba_date ?? null,
+        scoring_period_id: plan.start_period, add: null, drop: null, projected: null, reason: null, detail: null,
+        pickup_id: null, pickup_status: null, created_at: now,
+      }],
+      created_at: now,
+      ended_at: null,
+    };
+    setLanes({ open: [lane], recent: [] });
+    toast.success(`Streaming ${plan.holder.name}'s spot (demo: nothing runs)`);
+    void playerId;
+    return "ok" as const;
+  }, []);
+  const updateLane = useCallback((laneId: number, body: StreamLaneUpdateRequest) => {
+    setLanes((prev) => ({
+      ...prev,
+      open: prev.open.map((l) =>
+        l.id !== laneId ? l : { ...l, status: body.status ?? l.status, notify: body.notify ?? l.notify, reason: body.status === "paused" ? "paused_by_user" : body.status === "active" ? null : l.reason }
+      ),
+    }));
+    toast.success(body.status === "paused" ? "Stream lane paused (demo)" : body.status === "active" ? "Stream lane resumed (demo)" : "Stream lane updated (demo)");
+  }, []);
+  const stopLane = useCallback(async (laneId: number) => {
+    setLanes((prev) => {
+      const lane = prev.open.find((l) => l.id === laneId);
+      return lane
+        ? { open: prev.open.filter((l) => l.id !== laneId), recent: [{ ...lane, status: "ended", reason: "stopped", ended_at: new Date().toISOString() }, ...prev.recent] }
+        : prev;
+    });
+    toast.success("Stream lane stopped (demo)");
+    return "ok" as const;
+  }, []);
+
   const todayBoard = boards[DEMO_TODAY];
   const actions = useMemo(
     () => (todayBoard ? demoDailyActions(todayBoard, demoDailyStreamers(DEMO_TODAY)) : null),
@@ -264,6 +349,15 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     clearScheduleError: () => setScheduleError(null),
     cancelPickup,
     cancelling: null,
+    lanes,
+    planLane,
+    startLane,
+    startingLane: false,
+    laneError: null,
+    clearLaneError: () => {},
+    updateLane,
+    stopLane,
+    laneBusy: false,
     actions: { data: actions, loading: false, error: null, refetch: () => {} },
     history: { points: demoScoreHistory(source), loading: false },
   };
@@ -278,7 +372,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
 const START_PROVIDER: AddStart = { step: "provider" };
 
 function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const selected = useSelectedTeam();
@@ -341,6 +435,10 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const history = useMatchupScoreHistoryQuery(teamId, week.data?.matchup_period ?? null);
   const pickupSchedule = useSchedulePickupMutation(teamId ?? 0);
   const pickupCancel = useCancelPickupMutation(teamId ?? 0);
+  const lanes = useStreamLanesQuery(selected.provider === "espn" ? teamId : null);
+  const laneStart = useStartStreamLaneMutation(teamId ?? 0);
+  const laneUpdate = useUpdateStreamLaneMutation(teamId ?? 0);
+  const laneStop = useStopStreamLaneMutation(teamId ?? 0);
 
   const weekData = week.data;
   const liveData = live.data;
@@ -405,6 +503,35 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     [periodOf, scheduleAsync]
   );
   const cancelMutate = pickupCancel.mutate;
+  const planLane = useCallback(
+    (playerId: number) => (teamId == null ? Promise.reject(new Error("No team")) : apiClient.planStreamLane(getToken, teamId, playerId)),
+    [getToken, teamId]
+  );
+  const startLaneAsync = laneStart.mutateAsync;
+  const startLane = useCallback(
+    async (playerId: number, notify: LaneNotify) => {
+      try {
+        await startLaneAsync({ player_id: playerId, notify });
+        return "ok" as const;
+      } catch {
+        return "refused" as const;
+      }
+    },
+    [startLaneAsync]
+  );
+  const updateLaneMutate = laneUpdate.mutate;
+  const stopLaneAsync = laneStop.mutateAsync;
+  const stopLane = useCallback(
+    async (laneId: number) => {
+      try {
+        await stopLaneAsync(laneId);
+        return "ok" as const;
+      } catch {
+        return "refused" as const;
+      }
+    },
+    [stopLaneAsync]
+  );
 
   const connectionList = connections.data ?? [];
   const teams: TeamOption[] = selected.teams.map((t) => {
@@ -464,6 +591,15 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     clearScheduleError: pickupSchedule.reset,
     cancelPickup: (id) => cancelMutate(id),
     cancelling: pickupCancel.isPending ? pickupCancel.variables ?? null : null,
+    lanes: lanes.data,
+    planLane,
+    startLane,
+    startingLane: laneStart.isPending,
+    laneError: laneStart.error ? userMessage(laneStart.error) : null,
+    clearLaneError: laneStart.reset,
+    updateLane: (laneId, body) => updateLaneMutate({ laneId, body }),
+    stopLane,
+    laneBusy: laneUpdate.isPending || laneStop.isPending,
     actions:
       selected.provider === "espn"
         ? {

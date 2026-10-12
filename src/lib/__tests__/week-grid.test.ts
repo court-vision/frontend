@@ -163,12 +163,32 @@ describe("daily lineups", () => {
     expect(bench).toContain("Tyrese Maxey");
   });
 
-  test("best each day fills each day's spots from that day's games", () => {
+  test("best each day fills each day's spots from that day's games, and idle starters keep spots nobody needs", () => {
     const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today, mode: "best" });
     const wed = lineups.seats[2];
-    const active = lineups.slots.map((s, i) => (s.group === "active" ? wed[i] : undefined)).filter((x) => x !== undefined);
-    for (const seat of active) if (seat) expect(seat.cell.state).not.toBe("none");
-    expect(active.filter((s) => s === null).length).toBe(3); // seven games for ten spots Wednesday
+    const active = lineups.slots
+      .map((s, i) => (s.group === "active" ? { slotId: s.slotId, seat: wed[i] } : null))
+      .filter((x): x is { slotId: number; seat: (typeof wed)[number] } => x !== null);
+    // Seven games for ten spots Wednesday: all seven play, ...
+    expect(active.filter((a) => a.seat && a.seat.cell.state !== "none")).toHaveLength(7);
+    // ... and a starter without a game stays where ESPN has him, rather than going to the bench.
+    const idle = active.filter((a) => a.seat && a.seat.cell.state === "none");
+    expect(idle.length).toBeGreaterThan(0);
+    for (const a of idle) expect(board.players.find((p) => p.player_id === a.seat!.player.id)?.lineup_slot_id).toBe(a.slotId);
+    // A bench player without a game stays on the bench.
+    const bench = lineups.slots.map((s, i) => (s.group === "bench" ? name(wed[i]) : null)).filter(Boolean);
+    expect(bench).toContain("Derrick White");
+  });
+
+  test("an idle starter whose spot a player with a game needs goes to the bench", () => {
+    // Wednesday: Kessler (bench, plays) takes C from Jokić (idle); Williams (SG) and Şengün (UT) keep theirs.
+    const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today, mode: "best" });
+    const wed = lineups.seats[2];
+    const at = (slot: string) => lineups.slots.map((s, i) => (s.slot === slot ? name(wed[i]) : null)).filter(Boolean);
+    expect(at("C")).toEqual(["Walker Kessler"]);
+    expect(at("BE")).toContain("Nikola Jokić");
+    expect(at("SG")).toEqual(["Jalen Williams"]);
+    expect(at("UT")).toContain("Alperen Şengün");
   });
 
   test("a previewed free agent takes a seat; the player he replaces moves to a row of his own", () => {
@@ -321,6 +341,59 @@ describe("a pickup scheduled ahead", () => {
     expect(best.lineups.seats[4].map(name)).toContain("Scottie Barnes");
     expect(best.lineups.seats[4].map(name)).not.toContain("Toumani Camara");
     expect(best.lineups.seats[sat].map(name)).toContain("Toumani Camara");
+  });
+});
+
+describe("a stream lane's chain of free agents through one spot", () => {
+  const source = demoSource();
+  const board = demoBoard();
+  const today = source.todayIndex!;
+  const name = (seat: { player: { name: string } } | null) => seat?.player.name ?? null;
+  // Murray's spot: Huff (C; plays Wed, Fri) holds it Wed–Thu, then Ellis (SG; plays Thu, Sat, Sun) from Fri.
+  const murray = board.players.find((p) => p.name === "Keegan Murray")!;
+  const huff = DEMO_STREAMERS.find((s) => s.name === "Jay Huff")!;
+  const ellis = DEMO_STREAMERS.find((s) => s.name === "Keon Ellis")!;
+  const chain = [
+    { player: sourceFromStreamer(huff, DEMO_DAYS, null, 2), replaces: murray.player_id, from: 2, until: 4 },
+    { player: sourceFromStreamer(ellis, DEMO_DAYS, null, 4), replaces: murray.player_id, from: 4 },
+  ];
+  const grid = buildWeekGrid({ source, board, staged: {}, incoming: chain, viewDay: today });
+
+  test("each day has the stretch's free agent, and only his", () => {
+    const { seats } = grid.lineups;
+    expect(seats[today].map(name)).toContain("Keegan Murray");
+    expect(seats[today].some((st) => st?.incoming)).toBe(false);
+    for (const day of [2, 3]) {
+      expect(seats[day].filter((st) => st?.incoming).map(name)).toEqual(["Jay Huff"]);
+    }
+    for (const day of [4, 5, 6]) {
+      expect(seats[day].filter((st) => st?.incoming).map(name)).toEqual(["Keon Ellis"]);
+      expect(seats[day].map(name)).not.toContain("Jay Huff");
+    }
+  });
+
+  test("the spot's player leaves from the chain's first day", () => {
+    const { slots, seats } = grid.lineups;
+    const drop = slots.findIndex((st) => st.group === "drop");
+    expect(seats[today][drop]).toBeNull();
+    for (const day of [2, 3, 4, 5, 6]) expect(seats[day][drop]).toMatchObject({ outgoing: true, player: { name: "Keegan Murray" } });
+  });
+
+  test("a free agent's games outside his stretch don't count", () => {
+    const huffRow = grid.rows.find((r) => r.player?.name === "Jay Huff")!;
+    const ellisRow = grid.rows.find((r) => r.player?.name === "Keon Ellis")!;
+    expect(huffRow.kind).toBe("incoming");
+    expect(huffRow.cells[2].state).toBe("upcoming");
+    expect(huffRow.cells[4]).toMatchObject({ state: "none", counts: false });   // he plays Fri, but Ellis has the spot
+    expect(ellisRow.cells[3]).toMatchObject({ state: "none", counts: false });  // and Ellis's Thu game is before his stretch
+    expect(ellisRow.cells[5].state).toBe("upcoming");
+  });
+
+  test("one stretch alone is the scheduled pickup it always was", () => {
+    const single = buildWeekGrid({ source, board, staged: {}, incoming: chain[1], viewDay: today });
+    const asList = buildWeekGrid({ source, board, staged: {}, incoming: [chain[1]], viewDay: today });
+    expect(asList.projected).toEqual(single.projected);
+    expect(asList.lineups.seats.map((d) => d.map(name))).toEqual(single.lineups.seats.map((d) => d.map(name)));
   });
 });
 

@@ -57,3 +57,15 @@ export function weekdayTime(iso: string): string {
   if (Number.isNaN(t.getTime())) return "";
   return t.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
 }
+
+/**
+ * An instant in the viewer's time, said so it can't be mistaken for this week's
+ * day of the same name: "Wed 7:00 PM" within six days of now, else "Wed Oct 21, 7:00 PM".
+ */
+export function whenTime(iso: string, now: number = Date.now()): string {
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return "";
+  const days = Math.abs(t.getTime() - now) / 86_400_000;
+  if (days < 6) return weekdayTime(iso);
+  return t.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}

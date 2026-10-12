@@ -149,7 +149,19 @@ export interface Incoming {
    * Omitted: an add made now, the replaced player gone from today.
    */
   from?: number;
+  /**
+   * The day he leaves again (exclusive), for one stretch of a stream lane's
+   * projection: another free agent takes the spot then. Omitted: he stays.
+   */
+  until?: number;
 }
+
+/**
+ * A previewed add, or a stream lane's chain of them: free agents holding one
+ * rostered player's spot on stretches of days. Every stretch replaces the same
+ * player, and no two overlap.
+ */
+export type IncomingPreview = Incoming | readonly Incoming[];
 
 // ---------------------------------------------------------------------------
 // Planning a day
@@ -328,7 +340,7 @@ export interface GridInput {
    * `board` + `staged` stand for the day their `nba_date` names.
    */
   dayBoards?: ReadonlyArray<DayBoard | null | undefined>;
-  incoming: Incoming | null;
+  incoming: IncomingPreview | null;
   /** The day the roster column describes. */
   viewDay: number;
   /** Default "espn". */
@@ -419,13 +431,23 @@ export function buildWeekGrid({
   };
 
   const roster = source.mine;
-  const replaced = incoming?.replaces ?? null;
-  const pool: SourcePlayer[] = incoming ? [...roster, incoming.player] : roster;
-  const inId = incoming?.player.id ?? null;
-  // A scheduled pickup changes the roster from its day on; before it, the roster stands.
-  const swapsOn = (day: number) => incoming != null && (incoming.from == null || day >= incoming.from);
-  const poolOn = (day: number) => (swapsOn(day) ? pool : roster);
+  const stretches: readonly Incoming[] = incoming == null ? [] : Array.isArray(incoming) ? incoming : [incoming as Incoming];
+  const replaced = stretches[0]?.replaces ?? null;
+  const incomers = [...new Map(stretches.map((x) => [x.player.id, x.player])).values()];
+  const pool: SourcePlayer[] = [...roster, ...incomers];
+  const inIds = new Set(incomers.map((p) => p.id));
+  // The stretch in force on a day: a scheduled pickup changes the roster from its
+  // day on (before it the roster stands); a lane's stretch also ends.
+  const inOn = (day: number): Incoming | null =>
+    stretches.find((x) => (x.from == null || day >= x.from) && (x.until == null || day < x.until)) ?? null;
+  const swapsOn = (day: number) => inOn(day) != null;
+  const poolOn = (day: number): SourcePlayer[] => {
+    const x = inOn(day);
+    return x ? [...roster, x.player] : roster;
+  };
   const replacedOn = (day: number) => (swapsOn(day) ? replaced : null);
+  /** A previewed free agent on a day he isn't on the roster (outside his stretch). */
+  const offRoster = (p: SourcePlayer, day: number) => inIds.has(p.id) && inOn(day)?.player.id !== p.id;
   // Today, a player whose game has started can't be moved.
   const lockedToday = new Set<number>();
   if (todayIndex != null) {
@@ -443,10 +465,11 @@ export function buildWeekGrid({
     const setLineup = asSetByDay[d.index];
     if (setLineup && (d.kind === "today" || asSet)) {
       const m = new Map(setLineup);
-      if (incoming && swapsOn(d.index)) {
+      const here = inOn(d.index);
+      if (here) {
         shiftedByDay[d.index] = seatIncomingBest({
           assign: m,
-          incoming,
+          incoming: here,
           roster,
           day: d.index,
           eligibleOf,
@@ -466,15 +489,32 @@ export function buildWeekGrid({
       cands.push({ id: p.id, avg: p.avg, eligible: eligibleOf(p) });
     }
     const plan = planDay(cands, slots);
+    // Players who don't play keep their own spot (as set on ESPN for the day) while nobody who
+    // plays needs it, as autoslot leaves them; the rest sit.
+    const home = asSetByDay[d.index] ?? todayAssign;
+    const used = new Map<number, number>();
+    for (const slot of plan.values()) used.set(slot, (used.get(slot) ?? 0) + 1);
+    const capacity = (slot: number) => slots.find((x) => x.slotId === slot)?.count ?? 0;
     for (const p of poolOn(d.index)) {
-      if (!plan.has(p.id)) plan.set(p.id, irIds.has(p.id) ? IR_SLOT_ID : BENCH_SLOT_ID);
+      if (plan.has(p.id)) continue;
+      if (irIds.has(p.id)) {
+        plan.set(p.id, IR_SLOT_ID);
+        continue;
+      }
+      const g = p.games[d.index];
+      const own = p.id !== out ? home?.get(p.id) : undefined;
+      const idle = !g || g.out || g.status === "final";
+      if (idle && own != null && isActiveSlot(own) && (used.get(own) ?? 0) < capacity(own)) {
+        plan.set(p.id, own);
+        used.set(own, (used.get(own) ?? 0) + 1);
+      } else plan.set(p.id, BENCH_SLOT_ID);
     }
     return plan;
   });
 
   const cellFor = (p: SourcePlayer, d: WeekDay): GridCell => {
     const g = p.games[d.index];
-    if (!g) return { state: "none", value: null, opp: null, note: null, counts: false, tag: null };
+    if (!g || offRoster(p, d.index)) return { state: "none", value: null, opp: null, note: null, counts: false, tag: null };
     const base = { opp: g.opp, note: g.time, line: g.line ?? null };
     if (d.kind === "past") {
       return g.fpts != null
@@ -548,7 +588,7 @@ export function buildWeekGrid({
         .sort((a, b) => b.avg - a.avg);
       for (let k = 0; k < s.count; k++) {
         const p = here[k];
-        if (p) rows.push(rowFor(p, p.id === inId ? "incoming" : "player", s.slotId, slotName(s.slotId)));
+        if (p) rows.push(rowFor(p, inIds.has(p.id) ? "incoming" : "player", s.slotId, slotName(s.slotId)));
         else rows.push(openRow(s.slotId, k, days.length));
       }
     }
@@ -561,10 +601,12 @@ export function buildWeekGrid({
 
   // A previewed free agent sits in the spot the selected day gives him (an open
   // one of that slot when there is one); the player he replaces goes to the bottom.
-  if (incoming && !rows.some((r) => r.kind === "incoming")) {
-    const slotId = dayAssign[viewDay]?.get(incoming.player.id) ?? BENCH_SLOT_ID;
+  // A lane's free agents each get a row, on the bench on days they aren't in.
+  for (const fa of incomers) {
+    if (rows.some((r) => r.kind === "incoming" && r.player?.id === fa.id)) continue;
+    const slotId = dayAssign[viewDay]?.get(fa.id) ?? BENCH_SLOT_ID;
     const active = isActiveSlot(slotId);
-    const row = rowFor(incoming.player, "incoming", slotId, active ? slotName(slotId) : "BE");
+    const row = rowFor(fa, "incoming", slotId, active ? slotName(slotId) : "BE");
     const open = active ? rows.findIndex((r) => r.kind === "open" && r.slotId === slotId) : -1;
     if (open >= 0) rows.splice(open, 1, row);
     else {
@@ -654,7 +696,8 @@ export function buildWeekGrid({
     db ??= dayBoards.find((x) => x) ?? null;
     if (db) slotRows(db.board, db.staged).forEach((r, i) => r.player && order.set(r.player.player_id, i));
     // A previewed free agent who takes the replaced player's seat takes his place in the order too.
-    if (inId != null && replaced != null && order.has(replaced)) order.set(inId, order.get(replaced)!);
+    const here = inOn(dayIndex);
+    if (here && replaced != null && order.has(replaced)) order.set(here.player.id, order.get(replaced)!);
     return order;
   };
   const fallbackAssign = todayAssign ?? dayAssign.find((m) => m) ?? new Map<number, number>();
@@ -712,7 +755,7 @@ export function buildWeekGrid({
       const p = byDay[i].get(def.slotId)?.[ordinalOf(def)];
       if (!p) return null;
       const isStaged = (d.kind !== "future" || asSet) && pendingOn(d.index, p.id);
-      return { player: p, cell: cellFor(p, d), staged: isStaged, incoming: p.id === inId, shifted: shiftedByDay[i].has(p.id) };
+      return { player: p, cell: cellFor(p, d), staged: isStaged, incoming: inIds.has(p.id), shifted: shiftedByDay[i].has(p.id) };
     })
   );
   const boardDay = board ? (boardDayIndex >= 0 ? boardDayIndex : todayIndex) : null;

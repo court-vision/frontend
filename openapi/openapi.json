@@ -78,6 +78,17 @@
             "default": 0,
             "title": "Season Used",
             "type": "integer"
+          },
+          "waiver_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiver Hours"
           }
         },
         "required": [
@@ -88,7 +99,8 @@
           "matchup_end",
           "matchup_used",
           "season_limit",
-          "season_used"
+          "season_used",
+          "waiver_hours"
         ],
         "title": "AcquisitionState",
         "type": "object"
@@ -6841,7 +6853,7 @@
             "type": "integer"
           },
           "team_id": {
-            "description": "ID of the user's stored team (from manage-teams)",
+            "description": "ID of the user's stored team (from the Account desk)",
             "title": "Team Id",
             "type": "integer"
           },
@@ -7035,6 +7047,242 @@
           "expected_return"
         ],
         "title": "InjuredPlayer",
+        "type": "object"
+      },
+      "LaneNotice": {
+        "description": "A stream lane decision the user hears about (unless the lane is desk-only): it paused\n(`reason`: holder_gone, auth_expired, ...), or a day passed without a decision (blocked, missed).",
+        "properties": {
+          "action": {
+            "enum": [
+              "paused",
+              "blocked"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "ended": {
+            "default": false,
+            "title": "Ended",
+            "type": "boolean"
+          },
+          "holder": {
+            "$ref": "#/components/schemas/ScheduledPickupPlayer"
+          },
+          "lane_id": {
+            "title": "Lane Id",
+            "type": "integer"
+          },
+          "nba_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Date"
+          },
+          "notify": {
+            "enum": [
+              "email",
+              "desk"
+            ],
+            "title": "Notify",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "scoring_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Period Id"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "team_name": {
+            "default": "",
+            "title": "Team Name",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lane_id",
+          "team_id",
+          "user_id",
+          "team_name",
+          "notify",
+          "action",
+          "reason",
+          "detail",
+          "holder",
+          "scoring_period_id",
+          "nba_date",
+          "ended"
+        ],
+        "title": "LaneNotice",
+        "type": "object"
+      },
+      "LanePlayer": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "team",
+          "nba_player_id"
+        ],
+        "title": "LanePlayer",
+        "type": "object"
+      },
+      "LaneProjection": {
+        "properties": {
+          "adds": {
+            "title": "Adds",
+            "type": "integer"
+          },
+          "adds_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adds Left"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "days": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LaneProjectionDay"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "gain": {
+            "title": "Gain",
+            "type": "number"
+          },
+          "hold_value": {
+            "title": "Hold Value",
+            "type": "number"
+          },
+          "rehold_after": {
+            "title": "Rehold After",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "as_of",
+          "days",
+          "value",
+          "hold_value",
+          "gain",
+          "adds",
+          "adds_left",
+          "rehold_after"
+        ],
+        "title": "LaneProjection",
+        "type": "object"
+      },
+      "LaneProjectionDay": {
+        "properties": {
+          "nba_date": {
+            "format": "date",
+            "title": "Nba Date",
+            "type": "string"
+          },
+          "player": {
+            "$ref": "#/components/schemas/LanePlayer"
+          },
+          "scoring_period_id": {
+            "title": "Scoring Period Id",
+            "type": "integer"
+          },
+          "switch": {
+            "default": false,
+            "title": "Switch",
+            "type": "boolean"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "scoring_period_id",
+          "nba_date",
+          "player",
+          "value",
+          "switch"
+        ],
+        "title": "LaneProjectionDay",
         "type": "object"
       },
       "LeagueDetail": {
@@ -12245,6 +12493,14 @@
             "title": "Due",
             "type": "integer"
           },
+          "lanes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LaneNotice"
+            },
+            "title": "Lanes",
+            "type": "array"
+          },
           "results": {
             "default": [],
             "items": {
@@ -12256,7 +12512,8 @@
         },
         "required": [
           "due",
-          "results"
+          "results",
+          "lanes"
         ],
         "title": "PickupExecuteData",
         "type": "object"
@@ -12338,6 +12595,58 @@
         "title": "PickupExecuteResp",
         "type": "object"
       },
+      "PickupLane": {
+        "description": "A stream lane's pickup, for its email: the lane, whether it emails at all, and how the\nmove compares with the projection shown before it.",
+        "properties": {
+          "lane_id": {
+            "title": "Lane Id",
+            "type": "integer"
+          },
+          "last_day": {
+            "default": false,
+            "title": "Last Day",
+            "type": "boolean"
+          },
+          "notify": {
+            "enum": [
+              "email",
+              "desk"
+            ],
+            "title": "Notify",
+            "type": "string"
+          },
+          "projected": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduledPickupPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "why": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Why"
+          }
+        },
+        "required": [
+          "lane_id",
+          "notify",
+          "projected",
+          "why",
+          "last_day"
+        ],
+        "title": "PickupLane",
+        "type": "object"
+      },
       "PickupResult": {
         "properties": {
           "add": {
@@ -12369,6 +12678,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ScheduledPickupPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lane": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PickupLane"
               },
               {
                 "type": "null"
@@ -12473,7 +12792,8 @@
           "seated_slot",
           "verified",
           "audit_id",
-          "next_attempt_at"
+          "next_attempt_at",
+          "lane"
         ],
         "title": "PickupResult",
         "type": "object"
@@ -17343,6 +17663,17 @@
             "title": "Id",
             "type": "integer"
           },
+          "lane_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lane Id"
+          },
           "lineup_audit_id": {
             "anyOf": [
               {
@@ -17449,7 +17780,8 @@
           "seated_slot_id",
           "seated_slot",
           "created_at",
-          "executed_at"
+          "executed_at",
+          "lane_id"
         ],
         "title": "ScheduledPickup",
         "type": "object"
@@ -18240,6 +18572,588 @@
           "timestamp"
         ],
         "title": "StandardValuationResp",
+        "type": "object"
+      },
+      "StreamLane": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "end_period": {
+            "title": "End Period",
+            "type": "integer"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "events": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/StreamLaneEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "holder": {
+            "$ref": "#/components/schemas/LanePlayer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "next_decision_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Decision At"
+          },
+          "next_period": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Period"
+          },
+          "notify": {
+            "enum": [
+              "email",
+              "desk"
+            ],
+            "title": "Notify",
+            "type": "string"
+          },
+          "original": {
+            "$ref": "#/components/schemas/LanePlayer"
+          },
+          "projection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LaneProjection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "start_period": {
+            "title": "Start Period",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "paused",
+              "ended"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "team_id",
+          "status",
+          "notify",
+          "holder",
+          "original",
+          "start_period",
+          "end_period",
+          "end_date",
+          "next_period",
+          "next_decision_at",
+          "reason",
+          "detail",
+          "projection",
+          "events",
+          "created_at",
+          "ended_at"
+        ],
+        "title": "StreamLane",
+        "type": "object"
+      },
+      "StreamLaneEvent": {
+        "properties": {
+          "action": {
+            "enum": [
+              "started",
+              "switch",
+              "keep",
+              "blocked",
+              "paused",
+              "resumed",
+              "ended"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "add": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LanePlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "drop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LanePlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "nba_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Date"
+          },
+          "pickup_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Id"
+          },
+          "pickup_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Status"
+          },
+          "projected": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LanePlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "scoring_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Period Id"
+          }
+        },
+        "required": [
+          "id",
+          "scoring_period_id",
+          "nba_date",
+          "action",
+          "add",
+          "drop",
+          "projected",
+          "reason",
+          "detail",
+          "pickup_id",
+          "pickup_status",
+          "created_at"
+        ],
+        "title": "StreamLaneEvent",
+        "type": "object"
+      },
+      "StreamLaneListData": {
+        "properties": {
+          "open": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/StreamLane"
+            },
+            "title": "Open",
+            "type": "array"
+          },
+          "recent": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/StreamLane"
+            },
+            "title": "Recent",
+            "type": "array"
+          }
+        },
+        "required": [
+          "open",
+          "recent"
+        ],
+        "title": "StreamLaneListData",
+        "type": "object"
+      },
+      "StreamLaneListResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamLaneListData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "StreamLaneListResp",
+        "type": "object"
+      },
+      "StreamLanePlan": {
+        "description": "The dry run: what a lane started now on this spot would do.",
+        "properties": {
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "end_period": {
+            "title": "End Period",
+            "type": "integer"
+          },
+          "first_decision_at": {
+            "format": "date-time",
+            "title": "First Decision At",
+            "type": "string"
+          },
+          "holder": {
+            "$ref": "#/components/schemas/LanePlayer"
+          },
+          "projection": {
+            "$ref": "#/components/schemas/LaneProjection"
+          },
+          "start_period": {
+            "title": "Start Period",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "holder",
+          "start_period",
+          "end_period",
+          "end_date",
+          "first_decision_at",
+          "projection"
+        ],
+        "title": "StreamLanePlan",
+        "type": "object"
+      },
+      "StreamLanePlanReq": {
+        "properties": {
+          "player_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Player Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id"
+        ],
+        "title": "StreamLanePlanReq",
+        "type": "object"
+      },
+      "StreamLanePlanResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamLanePlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "StreamLanePlanResp",
+        "type": "object"
+      },
+      "StreamLaneResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamLane"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "StreamLaneResp",
+        "type": "object"
+      },
+      "StreamLaneStartReq": {
+        "properties": {
+          "notify": {
+            "default": "email",
+            "enum": [
+              "email",
+              "desk"
+            ],
+            "title": "Notify",
+            "type": "string"
+          },
+          "player_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Player Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id"
+        ],
+        "title": "StreamLaneStartReq",
+        "type": "object"
+      },
+      "StreamLaneUpdateReq": {
+        "properties": {
+          "notify": {
+            "anyOf": [
+              {
+                "enum": [
+                  "email",
+                  "desk"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notify"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "active",
+                  "paused"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "StreamLaneUpdateReq",
         "type": "object"
       },
       "StreamerData": {
@@ -24262,6 +25176,290 @@
         ]
       }
     },
+    "/v1/internal/teams/{team_id}/stream-lanes": {
+      "get": {
+        "description": "The open lane (active or paused) and lanes that ended in the last week, each with its\nlatest projection and its events (newest first).",
+        "operationId": "list_stream_lanes_v1_internal_teams__team_id__stream_lanes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamLaneListResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Stream Lanes",
+        "tags": [
+          "stream lanes"
+        ]
+      },
+      "post": {
+        "description": "Start streaming `player_id`'s spot through the matchup's last day. The first decision\nis made when a pickup for the first open day can first be made (possibly at once).\n`notify: desk` keeps the lane from emailing.\n\nBesides the plan route's errors: 403 ROSTER_WRITE_DISABLED, 409 STREAM_LANE_EXISTS\n(one open lane per team), 422 STREAM_LANE_INVALID `scheduled_out` (a pickup already\nscheduled drops that player).",
+        "operationId": "start_stream_lane_v1_internal_teams__team_id__stream_lanes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StreamLaneStartReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamLaneResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Stream Lane",
+        "tags": [
+          "stream lanes"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/stream-lanes/plan": {
+      "post": {
+        "description": "What a lane started now on `player_id`'s spot would do: who would hold the spot each\nremaining day of the matchup, what each adds to that day's lineup, the gain over\nkeeping the spot's player, and the adds it would use. A projection only \u2014 the lane\nre-plans before each day with the players available then. Nothing is stored.\n\n422 STREAM_LANE_INVALID with `data.reason` (not_on_roster, on_ir, no_matchup_end,\nmatchup_over, waiver_period_unsupported); 409 ROSTER_WRITE_BLOCKED for a league\nwhose rosters can't be changed from here.",
+        "operationId": "plan_stream_lane_v1_internal_teams__team_id__stream_lanes_plan_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StreamLanePlanReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamLanePlanResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Plan Stream Lane",
+        "tags": [
+          "stream lanes"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/stream-lanes/{lane_id}": {
+      "delete": {
+        "description": "Stop a lane. A pickup it scheduled that hasn't run is cancelled with it; the player\nholding the spot stays on the roster. 409 STREAM_LANE_BUSY while that pickup is being\nmade (try again in a few minutes); 404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.",
+        "operationId": "stop_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lane_id",
+            "required": true,
+            "schema": {
+              "title": "Lane Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamLaneResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Stop Stream Lane",
+        "tags": [
+          "stream lanes"
+        ]
+      },
+      "patch": {
+        "description": "Pause (`status: paused`) or resume (`status: active`) a lane, or change `notify`.\nPausing cancels a pickup the lane scheduled that hasn't run, and that day is decided\nagain on resume; 409 STREAM_LANE_BUSY while the pickup is being made. Resuming needs\nthe spot's player still on the roster (422 STREAM_LANE_INVALID `holder_gone`) and no\npickup scheduled that drops them (`scheduled_out`); a lane resumed after its matchup's\nlast open day ends instead. 404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.",
+        "operationId": "update_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lane_id",
+            "required": true,
+            "schema": {
+              "title": "Lane Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StreamLaneUpdateReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamLaneResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Stream Lane",
+        "tags": [
+          "stream lanes"
+        ]
+      }
+    },
     "/v1/internal/teams/{team_id}/streamers/find": {
       "post": {
         "description": "Rank the free agents this team could pick up for the week it is (or will be)\nplaying \u2014 the same search as `POST /streamers/find`, scoped to a saved team.\n\nEach candidate says whether the pickup is immediate (`acquisition_status:\nfree_agent`) or a waiver claim (`waivers`, clearing on `waivers_until`).\nBefore opening night the picks are for week 1 (`upcoming: true`). A 200\nwith `data: null` means there is no matchup on the calendar.",
@@ -24418,21 +25616,20 @@
         "operationId": "yahoo_authorize_v1_internal_yahoo_authorize_get",
         "parameters": [
           {
-            "description": "Frontend path the callback sends the browser back to, e.g. `/week`; a path on the app's own origin only (optionally with a query). Anything else is ignored and the callback returns to Manage Teams.",
+            "description": "Frontend path the callback sends the browser back to, e.g. `/week`; a path on the app's own origin only (optionally with a query), at most 200 characters. Anything else is ignored and the callback returns to the Account desk.",
             "in": "query",
             "name": "return_to",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "maxLength": 200,
                   "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "Frontend path the callback sends the browser back to, e.g. `/week`; a path on the app's own origin only (optionally with a query). Anything else is ignored and the callback returns to Manage Teams.",
+              "description": "Frontend path the callback sends the browser back to, e.g. `/week`; a path on the app's own origin only (optionally with a query), at most 200 characters. Anything else is ignored and the callback returns to the Account desk.",
               "title": "Return To"
             }
           }

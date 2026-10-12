@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Command } from "cmdk";
-import { Repeat2 } from "lucide-react";
+import { Radio, Repeat2 } from "lucide-react";
 import { slotName } from "@/lib/lineup-editor";
 import type { SourcePlayer, WeekDay } from "@/lib/week-grid";
 import type { StreamerPlayer } from "@/types/streamer";
@@ -60,9 +60,27 @@ interface MoveMenuProps extends Anchored {
   onReplace: () => void;
   /** A later day's spot: replacing him schedules a pickup for that day (its name, "Thu"). */
   scheduleFor?: string | null;
+  /** Stream his spot for the rest of the matchup (a stream lane); omitted when it can't be offered. */
+  onStream?: () => void;
+  /** The matchup's last day ("Sun"), for the item's label. */
+  streamThrough?: string | null;
+  /** Why the spot can't be streamed (another lane is open, ...); shown in place of the item. */
+  streamNote?: string | null;
 }
 
-export function MoveMenu({ player, currentSlot, targets, blocked, onPick, onReplace, scheduleFor = null, ...shell }: MoveMenuProps) {
+export function MoveMenu({
+  player,
+  currentSlot,
+  targets,
+  blocked,
+  onPick,
+  onReplace,
+  scheduleFor = null,
+  onStream,
+  streamThrough = null,
+  streamNote = null,
+  ...shell
+}: MoveMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
@@ -106,6 +124,15 @@ export function MoveMenu({ player, currentSlot, targets, blocked, onPick, onRepl
             </span>
             <span className={dk.kbd}>R</span>
           </Command.Item>
+          {onStream ? (
+            <Command.Item value="stream" className={dk.menuItem} onSelect={onStream}>
+              <Radio size={14} style={{ color: "var(--accent)" }} />
+              <span className={dk.grow}>Stream this spot{streamThrough ? ` through ${streamThrough}` : ""}…</span>
+              <span className={dk.kbd}>S</span>
+            </Command.Item>
+          ) : streamNote ? (
+            <div className={dk.menuEmpty}>{streamNote}</div>
+          ) : null}
         </Command.List>
         {blocked ? <div className={dk.menuFoot}>{blocked}</div> : null}
       </Command>
