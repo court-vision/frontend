@@ -255,16 +255,11 @@ export function WeekTerminal({
     () => new Map(pendingPickups.map((p) => [p.add.player_id, pickupDayLabel(p.nba_date)])),
     [pendingPickups, pickupDayLabel]
   );
-  // A stream lane's pickups show in its own row, not here.
+  // The open lane's pickups show in its own row, not here (with a source, its row is drawn).
+  const shownLane = openLane?.id ?? null;
   const pickupRows = useMemo(
-    () =>
-      source
-        ? pickupViews(
-            { pending: data.pickups.pending.filter((p) => p.lane_id == null), recent: data.pickups.recent.filter((p) => p.lane_id == null) },
-            source.days
-          )
-        : [],
-    [data.pickups, source]
+    () => (source ? pickupViews(data.pickups, source.days, shownLane) : []),
+    [data.pickups, source, shownLane]
   );
 
   // ---- the market: free agents ranked by what they add to this week ----

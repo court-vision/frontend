@@ -449,10 +449,12 @@ function PickupRow({
   onCancel?: (id: number) => void;
 }) {
   const pending = pickup.status === "pending";
-  const forWhom = pickup.drop ? `for ${shortName(pickup.drop.name)}` : "into an open spot";
+  // A lane's pickup shows here when its lane has no row (it ended, or the lanes didn't load): say whose it is.
+  const forWhom = `${pickup.drop ? `for ${shortName(pickup.drop.name)}` : "into an open spot"}${pickup.lane ? " · stream lane" : ""}`;
   const first = pending && pickup.notBefore ? `first try ${weekdayTime(pickup.notBefore)}` : null;
   const title = [
     `${pickup.add.name}${pickup.drop ? `, dropping ${pickup.drop.name}` : ""}`,
+    pickup.lane ? "made for a stream lane" : null,
     first,
     pickup.note,
   ]
