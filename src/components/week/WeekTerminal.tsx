@@ -791,7 +791,7 @@ export function WeekTerminal({
       // Keys typed in a field or a menu belong to it (a menu's Enter also reaches
       // window after the menu has closed and this listener has re-subscribed).
       const target = e.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable='true'], [cmdk-root], [role='dialog'], [data-market], [data-tray], [data-today]")) return;
+      if (target?.closest("input, textarea, select, [contenteditable='true'], [cmdk-root], [role='dialog'], [data-market], [data-tray], [data-moves]")) return;
       if ((e.key === "Enter" || e.key === " ") && target?.closest("button, a")) return;
 
       // Keys that work the same in both views.

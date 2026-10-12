@@ -131,7 +131,6 @@ export function TodayStrip(props: TodayStripProps) {
       <div
         ref={setStrip}
         className={`${s.tick} ${s.todayTick}`}
-        data-today
         data-open={open ? true : undefined}
         onPointerEnter={hoverIn}
         onPointerLeave={hoverOut}
@@ -352,14 +351,15 @@ function MovesBox({ status, rows, error, hint, dayLabel, open, onOpen, onButton,
       ref={box}
       className={s.todayBox}
       style={{ left: place.left, top: place.top, width: place.width }}
-      data-today
+      data-moves
       role="region"
       aria-label="Today's moves"
       onPointerEnter={(e) => e.pointerType === "mouse" && hoverIn()}
       onPointerLeave={(e) => e.pointerType === "mouse" && hoverOut()}
       onPointerDown={() => open === "hover" && onOpen("pinned")}
       onKeyDown={(e) => {
-        if (e.key === "Escape") {
+        // The desk's keys skip the box, so its own key (D) and Esc close it here.
+        if (e.key === "Escape" || (e.key.toLowerCase() === "d" && !e.metaKey && !e.ctrlKey && !e.altKey)) {
           e.stopPropagation();
           onOpen(null);
           anchor?.querySelector<HTMLButtonElement>("[aria-expanded]")?.focus();
