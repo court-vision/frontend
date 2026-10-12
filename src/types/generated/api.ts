@@ -1561,6 +1561,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/teams/{team_id}/stream-lanes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Stream Lanes
+         * @description The open lane (active or paused) and lanes that ended in the last week, each with its
+         *     latest projection and its events (newest first).
+         */
+        get: operations["list_stream_lanes_v1_internal_teams__team_id__stream_lanes_get"];
+        put?: never;
+        /**
+         * Start Stream Lane
+         * @description Start streaming `player_id`'s spot through the matchup's last day. The first decision
+         *     is made when a pickup for the first open day can first be made (possibly at once).
+         *     `notify: desk` keeps the lane from emailing.
+         *
+         *     Besides the plan route's errors: 403 ROSTER_WRITE_DISABLED, 409 STREAM_LANE_EXISTS
+         *     (one open lane per team), 422 STREAM_LANE_INVALID `scheduled_out` (a pickup already
+         *     scheduled drops that player).
+         */
+        post: operations["start_stream_lane_v1_internal_teams__team_id__stream_lanes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/stream-lanes/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Plan Stream Lane
+         * @description What a lane started now on `player_id`'s spot would do: who would hold the spot each
+         *     remaining day of the matchup, what each adds to that day's lineup, the gain over
+         *     keeping the spot's player, and the adds it would use. A projection only — the lane
+         *     re-plans before each day with the players available then. Nothing is stored.
+         *
+         *     422 STREAM_LANE_INVALID with `data.reason` (not_on_roster, on_ir, no_matchup_end,
+         *     matchup_over, waiver_period_unsupported); 409 ROSTER_WRITE_BLOCKED for a league
+         *     whose rosters can't be changed from here.
+         */
+        post: operations["plan_stream_lane_v1_internal_teams__team_id__stream_lanes_plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/stream-lanes/{lane_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Stop Stream Lane
+         * @description Stop a lane. A pickup it scheduled that hasn't run is cancelled with it; the player
+         *     holding the spot stays on the roster. 409 STREAM_LANE_BUSY while that pickup is being
+         *     made (try again in a few minutes); 404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.
+         */
+        delete: operations["stop_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Stream Lane
+         * @description Pause (`status: paused`) or resume (`status: active`) a lane, or change `notify`.
+         *     Resuming needs the spot's player still on the roster (422 STREAM_LANE_INVALID
+         *     `holder_gone`); a lane resumed after its matchup's last open day ends instead.
+         *     404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.
+         */
+        patch: operations["update_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__patch"];
+        trace?: never;
+    };
     "/v1/internal/teams/{team_id}/streamers/find": {
         parameters: {
             query?: never;
@@ -2308,6 +2395,8 @@ export interface components {
              * @default 0
              */
             season_used: number;
+            /** Waiver Hours */
+            waiver_hours: number | null;
         };
         /**
          * AdvancedStatsData
@@ -4868,7 +4957,7 @@ export interface components {
             streaming_slots?: number;
             /**
              * Team Id
-             * @description ID of the user's stored team (from manage-teams)
+             * @description ID of the user's stored team (from the Account desk)
              */
             team_id: number;
             /**
@@ -4932,6 +5021,97 @@ export interface components {
             player_id: number;
             /** Status */
             status: string;
+        };
+        /**
+         * LaneNotice
+         * @description A stream lane decision the user hears about (unless the lane is desk-only): it paused
+         *     (`reason`: holder_gone, auth_expired, ...), or a day passed without a decision (blocked, missed).
+         */
+        LaneNotice: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "paused" | "blocked";
+            /** Detail */
+            detail: string | null;
+            holder: components["schemas"]["ScheduledPickupPlayer"];
+            /** Lane Id */
+            lane_id: number;
+            /** Nba Date */
+            nba_date: string | null;
+            /**
+             * Notify
+             * @enum {string}
+             */
+            notify: "email" | "desk";
+            /** Reason */
+            reason: string;
+            /** Scoring Period Id */
+            scoring_period_id: number | null;
+            /** Team Id */
+            team_id: number;
+            /**
+             * Team Name
+             * @default
+             */
+            team_name: string;
+            /** User Id */
+            user_id: number;
+        };
+        /** LanePlayer */
+        LanePlayer: {
+            /** Name */
+            name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
+            /** Player Id */
+            player_id: number;
+            /** Team */
+            team: string | null;
+        };
+        /** LaneProjection */
+        LaneProjection: {
+            /** Adds */
+            adds: number;
+            /** Adds Left */
+            adds_left: number | null;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Days
+             * @default []
+             */
+            days: components["schemas"]["LaneProjectionDay"][];
+            /** Gain */
+            gain: number;
+            /** Hold Value */
+            hold_value: number;
+            /** Rehold After */
+            rehold_after: number;
+            /** Value */
+            value: number;
+        };
+        /** LaneProjectionDay */
+        LaneProjectionDay: {
+            /**
+             * Nba Date
+             * Format: date
+             */
+            nba_date: string;
+            player: components["schemas"]["LanePlayer"];
+            /** Scoring Period Id */
+            scoring_period_id: number;
+            /**
+             * Switch
+             * @default false
+             */
+            switch: boolean;
+            /** Value */
+            value: number;
         };
         /** LeagueDetail */
         LeagueDetail: {
@@ -6763,6 +6943,11 @@ export interface components {
             /** Due */
             due: number;
             /**
+             * Lanes
+             * @default []
+             */
+            lanes: components["schemas"]["LaneNotice"][];
+            /**
              * Results
              * @default []
              */
@@ -6789,6 +6974,23 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /**
+         * PickupLane
+         * @description A stream lane's pickup, for its email: the lane, whether it emails at all, and how the
+         *     move compares with the projection shown before it.
+         */
+        PickupLane: {
+            /** Lane Id */
+            lane_id: number;
+            /**
+             * Notify
+             * @enum {string}
+             */
+            notify: "email" | "desk";
+            projected: components["schemas"]["ScheduledPickupPlayer"] | null;
+            /** Why */
+            why: string | null;
+        };
         /** PickupResult */
         PickupResult: {
             add: components["schemas"]["ScheduledPickupPlayer"];
@@ -6797,6 +6999,7 @@ export interface components {
             /** Detail */
             detail: string | null;
             drop: components["schemas"]["ScheduledPickupPlayer"] | null;
+            lane: components["schemas"]["PickupLane"] | null;
             /**
              * Nba Date
              * Format: date
@@ -8500,6 +8703,8 @@ export interface components {
             executed_at: string | null;
             /** Id */
             id: number;
+            /** Lane Id */
+            lane_id: number | null;
             /** Lineup Audit Id */
             lineup_audit_id: number | null;
             /**
@@ -8807,6 +9012,176 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /** StreamLane */
+        StreamLane: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Detail */
+            detail: string | null;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** End Period */
+            end_period: number;
+            /** Ended At */
+            ended_at: string | null;
+            /**
+             * Events
+             * @default []
+             */
+            events: components["schemas"]["StreamLaneEvent"][];
+            holder: components["schemas"]["LanePlayer"];
+            /** Id */
+            id: number;
+            /** Next Decision At */
+            next_decision_at: string | null;
+            /** Next Period */
+            next_period: number | null;
+            /**
+             * Notify
+             * @enum {string}
+             */
+            notify: "email" | "desk";
+            original: components["schemas"]["LanePlayer"];
+            projection: components["schemas"]["LaneProjection"] | null;
+            /** Reason */
+            reason: string | null;
+            /** Start Period */
+            start_period: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "paused" | "ended";
+            /** Team Id */
+            team_id: number;
+        };
+        /** StreamLaneEvent */
+        StreamLaneEvent: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "started" | "switch" | "keep" | "blocked" | "paused" | "resumed" | "ended";
+            add: components["schemas"]["LanePlayer"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Detail */
+            detail: string | null;
+            drop: components["schemas"]["LanePlayer"] | null;
+            /** Id */
+            id: number;
+            /** Nba Date */
+            nba_date: string | null;
+            /** Pickup Id */
+            pickup_id: number | null;
+            /** Pickup Status */
+            pickup_status: string | null;
+            projected: components["schemas"]["LanePlayer"] | null;
+            /** Reason */
+            reason: string | null;
+            /** Scoring Period Id */
+            scoring_period_id: number | null;
+        };
+        /** StreamLaneListData */
+        StreamLaneListData: {
+            /**
+             * Open
+             * @default []
+             */
+            open: components["schemas"]["StreamLane"][];
+            /**
+             * Recent
+             * @default []
+             */
+            recent: components["schemas"]["StreamLane"][];
+        };
+        /** StreamLaneListResp */
+        StreamLaneListResp: {
+            data: components["schemas"]["StreamLaneListData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * StreamLanePlan
+         * @description The dry run: what a lane started now on this spot would do.
+         */
+        StreamLanePlan: {
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** End Period */
+            end_period: number;
+            /**
+             * First Decision At
+             * Format: date-time
+             */
+            first_decision_at: string;
+            holder: components["schemas"]["LanePlayer"];
+            projection: components["schemas"]["LaneProjection"];
+            /** Start Period */
+            start_period: number;
+        };
+        /** StreamLanePlanReq */
+        StreamLanePlanReq: {
+            /** Player Id */
+            player_id: number;
+        };
+        /** StreamLanePlanResp */
+        StreamLanePlanResp: {
+            data: components["schemas"]["StreamLanePlan"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** StreamLaneResp */
+        StreamLaneResp: {
+            data: components["schemas"]["StreamLane"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** StreamLaneStartReq */
+        StreamLaneStartReq: {
+            /**
+             * Notify
+             * @default email
+             * @enum {string}
+             */
+            notify?: "email" | "desk";
+            /** Player Id */
+            player_id: number;
+        };
+        /** StreamLaneUpdateReq */
+        StreamLaneUpdateReq: {
+            /** Notify */
+            notify?: ("email" | "desk") | null;
+            /** Status */
+            status?: ("active" | "paused") | null;
         };
         /**
          * StreamerData
@@ -12302,6 +12677,175 @@ export interface operations {
             };
         };
     };
+    list_stream_lanes_v1_internal_teams__team_id__stream_lanes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreamLaneListResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_stream_lane_v1_internal_teams__team_id__stream_lanes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StreamLaneStartReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreamLaneResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plan_stream_lane_v1_internal_teams__team_id__stream_lanes_plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StreamLanePlanReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreamLanePlanResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lane_id: number;
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreamLaneResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lane_id: number;
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StreamLaneUpdateReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreamLaneResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     find_team_streamers_v1_internal_teams__team_id__streamers_find_post: {
         parameters: {
             query?: never;
@@ -12406,7 +12950,7 @@ export interface operations {
     yahoo_authorize_v1_internal_yahoo_authorize_get: {
         parameters: {
             query?: {
-                /** @description Frontend path the callback sends the browser back to, e.g. `/week`; a path on the app's own origin only (optionally with a query). Anything else is ignored and the callback returns to Manage Teams. */
+                /** @description Frontend path the callback sends the browser back to, e.g. `/week`; a path on the app's own origin only (optionally with a query), at most 200 characters. Anything else is ignored and the callback returns to the Account desk. */
                 return_to?: string | null;
             };
             header?: never;
