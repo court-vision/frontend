@@ -91,8 +91,10 @@ export function useUpdateStreamLaneMutation(teamId: number) {
     mutationKey: ["streamLanes", "update", teamId],
     mutationFn: ({ laneId, body }) => apiClient.updateStreamLane(getToken, teamId, laneId, body),
     meta: { toast: false },
-    onSuccess: ({ lane, message }) => {
+    onSuccess: ({ lane, message }, { body }) => {
       queryClient.setQueryData<StreamLaneList>(laneKeys.team(teamId), (prev) => putLane(prev, lane));
+      // A pause cancels the lane's pending pickup (and a resume may schedule one): read them again.
+      if (body.status) queryClient.invalidateQueries({ queryKey: pickupKeys.team(teamId) });
       toast.success(message);
     },
     onError: (error) => {
