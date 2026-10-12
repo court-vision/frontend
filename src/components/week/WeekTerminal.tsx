@@ -20,7 +20,6 @@ import {
   stageMoves as stageMovesPure,
   swapPartner,
   unstage as unstagePure,
-  unstageMoves as unstageMovesPure,
   validateStaged,
   type Staged,
 } from "@/lib/lineup-editor";
@@ -47,8 +46,10 @@ import {
   isTransactionAction,
   rowButton,
   sortActions,
-  stageAllOrder,
+  stageAllFold,
+  stageRow,
   streamersHint,
+  unstageRow,
   unstagedLineupActions,
 } from "@/lib/daily-actions";
 import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar, type WeekView } from "./Chrome";
@@ -389,15 +390,22 @@ export function WeekTerminal({
       }
       const b = boards[todayDay];
       if (!b) return;
-      if (row.button.intent === "unstage") setDay(todayDay, unstageMovesPure(b, staging[todayDay], a.moves));
-      else stageMovesOn(todayDay, a.moves);
+      // One player can be named by two rows (a start benches him, the IR row sends him to IR): a press on one keeps the other.
+      if (row.button.intent === "unstage") setDay(todayDay, unstageRow(b, staging[todayDay], a, actionsData?.actions ?? []));
+      else setDay(todayDay, stageRow(b, staging[todayDay], a));
     },
-    [todayDay, boards, staging, setDay, stageMovesOn]
+    [todayDay, boards, staging, setDay, actionsData]
   );
-  const lineupLeft = useMemo(
-    () => (todayBoardNow && !actionsStale ? unstagedLineupActions(actionsData?.actions ?? [], todayStaging) : []),
+  // Stage all takes the rows that fit together; one that would overfill a slot keeps its own button.
+  const stageAll = useMemo(
+    () =>
+      todayBoardNow && !actionsStale
+        ? stageAllFold(todayBoardNow, todayStaging, unstagedLineupActions(actionsData?.actions ?? [], todayStaging))
+        : null,
     [todayBoardNow, actionsStale, actionsData, todayStaging]
   );
+  const stageAllCount = stageAll?.rows.length ?? 0;
+
   // ---- the edge's race: the margin across the week ----
   const historyPoints = data.history?.points ?? null;
   const raceColumns = useMemo(
@@ -414,13 +422,9 @@ export function WeekTerminal({
   }, [grid, source, raceColumns, historyPoints]);
 
   const stageAllToday = useCallback(() => {
-    if (todayDay == null) return;
-    const b = boards[todayDay];
-    if (!b) return;
-    let next = staging[todayDay];
-    for (const a of stageAllOrder(lineupLeft)) next = stageMovesPure(b, next, a.moves);
-    setDay(todayDay, next);
-  }, [todayDay, boards, staging, lineupLeft, setDay]);
+    if (todayDay == null || !stageAll) return;
+    setDay(todayDay, stageAll.staged);
+  }, [todayDay, stageAll, setDay]);
 
   // ---- cursor and menus ----
   const [cursor, setCursor] = useState<Cursor | null>(null);
@@ -1083,8 +1087,8 @@ export function WeekTerminal({
                 open={movesTick.open}
                 onOpen={movesTick.onOpen}
                 onButton={onTodayButton}
-                onStageAll={lineupLeft.length >= 2 ? stageAllToday : null}
-                stageAllCount={lineupLeft.length}
+                onStageAll={stageAllCount >= 2 ? stageAllToday : null}
+                stageAllCount={stageAllCount}
                 onRetry={data.actions.refetch}
                 container={root}
               />

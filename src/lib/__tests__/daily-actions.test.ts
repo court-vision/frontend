@@ -12,13 +12,17 @@ import {
   isTransactionAction,
   rowButton,
   sortActions,
+  stageAllFold,
   stageAllOrder,
+  stageRow,
   streamersHint,
   surname,
+  unstageRow,
   unstagedLineupActions,
 } from "../daily-actions";
-import type { Staged } from "../lineup-editor";
+import { slotName, validateStaged, type Staged } from "../lineup-editor";
 import type { DailyAction, DailyActionKind } from "../../types/daily-actions";
+import type { LineupPlayer, LineupState } from "../../types/lineup-editor";
 
 const UT = 11, BE = 12, IR = 13, C = 4;
 const NO_DROP = -1;
@@ -61,6 +65,43 @@ const IR_BLOCKED = action("ir_out", 15, [], { blocked_reason: "roster_full" });
 const ADD_DROP = action("add_drop", 99, [], { transaction: { pickup, drop_player_id: 12 }, counterpart: who(12, "Keegan Murray") });
 const ADD = action("add", 98, [], { transaction: { pickup: { ...pickup, player_id: 98 }, drop_player_id: null } });
 
+function player(pid: number, slot: number, eligible: number[], extra: Partial<LineupPlayer> = {}): LineupPlayer {
+  return {
+    player_id: pid, nba_player_id: null, name: `P${pid}`, team: "DEN",
+    lineup_slot_id: slot, lineup_slot: slotName(slot),
+    eligible_slot_ids: eligible, eligible_slots: eligible.map(slotName),
+    injured: false, injury_status: null, default_position_id: null, lineup_locked: false,
+    has_game_today: true, opponent: "vs LAL", game_time_et: "19:30", game_started: false,
+    locked: false, playable: true, avg_points: 30, value_kind: "fpts", value_source: null,
+    ...extra,
+  };
+}
+
+function board(players: LineupPlayer[]): LineupState {
+  return {
+    provider: "espn", team_name: "Test", espn_team_id: 1, nba_date: "2026-10-20",
+    scoring_period_id: 1, scoring_period_source: "provider", current_scoring_period_id: 1,
+    final_scoring_period_id: 167, first_game_time_et: "19:00", position_limits: {},
+    slot_counts: { "4": 1, "11": 2, "12": 2, "13": 1 },
+    slots: [
+      { slot_id: C, slot: "C", count: 1 },
+      { slot_id: UT, slot: "UT", count: 2 },
+      { slot_id: BE, slot: "BE", count: 2 },
+      { slot_id: IR, slot: "IR", count: 1 },
+    ],
+    lock_type: "INDIVIDUAL_GAME", players, can_write: true, write_blocked_reason: null,
+    roster_version: "v1", fetched_at: "2026-10-20T20:00:00Z", acquisitions: null,
+  };
+}
+
+// The board START and IR_IN were worked out against: 8 is OUT in UT, 11 waits on the bench, the IR seat is open.
+const BOARD = board([
+  player(10, C, [C, UT, BE]),
+  player(8, UT, [UT, BE, IR], { injured: true, injury_status: "OUT" }),
+  player(9, UT, [UT, BE]),
+  player(11, BE, [UT, BE]),
+]);
+
 describe("sortActions", () => {
   test("kind order, then tip-off, then name; idempotent", () => {
     const sorted = sortActions([ADD, START, IR_IN, START_EARLY, IR_OUT, ADD_DROP]);
@@ -88,6 +129,54 @@ describe("rows and staging", () => {
 
   test("stage all lands starts before IR, so a benched OUT starter still goes to IR", () => {
     expect(stageAllOrder([IR_IN, IR_OUT, START, START_EARLY]).map((a) => a.id)).toEqual(["start:11", "start:12", "ir_in:8", "ir_out:14"]);
+  });
+
+  test("a start pressed after the IR row leaves its OUT starter on IR", () => {
+    const irFirst = stageRow(BOARD, stageRow(BOARD, {}, IR_IN), START);
+    expect(irFirst).toEqual({ 11: UT, 8: IR });
+    const startFirst = stageRow(BOARD, stageRow(BOARD, {}, START), IR_IN);
+    expect(startFirst).toEqual({ 11: UT, 8: IR });
+    for (const staged of [irFirst, startFirst]) {
+      expect(isRowStaged(staged, START) && isRowStaged(staged, IR_IN)).toBe(true);
+      expect(validateStaged(BOARD, staged)).toEqual([]);
+    }
+    // On its own, the start row still benches him.
+    expect(stageRow(BOARD, {}, START)).toEqual({ 11: UT, 8: BE });
+  });
+
+  test("taking back one of two overlapping rows keeps the other", () => {
+    const rows = [IR_IN, START];
+    const both: Staged = { 11: UT, 8: IR };
+    // The start row goes; he stays on IR.
+    const noStart = unstageRow(BOARD, both, START, rows);
+    expect(noStart).toEqual({ 8: IR });
+    expect(isRowStaged(noStart, IR_IN)).toBe(true);
+    expect(validateStaged(BOARD, noStart)).toEqual([]);
+    // The IR row goes; the start row still staged benches him, so UT isn't over capacity.
+    const noIr = unstageRow(BOARD, both, IR_IN, rows);
+    expect(noIr).toEqual({ 11: UT, 8: BE });
+    expect(isRowStaged(noIr, START)).toBe(true);
+    expect(validateStaged(BOARD, noIr)).toEqual([]);
+    // Alone, a row comes back whole.
+    expect(unstageRow(BOARD, { 11: UT, 8: BE }, START, rows)).toEqual({});
+  });
+
+  test("stage all leaves out a row that would overfill the slot an earlier row filled", () => {
+    // C is open: 14 is healthy on IR and 12 waits on the bench, and each row was worked out to take C.
+    const open = board([player(12, BE, [C, UT, BE]), player(14, IR, [C, UT, BE, IR]), player(9, UT, [UT, BE]), player(11, UT, [UT, BE])]);
+    const IR_OUT_C = action("ir_out", 14, [[14, IR, C]]);
+    const all = stageAllFold(open, {}, [IR_OUT_C, START_EARLY]);
+    expect(all.staged).toEqual({ 12: C });
+    expect(all.rows.map((a) => a.id)).toEqual(["start:12"]);
+    expect(validateStaged(open, all.staged)).toEqual([]);
+    // A problem the staging already had doesn't hold a row back.
+    const overfull = stageAllFold(open, { 14: UT }, [START_EARLY]);
+    expect(overfull.staged).toEqual({ 14: UT, 12: C });
+    expect(overfull.rows).toHaveLength(1);
+    // Rows that fit together all land.
+    const overlap = stageAllFold(BOARD, {}, [IR_IN, START]);
+    expect(overlap.staged).toEqual({ 11: UT, 8: IR });
+    expect(overlap.rows.map((a) => a.id)).toEqual(["start:11", "ir_in:8"]);
   });
 
   test("an add row is staged while its free agent waits in the dock with its drop, made now", () => {
