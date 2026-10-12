@@ -2615,3 +2615,285 @@ button.marketRow:hover {
   outline: 2px solid var(--text);
   outline-offset: 2px;
 }
+
+/* ---------------------------------------------------------------- today's moves */
+
+/* A tick in the tape: one move at a time on a split-flap board, its Stage button beside it. */
+.todayTick {
+  cursor: default;
+  gap: 6px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.todayTick[data-open] {
+  background: var(--hover);
+}
+
+.todayHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 16px;
+}
+
+.todayCount {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.todayCount:hover {
+  color: var(--text);
+}
+
+.todayExpand {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.todayExpand:hover {
+  color: var(--text);
+}
+
+.todayLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.todayStage {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11.5px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The board. Each flap is two halves on a hinge; a change folds the old top
+   half down and drops the new bottom half into place. */
+.flaps {
+  display: inline-flex;
+  gap: 2px;
+  perspective: 240px;
+}
+
+.flap {
+  position: relative;
+  display: inline-block;
+  width: 11px;
+  height: 20px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+}
+
+.flapToned {
+  color: var(--flap-ink, var(--text));
+}
+
+.flapTop,
+.flapBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--text) 9%, var(--bg));
+  backface-visibility: hidden;
+}
+
+.flapTop {
+  top: 0;
+  border-radius: 2px 2px 0 0;
+  transform-origin: 50% 100%;
+}
+
+.flapBottom {
+  bottom: 0;
+  border-radius: 0 0 2px 2px;
+  transform-origin: 50% 0;
+}
+
+.flapTop > span,
+.flapBottom > span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 20px;
+  line-height: 20px;
+}
+
+.flapTop > span {
+  top: 0;
+}
+
+.flapBottom > span {
+  bottom: 0;
+}
+
+/* The hinge. */
+.flap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 0.5px);
+  height: 1px;
+  background: var(--surface);
+  z-index: 3;
+}
+
+.flapFold {
+  z-index: 2;
+  animation: flapFold 70ms ease-in forwards;
+}
+
+.flapDrop {
+  z-index: 2;
+  transform: rotateX(90deg);
+  animation: flapDrop 70ms ease-out 70ms forwards;
+}
+
+@keyframes flapFold {
+  to {
+    transform: rotateX(-90deg);
+  }
+}
+
+@keyframes flapDrop {
+  from {
+    transform: rotateX(90deg);
+  }
+  to {
+    transform: rotateX(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flapFold,
+  .flapDrop {
+    animation: none;
+  }
+}
+
+/* The box: every move, grown out of the strip and lying over the grid. */
+.todayBox {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  max-height: min(70vh, 560px);
+  border-radius: 8px;
+  background: var(--raised);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.todayBoxHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.todayList {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.todayRow {
+  display: grid;
+  grid-template-columns: 52px 26px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.todayRow:last-child {
+  border-bottom: 0;
+}
+
+.todayRowOn {
+  background: var(--hover);
+}
+
+.todayKind {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.todayText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.todayTitle {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayDetail {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-3);
+  overflow: hidden;
+}
+
+.todayTip {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+
+.todayEmpty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.todayFoot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 8px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}

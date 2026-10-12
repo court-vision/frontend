@@ -48,6 +48,7 @@ import type {
   ScheduleWeeksData,
 } from "@/types/lineup";
 import type { RankingsMeta, RankingsParams, RankingsPlayer, RankingsResult } from "@/types/rankings";
+import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actions";
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
@@ -281,6 +282,12 @@ class ApiClient {
       `${TEAMS_API}/${teamId}/lineup/moves`,
       { getToken, method: "POST", body, timeoutMs: LINEUP_WRITE_TIMEOUT_MS }
     );
+    return unwrap(env);
+  }
+
+  /** Today's recommended moves for an ESPN team, and the board they were computed against. */
+  async getTeamDailyActions(getToken: GetTokenFn, teamId: number, opts?: RequestOptions): Promise<DailyActionsData> {
+    const env = await fetchJson<DailyActionsResponse>(`${TEAMS_API}/${teamId}/actions`, { ...opts, getToken });
     return unwrap(env);
   }
 

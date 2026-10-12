@@ -79,6 +79,8 @@ interface TapeProps {
   /** Projected change from the previewed free agent. */
   previewDelta: number | null;
   tonight: { live: number; toTip: number; nextTip: string | null };
+  /** Today's moves, beside Tonight. */
+  today?: React.ReactNode;
 }
 
 function Diff({ value, className }: { value: number; className?: string }) {
@@ -86,7 +88,7 @@ function Diff({ value, className }: { value: number; className?: string }) {
   return <span className={`${dk.chip} ${cls}`}>{signed(value)}</span>;
 }
 
-export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: TapeProps) {
+export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight, today }: TapeProps) {
   const nowDiff = grid.now.you - grid.now.opp;
   const projDiff = grid.projected.you - grid.projected.opp;
   const share = grid.projected.you + grid.projected.opp > 0 ? grid.projected.you / (grid.projected.you + grid.projected.opp) : 0.5;
@@ -140,6 +142,7 @@ export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight }: 
           </span>
         </span>
       </div>
+      {today}
       {stagedCount > 0 || previewDelta != null ? (
         <div className={s.tick}>
           <span className={dk.label}>Pending</span>
@@ -331,6 +334,7 @@ const WEEK_KEYS: Array<[string, string]> = [
   ["[ ]", "day"],
   ["H", "heat"],
   ["P", "market"],
+  ["D", "today's moves"],
   ["T", "theme"],
   ["esc", "clear"],
 ];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ROSTER_MOVE_INVALID, toApiError, userMessage } from "@/lib/api-error";
@@ -20,6 +20,7 @@ import {
   stageMoves as stageMovesPure,
   swapPartner,
   unstage as unstagePure,
+  unstageMoves as unstageMovesPure,
   validateStaged,
   type Staged,
 } from "@/lib/lineup-editor";
@@ -39,12 +40,24 @@ import {
 } from "@/lib/week-grid";
 import { sourceFromStreamer } from "@/lib/week-source";
 import { pickupTiming, pickupViews } from "@/lib/pickups";
+import {
+  boardMismatch,
+  isAddStaged,
+  isRowStaged,
+  isTransactionAction,
+  rowButton,
+  sortActions,
+  stageAllOrder,
+  streamersHint,
+  unstagedLineupActions,
+} from "@/lib/daily-actions";
 import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar, type WeekView } from "./Chrome";
 import { MatchupView } from "./MatchupView";
 import { MarketPane, type MarketMode, type MarketPick } from "./Market";
 import { NO_DROP, addsCountFrom, dropCandidates, gainOf, openSpots, rosterRoom } from "@/lib/market";
 import { ConfirmDialog, Dock, type PendingSwap, type SwapTiming } from "./Dock";
 import { Tray, type PendingDay, type TrayDay } from "./Tray";
+import { TodayStrip, type MovesOpen, type TodayRow } from "./TodayStrip";
 import { MoveMenu, ReplaceMenu, type MoveTarget, type ReplaceOption } from "./Menus";
 import { WeekGrid, type Cursor, type DragApi, type DropTarget } from "./WeekGrid";
 import { DailyGrid, type SeatDragApi } from "./DailyGrid";
@@ -144,10 +157,16 @@ export function WeekTerminal({
   const preview = hoverLive ?? pinned;
   // After today's first tip an add counts from tomorrow; the previews and the market both obey.
   const addFrom = useMemo(() => (source ? addsCountFrom(source, board) : null), [source, board]);
-  // Free agents the desk has loaded: the rest-of-week pool, and the one-day search.
+  // Free agents the desk has loaded: today's moves' pickups, the one-day search, and
+  // the rest-of-week pool (later wins: the pool knows his whole week).
+  const actionsData = data.actions?.data ?? null;
+  const actionPickups = useMemo(
+    () => (actionsData?.actions ?? []).flatMap((a) => (a.transaction ? [a.transaction.pickup as StreamerPlayer] : [])),
+    [actionsData]
+  );
   const faById = useMemo(
-    () => new Map([...data.daily, ...data.streamers].map((f) => [f.player_id, f])),
-    [data.daily, data.streamers]
+    () => new Map([...actionPickups, ...data.daily, ...data.streamers].map((f) => [f.player_id, f])),
+    [actionPickups, data.daily, data.streamers]
   );
   const previewFa = preview ? faById.get(preview.faId) ?? null : null;
   const { setScheduleTeam } = data;
@@ -319,6 +338,67 @@ export function WeekTerminal({
   const moveCount = pending.reduce((n, p) => n + p.moves.length, 0);
   const blockedBoard = pending.map((p) => boards[p.day]).find((b) => b && !b.can_write) ?? null;
   const movesBlocked = !data.demo && blockedBoard ? writeBlockedCopy(blockedBoard.write_blocked_reason) : null;
+
+  // ---- today's moves: the strip in the tape, staged from there ----
+  const [movesOpen, setMovesOpen] = useState<MovesOpen>(null);
+  const todayBoardNow = todayDay != null ? boards[todayDay] ?? null : null;
+  const todayStaging = todayDay != null ? staging[todayDay] : NO_STAGING;
+  // Rows worked out against an older board (a send, another day) are read again, once per pair of boards.
+  const actionsStale = !!actionsData && boardMismatch(actionsData, todayBoardNow);
+  const refetchActions = data.actions?.refetch;
+  const askedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!actionsStale || !actionsData || !todayBoardNow || !refetchActions) return;
+    const key = `${actionsData.roster_version}:${actionsData.scoring_period_id}>${todayBoardNow.roster_version}:${todayBoardNow.scoring_period_id}`;
+    if (askedFor.current === key) return;
+    askedFor.current = key;
+    refetchActions();
+  }, [actionsStale, actionsData, todayBoardNow, refetchActions]);
+  const todayRows = useMemo<TodayRow[]>(() => {
+    const cannot = !todayBoardNow
+      ? "Today isn't on this week's grid"
+      : actionsStale
+        ? "Your lineup changed since these were worked out: reading them again"
+        : null;
+    return sortActions(actionsData?.actions ?? []).map((a) => {
+      const staged = isTransactionAction(a) ? isAddStaged(a, pinned, NO_DROP) : isRowStaged(todayStaging, a);
+      const drop = a.transaction?.drop_player_id ?? null;
+      const gone = drop != null && !source?.mine.some((p) => p.id === drop) ? "The player to drop is no longer on your roster" : null;
+      return { action: a, button: rowButton(a, { staged, cannot: cannot ?? gone }) };
+    });
+  }, [actionsData, todayBoardNow, actionsStale, pinned, todayStaging, source]);
+  const onTodayButton = useCallback(
+    (row: TodayRow) => {
+      const a = row.action;
+      if (row.button.intent === "none" || todayDay == null) return;
+      if (a.transaction) {
+        // An add is staged in the dock: it previews in the grid and is reviewed and sent from there.
+        if (row.button.intent === "unstage") setPinned(null);
+        else {
+          setHover(null);
+          setPinned({ faId: a.transaction.pickup.player_id, replaces: a.transaction.drop_player_id ?? NO_DROP, from: null });
+        }
+        return;
+      }
+      const b = boards[todayDay];
+      if (!b) return;
+      if (row.button.intent === "unstage") setDay(todayDay, unstageMovesPure(b, staging[todayDay], a.moves));
+      else stageMovesOn(todayDay, a.moves);
+    },
+    [todayDay, boards, staging, setDay, stageMovesOn]
+  );
+  const lineupLeft = useMemo(
+    () => (todayBoardNow && !actionsStale ? unstagedLineupActions(actionsData?.actions ?? [], todayStaging) : []),
+    [todayBoardNow, actionsStale, actionsData, todayStaging]
+  );
+  const stageAllToday = useCallback(() => {
+    if (todayDay == null) return;
+    const b = boards[todayDay];
+    if (!b) return;
+    let next = staging[todayDay];
+    for (const a of stageAllOrder(lineupLeft)) next = stageMovesPure(b, next, a.moves);
+    setDay(todayDay, next);
+  }, [todayDay, boards, staging, lineupLeft, setDay]);
 
   // ---- cursor and menus ----
   const [cursor, setCursor] = useState<Cursor | null>(null);
@@ -711,7 +791,7 @@ export function WeekTerminal({
       // Keys typed in a field or a menu belong to it (a menu's Enter also reaches
       // window after the menu has closed and this listener has re-subscribed).
       const target = e.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable='true'], [cmdk-root], [role='dialog'], [data-market], [data-tray]")) return;
+      if (target?.closest("input, textarea, select, [contenteditable='true'], [cmdk-root], [role='dialog'], [data-market], [data-tray], [data-today]")) return;
       if ((e.key === "Enter" || e.key === " ") && target?.closest("button, a")) return;
 
       // Keys that work the same in both views.
@@ -734,8 +814,12 @@ export function WeekTerminal({
         case "t":
           toggleTheme();
           return;
+        case "d":
+          if (data.actions) setMovesOpen((o) => (o && o !== "hover" ? null : "keyboard"));
+          return;
         case "Escape":
-          if (pinned) setPinned(null);
+          if (movesOpen) setMovesOpen(null);
+          else if (pinned) setPinned(null);
           else setCursor(null);
           return;
       }
@@ -862,7 +946,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, toggleMarket]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, toggleMarket, movesOpen, data.actions]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
@@ -945,6 +1029,24 @@ export function WeekTerminal({
           stagedCount={moveCount}
           previewDelta={previewDelta}
           tonight={tonight}
+          today={
+            data.actions ? (
+              <TodayStrip
+                status={actionsData ? "ready" : data.actions.error ? "error" : "loading"}
+                rows={todayRows}
+                error={data.actions.error}
+                hint={actionsStale ? "Your lineup changed since these were worked out: reading them again." : actionsData ? streamersHint(actionsData) : null}
+                dayLabel={todayDay != null ? dayLabel(todayDay) : "Today"}
+                open={movesOpen}
+                onOpen={setMovesOpen}
+                onButton={onTodayButton}
+                onStageAll={lineupLeft.length >= 2 ? stageAllToday : null}
+                stageAllCount={lineupLeft.length}
+                onRetry={data.actions.refetch}
+                container={root}
+              />
+            ) : null
+          }
         />
         <Toolbar
           days={grid.days}
