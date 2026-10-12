@@ -4,14 +4,14 @@ import { leagueRankingsPlaceholder, rankingsKeys } from "@/hooks/useRankings";
 import type { RankingsMeta, RankingsResult, RankingsWindow } from "@/types/rankings";
 import { normalizeParams } from "../rankings-params";
 
-// The hook's query, with a fetch that answers team 15 at once and leaves every
+// The hook's query, with a fetch that answers team 1 at once and leaves every
 // other request in flight, so what shows meanwhile can be read.
 function options(teamId: number, window: RankingsWindow) {
   return {
     queryKey: rankingsKeys.league(teamId, normalizeParams({ scope: "league", window })),
     queryFn: () =>
-      teamId === 15
-        ? Promise.resolve<RankingsResult>({ players: [], meta: { scoring: { league_name: "Dream Shakers" } } as RankingsMeta, message: "" })
+      teamId === 1
+        ? Promise.resolve<RankingsResult>({ players: [], meta: { scoring: { league_name: "Sample League" } } as RankingsMeta, message: "" })
         : new Promise<RankingsResult>(() => {}),
     staleTime: Infinity,
     placeholderData: leagueRankingsPlaceholder(teamId),
@@ -36,16 +36,16 @@ async function watching(teamId: number, window: RankingsWindow) {
 
 describe("a league ranking while the next one loads", () => {
   test("another window keeps the league's rows on screen", async () => {
-    const observer = await watching(15, null);
-    observer.setOptions(options(15, 7));
+    const observer = await watching(1, null);
+    observer.setOptions(options(1, 7));
     const r = observer.getCurrentResult();
     expect(r.isPlaceholderData).toBe(true);
-    expect(r.data?.meta?.scoring?.league_name).toBe("Dream Shakers");
+    expect(r.data?.meta?.scoring?.league_name).toBe("Sample League");
   });
 
   test("another team's league loads from nothing instead of showing the previous league's numbers", async () => {
-    const observer = await watching(15, null);
-    observer.setOptions(options(22, null));
+    const observer = await watching(1, null);
+    observer.setOptions(options(2, null));
     const r = observer.getCurrentResult();
     expect(r.isPlaceholderData).toBe(false);
     expect(r.data).toBeUndefined();
