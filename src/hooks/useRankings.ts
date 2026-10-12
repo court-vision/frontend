@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
 import { paramsKey } from "@/lib/rankings-params";
 import type { RankingsParams, RankingsResult } from "@/types/rankings";
@@ -16,7 +17,7 @@ export const rankingsKeys = {
 
 // Hooks
 
-/** Rankings for a format/window with `meta` (the rankings page). */
+/** Rankings for a format/window with `meta` (the Scout desk's pool). */
 export function useRankingsListQuery(params: RankingsParams) {
   return useQuery<RankingsResult>({
     queryKey: rankingsKeys.list(params),
@@ -27,3 +28,18 @@ export function useRankingsListQuery(params: RankingsParams) {
   });
 }
 
+
+/**
+ * The same pool scored by a team's league settings. Authenticated, so it
+ * loads client-side once there is a signed-in user with a team.
+ */
+export function useLeagueRankingsQuery(teamId: number | null, params: RankingsParams) {
+  const { getToken, isSignedIn } = useAuth();
+  return useQuery<RankingsResult>({
+    queryKey: rankingsKeys.league(teamId, params),
+    queryFn: ({ signal }) => apiClient.getLeagueRankingsWithMeta(getToken, teamId as number, params, { signal }),
+    staleTime: 1000 * 60 * 10,
+    placeholderData: keepPreviousData,
+    enabled: params.scope === "league" && teamId !== null && isSignedIn === true,
+  });
+}

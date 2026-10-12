@@ -5,8 +5,10 @@
  * calendar. Pure: no React, no fetching.
  */
 import type { AvgStats, GameLog } from "@/types/player";
-import type { RankingsPlayer } from "@/types/rankings";
+import type { RankingsPlayer, RankingsScope, RankingsScoring } from "@/types/rankings";
 import type { ProjectionStats } from "@/types/scout";
+import type { ScoringFormat } from "@/types/scoring";
+import type { TeamResponseData } from "@/types/team";
 import { NBA_TEAMS, NBA_TEAM_BY_ABBREV, type NBATeamInfo } from "@/lib/nbaTeams";
 import { lastGames } from "@/lib/statWindow";
 
@@ -639,6 +641,87 @@ export function filterPool(rows: readonly RankingsPlayer[], q: string, pos: PosF
   if (!q.trim()) return sortPool(byPos, sort);
   const matched = matchPool(q, byPos, byPos.length);
   return sort === "rank" ? matched : sortPool(matched, sort);
+}
+
+// ---------------------------------------------------------------------------
+// The pool's score: the platform's points, 9-cat, or one of your leagues
+// ---------------------------------------------------------------------------
+
+export type PoolScore = ScoringFormat | "league";
+
+export function poolScore(scope: RankingsScope, format: ScoringFormat): PoolScore {
+  return scope === "league" ? "league" : format;
+}
+
+/** A league the pool can be scored by. The route is per team, so it names the team it asks through. */
+export interface LeagueChoice {
+  /** One per league: two teams in one league score the pool alike. */
+  key: string;
+  teamId: number;
+  league: string;
+  team: string;
+  /** "PTS", "CATS", "ROTO"; "PTS?" until the league's settings have been read. */
+  tag: string;
+}
+
+function leagueKey(t: TeamResponseData): string {
+  const info = t.league_info;
+  return t.league?.id != null ? `id:${t.league.id}` : `${info?.provider ?? "espn"}:${info?.league_id ?? `team${t.team_id}`}:${info?.year ?? ""}`;
+}
+
+function choiceLeagueName(t: TeamResponseData): string {
+  const n = (t.league?.name ?? t.league_info?.league_name ?? "").trim();
+  if (n && n.toUpperCase() !== "N/A") return n;
+  return t.league_info?.league_id != null ? `League ${t.league_info.league_id}` : "League";
+}
+
+function choiceTag(t: TeamResponseData): string {
+  const l = t.league;
+  if (!l?.settings_synced) return "PTS?";
+  return l.scoring_type === "categories" ? "CATS" : l.scoring_type === "roto" ? "ROTO" : "PTS";
+}
+
+/** One choice per league among the user's teams, in the teams' order. */
+export function leagueChoices(teams: readonly TeamResponseData[]): LeagueChoice[] {
+  const out: LeagueChoice[] = [];
+  for (const t of teams) {
+    const key = leagueKey(t);
+    if (out.some((c) => c.key === key)) continue;
+    out.push({ key, teamId: t.team_id, league: choiceLeagueName(t), team: t.league_info?.team_name?.trim() || `Team ${t.team_id}`, tag: choiceTag(t) });
+  }
+  return out;
+}
+
+/** The league the pool is scored by: the selected team's, else the first team's. */
+export function leagueChoiceFor(teams: readonly TeamResponseData[], selected: number | null): LeagueChoice | null {
+  const choices = leagueChoices(teams);
+  const team = teams.find((t) => t.team_id === selected);
+  return (team ? choices.find((c) => c.key === leagueKey(team)) : undefined) ?? choices[0] ?? null;
+}
+
+/** What produced the pool's numbers, in a word or two. */
+export function basisLabel(scoring: RankingsScoring | null | undefined): string {
+  switch (scoring?.basis) {
+    case "categories":
+      return scoring.league_name ? "league categories" : "9-cat z-scores";
+    case "league_points":
+      return "league points";
+    default:
+      return "fantasy points";
+  }
+}
+
+/** Why a league's numbers aren't quite its own (short, and the long form), or null when they are. */
+export function scoringWarning(scoring: RankingsScoring | null | undefined): { short: string; long: string } | null {
+  if (!scoring || scoring.league_id == null) return null;
+  if (scoring.settings_synced === false) {
+    return { short: "settings unread · standard scoring", long: "Couldn't read the league's settings from the provider, so the pool is scored the standard way." };
+  }
+  if (scoring.unsupported.length) {
+    const keys = scoring.unsupported.map((k) => k.toUpperCase()).join(", ");
+    return { short: `${keys} left out`, long: `${keys} can't be scored from per-game averages, so the ranking leaves ${scoring.unsupported.length === 1 ? "it" : "them"} out.` };
+  }
+  return null;
 }
 
 /** "Jr." and friends dropped, first name to an initial: "N. Jokić". */

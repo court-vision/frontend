@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { GameLog } from "@/types/player";
-import type { RankingsPlayer } from "@/types/rankings";
+import type { RankingsPlayer, RankingsScoring } from "@/types/rankings";
+import type { TeamResponseData } from "@/types/team";
 import {
   addDays,
   ageOn,
   averageLine,
+  basisLabel,
   bestOf,
   clockText,
   dayName,
@@ -17,6 +19,8 @@ import {
   gameStatusText,
   hasPosition,
   isDate,
+  leagueChoiceFor,
+  leagueChoices,
   lensOf,
   lineFromAvg,
   matchPool,
@@ -24,8 +28,10 @@ import {
   nextLens,
   nextWindow,
   parseDateQuery,
+  poolScore,
   projectionRows,
   sameFocus,
+  scoringWarning,
   shortName,
   slateDates,
   splitLines,
@@ -338,5 +344,80 @@ describe("names", () => {
     expect(shortName("Nikola Jokić")).toBe("N. Jokić");
     expect(shortName("Jaren Jackson Jr.")).toBe("J. Jackson");
     expect(shortName("Nenê")).toBe("Nenê");
+  });
+});
+
+function team(id: number, leagueId: number, over: { name?: string; league?: TeamResponseData["league"]; year?: number } = {}): TeamResponseData {
+  return {
+    team_id: id,
+    league: over.league ?? null,
+    league_info: {
+      league_id: leagueId,
+      league_name: over.name ?? "N/A",
+      provider: "espn",
+      team_name: `Team ${id} name`,
+      year: over.year ?? 2027,
+      espn_team_id: null,
+      has_espn_credentials: false,
+      has_yahoo_credentials: false,
+      scoring_preview: null,
+      yahoo_team_key: null,
+    },
+  } as unknown as TeamResponseData;
+}
+
+function scoring(over: Partial<RankingsScoring> = {}): RankingsScoring {
+  return { basis: "league_points", league_id: 7, league_name: "Lvl. 3 Goblins", point_weights: null, settings_synced: true, unsupported: [], ...over };
+}
+
+describe("the pool's league score", () => {
+  test("the rail's value: the league wins over the format", () => {
+    expect(poolScore("league", "categories")).toBe("league");
+    expect(poolScore("global", "categories")).toBe("categories");
+    expect(poolScore("global", "points")).toBe("points");
+  });
+
+  test("one choice per league, in the teams' order, named or numbered", () => {
+    const choices = leagueChoices([team(1, 100, { name: "Goblins" }), team(2, 200), team(3, 100, { name: "Goblins" }), team(4, 100, { name: "Goblins", year: 2026 })]);
+    expect(choices.map((c) => [c.teamId, c.league])).toEqual([
+      [1, "Goblins"],
+      [2, "League 200"],
+      [4, "Goblins"],
+    ]);
+    expect(choices[0].tag).toBe("PTS?");
+    expect(choices[0].team).toBe("Team 1 name");
+  });
+
+  test("the synced league's id keys it, and its type tags it", () => {
+    const league = { id: 9, name: "Cats League", scoring_type: "categories", settings_synced: true } as TeamResponseData["league"];
+    const [c] = leagueChoices([team(5, 300, { league })]);
+    expect(c.key).toBe("id:9");
+    expect(c.league).toBe("Cats League");
+    expect(c.tag).toBe("CATS");
+  });
+
+  test("the selected team's league, else the first", () => {
+    const teams = [team(1, 100), team(2, 200), team(3, 200)];
+    expect(leagueChoiceFor(teams, 3)?.teamId).toBe(2);
+    expect(leagueChoiceFor(teams, 1)?.teamId).toBe(1);
+    expect(leagueChoiceFor(teams, 99)?.teamId).toBe(1);
+    expect(leagueChoiceFor(teams, null)?.teamId).toBe(1);
+    expect(leagueChoiceFor([], 1)).toBeNull();
+  });
+
+  test("the basis says what scored the pool", () => {
+    expect(basisLabel(null)).toBe("fantasy points");
+    expect(basisLabel(scoring({ basis: "default_points", league_id: null, league_name: null }))).toBe("fantasy points");
+    expect(basisLabel(scoring())).toBe("league points");
+    expect(basisLabel(scoring({ basis: "categories" }))).toBe("league categories");
+    expect(basisLabel(scoring({ basis: "categories", league_id: null, league_name: null }))).toBe("9-cat z-scores");
+  });
+
+  test("a league's settings that couldn't be read, or keys it can't score, are said", () => {
+    expect(scoringWarning(scoring())).toBeNull();
+    expect(scoringWarning(scoring({ league_id: null }))).toBeNull();
+    expect(scoringWarning(scoring({ settings_synced: false }))?.short).toBe("settings unread · standard scoring");
+    expect(scoringWarning(scoring({ unsupported: ["dd", "td"] }))?.short).toBe("DD, TD left out");
+    expect(scoringWarning(scoring({ unsupported: ["dd"] }))?.long).toContain("leaves it out");
   });
 });
