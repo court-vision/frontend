@@ -4,7 +4,8 @@ import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { STREAM_LANE_EXISTS, STREAM_LANE_INVALID, toApiError, userMessage } from "@/lib/api-error";
-import { pickupKeys } from "@/hooks/useScheduledPickups";
+import { invalidateRoster, pickupKeys } from "@/hooks/useScheduledPickups";
+import { laneMarks, laneMovedRoster, type LaneMarks } from "@/lib/lanes";
 import type { StreamLane, StreamLaneList, StreamLaneStartRequest, StreamLaneUpdateRequest } from "@/types/stream-lane";
 
 export const laneKeys = {
@@ -17,7 +18,8 @@ const EMPTY: StreamLaneList = { open: [], recent: [] };
 /**
  * A team's stream lanes. While one is active the list re-polls every minute:
  * the server decides before each day's games, and a decision that switches
- * schedules a pickup, so a new decision re-reads the pickups too.
+ * schedules a pickup, so a new decision re-reads the pickups too. A pickup a
+ * lane made refreshes everything that shows the roster.
  */
 export function useStreamLanesQuery(teamId: number | null) {
   const { getToken, isSignedIn } = useAuth();
@@ -32,15 +34,19 @@ export function useStreamLanesQuery(teamId: number | null) {
     meta: { toast: false },
   });
 
-  // The newest event seen last time: a newer one is a decision, which may have scheduled a pickup.
-  const lastEvent = useRef<number | null>(null);
+  // The last read, and whose: the hook outlives a team switch, and a first read compares with nothing.
+  const last = useRef<{ team: number; marks: LaneMarks } | null>(null);
   const data = query.data;
   useEffect(() => {
     if (!data || teamId == null) return;
-    const newest = Math.max(0, ...data.open.flatMap((l) => l.events.map((e) => e.id)));
-    const before = lastEvent.current;
-    lastEvent.current = newest;
-    if (before != null && newest > before) queryClient.invalidateQueries({ queryKey: pickupKeys.team(teamId) });
+    const marks = laneMarks(data);
+    const before = last.current?.team === teamId ? last.current.marks : null;
+    last.current = { team: teamId, marks };
+    if (!before) return;
+    // A newer event is a decision, which may have scheduled a pickup.
+    if (marks.newest > before.newest) queryClient.invalidateQueries({ queryKey: pickupKeys.team(teamId) });
+    // The run that decides also makes the pickup, so the pickups list may never have seen it pending.
+    if (laneMovedRoster(before, marks)) invalidateRoster(queryClient, teamId);
   }, [data, teamId, queryClient]);
 
   return { ...query, data: data ?? EMPTY };

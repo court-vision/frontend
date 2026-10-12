@@ -52,7 +52,8 @@ export function useScheduledPickupsQuery(teamId: number | null, opts: { enabled?
   return { ...query, data: data ?? EMPTY };
 }
 
-function invalidateRoster(queryClient: ReturnType<typeof useQueryClient>, teamId: number) {
+/** Everything that shows a team's roster: read again after a pickup changed it on ESPN. */
+export function invalidateRoster(queryClient: ReturnType<typeof useQueryClient>, teamId: number) {
   queryClient.invalidateQueries({ queryKey: lineupKeys.state(teamId) });
   queryClient.invalidateQueries({ queryKey: lineupKeys.days(teamId) });
   queryClient.invalidateQueries({ queryKey: streamersKeys.team(teamId) });

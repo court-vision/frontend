@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { demoLanePlan, eventLine, laneCells, laneReason, laneStretches, passedDates, projectedSource } from "../lanes";
+import { demoLanePlan, eventLine, laneCells, laneMarks, laneMovedRoster, laneReason, laneStretches, passedDates, projectedSource } from "../lanes";
 import type { LanePlayer, LaneProjection, StreamLane, StreamLaneEvent } from "@/types/stream-lane";
 import type { SourcePlayer, WeekDay } from "../week-grid";
 import { DEMO_STREAMERS, demoSource } from "../week-demo";
@@ -182,6 +182,38 @@ describe("laneStretches", () => {
     const src = projectedSource(A, proj, DAYS);
     expect(src.games.map((g) => (g ? 1 : 0))).toEqual([0, 0, 1, 0, 0, 0, 0]);
     expect(src.avg).toBe(20);
+  });
+});
+
+describe("between reads", () => {
+  const read = (open: StreamLane[], recent: StreamLane[] = []) => laneMarks({ open, recent });
+  const started = event("started", DATES[1]);
+  const first = read([lane([started], projection(2, [A, A, A]))]);
+
+  test("a pickup a lane made between two reads changed the roster, though no read saw it pending", () => {
+    // The run that decided Wednesday also made its pickup: the next read finds it done.
+    const made = event("switch", DATES[2], { add: A, drop: HOLDER, pickup_id: 5, pickup_status: "executed" });
+    const next = read([{ ...lane([started, made], projection(2, [A, A, A])), holder: A }]);
+    expect(next.newest).toBeGreaterThan(first.newest);
+    expect(laneMovedRoster(first, next)).toBe(true);
+    expect(laneMovedRoster(next, next)).toBe(false);
+  });
+
+  test("a pickup seen pending changes the roster once made; pending or failed, it doesn't", () => {
+    const at = (status: string) =>
+      read([lane([started, { ...event("switch", DATES[2], { add: A, pickup_id: 6 }), id: 900, pickup_status: status }], null)]);
+    expect(laneMovedRoster(first, at("pending"))).toBe(false);
+    expect(laneMovedRoster(at("pending"), at("failed"))).toBe(false);
+    expect(laneMovedRoster(at("pending"), at("executed"))).toBe(true);
+  });
+
+  test("a spot that changed hands, or a lane that ended with its last pickup made, changed the roster", () => {
+    expect(laneMovedRoster(first, read([{ ...lane([started], null), holder: B }]))).toBe(true);
+    const last = event("switch", DATES[6], { add: B, pickup_id: 7, pickup_status: "executed" });
+    const ended = { ...lane([started, last, event("ended", null, { reason: "matchup_over" })], null), status: "ended" as const, holder: B };
+    expect(laneMovedRoster(first, read([], [ended]))).toBe(true);
+    // A lane that has only just started has done nothing yet.
+    expect(laneMovedRoster(read([]), first)).toBe(false);
   });
 });
 

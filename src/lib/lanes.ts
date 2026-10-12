@@ -8,7 +8,7 @@
  * told by the lane's events: a switch (with its pickup's outcome), a keep, a day
  * it couldn't act on.
  */
-import type { LanePlayer, LaneProjection, StreamLane, StreamLaneEvent, StreamLanePlan } from "@/types/stream-lane";
+import type { LanePlayer, LaneProjection, StreamLane, StreamLaneEvent, StreamLaneList, StreamLanePlan } from "@/types/stream-lane";
 import type { StreamerPlayer } from "@/types/streamer";
 import type { DayGame, Incoming, SourcePlayer, WeekDay, WeekSource } from "./week-grid";
 
@@ -156,6 +156,44 @@ export function projectedSource(player: LanePlayer, projection: LaneProjection, 
         : null
     ),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Between reads
+// ---------------------------------------------------------------------------
+
+/** What one read of a team's lanes says they have done, to compare with the next. */
+export interface LaneMarks {
+  /** The newest event of an open lane: a newer one is a decision, which may have scheduled a pickup. */
+  newest: number;
+  /** Who holds each lane's spot. */
+  holders: Map<number, number>;
+  /** The pickups the lanes' switches made. */
+  made: Set<number>;
+}
+
+export function laneMarks(list: StreamLaneList): LaneMarks {
+  const lanes = [...list.open, ...list.recent];
+  return {
+    newest: Math.max(0, ...list.open.flatMap((l) => l.events.map((e) => e.id))),
+    holders: new Map(lanes.map((l) => [l.id, l.holder.player_id])),
+    made: new Set(
+      lanes.flatMap((l) =>
+        l.events.flatMap((e) => (e.action === "switch" && e.pickup_status === "executed" && e.pickup_id != null ? [e.pickup_id] : []))
+      )
+    ),
+  };
+}
+
+/**
+ * Whether a lane changed the roster on ESPN since the last read: a pickup made
+ * since, or a spot that changed hands. The server makes a lane's pickup in the
+ * same run that decides it, so it is often made before any read saw it pending,
+ * and the pickups' own check (seen pending, then executed) never sees it run.
+ */
+export function laneMovedRoster(before: LaneMarks, after: LaneMarks): boolean {
+  if ([...after.made].some((id) => !before.made.has(id))) return true;
+  return [...after.holders].some(([lane, holder]) => before.holders.has(lane) && before.holders.get(lane) !== holder);
 }
 
 // ---------------------------------------------------------------------------
