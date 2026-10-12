@@ -5,23 +5,15 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
+import { openTick, type TapeBox, type TapeTick, type TickOpen } from "./tape-box";
 
-/**
- * A tape tick that grows into a box over the grid: today's moves, the edge's
- * race. Not a dialog: under the pointer it leaves with the pointer; pinned (a
- * click) or opened from the keyboard it stays until its key, Esc or a press
- * elsewhere, and the keyboard's opening takes focus into it.
- */
-export type TickOpen = "hover" | "pinned" | "keyboard" | null;
-
-/** One open box in the tape at a time: which tick, and how it was opened. */
-export type TapeBox = { tick: "moves" | "edge"; how: Exclude<TickOpen, null> } | null;
+export type { TapeBox, TickOpen };
 
 /** The open state and setter one tick sees, out of the tape's single box. */
-export function tickOf(box: TapeBox, tick: "moves" | "edge", set: (next: TapeBox | ((b: TapeBox) => TapeBox)) => void) {
+export function tickOf(box: TapeBox, tick: TapeTick, set: (next: TapeBox | ((b: TapeBox) => TapeBox)) => void) {
   return {
     open: box?.tick === tick ? box.how : null,
-    onOpen: (how: TickOpen) => set((b) => (how ? { tick, how } : b?.tick === tick ? null : b)),
+    onOpen: (how: TickOpen) => set((b) => openTick(b, tick, how)),
   };
 }
 
@@ -114,6 +106,12 @@ interface TickBoxProps {
   foot?: React.ReactNode;
 }
 
+/**
+ * A tape tick that grows into a box over the grid: today's moves, the edge's
+ * race. Not a dialog: under the pointer it leaves with the pointer; pinned (a
+ * click) or opened from the keyboard it stays until its key, Esc or a press
+ * elsewhere, and the keyboard's opening takes focus into it.
+ */
 export function TickBox({ anchor, container, open, onOpen, hover, reduced, label, keyHint, width: maxW = 560, sub, children, foot }: TickBoxProps) {
   const box = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState<{ left: number; top: number; width: number } | null>(null);
