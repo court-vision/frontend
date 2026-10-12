@@ -163,12 +163,32 @@ describe("daily lineups", () => {
     expect(bench).toContain("Tyrese Maxey");
   });
 
-  test("best each day fills each day's spots from that day's games", () => {
+  test("best each day fills each day's spots from that day's games, and idle starters keep spots nobody needs", () => {
     const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today, mode: "best" });
     const wed = lineups.seats[2];
-    const active = lineups.slots.map((s, i) => (s.group === "active" ? wed[i] : undefined)).filter((x) => x !== undefined);
-    for (const seat of active) if (seat) expect(seat.cell.state).not.toBe("none");
-    expect(active.filter((s) => s === null).length).toBe(3); // seven games for ten spots Wednesday
+    const active = lineups.slots
+      .map((s, i) => (s.group === "active" ? { slotId: s.slotId, seat: wed[i] } : null))
+      .filter((x): x is { slotId: number; seat: (typeof wed)[number] } => x !== null);
+    // Seven games for ten spots Wednesday: all seven play, ...
+    expect(active.filter((a) => a.seat && a.seat.cell.state !== "none")).toHaveLength(7);
+    // ... and a starter without a game stays where ESPN has him, rather than going to the bench.
+    const idle = active.filter((a) => a.seat && a.seat.cell.state === "none");
+    expect(idle.length).toBeGreaterThan(0);
+    for (const a of idle) expect(board.players.find((p) => p.player_id === a.seat!.player.id)?.lineup_slot_id).toBe(a.slotId);
+    // A bench player without a game stays on the bench.
+    const bench = lineups.slots.map((s, i) => (s.group === "bench" ? name(wed[i]) : null)).filter(Boolean);
+    expect(bench).toContain("Derrick White");
+  });
+
+  test("an idle starter whose spot a player with a game needs goes to the bench", () => {
+    // Wednesday: Kessler (bench, plays) takes C from Jokić (idle); Williams (SG) and Şengün (UT) keep theirs.
+    const { lineups } = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today, mode: "best" });
+    const wed = lineups.seats[2];
+    const at = (slot: string) => lineups.slots.map((s, i) => (s.slot === slot ? name(wed[i]) : null)).filter(Boolean);
+    expect(at("C")).toEqual(["Walker Kessler"]);
+    expect(at("BE")).toContain("Nikola Jokić");
+    expect(at("SG")).toEqual(["Jalen Williams"]);
+    expect(at("UT")).toContain("Alperen Şengün");
   });
 
   test("a previewed free agent takes a seat; the player he replaces moves to a row of his own", () => {

@@ -489,8 +489,25 @@ export function buildWeekGrid({
       cands.push({ id: p.id, avg: p.avg, eligible: eligibleOf(p) });
     }
     const plan = planDay(cands, slots);
+    // Players who don't play keep their own spot (as set on ESPN for the day) while nobody who
+    // plays needs it, as autoslot leaves them; the rest sit.
+    const home = asSetByDay[d.index] ?? todayAssign;
+    const used = new Map<number, number>();
+    for (const slot of plan.values()) used.set(slot, (used.get(slot) ?? 0) + 1);
+    const capacity = (slot: number) => slots.find((x) => x.slotId === slot)?.count ?? 0;
     for (const p of poolOn(d.index)) {
-      if (!plan.has(p.id)) plan.set(p.id, irIds.has(p.id) ? IR_SLOT_ID : BENCH_SLOT_ID);
+      if (plan.has(p.id)) continue;
+      if (irIds.has(p.id)) {
+        plan.set(p.id, IR_SLOT_ID);
+        continue;
+      }
+      const g = p.games[d.index];
+      const own = p.id !== out ? home?.get(p.id) : undefined;
+      const idle = !g || g.out || g.status === "final";
+      if (idle && own != null && isActiveSlot(own) && (used.get(own) ?? 0) < capacity(own)) {
+        plan.set(p.id, own);
+        used.set(own, (used.get(own) ?? 0) + 1);
+      } else plan.set(p.id, BENCH_SLOT_ID);
     }
     return plan;
   });
