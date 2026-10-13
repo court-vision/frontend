@@ -21,10 +21,36 @@ const PINS = [
 
 const url = (pkg, version, file) => `${HOST}/npm/@clerk/${pkg}@${version}/dist/${file}`;
 
+// Node's fetch sets no deadline of its own: a CDN that accepts the connection
+// and then never answers holds a request until undici's headers timeout gives
+// up, five minutes later. These HEADs come back in well under a second, so 15s
+// only ever cuts off a stall.
+const TIMEOUT_MS = 15_000;
+
+// A HEAD that turns a timeout or network error into a failed check (one
+// ::error:: line naming the URL) rather than an unhandled rejection's stack
+// trace. Null when nothing answered.
+async function head(target, init = {}) {
+  try {
+    return await fetch(target, { ...init, method: "HEAD", signal: AbortSignal.timeout(TIMEOUT_MS) });
+  } catch (err) {
+    const reason =
+      err.name === "TimeoutError"
+        ? `no answer within ${TIMEOUT_MS / 1000}s`
+        : `${err.message}${err.cause ? ` (${err.cause.code ?? err.cause.message})` : ""}`;
+    console.error(`::error::HEAD ${target} failed: ${reason}`);
+    return null;
+  }
+}
+
 let stale = false;
 for (const { name, pkg, file, pin } of PINS) {
   const floating = url(pkg, pin.split(".")[0], file);
-  const res = await fetch(floating, { method: "HEAD", redirect: "manual" });
+  const res = await head(floating, { redirect: "manual" });
+  if (!res) {
+    stale = true;
+    continue;
+  }
   const location = res.headers.get("location") ?? "";
   const current = location.match(new RegExp(`/@clerk/${pkg}@(\\d+\\.\\d+\\.\\d+)/`))?.[1];
   if (!current) {
@@ -33,8 +59,10 @@ for (const { name, pkg, file, pin } of PINS) {
     continue;
   }
 
-  const exact = await fetch(url(pkg, pin, file), { method: "HEAD" });
-  if (!exact.ok) {
+  const exact = await head(url(pkg, pin, file));
+  if (!exact) {
+    stale = true;
+  } else if (!exact.ok) {
     console.error(`::error::${name} ${pin} is not served: ${exact.status}`);
     stale = true;
   }
