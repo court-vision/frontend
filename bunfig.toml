@@ -1,0 +1,3 @@
+[test]
+# Runs before any test file loads; see the file for why.
+preload = ["./src/lib/__tests__/preload.ts"]
