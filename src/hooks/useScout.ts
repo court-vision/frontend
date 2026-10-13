@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { getTodayDate } from "@/hooks/useGames";
 import { addDays } from "@/lib/scout";
@@ -19,16 +19,26 @@ export const scoutKeys = {
     ["market", "espn", "movement", from, to, metric, direction, limit] as const,
 };
 
-/** Name search over the player dimension; two characters before it asks. */
-export function usePlayerSearchQuery(q: string) {
+/**
+ * Name search over the player dimension; two characters before it asks. The
+ * last answer stays as placeholder data while the next term is asked for, so
+ * the list doesn't blank between terms (`directoryMatches` trims it to what
+ * still matches).
+ */
+export function playerSearchQuery(q: string) {
   const term = q.trim();
-  return useQuery({
+  return queryOptions({
     queryKey: scoutKeys.search(term),
     queryFn: ({ signal }) => apiClient.searchPlayers(term, 12, { signal }),
     enabled: term.length >= 2,
     staleTime: 1000 * 60 * 10,
+    placeholderData: keepPreviousData,
     meta: { toast: false },
   });
+}
+
+export function usePlayerSearchQuery(q: string) {
+  return useQuery(playerSearchQuery(q));
 }
 
 export function usePlayerProfileQuery(playerId: number | null, enabled: boolean = true) {

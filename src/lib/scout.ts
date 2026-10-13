@@ -552,6 +552,21 @@ export function matchPool(q: string, pool: readonly RankingsPlayer[], limit: num
     .map((x) => x.p);
 }
 
+/**
+ * The directory's answer as it applies to what is typed now. An answer to
+ * this very term is the server's, whole. An answer to an earlier term (kept
+ * on screen while the new one is asked for) keeps only the names that still
+ * contain the term, the server's own test, so a narrowing search never shows
+ * a name the new answer wouldn't.
+ */
+export function directoryMatches<P extends { name: string }>(answer: { query: string; players: P[] } | null | undefined, q: string): P[] {
+  const term = q.trim();
+  if (!answer || term.length < 2) return [];
+  if (answer.query === term) return answer.players;
+  const s = fold(term);
+  return answer.players.filter((p) => fold(p.name).includes(s));
+}
+
 // ---------------------------------------------------------------------------
 // Games
 // ---------------------------------------------------------------------------
