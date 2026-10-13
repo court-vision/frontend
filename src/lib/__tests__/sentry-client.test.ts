@@ -52,6 +52,11 @@ describe("initSentry", () => {
     expect(options.sendDefaultPii).toBe(false);
   });
 
+  test("a failed fetch's message reaches its caller unchanged", () => {
+    initSentry();
+    expect(lastInit().enhanceFetchErrorMessages).toBe("report-only");
+  });
+
   test("a page load sends at most MAX_EVENTS_PER_PAGE events, noise not counted", () => {
     initSentry();
     const beforeSend = lastInit().beforeSend as (event: ErrorEvent, hint: EventHint) => ErrorEvent | null;

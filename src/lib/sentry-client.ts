@@ -26,6 +26,13 @@ export function initSentry(): ReporterSdk {
     tracesSampleRate: 0,
     sendDefaultPii: false,
     integrations: keepIntegrations,
+    // Sentry wraps fetch for its breadcrumbs and by default rewrites a failed
+    // request's "Failed to fetch" to "Failed to fetch (host)" on the error
+    // itself, which every caller of fetch then sees. api-error.ts matches a
+    // substring and would cope, but a library matching the browser's exact
+    // words would not, and until now the SDK never touched fetch at all.
+    // report-only puts the host in the report and leaves the error alone.
+    enhanceFetchErrorMessages: "report-only",
     // Capped per page load: the browser spends the server's quota (sentry.ts).
     beforeSend: makeBeforeSend({ dropApiErrors: true, maxEvents: MAX_EVENTS_PER_PAGE }),
   });
