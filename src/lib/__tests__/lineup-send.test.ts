@@ -385,6 +385,24 @@ describe("a write", () => {
     expect(cached(3)!.roster_version).toBe(espn.boardOn(23).roster_version);
   });
 
+  test("calls off a poll of today's lineup that went out before it, so the old lineup doesn't land over the new one", async () => {
+    const espn = fakeEspn();
+    await desk(espn);
+    // Today's minute poll is out when the send begins, and answers slowly. Today's
+    // board lives under its own key, outside the later days' call-off.
+    const release = espn.hold(TODAY);
+    const inFlight = client.refetchQueries({ queryKey: lineupKeys.state(TEAM), exact: true });
+    await tick();
+
+    const sent = await writeLineupDay(client, TEAM, (body) => espn.post(body), cached(0)!, diff(cached(0)!, SWAP_A));
+    release();
+    await inFlight;
+    await idle();
+
+    expect(cached(0)).toEqual(sent.lineup);
+    expect(cached(0)!.roster_version).toBe(espn.boardOn(TODAY).roster_version);
+  });
+
   test("an unverified write's board is read again with the rest", async () => {
     const espn = fakeEspn();
     espn.unverified.add(23);
@@ -436,6 +454,32 @@ describe("a send that fails part way", () => {
     expect(count(espn, "GET lineup 2")).toBe(6);
     // Nothing was written: the roster's other reads are left alone.
     expect(count(espn, "GET actions")).toBe(0);
+    expectDeskMatchesEspn(espn);
+  });
+
+  test("a stale today caches the board the server hands back, so the retry goes with ESPN's version", async () => {
+    const espn = fakeEspn();
+    await desk(espn);
+    // Today is edited on ESPN after the desk read it (the edit carries into the later days).
+    espn.editElsewhere(TODAY, SWAP_B);
+    const { done, failed } = await send(espn, { 0: SWAP_A });
+    await idle();
+
+    expect(done).toEqual([]);
+    expect((failed?.error as ApiError).code).toBe(ROSTER_STALE);
+    // Today isn't read again: the 409's board is the only thing that refreshes it
+    // before the next minute's poll. The later days are.
+    expect(espn.log[0]).toBe("POST moves 20");
+    expect(espn.log).not.toContain("GET lineup");
+    expect(espn.log.slice(1).sort()).toEqual([21, 22, 23, 24, 25, 26].map((p) => `GET lineup ${p}`));
+    expectDeskMatchesEspn(espn);
+
+    // Sending again goes through instead of answering 409 until the poll.
+    espn.reset();
+    const retry = await send(espn, { 0: SWAP_A });
+    await idle();
+    expect(retry.failed).toBeNull();
+    expect(count(espn, "POST")).toBe(1);
     expectDeskMatchesEspn(espn);
   });
 
