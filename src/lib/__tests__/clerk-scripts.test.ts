@@ -8,8 +8,11 @@ import { CLERK_JS_VERSION, CLERK_UI_VERSION } from "../clerk-scripts.mjs";
  * Guards the Clerk script pins in src/lib/clerk-scripts.mjs against an SDK
  * upgrade. A pin the installed @clerk/nextjs doesn't expect would load a
  * clerk-js (or Clerk UI) the SDK was never built for, and nothing would fail
- * until sign-in broke in production. On any failure here: re-run the two curls
- * in clerk-scripts.mjs and pin the versions they redirect to.
+ * until sign-in broke in production. On any failure here: run
+ * `bun run check:clerk-pins` and pin the versions it prints. This only sets a
+ * floor (the releases the SDK was built against); falling behind Clerk's newer
+ * releases is the weekly Clerk Pin Drift workflow's job, since it needs the
+ * network.
  */
 
 type ScriptOpts = {

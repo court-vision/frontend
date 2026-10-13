@@ -1,0 +1,30 @@
+name: Clerk Pin Drift
+
+# Production loads clerk-js and Clerk UI at the exact versions pinned in
+# src/lib/clerk-scripts.mjs, so it no longer follows Clerk's releases on its
+# own. This asks Clerk's CDN where the pinned majors (clerk-js@6, ui@1) point
+# today and fails when that has moved past the pin. A failure means Clerk has
+# shipped a release production isn't running yet — bump the pins to the
+# versions the run prints, and check them locally with:
+#
+#   bun run check:clerk-pins
+#
+# Weekly rather than daily: Clerk ships often, and a few days behind a patch is
+# fine; months behind is what this is here to stop. No secrets: the script URLs
+# are public.
+
+on:
+  schedule:
+    - cron: "0 15 * * 1" # Mondays
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compare the pins with what the floating majors resolve to
+        run: node scripts/check-clerk-pins.mjs
