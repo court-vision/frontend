@@ -391,6 +391,14 @@
   border-bottom: 1px solid var(--line);
   background: var(--row-bg);
   cursor: default;
+  /* The browser skips style, layout and paint for rows off screen. Clearing a search
+     (Enter-to-pick) or a position filter mounts about 600 rows at once: on a categories
+     board that measured 121 ms on an M3 and 442 ms at 4x CPU throttle, and about a third
+     of that with this rule. Rows are exactly 40px (border-box, border included), so the
+     placeholder size is exact: scroll height, scrollIntoView and find-in-page all still
+     see every row. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 40px;
 }
 
 .boardRow:hover {
