@@ -23,7 +23,10 @@ const EMPTY: ScheduledPickupList = { pending: [], recent: [] };
  * minute, and a pickup that settles as executed refreshes everything that
  * shows the roster: the executor changed it on ESPN.
  */
-export function useScheduledPickupsQuery(teamId: number | null, opts: { enabled?: boolean } = {}) {
+export function useScheduledPickupsQuery(
+  teamId: number | null,
+  opts: { enabled?: boolean } = {}
+): { data: ScheduledPickupList } {
   const { getToken, isSignedIn } = useAuth();
   const queryClient = useQueryClient();
   const query = useQuery<ScheduledPickupList>({
@@ -49,7 +52,8 @@ export function useScheduledPickupsQuery(teamId: number | null, opts: { enabled?
     invalidateRoster(queryClient, teamId);
   }, [data, teamId, queryClient]);
 
-  return { ...query, data: data ?? EMPTY };
+  // Only the list: spreading the query would subscribe the desk to every fetch's status flips.
+  return { data: data ?? EMPTY };
 }
 
 /** Everything that shows a team's roster: read again after a pickup changed it on ESPN. */

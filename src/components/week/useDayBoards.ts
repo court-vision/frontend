@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { ROSTER_MOVE_INVALID, toApiError, userMessage } from "@/lib/api-error";
 import { staleLineup } from "@/lib/lineup-editor";
+import { shareLineup } from "@/lib/lineup-sharing";
 import { lineupKeys, useTeamLineupQuery } from "@/hooks/useLineupEditor";
 import type { WeekDay } from "@/lib/week-grid";
 import type { FantasyProvider } from "@/types/team";
@@ -66,6 +67,14 @@ export function periodMapper(anchor: LineupState | null | undefined, days: WeekD
   };
 }
 
+/** The later days' reads, as one value that keeps its identity while no day's lineup changes. */
+export function combineDays(results: ReadonlyArray<{ data?: LineupState | null; isLoading: boolean }>) {
+  return {
+    data: results.map((r) => r.data ?? undefined),
+    loading: results.some((r) => r.isLoading),
+  };
+}
+
 export function useDayBoards(
   teamId: number | null,
   provider: FantasyProvider | null | undefined,
@@ -80,16 +89,24 @@ export function useDayBoards(
   const todayDay = anchor?.nba_date ? weekDays.findIndex((d) => d.date === anchor.nba_date) : -1;
 
   // Later days of the week that ESPN will answer for: after today, up to the season's last day.
-  const later = weekDays
-    .map((d) => d.index)
-    .filter((i) => {
-      const p = periodOf(i);
-      const current = anchor?.current_scoring_period_id ?? anchor?.scoring_period_id ?? null;
-      const final = anchor?.final_scoring_period_id ?? null;
-      return p != null && current != null && p > current && (final == null || p <= final);
-    });
+  const later = useMemo(
+    () =>
+      weekDays
+        .map((d) => d.index)
+        .filter((i) => {
+          const p = periodOf(i);
+          const current = anchor?.current_scoring_period_id ?? anchor?.scoring_period_id ?? null;
+          const final = anchor?.final_scoring_period_id ?? null;
+          return p != null && current != null && p > current && (final == null || p <= final);
+        }),
+    [weekDays, periodOf, anchor]
+  );
 
-  const laterQueries = useQueries({
+  // `combine` hands back the same value until a day's lineup actually changes, so a
+  // refetch that reads the same lineups doesn't rebuild the week below. That holds
+  // only because each read keeps its cached board when nothing but the server's
+  // read stamp moved (`shareLineup`): every read is stamped anew.
+  const laterDays = useQueries({
     queries: later.map((i) => {
       const period = periodOf(i)!;
       return {
@@ -98,15 +115,24 @@ export function useDayBoards(
         enabled: !!teamId && isSignedIn === true && provider === "espn",
         staleTime: 60_000,
         refetchOnWindowFocus: true,
+        structuralSharing: shareLineup,
       };
     }),
+    combine: combineDays,
   });
 
-  const boards: Array<LineupState | undefined> = weekDays.map((d) => {
-    if (d.index === todayDay) return anchor ?? undefined;
-    const at = later.indexOf(d.index);
-    return at >= 0 ? laterQueries[at]?.data ?? undefined : undefined;
-  });
+  // One array for as long as its lineups stand: the terminal derives every grid,
+  // the market's ranking included, from this identity.
+  const laterData = laterDays.data;
+  const boards = useMemo<Array<LineupState | undefined>>(
+    () =>
+      weekDays.map((d) => {
+        if (d.index === todayDay) return anchor ?? undefined;
+        const at = later.indexOf(d.index);
+        return at >= 0 ? laterData[at] : undefined;
+      }),
+    [weekDays, todayDay, anchor, later, laterData]
+  );
 
   // The team rides with each write. A mutation's options are the latest
   // render's, so a team read from them would be whichever team is on screen
@@ -151,6 +177,7 @@ export function useDayBoards(
           queryKey: lineupKeys.state(teamId),
           queryFn: ({ signal }) => apiClient.getTeamLineup(getToken, teamId, { signal }),
           staleTime: 0,
+          structuralSharing: shareLineup,
         });
       }
       const period = periodOf(day);
@@ -159,6 +186,7 @@ export function useDayBoards(
         queryKey: lineupKeys.day(teamId, period),
         queryFn: ({ signal }) => apiClient.getTeamLineup(getToken, teamId, { signal }, period),
         staleTime: 0,
+        structuralSharing: shareLineup,
       });
     },
     [teamId, todayDay, periodOf, queryClient, getToken]
@@ -174,15 +202,10 @@ export function useDayBoards(
     }
   }, [teamId, getToken]);
 
-  return {
-    boards,
-    todayDay: todayDay >= 0 ? todayDay : null,
-    periodOf,
-    loading: today.isLoading || laterQueries.some((q) => q.isLoading),
-    apply,
-    settle,
-    refresh,
-    planToday,
-    applying: mutation.isPending,
-  };
+  const loading = today.isLoading || laterDays.loading;
+  const applying = mutation.isPending;
+  return useMemo(
+    () => ({ boards, todayDay: todayDay >= 0 ? todayDay : null, periodOf, loading, apply, settle, refresh, planToday, applying }),
+    [boards, todayDay, periodOf, loading, apply, settle, refresh, planToday, applying]
+  );
 }

@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { ROSTER_MOVE_INVALID, toApiError, userMessage } from "@/lib/api-error";
 import { staleLineup } from "@/lib/lineup-editor";
+import { shareLineup } from "@/lib/lineup-sharing";
+import { lineupPollMs } from "@/lib/week-polling";
 import { matchupKeys } from "@/hooks/useMatchup";
 import { teamsKeys } from "@/hooks/useTeams";
 import type { FantasyProvider } from "@/types/team";
@@ -28,7 +30,11 @@ export const lineupKeys = {
 /**
  * Today's ESPN board for a team. Only ESPN teams have one (Yahoo answers
  * `null`), so the query is off for every other provider. While the board is
- * writable it re-polls every minute: tip-offs lock players as the evening goes.
+ * writable it re-polls every minute from just before your first tip until your
+ * last player has locked (tip-offs lock players as the evening goes), and every
+ * ten minutes otherwise; see `lineupPollMs`. A read that only re-stamps its
+ * read time keeps the cached board (`shareLineup`), so an unchanged poll
+ * leaves the desk as it was.
  */
 export function useTeamLineupQuery(
   teamId: number | null,
@@ -43,7 +49,8 @@ export function useTeamLineupQuery(
     enabled: (opts.enabled ?? true) && !!teamId && isSignedIn === true && provider === "espn",
     staleTime: 30_000,
     refetchOnWindowFocus: true,
-    refetchInterval: (query) => (query.state.data?.can_write ? 60_000 : false),
+    refetchInterval: (query) => lineupPollMs(query.state.data, Date.now()),
+    structuralSharing: shareLineup,
   });
 }
 

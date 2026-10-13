@@ -4,8 +4,11 @@
  *   GET /matchups/week/{team}  — every day of the period: box scores for past
  *                                days, the schedule (opponent, tip, injury) for
  *                                future ones, for both teams;
- *   GET /matchups/live/{team}  — today's live points and the official score;
- *   GET /matchups/current/{team} — projected points per game and today's slots;
+ *   GET /matchups/live/{team}  — both rosters with projected points per game
+ *                                and today's slots, tonight's live points and
+ *                                the official score;
+ *   GET /matchups/current/{team} — the same rosters without the live overlay:
+ *                                read only when live fails, as its stand-in;
  *   GET /teams/{team}/lineup   — today's ESPN board (names, eligibility, games).
  *
  * The week's rosters are today's rosters: the API keeps no lineup or roster
@@ -19,6 +22,7 @@ import type {
   LiveMatchupData,
   LiveMatchupPlayer,
   MatchupData,
+  MatchupPlayer,
   WeeklyMatchupData,
 } from "@/types/matchup";
 import type { StreamerPlayer } from "@/types/streamer";
@@ -34,6 +38,7 @@ import {
   type WeekDay,
   type WeekSource,
 } from "./week-grid";
+import { isEmptyResult } from "./api-error";
 import { isActiveSlot } from "./lineup-editor";
 
 const INACTIVE_SLOT_NAMES = new Set(["BE", "BN", "IR", "IL", "IL+"]);
@@ -105,8 +110,33 @@ function liveGame(p: LiveMatchupPlayer | undefined, opp: string | null, time: st
 export interface SourceInputs {
   week: WeeklyMatchupData;
   live: LiveMatchupData | null | undefined;
+  /** /matchups/current: only read when live fails; live's rows win whenever live has answered. */
   matchup: MatchupData | null | undefined;
   board: LineupState | null | undefined;
+}
+
+/**
+ * Whether the desk reads /matchups/current as live's stand-in. /matchups/live
+ * is /matchups/current plus tonight's overlay (the server builds it from the
+ * same provider read), so current is read only when live can't be: live
+ * failed, the failure isn't an empty week (a success with no matchup is an
+ * answer, and current would answer the same), and live has nothing of its own
+ * to show (a failed poll keeps its last answer, which stays on screen).
+ */
+export function currentFallback(live: { isError: boolean; data: unknown; error: unknown }): boolean {
+  return live.isError && live.data === undefined && !isEmptyResult(live.error);
+}
+
+/**
+ * The matchup period whose nightly score snapshots the edge's race can use, or
+ * null while there can be none. A snapshot is written the night after a day's
+ * games and the race reads one only for a finished day, so a period with no day
+ * played yet (the whole preseason) has nothing to ask for: the history route
+ * answers 404 there.
+ */
+export function racePeriod(week: WeeklyMatchupData | null | undefined): number | null {
+  if (!week || !week.days.some((d) => d.day_type === "past")) return null;
+  return week.matchup_period;
 }
 
 /** The period's days, in order. */
@@ -130,8 +160,12 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
   const boardById = new Map((board?.players ?? []).map((p) => [p.player_id, p]));
   const liveMine = new Map((live?.your_team.roster ?? []).map((p) => [p.player_id, p]));
   const liveOpp = new Map((live?.opponent_team.roster ?? []).map((p) => [p.player_id, p]));
-  const matchMine = new Map((matchup?.your_team.roster ?? []).map((p) => [p.player_id, p]));
-  const matchOpp = new Map((matchup?.opponent_team.roster ?? []).map((p) => [p.player_id, p]));
+  // The matchup's rosters (projections, slots, positions): live's own rows, which
+  // carry every field of /matchups/current's (the server builds live from the same
+  // read), or /matchups/current's when live hasn't answered.
+  const rows = live ?? matchup ?? null;
+  const matchMine = new Map<number, MatchupPlayer>((rows?.your_team.roster ?? []).map((p) => [p.player_id, p]));
+  const matchOpp = new Map<number, MatchupPlayer>((rows?.opponent_team.roster ?? []).map((p) => [p.player_id, p]));
 
   // Today's schedule for a player, from the board or (opponents) the week's own today row.
   const todayGame = (
@@ -200,7 +234,7 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
     if (!mineIds.includes(id)) mineIds.push(id);
   };
   board?.players.forEach((p) => addId(p.player_id));
-  matchup?.your_team.roster.forEach((p) => addId(p.player_id));
+  rows?.your_team.roster.forEach((p) => addId(p.player_id));
   sortedDays.forEach((d) => rosterOf(d, "your_team").forEach((p) => addId(p.player_id)));
 
   const mine: SourcePlayer[] = mineIds.map((id) => {
@@ -223,7 +257,7 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
 
   // ---- the opponent ----
   const oppIds: number[] = [];
-  matchup?.opponent_team.roster.forEach((p) => oppIds.includes(p.player_id) || oppIds.push(p.player_id));
+  rows?.opponent_team.roster.forEach((p) => oppIds.includes(p.player_id) || oppIds.push(p.player_id));
   sortedDays.forEach((d) =>
     rosterOf(d, "opponent_team").forEach((p) => oppIds.includes(p.player_id) || oppIds.push(p.player_id))
   );
