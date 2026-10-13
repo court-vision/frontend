@@ -10,22 +10,28 @@
  *
  * So each poll runs at full speed only around the games it is about:
  *
- *   live    from 15 min before the slate's first tip until 30 min after the
- *           last tip of yours it knows, and whenever a rostered player's box
- *           score says his game is on; 5 min otherwise (opponent moves and
- *           ESPN's overnight settlement still show up);
+ *   live    from 15 min before your first tip until 30 min after your last,
+ *           and whenever a rostered player's box score (either side) says his
+ *           game is on; 5 min otherwise (opponent moves and ESPN's overnight
+ *           settlement still show up);
  *   lineup  from 15 min before your first tip until just after your last one
  *           locks, while the board is writable; 10 min otherwise, so a board
  *           left open past ESPN's 2 AM rollover still moves to the new day;
  *   moves   that same window at 5 min; 15 min otherwise.
  *
  * Off-window delays never overshoot a window: the read before one is timed to
- * land as it opens. Tip times are ET wall times on the board's NBA date; only
- * an ESPN team has a board, so a Yahoo team's live poll speeds up once its
- * first box score is live.
+ * land as it opens. Tip times are ET wall times on the board's NBA date.
+ *
+ * Only your tips are on the desk: the week's row for today carries box scores,
+ * not the opponent's tip times. So a game only the opponent (or a Yahoo team,
+ * which has no board) has a player in speeds the live poll up once its first
+ * box score is live, up to one slow read (5 min) after the tip. Opening the
+ * window at the slate's first tip instead kept every matinee day fast from the
+ * early tip on: 49 of the season's 156 game days tip before 18:00 ET, 38 before
+ * 16:00, hours before most evening games.
  */
 import type { LineupState } from "@/types/lineup-editor";
-import type { LiveMatchupData, WeeklyMatchupData } from "@/types/matchup";
+import type { LiveMatchupData } from "@/types/matchup";
 
 const MINUTE = 60_000;
 
@@ -91,31 +97,14 @@ export function lockTimes(board: LineupState | null | undefined): number[] {
 }
 
 /**
- * Does anyone in the matchup play on the board's day? Yours from the board,
- * both sides from the week's row for that day; a day the week doesn't hold
- * counts as a game day when the slate has games (the opponent may play).
+ * When the live matchup polls fast by the clock: from 15 min before your first
+ * tip to 30 min after your last. Null with no board or none of yours playing
+ * that day; the opponent's games are caught by their box scores (`gameOn`).
  */
-function anyonePlays(board: LineupState, week: WeeklyMatchupData | null | undefined): boolean {
-  if (board.players.some((p) => p.has_game_today)) return true;
-  const day = week?.days.find((d) => d.date === board.nba_date);
-  if (!day) return board.first_game_time_et != null;
-  const rows = [...day.your_team.roster, ...day.opponent_team.roster] as Array<{ had_game?: boolean; has_game?: boolean }>;
-  return rows.some((p) => !!(p.had_game ?? p.has_game));
-}
-
-/**
- * When the live matchup polls fast by the clock: from 15 min before the
- * slate's first tip (it comes before any rostered player's) to 30 min after
- * the latest tip known (the slate's first or one of yours). Null with no
- * board, no tip times, or nobody in the matchup playing that day.
- */
-export function liveSpan(board: LineupState | null | undefined, week: WeeklyMatchupData | null | undefined): Span | null {
-  if (!board?.nba_date || !anyonePlays(board, week)) return null;
+export function liveSpan(board: LineupState | null | undefined): Span | null {
   const locks = lockTimes(board);
-  const slate = etInstant(board.nba_date, board.first_game_time_et);
-  const tips = slate != null ? [slate, ...locks] : locks;
-  if (tips.length === 0) return null;
-  return { start: Math.min(...tips) - TIP_LEAD, end: Math.max(...tips) + TIP_TAIL };
+  if (locks.length === 0) return null;
+  return { start: Math.min(...locks) - TIP_LEAD, end: Math.max(...locks) + TIP_TAIL };
 }
 
 /** From 15 min before your first tip to just after your last one has locked; null when none of yours plays. */

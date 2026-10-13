@@ -427,8 +427,9 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const weekDays = useMemo(() => (week.data ? weekDaysFromApi(week.data) : null), [week.data]);
   const lineup = useDayBoards(teamId, selected.provider, weekDays);
   const todayBoard = lineup.todayDay != null ? lineup.boards[lineup.todayDay] ?? null : null;
-  // Tonight's games, from today's board: the live poll runs fast only around them.
-  const span = useMemo(() => liveSpan(todayBoard, week.data), [todayBoard, week.data]);
+  // Your games tonight, from today's board: the live poll runs fast around them
+  // (and while any rostered player's box score is live).
+  const span = useMemo(() => liveSpan(todayBoard), [todayBoard]);
   const live = useLiveMatchupQuery(teamId, span);
   // /matchups/live is /matchups/current plus tonight's overlay (the server builds it
   // from the same provider read), so the current matchup is read only when live

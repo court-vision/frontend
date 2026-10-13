@@ -41,45 +41,41 @@ describe("etInstant", () => {
 describe("tonight's windows from the board", () => {
   // Wednesday: Jokic and Sengun (IR, still locks) 19:00, Haliburton 19:30, SGA and Wembanyama 20:30.
   const board = F.espnBoard();
-  const week = F.weekOf();
+  const idle = F.MINE.map((s) => ({ ...s, tips: s.tips.map((t, i) => (i === F.TODAY ? null : t)) }));
 
   test("each of your players with a game locks at his tip", () => {
     expect(lockTimes(board).sort()).toEqual([et("19:00"), et("19:00"), et("19:30"), et("20:30"), et("20:30")]);
     expect(lockSpan(board)).toEqual({ start: et("18:45"), end: et("20:32") });
   });
 
-  test("the live window runs from 15 min before the slate's first tip to 30 min after the last known one", () => {
-    expect(liveSpan(board, week)).toEqual({ start: et("18:45"), end: et("21:00") });
-    // An earlier slate (a 13:00 matinee elsewhere) opens it earlier.
-    expect(liveSpan(F.espnBoard(F.TODAY, { first: "13:00" }), week)!.start).toBe(et("12:45"));
+  test("the live window runs from 15 min before your first tip to 30 min after your last", () => {
+    expect(liveSpan(board)).toEqual({ start: et("18:45"), end: et("21:00") });
+    // A 13:00 matinee elsewhere on the slate doesn't open it: none of yours plays in it.
+    expect(liveSpan(F.espnBoard(F.TODAY, { first: "13:00" }))).toEqual({ start: et("18:45"), end: et("21:00") });
   });
 
-  test("a day nobody in the matchup plays has no window", () => {
-    const idle = F.MINE.map((s) => ({ ...s, tips: s.tips.map((t, i) => (i === F.TODAY ? null : t)) }));
-    const quiet = F.THEIRS.map((s) => ({ ...s, tips: s.tips.map((t, i) => (i === F.TODAY ? null : t)) }));
+  test("a day none of yours plays has no window, whoever else does", () => {
     const offBoard = F.espnBoard(F.TODAY, { roster: idle });
     expect(lockSpan(offBoard)).toBeNull();
-    expect(liveSpan(offBoard, F.weekOf({ mine: idle, theirs: quiet }))).toBeNull();
-    // Only the opponent plays: the slate's first tip still opens the live window.
-    expect(liveSpan(offBoard, F.weekOf({ mine: idle }))).toEqual({ start: et("18:45"), end: et("19:30") });
+    expect(liveSpan(offBoard)).toBeNull();
   });
 
-  test("with the day missing from the week, a slate with games counts as a game day", () => {
-    const idle = F.MINE.map((s) => ({ ...s, tips: s.tips.map(() => null) }));
-    const away = { ...F.weekOf(), days: [] };
-    expect(liveSpan(F.espnBoard(F.TODAY, { roster: idle }), away)).not.toBeNull();
-    expect(liveSpan(F.espnBoard(F.TODAY, { roster: idle, first: null }), away)).toBeNull();
+  test("a game whose tip isn't known yet opens no window (its box score will)", () => {
+    const untimed = F.espnBoard();
+    untimed.players = untimed.players.map((p) => ({ ...p, game_time_et: null }));
+    expect(untimed.players.some((p) => p.has_game_today)).toBe(true);
+    expect(liveSpan(untimed)).toBeNull();
   });
 
   test("no board (a Yahoo team, or one not read yet) has no clock window", () => {
-    expect(liveSpan(null, week)).toBeNull();
+    expect(liveSpan(null)).toBeNull();
     expect(lockSpan(null)).toBeNull();
-    expect(liveSpan({ ...board, nba_date: null }, week)).toBeNull();
+    expect(liveSpan({ ...board, nba_date: null })).toBeNull();
   });
 });
 
 describe("livePollMs", () => {
-  const span = liveSpan(F.espnBoard(), F.weekOf());
+  const span = liveSpan(F.espnBoard());
   const quiet = F.live(F.current());
 
   test("slow through the day, fast from 15 min before the first tip until the window closes", () => {
@@ -104,6 +100,17 @@ describe("livePollMs", () => {
     expect(livePollMs(null, theirsLive, et("23:10"))).toBe(LIVE_FAST);
   });
 
+  test("a matinee only the opponent plays in: slow until its first box score is live, then fast", () => {
+    const matinee = liveSpan(F.espnBoard(F.TODAY, { first: "13:00" }));
+    const tipped = F.live(F.current(), { [F.THEIRS[1].id]: F.liveStats(1641706, 2, 4) });
+    expect(livePollMs(matinee, quiet, et("12:50"))).toBe(LIVE_SLOW);
+    expect(livePollMs(matinee, quiet, et("13:03"))).toBe(LIVE_SLOW);
+    expect(livePollMs(matinee, tipped, et("13:05"))).toBe(LIVE_FAST);
+    // Over: slow again until your own window opens.
+    const over = F.live(F.current(), { [F.THEIRS[1].id]: F.liveStats(1641706, 3, 38) });
+    expect(livePollMs(matinee, over, et("15:30"))).toBe(LIVE_SLOW);
+  });
+
   test("final and not-started box scores don't", () => {
     const done = F.live(F.current(), { [F.MINE[0].id]: F.liveStats(203999, 3, 52), [F.THEIRS[1].id]: F.liveStats(1641706, 1, 0) });
     expect(gameOn(done)).toBe(false);
@@ -114,7 +121,7 @@ describe("livePollMs", () => {
     expect(livePollMs(null, quiet, et("19:30"))).toBe(LIVE_SLOW);
     expect(livePollMs(null, undefined, et("19:30"))).toBe(LIVE_SLOW);
     // Preseason: the board is opening night's, a week ahead.
-    const opening = liveSpan(F.espnBoard(0), F.weekOf({ today: -1 }));
+    const opening = liveSpan(F.espnBoard(0));
     expect(livePollMs(opening, quiet, etInstant("2026-10-21", "19:30")!)).toBe(LIVE_SLOW);
   });
 });
