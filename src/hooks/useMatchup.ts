@@ -23,14 +23,15 @@ export const matchupKeys = {
 // Hooks
 export function useMatchupQuery(
   teamId: number | null,
-  avgWindow: AvgWindow = "season"
+  avgWindow: AvgWindow = "season",
+  opts: { enabled?: boolean } = {}
 ) {
   const { getToken, isSignedIn } = useAuth();
 
   return useQuery({
     queryKey: matchupKeys.detail(teamId!, avgWindow),
     queryFn: ({ signal }) => apiClient.getMatchup(getToken, teamId!, avgWindow, { signal }),
-    enabled: !!teamId && isSignedIn === true,
+    enabled: (opts.enabled ?? true) && !!teamId && isSignedIn === true,
     staleTime: 1000 * 60 * 2, // 2 minutes - matchup data changes during games
     refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
@@ -46,7 +47,8 @@ export function useLiveMatchupQuery(teamId: number | null) {
     staleTime: 0,
     refetchInterval: 30 * 1000, // Poll every 30s in sync with the live pipeline
     refetchOnWindowFocus: true,
-    // Live polling: the next poll is the retry, and the panel shows its own badge
+    // Live polling: the next poll is the retry (the Week desk reads /matchups/current
+    // meanwhile), and the panel shows its own badge
     retry: false,
     meta: { toast: false },
   });

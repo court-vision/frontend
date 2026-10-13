@@ -4,8 +4,11 @@
  *   GET /matchups/week/{team}  — every day of the period: box scores for past
  *                                days, the schedule (opponent, tip, injury) for
  *                                future ones, for both teams;
- *   GET /matchups/live/{team}  — today's live points and the official score;
- *   GET /matchups/current/{team} — projected points per game and today's slots;
+ *   GET /matchups/live/{team}  — both rosters with projected points per game
+ *                                and today's slots, tonight's live points and
+ *                                the official score;
+ *   GET /matchups/current/{team} — the same rosters without the live overlay:
+ *                                read only when live fails, as its stand-in;
  *   GET /teams/{team}/lineup   — today's ESPN board (names, eligibility, games).
  *
  * The week's rosters are today's rosters: the API keeps no lineup or roster
@@ -19,6 +22,7 @@ import type {
   LiveMatchupData,
   LiveMatchupPlayer,
   MatchupData,
+  MatchupPlayer,
   WeeklyMatchupData,
 } from "@/types/matchup";
 import type { StreamerPlayer } from "@/types/streamer";
@@ -105,6 +109,7 @@ function liveGame(p: LiveMatchupPlayer | undefined, opp: string | null, time: st
 export interface SourceInputs {
   week: WeeklyMatchupData;
   live: LiveMatchupData | null | undefined;
+  /** /matchups/current: only read when live fails; live's rows win whenever live has answered. */
   matchup: MatchupData | null | undefined;
   board: LineupState | null | undefined;
 }
@@ -130,8 +135,12 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
   const boardById = new Map((board?.players ?? []).map((p) => [p.player_id, p]));
   const liveMine = new Map((live?.your_team.roster ?? []).map((p) => [p.player_id, p]));
   const liveOpp = new Map((live?.opponent_team.roster ?? []).map((p) => [p.player_id, p]));
-  const matchMine = new Map((matchup?.your_team.roster ?? []).map((p) => [p.player_id, p]));
-  const matchOpp = new Map((matchup?.opponent_team.roster ?? []).map((p) => [p.player_id, p]));
+  // The matchup's rosters (projections, slots, positions): live's own rows, which
+  // carry every field of /matchups/current's (the server builds live from the same
+  // read), or /matchups/current's when live hasn't answered.
+  const rows = live ?? matchup ?? null;
+  const matchMine = new Map<number, MatchupPlayer>((rows?.your_team.roster ?? []).map((p) => [p.player_id, p]));
+  const matchOpp = new Map<number, MatchupPlayer>((rows?.opponent_team.roster ?? []).map((p) => [p.player_id, p]));
 
   // Today's schedule for a player, from the board or (opponents) the week's own today row.
   const todayGame = (
@@ -200,7 +209,7 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
     if (!mineIds.includes(id)) mineIds.push(id);
   };
   board?.players.forEach((p) => addId(p.player_id));
-  matchup?.your_team.roster.forEach((p) => addId(p.player_id));
+  rows?.your_team.roster.forEach((p) => addId(p.player_id));
   sortedDays.forEach((d) => rosterOf(d, "your_team").forEach((p) => addId(p.player_id)));
 
   const mine: SourcePlayer[] = mineIds.map((id) => {
@@ -223,7 +232,7 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
 
   // ---- the opponent ----
   const oppIds: number[] = [];
-  matchup?.opponent_team.roster.forEach((p) => oppIds.includes(p.player_id) || oppIds.push(p.player_id));
+  rows?.opponent_team.roster.forEach((p) => oppIds.includes(p.player_id) || oppIds.push(p.player_id));
   sortedDays.forEach((d) =>
     rosterOf(d, "opponent_team").forEach((p) => oppIds.includes(p.player_id) || oppIds.push(p.player_id))
   );

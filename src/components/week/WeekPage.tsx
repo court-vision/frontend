@@ -23,7 +23,7 @@ import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
 import { useUIStore } from "@/stores/useUIStore";
-import { userMessage } from "@/lib/api-error";
+import { isEmptyResult, userMessage } from "@/lib/api-error";
 import { connectionForTeam, connectionTitle, providerLabel, returnPath, teamName, teamTag, withoutYahooReturn, yahooReturn, type YahooReturn } from "@/lib/account";
 import { yahooConnectErrorMessage } from "@/lib/yahoo-connect";
 import { AddTeamTray, type AddStart } from "@/components/account/AddTeamTray";
@@ -408,7 +408,11 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
 
   const week = useWeeklyMatchupQuery(teamId);
   const live = useLiveMatchupQuery(teamId);
-  const matchup = useMatchupQuery(teamId);
+  // /matchups/live is /matchups/current plus tonight's overlay (the server builds it
+  // from the same provider read), so the current matchup is read only when live
+  // can't be: a failure, not an empty week, with nothing from live to show.
+  const liveFailed = live.isError && live.data === undefined && !isEmptyResult(live.error);
+  const matchup = useMatchupQuery(teamId, "season", { enabled: liveFailed });
   const weekDays = useMemo(() => (week.data ? weekDaysFromApi(week.data) : null), [week.data]);
   const lineup = useDayBoards(teamId, selected.provider, weekDays);
 
@@ -566,7 +570,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     refetch: () => {
       void week.refetch();
       void live.refetch();
-      void matchup.refetch();
+      if (liveFailed) void matchup.refetch();
     },
     streamers: streamers.data?.streamers ?? [],
     streamersLoading: wantStreamers && streamers.isLoading,
