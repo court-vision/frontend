@@ -64,6 +64,7 @@ import { NO_DROP, addsCountFrom, dropCandidates, gainOf, openSpots, rosterRoom }
 import { ConfirmDialog, Dock, type PendingSwap, type SwapTiming } from "./Dock";
 import { Tray, type PendingDay, type TrayDay } from "./Tray";
 import { TodayStrip, type TodayRow } from "./TodayStrip";
+import { sendLineupDays } from "./lineup-send";
 import { EdgeTick } from "./EdgeTick";
 import { tickOf, type TapeBox } from "./TickBox";
 import { keyStaysIn } from "./tape-box";
@@ -700,39 +701,30 @@ export function WeekTerminal({
       return out;
     });
   }, []);
-  /** Write the chosen days, earliest first; stop at the first one ESPN refuses. */
+  /** Write the chosen days, earliest first; stop at the first one ESPN refuses (`sendLineupDays`). */
   const sendDays = useCallback(
     async (chosen: number[]) => {
       const order = pending.filter((p) => chosen.includes(p.day));
       if (order.length === 0) return;
       setDayErrors((prev) => Object.fromEntries(Object.entries(prev).filter(([d]) => !chosen.includes(Number(d)))));
       const snapshot = { ...stagedByDay };
-      const sent: string[] = [];
-      let wrote = false;
-      for (const p of order) {
-        setSendingDay(p.day);
-        // An earlier day's write may have changed this day (carry-forward): read it again.
-        let b = boards[p.day];
-        if (wrote) b = (await lineup.refresh(p.day)) ?? b;
-        if (!b) continue;
-        const moves = diff(b, normalize(b, snapshot[p.day] ?? NO_STAGING));
-        if (moves.length > 0) {
-          try {
-            await lineup.apply(p.day, b, moves);
-            wrote = true;
-          } catch (err) {
-            const e = toApiError(err);
-            const reasons = e.code === ROSTER_MOVE_INVALID ? ((e.data as { errors?: MoveError[] } | null)?.errors ?? []) : [];
-            setDayErrors((prev) => ({ ...prev, [p.day]: reasons[0]?.message ?? userMessage(err) }));
-            setSendingDay(null);
-            if (sent.length) toast.success(`Lineup updated for ${sent.join(", ")}; ${p.label} was refused`);
-            return;
-          }
-        }
-        sent.push(p.label);
-        dropDay(p.day);
+      const { done, failed } = await sendLineupDays(order, {
+        board: (day) => boards[day],
+        moves: (day, b) => diff(b, normalize(b, snapshot[day] ?? NO_STAGING)),
+        apply: lineup.apply,
+        refresh: lineup.refresh,
+        settle: lineup.settle,
+        onSending: setSendingDay,
+        onDone: dropDay,
+      });
+      const sent = done.map((p) => p.label);
+      if (failed) {
+        const e = toApiError(failed.error);
+        const reasons = e.code === ROSTER_MOVE_INVALID ? ((e.data as { errors?: MoveError[] } | null)?.errors ?? []) : [];
+        setDayErrors((prev) => ({ ...prev, [failed.step.day]: reasons[0]?.message ?? userMessage(failed.error) }));
+        if (sent.length) toast.success(`Lineup updated for ${sent.join(", ")}; ${failed.step.label} was refused`);
+        return;
       }
-      setSendingDay(null);
       if (data.demo) toast.success(`Lineup updated (demo): ${sent.join(", ")}`);
       else toast.success(`Lineup updated on ESPN for ${sent.join(", ")}`);
     },
