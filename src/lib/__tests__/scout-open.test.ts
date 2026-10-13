@@ -94,6 +94,11 @@ describe("a player sheet's first requests", () => {
     const { asked } = firstRender({ known: { name: "Nikola Jokić", team: "DEN" } });
     expect(asked).toEqual([...FOUR, ...EXTRAS, 'market by "Nikola Jokić"', "schedule of DEN"].sort());
   });
+
+  test("an earlier visit that left before stats named his team doesn't hide the pool row's", () => {
+    const { asked } = firstRender({ poolRow, known: { name: "Nikola Jokić", team: null } });
+    expect(asked).toContain("schedule of DEN");
+  });
 });
 
 describe("a player sheet while stats load", () => {

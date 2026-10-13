@@ -117,7 +117,7 @@ export function PlayerSheet(props: PlayerSheetProps) {
   const { name, team } = sheetIdentity({
     stats: stats.data,
     profile: profile.data ? { name: profile.data.name, team: profile.data.profile?.team ?? null } : null,
-    seed: known ?? (poolRow ? { name: poolRow.player_name, team: poolRow.team } : null),
+    seed: { name: known?.name || poolRow?.player_name || null, team: known?.team || poolRow?.team || null },
     statsPending: stats.isLoading,
   });
   const market = useEspnMarketLineQuery(name, id, settled);
