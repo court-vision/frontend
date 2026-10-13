@@ -24,7 +24,11 @@
  * on its behalf: `SELECT <playerId>` — the same frame a click in ESPN's room
  * produces. The extension refuses it unless its popup toggle is on.
  */
-import { z } from "zod";
+// zod/mini, not zod: the same validation through a functional API that a tree-shaking
+// bundler can cut down to what these two schemas use, where classic zod's method chains
+// bring the whole library (about 250 KB raw) to every Draft route. Turbopack on Next 16.1
+// does not tree-shake mini's re-exports yet, so the measured saving today is 16 KB raw.
+import * as z from "zod/mini";
 
 // ------------------------------- records ------------------------------- //
 
@@ -39,21 +43,21 @@ export const ESPN_AFTER_DRAFT = 2;
 export const TapRecordSchema = z.looseObject({
   ts: z.number(),
   kind: z.enum(["open", "frame", "close", "error", "command-result"]),
-  dir: z.enum(["in", "out"]).optional(),
-  transport: z.enum(["ws", "sse"]).optional(),
-  frame: z.string().optional(),
-  url: z.string().optional(),
-  code: z.number().optional(),
-  reason: z.string().optional(),
-  clean: z.boolean().optional(),
-  page: z.string().optional(),
-  tab: z.number().optional(),
-  frameId: z.number().optional(),
+  dir: z.optional(z.enum(["in", "out"])),
+  transport: z.optional(z.enum(["ws", "sse"])),
+  frame: z.optional(z.string()),
+  url: z.optional(z.string()),
+  code: z.optional(z.number()),
+  reason: z.optional(z.string()),
+  clean: z.optional(z.boolean()),
+  page: z.optional(z.string()),
+  tab: z.optional(z.number()),
+  frameId: z.optional(z.number()),
   // command-result only: the outcome of a `select` the room asked for.
-  cmd: z.string().optional(),
-  requestId: z.string().optional(),
-  playerId: z.number().optional(),
-  ok: z.boolean().optional(),
+  cmd: z.optional(z.string()),
+  requestId: z.optional(z.string()),
+  playerId: z.optional(z.number()),
+  ok: z.optional(z.boolean()),
 });
 export type TapRecord = z.infer<typeof TapRecordSchema>;
 
@@ -87,8 +91,8 @@ export const ExtensionMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("hello"),
     version: z.string(),
-    capabilities: z.array(z.string()).optional(),
-    sharing: z.boolean().optional(),
+    capabilities: z.optional(z.array(z.string())),
+    sharing: z.optional(z.boolean()),
   }),
   // 1.0: the user turned sharing on or off in the extension.
   z.object({ type: z.literal("sharing"), enabled: z.boolean() }),

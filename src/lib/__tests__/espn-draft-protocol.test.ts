@@ -4,7 +4,9 @@ import {
   parseExtensionMessage,
   parseFrame,
   peekInitHeader,
+  TapRecordSchema,
   type DraftFrame,
+  type TapRecord,
 } from "../espn-draft/protocol";
 
 // The first ~24 base64 chars of a room-open INIT payload: league 35392660, team 5.
@@ -174,5 +176,63 @@ describe("ESPN's observed refusals (throwaway league, 2026-09-05)", () => {
   });
   test("a capped player", () => {
     expect(parseFrame("ERROR 1 Invalid+Selection.")).toMatchObject({ op: "ERROR", severity: 1, text: "Invalid Selection." });
+  });
+});
+
+// The schemas moved from classic zod to zod/mini (a smaller Draft bundle). These pin the
+// behaviour that must not change with it: what passes, what fails, and what happens to keys
+// the page does not know.
+describe("TapRecordSchema", () => {
+  test("a full record parses to itself", () => {
+    const record: TapRecord = {
+      ts: 1_725_000_000_000,
+      kind: "frame",
+      dir: "in",
+      transport: "ws",
+      frame: "SELECTED 3 4277905 0 {SWID}",
+      url: "wss://fantasydraft.espn.com/league-35392660/JOIN",
+      tab: 7,
+      frameId: 0,
+    };
+    const result = TapRecordSchema.safeParse(record);
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(record);
+  });
+
+  test("the bare minimum is a timestamp and a kind", () => {
+    expect(TapRecordSchema.safeParse({ ts: 1, kind: "open" }).data).toEqual({ ts: 1, kind: "open" });
+  });
+
+  test("a missing or mistyped field fails the record", () => {
+    expect(TapRecordSchema.safeParse({ kind: "frame" }).success).toBe(false);
+    expect(TapRecordSchema.safeParse({ ts: "1", kind: "frame" }).success).toBe(false);
+    expect(TapRecordSchema.safeParse({ ts: 1, kind: "message" }).success).toBe(false);
+    expect(TapRecordSchema.safeParse({ ts: 1, kind: "frame", dir: "sideways" }).success).toBe(false);
+    expect(TapRecordSchema.safeParse({ ts: 1, kind: "frame", tab: "7" }).success).toBe(false);
+    expect(TapRecordSchema.safeParse({ ts: 1, kind: "frame", ok: "true" }).success).toBe(false);
+    expect(TapRecordSchema.safeParse(null).success).toBe(false);
+    expect(TapRecordSchema.safeParse([]).success).toBe(false);
+  });
+
+  test("keys from a newer extension pass through untouched (loose)", () => {
+    const record: TapRecord = { ts: 1, kind: "frame", frame: "RESET", somethingNew: 42, nested: { a: [1] } };
+    expect(TapRecordSchema.safeParse(record).data).toEqual(record);
+  });
+
+  test("an envelope drops keys it does not know, but keeps the record's", () => {
+    expect(parseExtensionMessage({ type: "hello", version: "1.0.0", sharing: true, extra: 1 })).toEqual({
+      type: "hello",
+      version: "1.0.0",
+      sharing: true,
+    });
+    expect(parseExtensionMessage({ type: "record", record: { ts: 1, kind: "open", extra: 1 }, alsoExtra: 2 })).toEqual({
+      type: "record",
+      record: { ts: 1, kind: "open", extra: 1 },
+    });
+  });
+
+  test("one bad record fails the whole replay", () => {
+    expect(parseExtensionMessage({ type: "replay", records: [{ ts: 1, kind: "open" }, { ts: 2, kind: "bad" }] })).toBeNull();
+    expect(parseExtensionMessage({ type: "replay", records: [] })).toEqual({ type: "replay", records: [] });
   });
 });
