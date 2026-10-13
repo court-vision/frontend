@@ -92,7 +92,7 @@ describe("pages Clerk's middleware no longer sees", () => {
 
   test("the front door sends a browser that holds a session to its Week desk", async () => {
     for (const cookie of [HINT, "__client_uat_Xk9Q2bLm=1760000000", `theme=paper; ${HINT}`]) {
-      for (const headers of [DOCUMENT, ROUTER, {}]) {
+      for (const headers of [DOCUMENT, {}]) {
         const r = await run("/", headers, cookie);
         expect(r.status).toBe(307);
         expect(r.location).toBe(`${ORIGIN}/week`);
@@ -100,14 +100,29 @@ describe("pages Clerk's middleware no longer sees", () => {
       }
     }
     expect((await run("/?utm_source=x", DOCUMENT, HINT)).location).toBe(`${ORIGIN}/week`);
+    // A POST is never the router's 204.
+    expect((await run("/", { ...ROUTER, "Next-Action": "abc" }, HINT, "POST")).status).toBe(307);
   });
 
-  test("and serves everyone else the landing page", async () => {
+  test("but answers the router's request for it with 204, so no redirect is cached for the wordmark", async () => {
+    for (const cookie of [HINT, "__client_uat_Xk9Q2bLm=1760000000"]) {
+      for (const path of ["/", "/?utm_source=x"]) {
+        const r = await run(path, ROUTER, cookie);
+        expect(r.status).toBe(204);
+        expect(r.location).toBeNull();
+        expect(r.clerk).toBeNull();
+      }
+    }
+  });
+
+  test("and serves everyone else the landing page, by document and by the router", async () => {
     for (const cookie of ["", "__client_uat=0", "theme=paper"]) {
-      const r = await run("/", DOCUMENT, cookie);
-      expect(r.status).toBe(200);
-      expect(r.location).toBeNull();
-      expect(r.clerk).toBeNull();
+      for (const headers of [DOCUMENT, ROUTER]) {
+        const r = await run("/", headers, cookie);
+        expect(r.status).toBe(200);
+        expect(r.location).toBeNull();
+        expect(r.clerk).toBeNull();
+      }
     }
   });
 });

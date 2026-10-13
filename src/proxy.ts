@@ -82,6 +82,15 @@ export default function proxy(req: NextRequest, event: NextFetchEvent) {
   // shows Week's own sign-in prompt once, and clearing it is that page's first
   // Clerk call.
   if (req.nextUrl.pathname === "/" && hasSessionHint(req.cookies.getAll())) {
+    // Not for the client router, though. Every desk's wordmark links here and
+    // prefetches it on load, and '/' is static now, so the router kept a
+    // redirect to /week as the answer for '/' for its static stale time (5
+    // min): once the hint had gone stale (clerk-js zeroes it on the desk's
+    // first call) or the session had ended in another tab, the wordmark on
+    // /week did nothing at all (measured on a local build). A 204 is a miss to
+    // a prefetch, so the cookie is read when the link is followed: the click
+    // becomes a document load of '/', which lands here again.
+    if (isRouterRequest(req)) return new NextResponse(null, { status: 204 });
     return NextResponse.redirect(new URL(WEEK_DESK, req.url));
   }
   return pageResponse(req);
