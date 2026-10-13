@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
+import { captureError } from "@/lib/report-error";
 
 // Replaces the root layout when it throws, so it renders its own html/body and
 // can't lean on the desk frame's tokens or fonts: Midnight's colours, inline.
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error(error);
-    Sentry.captureException(error);
+    captureError(error);
   }, [error]);
 
   return (

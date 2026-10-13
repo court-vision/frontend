@@ -43,6 +43,13 @@ export default withSentryConfig(nextConfig, {
   // Upload a larger set of source maps for prettier stack traces (increases build time)
   widenClientFileUpload: true,
 
+  // The browser SDK loads lazily with tracing off (src/lib/report-error.ts).
+  // The route manifest only names tracing transactions, and Turbopack injects
+  // it into instrumentation-client, which runs before hydration on every
+  // route; the router-transition hook the build asks for is tracing too.
+  routeManifestInjection: false,
+  suppressOnRouterTransitionStartWarning: true,
+
   // Uncomment to route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
   // This can increase your server load as well as your hosting bill.
   // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
