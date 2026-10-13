@@ -2,7 +2,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
-import type { AvgWindow } from "@/types/matchup";
+import { livePollMs, type Span } from "@/lib/week-polling";
+import type { AvgWindow, LiveMatchupData } from "@/types/matchup";
 
 // Query keys
 export const matchupKeys = {
@@ -37,15 +38,21 @@ export function useMatchupQuery(
   });
 }
 
-export function useLiveMatchupQuery(teamId: number | null) {
+/**
+ * The current matchup with tonight's box scores on top. It polls fast only
+ * around rostered games (`span`, from today's board, and any live box score in
+ * its own answer) and every few minutes otherwise; see `livePollMs`. A return
+ * to the tab reads it again once it is 30 s old.
+ */
+export function useLiveMatchupQuery(teamId: number | null, span: Span | null = null) {
   const { getToken, isSignedIn } = useAuth();
 
-  return useQuery({
+  return useQuery<LiveMatchupData>({
     queryKey: matchupKeys.live(teamId!),
     queryFn: ({ signal }) => apiClient.getLiveMatchup(getToken, teamId!, { signal }),
     enabled: !!teamId && isSignedIn === true,
-    staleTime: 0,
-    refetchInterval: 30 * 1000, // Poll every 30s in sync with the live pipeline
+    staleTime: 30_000,
+    refetchInterval: (query) => livePollMs(span, query.state.data, Date.now()),
     refetchOnWindowFocus: true,
     // Live polling: the next poll is the retry (the Week desk reads /matchups/current
     // meanwhile), and the panel shows its own badge

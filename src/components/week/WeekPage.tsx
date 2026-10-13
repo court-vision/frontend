@@ -32,6 +32,7 @@ import { useLiveAddTeam } from "@/components/account/useAccountModels";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
 import { staleLineup } from "@/lib/lineup-editor";
 import { sourceFromApi, weekDaysFromApi } from "@/lib/week-source";
+import { liveSpan } from "@/lib/week-polling";
 import {
   DEMO_DAYS,
   DEMO_ROSTER,
@@ -407,14 +408,17 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   }, [arrival]);
 
   const week = useWeeklyMatchupQuery(teamId);
-  const live = useLiveMatchupQuery(teamId);
+  const weekDays = useMemo(() => (week.data ? weekDaysFromApi(week.data) : null), [week.data]);
+  const lineup = useDayBoards(teamId, selected.provider, weekDays);
+  const todayBoard = lineup.todayDay != null ? lineup.boards[lineup.todayDay] ?? null : null;
+  // Tonight's games, from today's board: the live poll runs fast only around them.
+  const span = useMemo(() => liveSpan(todayBoard, week.data), [todayBoard, week.data]);
+  const live = useLiveMatchupQuery(teamId, span);
   // /matchups/live is /matchups/current plus tonight's overlay (the server builds it
   // from the same provider read), so the current matchup is read only when live
   // can't be: a failure, not an empty week, with nothing from live to show.
   const liveFailed = live.isError && live.data === undefined && !isEmptyResult(live.error);
   const matchup = useMatchupQuery(teamId, "season", { enabled: liveFailed });
-  const weekDays = useMemo(() => (week.data ? weekDaysFromApi(week.data) : null), [week.data]);
-  const lineup = useDayBoards(teamId, selected.provider, weekDays);
 
   const [wantStreamers, setWantStreamers] = useState(false);
   const streamers = useStreamersQuery(wantStreamers ? teamId : null, {
@@ -435,7 +439,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const schedule = useTeamScheduleQuery(scheduleTeam, true, 10);
   const transaction = useRosterTransactionMutation(teamId ?? 0);
   const pickups = useScheduledPickupsQuery(selected.provider === "espn" ? teamId : null);
-  const actions = useDailyActionsQuery(teamId, selected.provider);
+  const actions = useDailyActionsQuery(teamId, selected.provider, { board: todayBoard });
   const history = useMatchupScoreHistoryQuery(teamId, week.data?.matchup_period ?? null);
   const pickupSchedule = useSchedulePickupMutation(teamId ?? 0);
   const pickupCancel = useCancelPickupMutation(teamId ?? 0);
