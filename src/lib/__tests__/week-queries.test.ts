@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { QueriesObserver, QueryClient, type QueryObserverResult } from "@tanstack/react-query";
+import { QueriesObserver, QueryClient, QueryObserver, type QueryObserverResult } from "@tanstack/react-query";
 import { combineDays } from "@/components/week/useDayBoards";
 import { lastUpdatedAt } from "@/hooks/useDataUpdatedAt";
 import { lineupKeys } from "@/hooks/useLineupEditor";
 import { matchupKeys } from "@/hooks/useMatchup";
+import { shareActions, shareLineup } from "@/lib/lineup-sharing";
+import { DEMO_STREAMERS, demoDailyActions } from "@/lib/week-demo";
+import type { DailyActionsData } from "@/types/daily-actions";
 import type { LineupState } from "@/types/lineup-editor";
 import * as F from "./week-api-fixtures";
 
@@ -15,12 +18,20 @@ afterEach(() => {
   client.clear();
 });
 
-/** Later days' lineups as the Week desk reads them; each read answers a fresh copy of `boards[period]`. */
+// Every read is stamped with the moment the server made it (`fetched_at`), as the backend does.
+let reads = 0;
+const stamped = <T extends LineupState>(board: T): T => ({
+  ...structuredClone(board),
+  fetched_at: `2026-10-28T19:${String(reads++ % 60).padStart(2, "0")}:00-04:00`,
+});
+
+/** Later days' lineups as useDayBoards reads them; each read answers a fresh, freshly stamped copy of `boards[period]`. */
 function laterDays(boards: Record<number, LineupState>) {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const queries = Object.keys(boards).map((p) => ({
     queryKey: lineupKeys.day(3, Number(p)),
-    queryFn: () => Promise.resolve(structuredClone(boards[Number(p)])),
+    queryFn: () => Promise.resolve(stamped(boards[Number(p)])),
+    structuralSharing: shareLineup,
   }));
   const combine = (results: QueryObserverResult[]) => combineDays(results as Array<QueryObserverResult<LineupState | null>>);
   // As useQueries wires it: the options (with `combine`) arrive through setQueries.
@@ -35,7 +46,7 @@ function laterDays(boards: Record<number, LineupState>) {
 const settle = () => new Promise((r) => setTimeout(r, 0));
 
 describe("the later days' lineups, combined", () => {
-  test("a refetch that reads the same lineups keeps the same value: nothing below re-renders", async () => {
+  test("a refetch that reads the same lineups, stamped anew, keeps the same value: nothing below re-renders", async () => {
     const days = { 10: F.espnBoard(3), 11: F.espnBoard(4) };
     const q = laterDays(days);
     await settle();
@@ -45,6 +56,7 @@ describe("the later days' lineups, combined", () => {
     const before = q.renders();
     await q.refetch();
     await settle();
+    expect(client.getQueryState(lineupKeys.day(3, 10))?.dataUpdateCount).toBe(2);
     expect(q.read()).toBe(first);
     expect(q.renders()).toBe(before);
   });
@@ -61,6 +73,50 @@ describe("the later days' lineups, combined", () => {
     expect(next).not.toBe(first);
     expect(next.data[0]).toBe(first.data[0]);
     expect(next.data[1]?.roster_version).toBe("v-2");
+  });
+});
+
+/** One polled query as the desk subscribes to it: re-rendered only when what it reads (`data`, `isLoading`) changes. */
+async function polled<T>(queryKey: readonly unknown[], read: () => T, structuralSharing: (prev: unknown, next: unknown) => unknown) {
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const observer = new QueryObserver<T>(client, { queryKey, queryFn: () => Promise.resolve(read()), structuralSharing, notifyOnChangeProps: ["data", "isLoading"] });
+  let renders = 0;
+  unsubscribe = observer.subscribe(() => renders++);
+  await settle();
+  return { observer, renders: () => renders, poll: () => observer.refetch() };
+}
+
+describe("a poll that reads the same answer, stamped anew", () => {
+  test("today's lineup keeps the cached board, and its watcher doesn't re-render", async () => {
+    const q = await polled(lineupKeys.state(3), () => stamped(F.espnBoard()), shareLineup);
+    const first = q.observer.getCurrentResult().data;
+    const before = q.renders();
+    await q.poll();
+    await settle();
+    expect(client.getQueryState(lineupKeys.state(3))?.dataUpdateCount).toBe(2);
+    expect(q.observer.getCurrentResult().data).toBe(first);
+    expect(q.renders()).toBe(before);
+  });
+
+  test("today's lineup that changed is a new board", async () => {
+    let version = "v-1";
+    const q = await polled(lineupKeys.state(3), () => stamped({ ...F.espnBoard(), roster_version: version }), shareLineup);
+    const first = q.observer.getCurrentResult().data;
+    version = "v-2";
+    await q.poll();
+    expect(q.observer.getCurrentResult().data).not.toBe(first);
+    expect(q.observer.getCurrentResult().data?.roster_version).toBe("v-2");
+  });
+
+  test("today's moves keep the cached answer though their board was read again", async () => {
+    const answer = (): DailyActionsData => demoDailyActions(stamped(F.espnBoard()), DEMO_STREAMERS.slice(0, 5));
+    const q = await polled(lineupKeys.actions(3), answer, shareActions);
+    const first = q.observer.getCurrentResult().data;
+    const before = q.renders();
+    await q.poll();
+    await settle();
+    expect(q.observer.getCurrentResult().data).toBe(first);
+    expect(q.renders()).toBe(before);
   });
 });
 

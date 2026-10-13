@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { ROSTER_MOVE_INVALID, toApiError, userMessage } from "@/lib/api-error";
 import { staleLineup } from "@/lib/lineup-editor";
+import { shareLineup } from "@/lib/lineup-sharing";
 import { lineupKeys, useTeamLineupQuery } from "@/hooks/useLineupEditor";
 import { matchupKeys } from "@/hooks/useMatchup";
 import { teamsKeys } from "@/hooks/useTeams";
@@ -97,7 +98,9 @@ export function useDayBoards(
   );
 
   // `combine` hands back the same value until a day's lineup actually changes, so a
-  // poll or a refetch that reads the same lineups doesn't rebuild the week below.
+  // refetch that reads the same lineups doesn't rebuild the week below. That holds
+  // only because each read keeps its cached board when nothing but the server's
+  // read stamp moved (`shareLineup`): every read is stamped anew.
   const laterDays = useQueries({
     queries: later.map((i) => {
       const period = periodOf(i)!;
@@ -107,6 +110,7 @@ export function useDayBoards(
         enabled: !!teamId && isSignedIn === true && provider === "espn",
         staleTime: 60_000,
         refetchOnWindowFocus: true,
+        structuralSharing: shareLineup,
       };
     }),
     combine: combineDays,
@@ -195,6 +199,7 @@ export function useDayBoards(
           queryKey: lineupKeys.state(teamId),
           queryFn: ({ signal }) => apiClient.getTeamLineup(getToken, teamId, { signal }),
           staleTime: 0,
+          structuralSharing: shareLineup,
         });
       }
       const period = periodOf(day);
@@ -203,6 +208,7 @@ export function useDayBoards(
         queryKey: lineupKeys.day(teamId, period),
         queryFn: ({ signal }) => apiClient.getTeamLineup(getToken, teamId, { signal }, period),
         staleTime: 0,
+        structuralSharing: shareLineup,
       });
     },
     [teamId, todayDay, periodOf, queryClient, getToken]

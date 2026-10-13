@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
 import { lineupKeys } from "@/hooks/useLineupEditor";
+import { shareActions } from "@/lib/lineup-sharing";
 import { actionsPollMs } from "@/lib/week-polling";
 import type { DailyActionsData } from "@/types/daily-actions";
 import type { LineupState } from "@/types/lineup-editor";
@@ -30,6 +31,8 @@ export function useDailyActionsQuery(
     enabled: (opts.enabled ?? true) && !!teamId && isSignedIn === true && provider === "espn",
     staleTime: 2 * 60_000,
     refetchInterval: () => actionsPollMs(board, Date.now()),
+    // Its `lineup` is a fresh read, stamped anew each time: an unchanged answer keeps the cached one.
+    structuralSharing: shareActions,
     refetchOnWindowFocus: true,
     // The strip shows its own failure in place.
     meta: { toast: false },

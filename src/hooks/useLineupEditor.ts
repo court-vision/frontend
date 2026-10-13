@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { ROSTER_MOVE_INVALID, toApiError, userMessage } from "@/lib/api-error";
 import { staleLineup } from "@/lib/lineup-editor";
+import { shareLineup } from "@/lib/lineup-sharing";
 import { lineupPollMs } from "@/lib/week-polling";
 import { matchupKeys } from "@/hooks/useMatchup";
 import { teamsKeys } from "@/hooks/useTeams";
@@ -31,7 +32,9 @@ export const lineupKeys = {
  * `null`), so the query is off for every other provider. While the board is
  * writable it re-polls every minute from just before your first tip until your
  * last player has locked (tip-offs lock players as the evening goes), and every
- * ten minutes otherwise; see `lineupPollMs`.
+ * ten minutes otherwise; see `lineupPollMs`. A read that only re-stamps its
+ * read time keeps the cached board (`shareLineup`), so an unchanged poll
+ * leaves the desk as it was.
  */
 export function useTeamLineupQuery(
   teamId: number | null,
@@ -47,6 +50,7 @@ export function useTeamLineupQuery(
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     refetchInterval: (query) => lineupPollMs(query.state.data, Date.now()),
+    structuralSharing: shareLineup,
   });
 }
 
