@@ -1,8 +1,10 @@
 /**
  * The one HTTP entry point for the Court Vision API.
  *
- * - Tags every request with an `X-Correlation-ID` so a failure can be joined
- *   to the backend's request log.
+ * - Joins every failure to the backend's request log by its correlation id:
+ *   requests that are preflighted anyway send their own `X-Correlation-ID`,
+ *   and a public GET reads the one the API mints from the response instead
+ *   (see `sendsCorrelationId`).
  * - Times out (15 s by default) and cooperates with TanStack Query's `signal`.
  * - Refuses to send an authenticated request without a Clerk token.
  * - Throws `ApiError` for non-2xx responses and, unless `raw`, for the
@@ -42,6 +44,23 @@ export interface Envelope<T = unknown> {
   data?: T | null;
 }
 
+export const CORRELATION_HEADER = "X-Correlation-ID";
+
+/**
+ * Whether a request carries our own `X-Correlation-ID`. The API is another
+ * origin, and that header is not CORS-safelisted: on a public GET it alone
+ * turned a simple request into a preflighted one, an extra OPTIONS round trip
+ * (90-100 ms from the West Coast, measured 2026-10-13) before every new URL,
+ * which Scout paid twice per player open. Signed-in requests (Authorization)
+ * and writes (a JSON body, or PUT/PATCH/DELETE) are preflighted whatever we
+ * send, so they keep sending it. Without one the API mints an id and returns
+ * it in the exposed `X-Correlation-ID` response header (backend
+ * core/middleware.py `expose_headers`), which is where the error path reads it.
+ */
+export function sendsCorrelationId(method: HttpMethod, authenticated: boolean): boolean {
+  return authenticated || method !== "GET";
+}
+
 function newCorrelationId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -79,12 +98,14 @@ export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}):
     raw = false,
   } = options;
 
-  const correlationId = newCorrelationId();
-  const requestHeaders: Record<string, string> = {
-    Accept: "application/json",
-    "X-Correlation-ID": correlationId,
-    ...headers,
-  };
+  // A public GET sends only `Accept` (safelisted), so it goes out as a simple
+  // request with no preflight; anything a caller adds in `headers` is theirs.
+  const sentCorrelationId = sendsCorrelationId(method, Boolean(getToken))
+    ? newCorrelationId()
+    : undefined;
+  const requestHeaders: Record<string, string> = { Accept: "application/json" };
+  if (sentCorrelationId) requestHeaders[CORRELATION_HEADER] = sentCorrelationId;
+  Object.assign(requestHeaders, headers);
   if (body !== undefined) requestHeaders["Content-Type"] = "application/json";
 
   if (getToken) {
@@ -125,6 +146,8 @@ export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}):
     signal?.removeEventListener("abort", onOuterAbort);
   }
 
+  // The API echoes the id we sent, or mints one, on every response.
+  const correlationId = res.headers.get(CORRELATION_HEADER) ?? sentCorrelationId;
   if (!res.ok) throw ApiError.fromResponse(res, parsed, correlationId);
   if (!raw && isEnvelope(parsed) && parsed.status !== "success") {
     throw ApiError.fromEnvelope(parsed, correlationId);

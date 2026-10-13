@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { ApiError } from "../api-error";
-import { fetchJson, nullOn404, unwrap, unwrapWithMessage } from "../http";
+import { fetchJson, nullOn404, sendsCorrelationId, unwrap, unwrapWithMessage } from "../http";
 
 type Call = { url: string; init: RequestInit };
 const realFetch = globalThis.fetch;
@@ -65,6 +65,78 @@ describe("fetchJson", () => {
     await fetchJson("http://api/x");
     expect(headerOf(calls[0], "Content-Type")).toBeUndefined();
     expect(headerOf(calls[0], "Authorization")).toBeUndefined();
+  });
+
+  test("a public GET sends only CORS-safelisted headers, so the browser skips the preflight", async () => {
+    stubFetch(() => json({ status: "success", message: "ok", data: [] }));
+    await fetchJson("http://api/v1/players/203999/percentiles");
+    expect(calls[0].init.method).toBe("GET");
+    expect(calls[0].init.headers).toEqual({ Accept: "application/json" });
+    // Fetch's CORS-safelisted request headers; Content-Type only with form or
+    // text values, which the client never sends. Anything else (our own
+    // X-Correlation-ID, Authorization, a JSON Content-Type) forces an OPTIONS.
+    const safelisted = new Set(["accept", "accept-language", "content-language"]);
+    for (const name of Object.keys(calls[0].init.headers as Record<string, string>)) {
+      expect(safelisted.has(name.toLowerCase())).toBe(true);
+    }
+  });
+
+  test("an authenticated GET still sends a correlation id (Authorization preflights it anyway)", async () => {
+    stubFetch(() => json({ status: "success", message: "ok", data: [] }));
+    await fetchJson("http://api/v1/internal/teams/", { getToken: async () => "tok" });
+    expect(headerOf(calls[0], "Authorization")).toBe("Bearer tok");
+    expect(headerOf(calls[0], "X-Correlation-ID")).toMatch(/^[0-9a-f-]{8,}$/);
+  });
+
+  test("a write sends a correlation id even without a token", async () => {
+    stubFetch(() => json({ status: "success", message: "ok", data: null }));
+    await fetchJson("http://api/x", { method: "POST", body: { a: 1 } });
+    await fetchJson("http://api/x", { method: "DELETE" });
+    for (const call of calls) {
+      expect(headerOf(call, "X-Correlation-ID")).toMatch(/^[0-9a-f-]{8,}$/);
+    }
+  });
+
+  test("sendsCorrelationId: only requests the browser preflights anyway", () => {
+    expect(sendsCorrelationId("GET", false)).toBe(false);
+    expect(sendsCorrelationId("GET", true)).toBe(true);
+    for (const method of ["POST", "PUT", "PATCH", "DELETE"] as const) {
+      expect(sendsCorrelationId(method, false)).toBe(true);
+      expect(sendsCorrelationId(method, true)).toBe(true);
+    }
+  });
+
+  test("a public GET's error carries the correlation id the API minted", async () => {
+    // A 500 whose body has no correlation_id: the exposed response header is the only source.
+    stubFetch(() => json({ detail: "boom" }, 500, { "X-Correlation-ID": "minted-by-api" }));
+    const err = await failure(fetchJson("http://api/x"));
+    expect(headerOf(calls[0], "X-Correlation-ID")).toBeUndefined();
+    expect(err.status).toBe(500);
+    expect(err.correlationId).toBe("minted-by-api");
+  });
+
+  test("a public GET's 200-with-error envelope reads the id from the response header too", async () => {
+    stubFetch(() =>
+      json({ status: "not_found", message: "no", data: null }, 200, {
+        "X-Correlation-ID": "minted-by-api",
+      })
+    );
+    const err = await failure(fetchJson("http://api/x"));
+    expect(err.status).toBe(404);
+    expect(err.correlationId).toBe("minted-by-api");
+  });
+
+  test("the error keeps the id we sent when the response carries none", async () => {
+    stubFetch(() => json({ detail: "boom" }, 500));
+    const err = await failure(fetchJson("http://api/x", { getToken: async () => "tok" }));
+    const sent = headerOf(calls[0], "X-Correlation-ID");
+    expect(sent).toBeDefined();
+    expect(err.correlationId).toBe(sent!);
+  });
+
+  test("a public GET's error has no correlation id when the API sent none", async () => {
+    stubFetch(() => json({ detail: "boom" }, 500));
+    expect((await failure(fetchJson("http://api/x"))).correlationId).toBeNull();
   });
 
   test("null token → ApiError.auth() and no request is made", async () => {

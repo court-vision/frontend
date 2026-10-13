@@ -3,9 +3,11 @@ import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Outfit } from "next/font/google";
+import { preconnect } from "react-dom";
 
 import { DeskFrame } from "@/components/desk/DeskFrame";
 import { deskMono, deskSans } from "@/components/desk/fonts";
+import { API_BASE } from "@/endpoints";
 import { QueryProvider } from "@/providers/QueryProvider";
 import "./globals.css";
 
@@ -87,6 +89,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // A desk's first API call waits on hydration and clerk-js; open the API's
+  // connection (DNS, TCP, TLS: 45-80 ms measured 2026-10-13) while that loads.
+  // Anonymous because fetchJson's cross-origin requests use the default
+  // credentials mode, which the browser serves from its uncredentialed pool.
+  preconnect(API_BASE, { crossOrigin: "anonymous" });
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

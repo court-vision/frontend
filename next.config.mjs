@@ -1,7 +1,15 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
+import { CLERK_JS_VERSION, CLERK_UI_VERSION } from "./src/lib/clerk-scripts.mjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Exact Clerk script URLs instead of the major-only ones, which cost an
+  // uncacheable 307 on every page load (see src/lib/clerk-scripts.mjs).
+  env: {
+    NEXT_PUBLIC_CLERK_JS_VERSION: CLERK_JS_VERSION,
+    NEXT_PUBLIC_CLERK_UI_VERSION: CLERK_UI_VERSION,
+  },
   async headers() {
     return [
       {
