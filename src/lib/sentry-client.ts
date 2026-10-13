@@ -3,8 +3,15 @@
  * loads it with a dynamic import once the page is idle, which is what keeps
  * @sentry/nextjs (a 64 KB br chunk) out of every route's first load.
  */
-import { addBreadcrumb, captureException, init } from "@sentry/nextjs";
-import { keepIntegrations, makeBeforeSend, MAX_EVENTS_PER_PAGE, SENTRY_DSN, SENTRY_ENVIRONMENT } from "./sentry";
+import { addBreadcrumb, captureException, init, withScope } from "@sentry/nextjs";
+import {
+  backdate,
+  keepIntegrations,
+  makeBeforeSend,
+  MAX_EVENTS_PER_PAGE,
+  SENTRY_DSN,
+  SENTRY_ENVIRONMENT,
+} from "./sentry";
 import type { ReporterSdk } from "./report-error";
 
 export function initSentry(): ReporterSdk {
@@ -22,5 +29,16 @@ export function initSentry(): ReporterSdk {
     // Capped per page load: the browser spends the server's quota (sentry.ts).
     beforeSend: makeBeforeSend({ dropApiErrors: true, maxEvents: MAX_EVENTS_PER_PAGE }),
   });
-  return { captureException, addBreadcrumb };
+  return {
+    captureException,
+    addBreadcrumb,
+    captureBufferedException(exception, hint, origin) {
+      withScope((scope) => {
+        // A scope's processors run after every integration's, so this
+        // overrides the time and URL HttpContext and Sentry just stamped.
+        scope.addEventProcessor((event) => backdate(event, origin));
+        captureException(exception, hint);
+      });
+    },
+  };
 }

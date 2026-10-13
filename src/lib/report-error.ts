@@ -8,7 +8,8 @@
  * which listens for uncaught errors and unhandled rejections from the first
  * script on and loads the SDK (sentry-client.ts) with a dynamic import once
  * the page has loaded and gone idle. What arrives before then waits in a small
- * buffer and is replayed, in order, as soon as the SDK is up.
+ * buffer and is replayed, in order, as soon as the SDK is up; each error keeps
+ * the time and page it happened on.
  *
  * Code reports through `captureError` and `recordBreadcrumb`, never through
  * @sentry/nextjs itself: a single static import of the SDK in client code puts
@@ -16,11 +17,13 @@
  * errors reach Sentry through instrumentation.ts's onRequestError.
  */
 import type { Breadcrumb, EventHint } from "@sentry/nextjs";
-import { CLIENT_REPORTING } from "./sentry";
+import { CLIENT_REPORTING, type ErrorOrigin } from "./sentry";
 
-/** The two SDK calls the reporter makes, so tests can stand in for Sentry. */
+/** The SDK calls the reporter makes, so tests can stand in for Sentry. */
 export interface ReporterSdk {
   captureException(exception: unknown, hint?: EventHint): string;
+  /** Report an error that waited in the buffer, as of when and where it happened. */
+  captureBufferedException(exception: unknown, hint: EventHint | undefined, origin: ErrorOrigin): void;
   addBreadcrumb(breadcrumb: Breadcrumb): void;
 }
 
@@ -37,7 +40,7 @@ export const EARLY_ERROR = { type: "cv.buffered.onerror", handled: false } as co
 export const EARLY_REJECTION = { type: "cv.buffered.onunhandledrejection", handled: false } as const;
 
 type Pending =
-  | { kind: "error"; error: unknown; hint?: EventHint }
+  | { kind: "error"; error: unknown; hint?: EventHint; origin: ErrorOrigin }
   | { kind: "breadcrumb"; breadcrumb: Breadcrumb };
 
 export interface ErrorReporter {
@@ -52,9 +55,12 @@ export interface ErrorReporter {
 export function createErrorReporter({
   enabled,
   loadSdk,
+  pageUrl = () => globalThis.location?.href,
 }: {
   enabled: boolean;
   loadSdk: () => Promise<ReporterSdk>;
+  /** The page's current URL, recorded with each buffered error. */
+  pageUrl?: () => string | undefined;
 }): ErrorReporter {
   let sdk: ReporterSdk | null = null;
   let gaveUp = false;
@@ -78,7 +84,9 @@ export function createErrorReporter({
       return;
     }
     bufferedErrors += 1;
-    pending.push({ kind: "error", error, hint });
+    // When and where, now: replayed later, the event would otherwise carry
+    // the replay's time and whatever page the visitor is on by then.
+    pending.push({ kind: "error", error, hint, origin: { timestamp: Date.now() / 1000, url: pageUrl() } });
   }
 
   function recordBreadcrumb(breadcrumb: Breadcrumb) {
@@ -121,7 +129,7 @@ export function createErrorReporter({
     pending = [];
     for (const item of queue) {
       if (item.kind === "breadcrumb") loaded.addBreadcrumb(item.breadcrumb);
-      else loaded.captureException(item.error, item.hint);
+      else loaded.captureBufferedException(item.error, item.hint, item.origin);
     }
     if (droppedErrors > 0) {
       loaded.addBreadcrumb({

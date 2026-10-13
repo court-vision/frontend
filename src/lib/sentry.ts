@@ -6,7 +6,7 @@
  * project's DSN (it is unset in every Vercel environment), so a build can
  * point all three runtimes at another project, or at a local fake ingest.
  */
-import type { ErrorEvent, EventHint } from "@sentry/nextjs";
+import type { ErrorEvent, Event, EventHint } from "@sentry/nextjs";
 import { ApiError } from "./api-error";
 
 const PROJECT_DSN =
@@ -103,4 +103,25 @@ export function makeBeforeSend({ maxEvents = Infinity, ...noise }: BeforeSendOpt
     sent += 1;
     return event;
   };
+}
+
+/** When and where a buffered error happened (report-error.ts). */
+export interface ErrorOrigin {
+  /** Unix seconds, as Sentry stamps events. */
+  timestamp: number;
+  /** The page's URL then; absent outside a browser. */
+  url?: string;
+}
+
+/**
+ * Give a replayed event the time and page of its error, not of the replay.
+ * Sentry stamps an event, and HttpContext reads `location`, while the event
+ * is processed: for an error that waited in the buffer that is seconds later
+ * (up to the 10 s load deadline, plus the SDK chunk's download), possibly
+ * after the visitor moved to another desk.
+ */
+export function backdate<T extends Event>(event: T, { timestamp, url }: ErrorOrigin): T {
+  event.timestamp = timestamp;
+  if (url) event.request = { ...event.request, url };
+  return event;
 }

@@ -13,24 +13,31 @@ import {
   type IdleHost,
   type ReporterSdk,
 } from "../report-error";
+import type { ErrorOrigin } from "../sentry";
 
 type Call = { kind: "error"; error: unknown; hint?: EventHint } | { kind: "breadcrumb"; breadcrumb: Breadcrumb };
 
 function fakeSdk() {
   const calls: Call[] = [];
+  /** Errors replayed from the buffer, with the time and page they were recorded with. */
+  const replayed: Array<{ error: unknown; origin: ErrorOrigin }> = [];
   const sdk: ReporterSdk = {
     captureException(error, hint) {
       calls.push({ kind: "error", error, hint });
       return "event-id";
     },
+    captureBufferedException(error, hint, origin) {
+      calls.push({ kind: "error", error, hint });
+      replayed.push({ error, origin });
+    },
     addBreadcrumb(breadcrumb) {
       calls.push({ kind: "breadcrumb", breadcrumb });
     },
   };
-  return { sdk, calls };
+  return { sdk, calls, replayed };
 }
 
-function reporterWith(sdk: ReporterSdk, enabled = true) {
+function reporterWith(sdk: ReporterSdk, enabled = true, pageUrl?: () => string | undefined) {
   let loads = 0;
   const reporter = createErrorReporter({
     enabled,
@@ -38,6 +45,7 @@ function reporterWith(sdk: ReporterSdk, enabled = true) {
       loads += 1;
       return sdk;
     },
+    pageUrl,
   });
   return { reporter, loads: () => loads };
 }
@@ -74,8 +82,43 @@ describe("createErrorReporter", () => {
     expect(calls[3]).toEqual({ kind: "error", error: second, hint: { mechanism: { type: "test", handled: true } } });
   });
 
+  test("a buffered error keeps the time and page it happened on, not the replay's", async () => {
+    const { sdk, replayed } = fakeSdk();
+    let url = "https://www.courtvision.dev/scout?player=1";
+    const { reporter } = reporterWith(sdk, true, () => url);
+    const target = new EventTarget();
+    reporter.listen(target);
+    const boundary = new Error("caught by error.tsx");
+    const uncaught = new Error("uncaught");
+
+    const before = Date.now() / 1000;
+    reporter.captureError(boundary);
+    target.dispatchEvent(errorEvent({ error: uncaught }));
+    const after = Date.now() / 1000;
+    // The visitor moves to another desk before the SDK loads.
+    url = "https://www.courtvision.dev/week";
+    await new Promise((r) => setTimeout(r, 20));
+    await reporter.load();
+
+    expect(replayed.map((r) => r.error)).toEqual([boundary, uncaught]);
+    for (const { origin } of replayed) {
+      expect(origin.url).toBe("https://www.courtvision.dev/scout?player=1");
+      expect(origin.timestamp).toBeGreaterThanOrEqual(before);
+      expect(origin.timestamp).toBeLessThanOrEqual(after);
+    }
+  });
+
+  test("outside a browser a buffered error has no page to record", async () => {
+    const { sdk, replayed } = fakeSdk();
+    const { reporter } = reporterWith(sdk);
+    reporter.captureError(new Error("no location"));
+    await reporter.load();
+    expect(replayed).toHaveLength(1);
+    expect(replayed[0].origin.url).toBeUndefined();
+  });
+
   test("once the SDK is up, reports go straight to it", async () => {
-    const { sdk, calls } = fakeSdk();
+    const { sdk, calls, replayed } = fakeSdk();
     const { reporter } = reporterWith(sdk);
     await reporter.load();
 
@@ -87,6 +130,8 @@ describe("createErrorReporter", () => {
       { kind: "error", error: err, hint: undefined },
       { kind: "breadcrumb", breadcrumb: { category: "query", message: "auth 401", timestamp: 5 } },
     ]);
+    // Live, Sentry's own time and URL are the right ones.
+    expect(replayed).toEqual([]);
   });
 
   test("a buffered breadcrumb keeps the time it was recorded, not the replay's", async () => {

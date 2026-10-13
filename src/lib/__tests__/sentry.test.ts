@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { ErrorEvent } from "@sentry/nextjs";
 import { ApiError } from "../api-error";
 import {
+  backdate,
   clientReportingEnabled,
   isNoise,
   keepIntegrations,
@@ -127,5 +128,26 @@ describe("makeBeforeSend", () => {
 
   test("the browser's cap still sends a full pre-load buffer", () => {
     expect(MAX_EVENTS_PER_PAGE).toBeGreaterThan(MAX_BUFFERED_ERRORS);
+  });
+});
+
+describe("backdate", () => {
+  test("gives the event the error's time and page, keeping the rest of the request", () => {
+    const event: ErrorEvent = {
+      type: undefined,
+      timestamp: 1_800_000_010,
+      request: { url: "https://www.courtvision.dev/week", headers: { "User-Agent": "UA", Referer: "https://www.google.com/" } },
+    };
+    expect(backdate(event, { timestamp: 1_800_000_001.25, url: "https://www.courtvision.dev/scout?player=1" })).toEqual({
+      type: undefined,
+      timestamp: 1_800_000_001.25,
+      request: { url: "https://www.courtvision.dev/scout?player=1", headers: { "User-Agent": "UA", Referer: "https://www.google.com/" } },
+    });
+  });
+
+  test("without a recorded page it leaves the request alone", () => {
+    const event: ErrorEvent = { type: undefined, timestamp: 2, request: { url: "https://www.courtvision.dev/week" } };
+    expect(backdate(event, { timestamp: 1 })).toEqual({ type: undefined, timestamp: 1, request: { url: "https://www.courtvision.dev/week" } });
+    expect(backdate({ type: undefined } as ErrorEvent, { timestamp: 1 })).toEqual({ type: undefined, timestamp: 1 });
   });
 });
