@@ -3,10 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { lineupKeys } from "@/hooks/useLineupEditor";
-import { useLiveMatchupQuery, useMatchupQuery, useMatchupScoreHistoryQuery, useWeeklyMatchupQuery } from "@/hooks/useMatchup";
+import {
+  matchupKeys,
+  useLiveMatchupQuery,
+  useMatchupQuery,
+  useMatchupScoreHistoryQuery,
+  useWeeklyMatchupQuery,
+} from "@/hooks/useMatchup";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { useCancelPickupMutation, useSchedulePickupMutation, useScheduledPickupsQuery } from "@/hooks/useScheduledPickups";
 import {
@@ -100,7 +106,11 @@ export interface TerminalData {
   makeSource: (board: LineupState | null) => WeekSource | null;
   /** Each day's ESPN lineup and the lineup writes (ESPN teams). */
   lineup: DayLineups;
-  updatedAt: number | null;
+  /**
+   * The queries whose last answer the status line reports ("Updated 2 min ago").
+   * It subscribes to them itself, so a poll re-renders the line, not the desk.
+   */
+  updatedFrom: readonly QueryKey[];
   refetch: () => void;
   streamers: StreamerPlayer[];
   streamersLoading: boolean;
@@ -151,6 +161,9 @@ export interface TerminalData {
   /** The matchup's nightly score snapshots (the edge's race); null while there is no week to ask about. */
   history: { points: DailyScorePoint[] | null; loading: boolean } | null;
 }
+
+/** The demo's status line watches no query (and a signed-out desk has none to watch). */
+const NOTHING_WATCHED: readonly QueryKey[] = [];
 
 export function WeekPage({ demo, view, market }: { demo: boolean; view?: WeekView; market?: MarketMode }) {
   return demo ? <DemoWeek view={view} market={market} /> : <LiveWeek view={view} market={market} />;
@@ -325,7 +338,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     notice: null,
     makeSource,
     lineup,
-    updatedAt: null,
+    updatedFrom: NOTHING_WATCHED,
     refetch: () => {},
     streamers: DEMO_STREAMERS.filter((s) => !rosterIds.has(s.player_id)),
     streamersLoading: false,
@@ -371,6 +384,9 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
 // ---------------------------------------------------------------------------
 
 const START_PROVIDER: AddStart = { step: "provider" };
+// Stable stand-ins for lists not loaded yet: a fresh [] each render would re-rank the market.
+const NO_STREAMERS: StreamerPlayer[] = [];
+const NO_BREAKOUTS: BreakoutCandidateResp[] = [];
 
 function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const { isSignedIn, isLoaded, getToken } = useAuth();
@@ -542,17 +558,25 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     [stopLaneAsync]
   );
 
-  const connectionList = connections.data ?? [];
-  const teams: TeamOption[] = selected.teams.map((t) => {
-    const c = connectionForTeam(connectionList, t.team_id);
-    return {
-      id: t.team_id,
-      name: teamName(t),
-      tag: teamTag(t),
-      warn: c?.status === "expired" ? `${providerLabel(c.provider)} rejected the ${connectionTitle(c)}'s ${c.provider === "yahoo" ? "login" : "cookies"}` : null,
-    };
-  });
-  const expired = teamId != null ? connectionForTeam(connectionList, teamId) : null;
+  const connectionData = connections.data;
+  const teams = useMemo<TeamOption[]>(
+    () =>
+      selected.teams.map((t) => {
+        const c = connectionForTeam(connectionData ?? [], t.team_id);
+        return {
+          id: t.team_id,
+          name: teamName(t),
+          tag: teamTag(t),
+          warn: c?.status === "expired" ? `${providerLabel(c.provider)} rejected the ${connectionTitle(c)}'s ${c.provider === "yahoo" ? "login" : "cookies"}` : null,
+        };
+      }),
+    [selected.teams, connectionData]
+  );
+  const expired = teamId != null ? connectionForTeam(connectionData ?? [], teamId) : null;
+  const updatedFrom = useMemo(
+    () => (teamId != null ? [matchupKeys.week(teamId), matchupKeys.live(teamId)] : NOTHING_WATCHED),
+    [teamId]
+  );
   const notice: BarNotice | null =
     expired && expired.status === "expired"
       ? expired.provider === "yahoo"
@@ -571,20 +595,20 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     notice,
     makeSource,
     lineup,
-    updatedAt: Math.max(week.dataUpdatedAt || 0, live.dataUpdatedAt || 0) || null,
+    updatedFrom,
     refetch: () => {
       void week.refetch();
       void live.refetch();
       if (liveFailed) void matchup.refetch();
     },
-    streamers: streamers.data?.streamers ?? [],
+    streamers: streamers.data?.streamers ?? NO_STREAMERS,
     streamersLoading: wantStreamers && streamers.isLoading,
     requestStreamers: () => setWantStreamers(true),
-    daily: dailyDay != null ? daily.data?.streamers ?? [] : [],
+    daily: dailyDay != null ? daily.data?.streamers ?? NO_STREAMERS : NO_STREAMERS,
     dailyLoading: dailyDay != null && daily.isLoading,
     dailyDay,
     setDailyDay,
-    breakouts: breakouts.data?.candidates ?? [],
+    breakouts: breakouts.data?.candidates ?? NO_BREAKOUTS,
     breakoutsLoading: wantBreakouts && breakouts.isLoading,
     requestBreakouts: () => setWantBreakouts(true),
     schedule: schedule.data?.schedule ?? null,

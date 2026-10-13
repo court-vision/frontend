@@ -21,7 +21,7 @@ const EMPTY: StreamLaneList = { open: [], recent: [] };
  * schedules a pickup, so a new decision re-reads the pickups too. A pickup a
  * lane made refreshes everything that shows the roster.
  */
-export function useStreamLanesQuery(teamId: number | null) {
+export function useStreamLanesQuery(teamId: number | null): { data: StreamLaneList } {
   const { getToken, isSignedIn } = useAuth();
   const queryClient = useQueryClient();
   const query = useQuery<StreamLaneList>({
@@ -49,7 +49,8 @@ export function useStreamLanesQuery(teamId: number | null) {
     if (laneMovedRoster(before, marks)) invalidateRoster(queryClient, teamId);
   }, [data, teamId, queryClient]);
 
-  return { ...query, data: data ?? EMPTY };
+  // Only the list: spreading the query would subscribe the desk to every fetch's status flips.
+  return { data: data ?? EMPTY };
 }
 
 function putLane(prev: StreamLaneList | undefined, lane: StreamLane): StreamLaneList {

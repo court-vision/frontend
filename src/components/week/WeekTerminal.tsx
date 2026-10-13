@@ -1356,7 +1356,7 @@ export function WeekTerminal({
         container={root}
       />
       {body}
-      <StatusLine updatedAt={data.updatedAt} demo={data.demo} />
+      <StatusLine watch={data.updatedFrom} demo={data.demo} />
 
       {menu?.type === "move" && menuPlayer && moveInfo ? (
         <MoveMenu
