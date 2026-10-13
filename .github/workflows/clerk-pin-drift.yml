@@ -18,6 +18,13 @@ on:
     - cron: "0 15 * * 1" # Mondays
   workflow_dispatch:
 
+# The job reads the repo and public CDN URLs and writes nothing, so its token
+# gets contents: read whatever the repo's default token scope is (read today)
+# or becomes, and checkout doesn't write it into .git/config, since no step
+# pushes.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -25,6 +32,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Compare the pins with what the floating majors resolve to
         run: node scripts/check-clerk-pins.mjs
