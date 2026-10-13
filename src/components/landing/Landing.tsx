@@ -7,6 +7,7 @@ import { useDeskScheme, useDeskTheme } from "@/components/desk/useDeskTheme";
 import { CourtField } from "./CourtField";
 import { Desks } from "./Desks";
 import { SPECKS, STAT_WALL } from "./stat-wall";
+import { useClerkIntent } from "./useClerkIntent";
 import s from "./landing.module.css";
 
 /**
@@ -19,6 +20,9 @@ export function Landing() {
   const toggle = useDeskTheme((st) => st.toggle);
   const hero = useRef<HTMLElement>(null);
   const [live, setLive] = useState(false);
+  // Clerk isn't on this page; its sign-in, sign-up and desk links start it
+  // loading as soon as one is about to be followed.
+  const clerkIntent = useClerkIntent();
 
   // The backdrop leans against the camera: the pointer's place, as -0.5..0.5, for the CSS.
   useEffect(() => {
@@ -51,7 +55,7 @@ export function Landing() {
   }, [toggle]);
 
   return (
-    <div className={s.page} data-landing data-scheme={scheme}>
+    <div className={s.page} data-landing data-scheme={scheme} {...clerkIntent}>
       <section ref={hero} className={s.hero} data-live={live ? "" : undefined}>
         <pre className={s.wall} aria-hidden>
           {STAT_WALL}
