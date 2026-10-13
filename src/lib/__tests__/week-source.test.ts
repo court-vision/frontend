@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sourceFromApi, sourceFromStreamer } from "../week-source";
+import { racePeriod, sourceFromApi, sourceFromStreamer } from "../week-source";
 import type { LiveMatchupData, MatchupData, WeeklyMatchupData } from "../../types/matchup";
 import type { StreamerPlayer } from "../../types/streamer";
 import * as F from "./week-api-fixtures";
@@ -175,5 +175,20 @@ describe("sourceFromApi without /matchups/current", () => {
     expect(src.opponents.map((p) => [p.id, p.active])).toEqual([[5826, false], [6513, true]]);
     expect(src.activeSlotCount).toBe(10);
     expect(roster(src)).toEqual(roster(sourceFromApi({ week: yWeek, live: undefined, matchup: yCur, board: null })));
+  });
+});
+
+describe("racePeriod", () => {
+  test("the preseason week (every day ahead) has no history to ask for", () => {
+    expect(racePeriod(F.weekOf({ today: -1 }))).toBeNull();
+  });
+
+  test("nor does a period's first day, before any day is finished", () => {
+    expect(racePeriod(F.weekOf({ today: 0 }))).toBeNull();
+  });
+
+  test("once a day is played, the period's snapshots are asked for", () => {
+    expect(racePeriod(F.weekOf())).toBe(F.PERIOD);
+    expect(racePeriod(undefined)).toBeNull();
   });
 });

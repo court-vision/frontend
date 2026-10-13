@@ -114,6 +114,18 @@ export interface SourceInputs {
   board: LineupState | null | undefined;
 }
 
+/**
+ * The matchup period whose nightly score snapshots the edge's race can use, or
+ * null while there can be none. A snapshot is written the night after a day's
+ * games and the race reads one only for a finished day, so a period with no day
+ * played yet (the whole preseason) has nothing to ask for: the history route
+ * answers 404 there.
+ */
+export function racePeriod(week: WeeklyMatchupData | null | undefined): number | null {
+  if (!week || !week.days.some((d) => d.day_type === "past")) return null;
+  return week.matchup_period;
+}
+
 /** The period's days, in order. */
 export function weekDaysFromApi(week: WeeklyMatchupData): WeekDay[] {
   return [...week.days]

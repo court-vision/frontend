@@ -31,7 +31,7 @@ import { ACCOUNT_DESK } from "@/components/desk/routes";
 import { useLiveAddTeam } from "@/components/account/useAccountModels";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
 import { staleLineup } from "@/lib/lineup-editor";
-import { sourceFromApi, weekDaysFromApi } from "@/lib/week-source";
+import { racePeriod, sourceFromApi, weekDaysFromApi } from "@/lib/week-source";
 import { liveSpan } from "@/lib/week-polling";
 import {
   DEMO_DAYS,
@@ -439,8 +439,9 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const schedule = useTeamScheduleQuery(scheduleTeam, true, 10);
   const transaction = useRosterTransactionMutation(teamId ?? 0);
   const pickups = useScheduledPickupsQuery(selected.provider === "espn" ? teamId : null);
-  const actions = useDailyActionsQuery(teamId, selected.provider, { board: todayBoard });
-  const history = useMatchupScoreHistoryQuery(teamId, week.data?.matchup_period ?? null);
+  // Today's moves wait for the week: it is what the desk paints first, and this is the heaviest read.
+  const actions = useDailyActionsQuery(teamId, selected.provider, { enabled: week.data !== undefined, board: todayBoard });
+  const history = useMatchupScoreHistoryQuery(teamId, racePeriod(week.data));
   const pickupSchedule = useSchedulePickupMutation(teamId ?? 0);
   const pickupCancel = useCancelPickupMutation(teamId ?? 0);
   const lanes = useStreamLanesQuery(selected.provider === "espn" ? teamId : null);

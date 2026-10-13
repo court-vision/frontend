@@ -14,19 +14,20 @@ import type { FantasyProvider } from "@/types/team";
  * re-polls every five minutes while your players are locking (from just before
  * the first tip on today's `board` until the last) and every fifteen otherwise;
  * a roster write invalidates it with the rest of the lineup family, and the desk
- * refetches when its board moves on.
+ * refetches when its board moves on. `enabled` lets the desk hold it back until
+ * the week it renders first has loaded: it is the heaviest read on the desk.
  */
 export function useDailyActionsQuery(
   teamId: number | null,
   provider: FantasyProvider | null | undefined,
-  opts: { board?: LineupState | null } = {}
+  opts: { enabled?: boolean; board?: LineupState | null } = {}
 ) {
   const { getToken, isSignedIn } = useAuth();
   const board = opts.board ?? null;
   return useQuery<DailyActionsData>({
     queryKey: lineupKeys.actions(teamId!),
     queryFn: ({ signal }) => apiClient.getTeamDailyActions(getToken, teamId!, { signal }),
-    enabled: !!teamId && isSignedIn === true && provider === "espn",
+    enabled: (opts.enabled ?? true) && !!teamId && isSignedIn === true && provider === "espn",
     staleTime: 2 * 60_000,
     refetchInterval: () => actionsPollMs(board, Date.now()),
     refetchOnWindowFocus: true,
