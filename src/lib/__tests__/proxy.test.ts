@@ -4,7 +4,8 @@ import proxy from "@/proxy";
 import { TEST_CLERK_FAPI } from "./preload";
 
 /**
- * The proxy end to end. Clerk runs for real against the made-up production
+ * The proxy end to end: which requests Clerk's middleware sees, and what the
+ * rest get instead. Clerk runs for real against the made-up production
  * instance preload.ts names. The only network call it may make is for its
  * signing keys, answered here; anything else fails the test.
  */
@@ -68,6 +69,48 @@ async function run(path: string, headers: Record<string, string> = {}, cookie = 
     clerk: res?.headers.get("x-clerk-auth-status") ?? res?.headers.get("x-middleware-request-x-clerk-auth-status") ?? null,
   };
 }
+
+describe("pages Clerk's middleware no longer sees", () => {
+  test("a returning signed-in browser loads Week, Scout and Developer without a handshake", async () => {
+    for (const path of ["/week", "/week?view=players", "/scout", "/scout?p=203999", "/developer", "/privacy", "/no-such-page"]) {
+      const r = await run(path, DOCUMENT, HINT);
+      expect(r.clerk).toBeNull();
+      expect(r.location).toBeNull();
+      expect(r.status).toBe(200);
+    }
+  });
+
+  test("a bare desk flag is still given a value, Clerk or not", async () => {
+    for (const cookie of ["", HINT]) {
+      expect((await run("/week?demo", DOCUMENT, cookie)).rewrite).toBe(`${ORIGIN}/week?demo=1`);
+      expect((await run("/week?market", DOCUMENT, cookie)).rewrite).toBe(`${ORIGIN}/week?market=1`);
+      expect((await run("/scout?demo", DOCUMENT, cookie)).rewrite).toBe(`${ORIGIN}/scout?demo=1`);
+    }
+    expect((await run("/week?demo=1", DOCUMENT)).rewrite).toBeNull();
+    expect((await run("/privacy?demo", DOCUMENT)).rewrite).toBeNull();
+  });
+
+  test("the front door sends a browser that holds a session to its Week desk", async () => {
+    for (const cookie of [HINT, "__client_uat_Xk9Q2bLm=1760000000", `theme=paper; ${HINT}`]) {
+      for (const headers of [DOCUMENT, ROUTER, {}]) {
+        const r = await run("/", headers, cookie);
+        expect(r.status).toBe(307);
+        expect(r.location).toBe(`${ORIGIN}/week`);
+        expect(r.clerk).toBeNull();
+      }
+    }
+    expect((await run("/?utm_source=x", DOCUMENT, HINT)).location).toBe(`${ORIGIN}/week`);
+  });
+
+  test("and serves everyone else the landing page", async () => {
+    for (const cookie of ["", "__client_uat=0", "theme=paper"]) {
+      const r = await run("/", DOCUMENT, cookie);
+      expect(r.status).toBe(200);
+      expect(r.location).toBeNull();
+      expect(r.clerk).toBeNull();
+    }
+  });
+});
 
 describe("routes Clerk still guards", () => {
   test("Draft and Account send a signed-out browser to sign-in", async () => {
