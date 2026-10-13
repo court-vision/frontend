@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { racePeriod, sourceFromApi, sourceFromStreamer } from "../week-source";
+import { ApiError } from "../api-error";
+import { currentFallback, racePeriod, sourceFromApi, sourceFromStreamer } from "../week-source";
 import type { LiveMatchupData, MatchupData, WeeklyMatchupData } from "../../types/matchup";
 import type { StreamerPlayer } from "../../types/streamer";
 import * as F from "./week-api-fixtures";
@@ -190,5 +191,27 @@ describe("racePeriod", () => {
   test("once a day is played, the period's snapshots are asked for", () => {
     expect(racePeriod(F.weekOf())).toBe(F.PERIOD);
     expect(racePeriod(undefined)).toBeNull();
+  });
+});
+
+describe("currentFallback", () => {
+  const failed = new ApiError({ message: "Request failed (HTTP 500)", status: 500 });
+
+  test("live failed with nothing to show: the current matchup stands in", () => {
+    expect(currentFallback({ isError: true, data: undefined, error: failed })).toBe(true);
+    expect(currentFallback({ isError: true, data: undefined, error: ApiError.network(new Error("offline")) })).toBe(true);
+  });
+
+  test("an empty week is an answer, not a failure: current would answer the same", () => {
+    expect(currentFallback({ isError: true, data: undefined, error: ApiError.empty({ message: "No matchup" }) })).toBe(false);
+  });
+
+  test("a failed poll after a good answer keeps live's rows on screen", () => {
+    expect(currentFallback({ isError: true, data: F.live(F.current()), error: failed })).toBe(false);
+  });
+
+  test("loading, or answered: never", () => {
+    expect(currentFallback({ isError: false, data: undefined, error: null })).toBe(false);
+    expect(currentFallback({ isError: false, data: F.live(F.current()), error: null })).toBe(false);
   });
 });

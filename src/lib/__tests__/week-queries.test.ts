@@ -4,10 +4,13 @@ import { combineDays } from "@/components/week/useDayBoards";
 import { lastUpdatedAt } from "@/hooks/useDataUpdatedAt";
 import { lineupKeys } from "@/hooks/useLineupEditor";
 import { matchupKeys } from "@/hooks/useMatchup";
+import { ApiError } from "@/lib/api-error";
 import { shareActions, shareLineup } from "@/lib/lineup-sharing";
 import { DEMO_STREAMERS, demoDailyActions } from "@/lib/week-demo";
+import { currentFallback } from "@/lib/week-source";
 import type { DailyActionsData } from "@/types/daily-actions";
 import type { LineupState } from "@/types/lineup-editor";
+import type { LiveMatchupData, MatchupData } from "@/types/matchup";
 import * as F from "./week-api-fixtures";
 
 let client: QueryClient;
@@ -117,6 +120,80 @@ describe("a poll that reads the same answer, stamped anew", () => {
     await settle();
     expect(q.observer.getCurrentResult().data).toBe(first);
     expect(q.renders()).toBe(before);
+  });
+});
+
+/**
+ * Live and its stand-in as LiveWeek wires them: every change to live's result
+ * re-derives whether /matchups/current may run (`currentFallback`).
+ */
+function liveAndCurrent(answer: () => Promise<LiveMatchupData>) {
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  let currentReads = 0;
+  const live = new QueryObserver<LiveMatchupData>(client, { queryKey: matchupKeys.live(3), queryFn: answer });
+  const currentOptions = () => ({
+    queryKey: matchupKeys.detail(3, "season"),
+    queryFn: () => {
+      currentReads++;
+      return Promise.resolve(F.current());
+    },
+    enabled: currentFallback(live.getCurrentResult()),
+  });
+  const current = new QueryObserver<MatchupData>(client, currentOptions());
+  const offLive = live.subscribe(() => current.setOptions(currentOptions()));
+  const offCurrent = current.subscribe(() => {});
+  unsubscribe = () => {
+    offLive();
+    offCurrent();
+  };
+  return { live, current, reads: () => currentReads };
+}
+
+describe("the current matchup, read only as live's stand-in", () => {
+  const boom = () => Promise.reject(new ApiError({ message: "Request failed (HTTP 500)", status: 500 }));
+
+  test("not while live loads or answers", async () => {
+    const q = liveAndCurrent(() => Promise.resolve(F.live(F.current())));
+    expect(q.current.getCurrentResult().fetchStatus).toBe("idle");
+    await settle();
+    expect(q.live.getCurrentResult().data).toBeDefined();
+    expect(q.reads()).toBe(0);
+  });
+
+  test("once live fails, and not again after live answers", async () => {
+    let answer: () => Promise<LiveMatchupData> = boom;
+    const q = liveAndCurrent(() => answer());
+    await settle();
+    await settle();
+    expect(q.reads()).toBe(1);
+    expect(q.current.getCurrentResult().data?.matchup_period).toBe(F.PERIOD);
+    answer = () => Promise.resolve(F.live(F.current()));
+    await q.live.refetch();
+    expect(q.current.getCurrentResult().isEnabled).toBe(false);
+    // A write invalidates the whole matchup family: the stand-in stays unread.
+    await client.invalidateQueries({ queryKey: matchupKeys.all });
+    await settle();
+    expect(q.reads()).toBe(1);
+  });
+
+  test("not for an empty week", async () => {
+    const q = liveAndCurrent(() => Promise.reject(ApiError.empty({ message: "No matchup" })));
+    await settle();
+    await settle();
+    expect(q.live.getCurrentResult().isError).toBe(true);
+    expect(q.reads()).toBe(0);
+  });
+
+  test("not when a poll fails after a good answer: live's rows stay", async () => {
+    let answer: () => Promise<LiveMatchupData> = () => Promise.resolve(F.live(F.current()));
+    const q = liveAndCurrent(() => answer());
+    await settle();
+    answer = boom;
+    await q.live.refetch();
+    await settle();
+    expect(q.live.getCurrentResult().isError).toBe(true);
+    expect(q.live.getCurrentResult().data).toBeDefined();
+    expect(q.reads()).toBe(0);
   });
 });
 

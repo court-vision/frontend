@@ -38,6 +38,7 @@ import {
   type WeekDay,
   type WeekSource,
 } from "./week-grid";
+import { isEmptyResult } from "./api-error";
 import { isActiveSlot } from "./lineup-editor";
 
 const INACTIVE_SLOT_NAMES = new Set(["BE", "BN", "IR", "IL", "IL+"]);
@@ -112,6 +113,18 @@ export interface SourceInputs {
   /** /matchups/current: only read when live fails; live's rows win whenever live has answered. */
   matchup: MatchupData | null | undefined;
   board: LineupState | null | undefined;
+}
+
+/**
+ * Whether the desk reads /matchups/current as live's stand-in. /matchups/live
+ * is /matchups/current plus tonight's overlay (the server builds it from the
+ * same provider read), so current is read only when live can't be: live
+ * failed, the failure isn't an empty week (a success with no matchup is an
+ * answer, and current would answer the same), and live has nothing of its own
+ * to show (a failed poll keeps its last answer, which stays on screen).
+ */
+export function currentFallback(live: { isError: boolean; data: unknown; error: unknown }): boolean {
+  return live.isError && live.data === undefined && !isEmptyResult(live.error);
 }
 
 /**

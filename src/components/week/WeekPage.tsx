@@ -29,7 +29,7 @@ import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
 import { useUIStore } from "@/stores/useUIStore";
-import { isEmptyResult, userMessage } from "@/lib/api-error";
+import { userMessage } from "@/lib/api-error";
 import { connectionForTeam, connectionTitle, providerLabel, returnPath, teamName, teamTag, withoutYahooReturn, yahooReturn, type YahooReturn } from "@/lib/account";
 import { yahooConnectErrorMessage } from "@/lib/yahoo-connect";
 import { AddTeamTray, type AddStart } from "@/components/account/AddTeamTray";
@@ -37,7 +37,7 @@ import { ACCOUNT_DESK } from "@/components/desk/routes";
 import { useLiveAddTeam } from "@/components/account/useAccountModels";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
 import { staleLineup } from "@/lib/lineup-editor";
-import { racePeriod, sourceFromApi, weekDaysFromApi } from "@/lib/week-source";
+import { currentFallback, racePeriod, sourceFromApi, weekDaysFromApi } from "@/lib/week-source";
 import { liveSpan } from "@/lib/week-polling";
 import {
   DEMO_DAYS,
@@ -431,10 +431,8 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   // (and while any rostered player's box score is live).
   const span = useMemo(() => liveSpan(todayBoard), [todayBoard]);
   const live = useLiveMatchupQuery(teamId, span);
-  // /matchups/live is /matchups/current plus tonight's overlay (the server builds it
-  // from the same provider read), so the current matchup is read only when live
-  // can't be: a failure, not an empty week, with nothing from live to show.
-  const liveFailed = live.isError && live.data === undefined && !isEmptyResult(live.error);
+  // The current matchup is live without tonight's overlay: read only as live's stand-in.
+  const liveFailed = currentFallback(live);
   const matchup = useMatchupQuery(teamId, "season", { enabled: liveFailed });
 
   const [wantStreamers, setWantStreamers] = useState(false);
