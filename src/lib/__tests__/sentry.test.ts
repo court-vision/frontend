@@ -1,6 +1,16 @@
 import { describe, expect, test } from "bun:test";
+import type { ErrorEvent } from "@sentry/nextjs";
 import { ApiError } from "../api-error";
-import { clientReportingEnabled, isNoise, keepIntegrations, SENTRY_DSN, sentryEnvironment } from "../sentry";
+import {
+  clientReportingEnabled,
+  isNoise,
+  keepIntegrations,
+  makeBeforeSend,
+  MAX_EVENTS_PER_PAGE,
+  SENTRY_DSN,
+  sentryEnvironment,
+} from "../sentry";
+import { MAX_BUFFERED_ERRORS } from "../report-error";
 
 describe("sentry config", () => {
   test("the DSN defaults to the project's, the one the server has always used", () => {
@@ -81,5 +91,41 @@ describe("isNoise", () => {
     const other = Object.assign(new Error("ClerkJS: something else"), { name: "ClerkRuntimeError", code: "cannot_render" });
     expect(isNoise({ originalException: network }, browser)).toBe(true);
     expect(isNoise({ originalException: other }, browser)).toBe(false);
+  });
+});
+
+describe("makeBeforeSend", () => {
+  const event = (n: number): ErrorEvent => ({ type: undefined, event_id: `e${n}` });
+  const bug = (n: number) => ({ originalException: new TypeError(`bug ${n}`) });
+
+  test("sends events up to the cap, then drops the rest", () => {
+    const beforeSend = makeBeforeSend({ dropApiErrors: true, maxEvents: 3 });
+    const sent = [1, 2, 3, 4, 5].map((n) => beforeSend(event(n), bug(n)));
+    expect(sent.map((e) => e?.event_id ?? null)).toEqual(["e1", "e2", "e3", null, null]);
+  });
+
+  test("noise doesn't use up the cap", () => {
+    const beforeSend = makeBeforeSend({ dropApiErrors: true, maxEvents: 2 });
+    const api = { originalException: new ApiError({ message: "boom", status: 500, kind: "server" }) };
+    expect(beforeSend(event(1), api)).toBeNull();
+    expect(beforeSend(event(2), { originalException: new TypeError("Failed to fetch") })).toBeNull();
+    expect(beforeSend(event(3), bug(3))?.event_id).toBe("e3");
+    expect(beforeSend(event(4), bug(4))?.event_id).toBe("e4");
+    expect(beforeSend(event(5), bug(5))).toBeNull();
+  });
+
+  test("each init counts from zero, and without a cap nothing is dropped", () => {
+    const first = makeBeforeSend({ dropApiErrors: true, maxEvents: 1 });
+    first(event(1), bug(1));
+    expect(first(event(2), bug(2))).toBeNull();
+    expect(makeBeforeSend({ dropApiErrors: true, maxEvents: 1 })(event(3), bug(3))?.event_id).toBe("e3");
+
+    const uncapped = makeBeforeSend({ dropApiErrors: false });
+    const sent = Array.from({ length: 100 }, (_, n) => uncapped(event(n), bug(n)));
+    expect(sent.every((e) => e !== null)).toBe(true);
+  });
+
+  test("the browser's cap still sends a full pre-load buffer", () => {
+    expect(MAX_EVENTS_PER_PAGE).toBeGreaterThan(MAX_BUFFERED_ERRORS);
   });
 });

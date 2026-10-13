@@ -4,7 +4,7 @@
  * @sentry/nextjs (a 64 KB br chunk) out of every route's first load.
  */
 import { addBreadcrumb, captureException, init } from "@sentry/nextjs";
-import { keepIntegrations, makeBeforeSend, SENTRY_DSN, SENTRY_ENVIRONMENT } from "./sentry";
+import { keepIntegrations, makeBeforeSend, MAX_EVENTS_PER_PAGE, SENTRY_DSN, SENTRY_ENVIRONMENT } from "./sentry";
 import type { ReporterSdk } from "./report-error";
 
 export function initSentry(): ReporterSdk {
@@ -19,7 +19,8 @@ export function initSentry(): ReporterSdk {
     tracesSampleRate: 0,
     sendDefaultPii: false,
     integrations: keepIntegrations,
-    beforeSend: makeBeforeSend({ dropApiErrors: true }),
+    // Capped per page load: the browser spends the server's quota (sentry.ts).
+    beforeSend: makeBeforeSend({ dropApiErrors: true, maxEvents: MAX_EVENTS_PER_PAGE }),
   });
   return { captureException, addBreadcrumb };
 }

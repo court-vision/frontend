@@ -77,7 +77,30 @@ export function isNoise(hint: EventHint, { dropApiErrors }: NoiseOptions): boole
   return false;
 }
 
-export function makeBeforeSend(options: NoiseOptions) {
-  return (event: ErrorEvent, hint: EventHint): ErrorEvent | null =>
-    isNoise(hint, options) ? null : event;
+/**
+ * The most events one page load sends (sentry-client.ts). The browser reports
+ * to the server's project, so it spends the server's quota, and opening night
+ * takes the browser from no reports to every visitor's errors at once.
+ * Dedupe only drops back-to-back repeats: errors that take turns (two queries
+ * failing on every refetch, a loop that throws two ways) would keep sending
+ * until the tab closes, and a burst across many tabs could use up the quota
+ * just when the server's errors matter most. 25 is past the 20 errors the
+ * pre-load buffer keeps, so a full buffer still goes out.
+ */
+export const MAX_EVENTS_PER_PAGE = 25;
+
+interface BeforeSendOptions extends NoiseOptions {
+  /** Drop every event past this many. The count lives in the returned function: one per init, so per page load in the browser. */
+  maxEvents?: number;
+}
+
+export function makeBeforeSend({ maxEvents = Infinity, ...noise }: BeforeSendOptions) {
+  let sent = 0;
+  return (event: ErrorEvent, hint: EventHint): ErrorEvent | null => {
+    // Noise doesn't count against the cap: it never leaves the page.
+    if (isNoise(hint, noise)) return null;
+    if (sent >= maxEvents) return null;
+    sent += 1;
+    return event;
+  };
 }
