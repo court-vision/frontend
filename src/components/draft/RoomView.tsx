@@ -16,7 +16,7 @@ import { mockAdvanceToast, mockBlocker, mockMyTurnBlocker, needsSeatConfirm } fr
 import { fillLineup, keeperStatuses, lastPick, myRoster, openStartingSlots, samePlayer } from "@/lib/draft-roster";
 import { buildTape, myUpcoming } from "@/lib/draft-tape";
 import { pickIsUndoable, undoBlocker } from "@/lib/draft-undo";
-import { canDraftLabel, sendFailureMessage } from "@/lib/espn-draft/sync-state";
+import { canDraftLabel, secondsOnClock, sendFailureMessage, type SyncState } from "@/lib/espn-draft/sync-state";
 import { sendToastId } from "@/hooks/useEspnDraftSync";
 import { useVisibleRows } from "@/hooks/useBoardView";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
@@ -499,16 +499,6 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
     [writeUi, active, draftOnEspn, markActive, move, search, setSearch, undoLast]
   );
 
-  // ---- ESPN's clock, when the tap reports one ----
-  const [now, setNow] = useState(() => Date.now());
-  const clock = sync?.state.onClock ?? null;
-  useEffect(() => {
-    if (!clock) return;
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, [clock]);
-  const secondsLeft = clock ? Math.max(0, Math.round((clock.at + clock.msRemaining - now) / 1000)) : null;
-
   // ---- what the memoized toolbar and board are handed ----
   // `mark`, `draftOnEspn` and `onSearchKey` change identity on every render (the model and
   // the sync object are rebuilt each time), so these keep one identity and call the latest.
@@ -566,7 +556,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
           session={session}
           onTheClock={onTheClock}
           upcoming={upcoming}
-          secondsLeft={secondsLeft}
+          espnClock={sync?.state.onClock ?? null}
           recapHref={model.hrefs.recap}
           onSetSeat={() => setSeatOpen(true)}
         />
@@ -764,17 +754,32 @@ function ClockTick({
   session,
   onTheClock,
   upcoming,
-  secondsLeft,
+  espnClock,
   recapHref,
   onSetSeat,
 }: {
   session: DraftSession;
   onTheClock: boolean;
   upcoming: number[];
-  secondsLeft: number | null;
+  /** ESPN's clock, when the tap reports one. */
+  espnClock: SyncState["onClock"];
   recapHref: string;
   onSetSeat: () => void;
 }) {
+  // The countdown's 250 ms tick lives here, not in the room, so a tick re-renders this one
+  // box. In the room it re-rendered the room and the whole board four times a second for the
+  // length of a synced draft: 20 ms of main thread a tick on an M3 (a categories board), 78 ms
+  // at 4x CPU throttle. Here it is under 2 ms.
+  const counting = espnClock != null && session.status !== "completed" && session.my_slot != null;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!counting) return;
+    setNow(Date.now()); // `now` stood still while nobody was on the clock
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, [counting, espnClock]);
+  const secondsLeft = espnClock ? secondsOnClock(espnClock, now) : null;
+
   if (session.status === "completed") {
     return (
       <Link href={recapHref} className={`${s.tick} ${s.tickBtn}`} style={{ textDecoration: "none" }}>

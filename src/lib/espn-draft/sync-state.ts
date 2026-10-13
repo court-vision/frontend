@@ -487,6 +487,17 @@ export function frontFromSession(session: Pick<DraftSession, "picks" | "next_ove
   return played.length ? Math.max(...played) + 1 : session.next_overall_pick;
 }
 
+// ------------------------------- the clock ------------------------------ //
+
+/**
+ * Whole seconds left on ESPN's clock at `now`, never below zero: the room's countdown.
+ * `at` is the tap's timestamp on the frame that set the clock, so the count runs on the
+ * wall clock from there.
+ */
+export function secondsOnClock(clock: NonNullable<SyncState["onClock"]>, now: number): number {
+  return Math.max(0, Math.round((clock.at + clock.msRemaining - now) / 1000));
+}
+
 // ------------------------------- the gate ------------------------------- //
 
 export type DraftGateReason =
