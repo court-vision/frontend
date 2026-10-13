@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { motion } from "motion/react";
 import { LayoutList } from "lucide-react";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
+import { SegRail } from "@/components/desk/SegRail";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import { getTodayDate } from "@/hooks/useGames";
 import { useLeagueRankingsQuery, useRankingsListQuery } from "@/hooks/useRankings";
@@ -443,17 +443,16 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
             <LayoutList size={13} />
             {pane === "list" ? "Sheet" : "List"}
           </button>
-          <div className={dk.rail} role="radiogroup" aria-label="Lens">
+          <SegRail label="Lens" active={lens}>
             {LENSES.map((l) => {
               const on = lens === l.id;
               return (
                 <button key={l.id} type="button" role="radio" aria-checked={on} className={`${dk.seg} ${on ? dk.segOn : ""}`} onClick={() => setLens(l.id)} title={l.title}>
-                  {on ? <motion.span layoutId="lens-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
                   <span className={dk.segLabel}>{l.label}</span>
                 </button>
               );
             })}
-          </div>
+          </SegRail>
           <span className={dk.kbd}>[ ]</span>
         </div>
         <div className={s.toolCenter}>
@@ -461,17 +460,16 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
         </div>
         <div className={s.toolRight}>
           <span className={dk.label}>Window</span>
-          <div className={dk.rail} role="radiogroup" aria-label="Stat window">
+          <SegRail label="Stat window" active={window_}>
             {(["season", "l5", "l10", "l15", "l30"] as const).map((w: Window) => {
               const on = window_ === w;
               return (
                 <button key={w} type="button" role="radio" aria-checked={on} className={`${dk.seg} ${on ? dk.segOn : ""}`} onClick={() => setWindow(w)} title="Per-game averages over the season or the last N games">
-                  {on ? <motion.span layoutId="window-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
                   <span className={dk.segLabel}>{windowLabel(w)}</span>
                 </button>
               );
             })}
-          </div>
+          </SegRail>
           <span className={dk.kbd}>W</span>
         </div>
       </div>
