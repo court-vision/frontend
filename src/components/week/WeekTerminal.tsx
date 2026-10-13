@@ -212,29 +212,26 @@ export function WeekTerminal({
     [source, preview, previewFa, data.schedule, addFrom, laneIncoming]
   );
 
+  // The week without any preview. Nothing built from it depends on the hovered
+  // free agent, so a highlight in the replace menu (or the market) rebuilds only
+  // the grid on screen, not every option's gain.
   const build = useCallback(
     (src: WeekSource, over: Partial<GridInput> = {}) =>
-      buildWeekGrid({ source: src, board, staged, dayBoards, incoming, viewDay, mode, ...over }),
-    [board, staged, dayBoards, incoming, viewDay, mode]
+      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, viewDay, mode, ...over }),
+    [board, staged, dayBoards, viewDay, mode]
   );
-  const grid = useMemo(() => (source ? build(source) : null), [source, build]);
-  const gridNoPreview = useMemo(
-    () => (source && incoming ? build(source, { incoming: null }) : grid),
-    [source, incoming, build, grid]
+  const gridNoPreview = useMemo(() => (source ? build(source) : null), [source, build]);
+  const grid = useMemo(
+    () => (source && incoming ? build(source, { incoming }) : gridNoPreview),
+    [source, incoming, build, gridNoPreview]
   );
   const gridUnstaged = useMemo(
-    () =>
-      source && anyStaging
-        ? build(source, { incoming: null, staged: NO_STAGING, dayBoards: unstagedBoards })
-        : gridNoPreview,
+    () => (source && anyStaging ? build(source, { staged: NO_STAGING, dayBoards: unstagedBoards }) : gridNoPreview),
     [source, anyStaging, build, unstagedBoards, gridNoPreview]
   );
   const stagedDelta = gridNoPreview && gridUnstaged ? gridNoPreview.projected.you - gridUnstaged.projected.you : 0;
 
-  const gridBest = useMemo(
-    () => (source ? build(source, { incoming: null, mode: "best" }) : null),
-    [source, build]
-  );
+  const gridBest = useMemo(() => (source ? build(source, { mode: "best" }) : null), [source, build]);
   const bestGain = gridBest && gridNoPreview && mode === "espn" ? gridBest.projected.you - gridNoPreview.projected.you : 0;
   // What an add does to the week on screen: the lineup view in force (as set,
   // or the best each day) with him seated where he helps most. The market, the
@@ -532,7 +529,7 @@ export function WeekTerminal({
     (day: number, next: Staged) => {
       if (!source || !boards[day]) return 0;
       const over = dayBoards.map((db, i) => (i === day ? { board: boards[day]!, staged: next } : db));
-      return build(source, { incoming: null, dayBoards: over, staged: day === todayDay ? next : staged }).projected.you;
+      return build(source, { dayBoards: over, staged: day === todayDay ? next : staged }).projected.you;
     },
     [source, boards, dayBoards, build, todayDay, staged]
   );
