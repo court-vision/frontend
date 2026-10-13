@@ -17,7 +17,7 @@ import { useTeamsQuery } from "@/hooks/useTeams";
 import { useUIStore } from "@/stores/useUIStore";
 import { userMessage } from "@/lib/api-error";
 import { DEFAULT_9CAT } from "@/lib/category-format";
-import { LENSES, dayName, flipNeighbours, focusFromSearch, focusKey, focusToSearch, leagueChoiceFor, leagueChoices, lensInfo, lensOf, nextLens, nextWindow, poolScore, sameFocus, scoredBy, teamInfo, windowLabel, type Focus, type Window } from "@/lib/scout";
+import { LENSES, dayName, flipNeighbours, flipTarget, focusFromSearch, focusKey, focusToSearch, leagueChoiceFor, leagueChoices, lensInfo, lensOf, nextLens, nextWindow, poolScore, sameFocus, scoredBy, teamInfo, windowLabel, type Focus, type Window } from "@/lib/scout";
 import type { RankingsParams } from "@/types/rankings";
 import { Bench } from "./Bench";
 import { BoardSheet } from "./BoardSheet";
@@ -325,12 +325,14 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
         case "ArrowRight":
         case "ArrowLeft": {
           const list = rows.current;
-          if (!list.length) return;
+          const flip = flipTarget(list, L.focus, L.cursor, e.key === "ArrowRight" ? 1 : -1);
+          if (!flip) return;
           e.preventDefault();
-          const at = L.focus ? list.findIndex((r) => sameFocus(r, L.focus)) : -1;
-          const base = at >= 0 ? at : L.cursor;
-          const next = Math.max(0, Math.min(list.length - 1, base + (e.key === "ArrowRight" ? 1 : -1)));
+          const next = flip.row;
           setCursor(next);
+          // At either end the flip lands on the sheet already open. Reopening it
+          // would only mark it flipped and hold its extras back for another rest.
+          if (!flip.opens) return;
           open(list[next], "push", "flip");
           // Ask for the next flip's stats now, so the sheet it opens has its numbers waiting.
           for (const id of flipNeighbours(list, next)) {

@@ -120,6 +120,19 @@ export function lensOf(focus: Focus): Lens {
 // ---------------------------------------------------------------------------
 
 /**
+ * Where an arrow-key flip lands: the row next to the open focus in `dir`, or
+ * next to the cursor when the focus isn't in the list. `opens` is false at
+ * either end of the list, where the flip would land on the row already open;
+ * null when there are no rows to flip through.
+ */
+export function flipTarget(rows: readonly Focus[], focus: Focus | null, cursor: number, dir: 1 | -1): { row: number; opens: boolean } | null {
+  if (!rows.length) return null;
+  const at = focus ? rows.findIndex((r) => sameFocus(r, focus)) : -1;
+  const row = Math.max(0, Math.min(rows.length - 1, (at >= 0 ? at : cursor) + dir));
+  return { row, opens: row !== at };
+}
+
+/**
  * The players either side of row `at`: what an arrow-key flip from there
  * would open next, so their stats can be asked for before the key lands.
  */

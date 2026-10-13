@@ -4,7 +4,7 @@ import { renderToString } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PlayerSheet, type PlayerSheetProps } from "@/components/scout/PlayerSheet";
 import { playerKeys, playerStatsQuery } from "@/hooks/usePlayer";
-import { flipNeighbours, sheetIdentity, type Focus } from "@/lib/scout";
+import { flipNeighbours, flipTarget, sheetIdentity, type Focus } from "@/lib/scout";
 import type { AvgStats, PlayerStats } from "@/types/player";
 import type { RankingsPlayer } from "@/types/rankings";
 
@@ -135,6 +135,23 @@ describe("flipping through the pool", () => {
     { kind: "player", id: 2 },
     { kind: "player", id: 3 },
   ];
+
+  test("a flip opens the row next to the open player, or next to the cursor when he isn't listed", () => {
+    expect(flipTarget(rows, { kind: "player", id: 2 }, 0, 1)).toEqual({ row: 3, opens: true });
+    expect(flipTarget(rows, { kind: "player", id: 2 }, 0, -1)).toEqual({ row: 1, opens: true });
+    expect(flipTarget(rows, { kind: "player", id: 9 }, 1, 1)).toEqual({ row: 2, opens: true });
+    expect(flipTarget(rows, null, 0, -1)).toEqual({ row: 0, opens: true });
+  });
+
+  test("at either end the flip stays put and opens nothing, so the open sheet keeps its extras", () => {
+    expect(flipTarget(rows, { kind: "player", id: 3 }, 0, 1)).toEqual({ row: 3, opens: false });
+    expect(flipTarget(rows, { kind: "overview", lens: "pool" }, 2, -1)).toEqual({ row: 0, opens: false });
+    expect(flipTarget([{ kind: "player", id: 1 }], { kind: "player", id: 1 }, 0, 1)).toEqual({ row: 0, opens: false });
+  });
+
+  test("an empty list has nowhere to flip", () => {
+    expect(flipTarget([], { kind: "player", id: 1 }, 0, 1)).toBeNull();
+  });
 
   test("the rows either side of a flip are the next flips' players", () => {
     expect(flipNeighbours(rows, 2)).toEqual([3, 1]);
