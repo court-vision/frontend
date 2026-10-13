@@ -23,12 +23,12 @@
  * land as it opens. Tip times are ET wall times on the board's NBA date.
  *
  * Only your tips are on the desk: the week's row for today carries box scores,
- * not the opponent's tip times. So a game only the opponent (or a Yahoo team,
- * which has no board) has a player in speeds the live poll up once its first
- * box score is live, up to one slow read (5 min) after the tip. Opening the
- * window at the slate's first tip instead kept every matinee day fast from the
- * early tip on: 49 of the season's 156 game days tip before 18:00 ET, 38 before
- * 16:00, hours before most evening games.
+ * not the opponent's tip times. So a game where only the opponent has a player
+ * (and every game of a Yahoo team, which has no board) speeds the live poll up
+ * once its first box score is live, up to one slow read (5 min) after the tip.
+ * Opening the window at the slate's first tip instead kept every matinee day
+ * fast from the early tip on: 49 of the season's 156 game days tip before
+ * 18:00 ET, 38 before 16:00, hours before most evening games.
  */
 import type { LineupState } from "@/types/lineup-editor";
 import type { LiveMatchupData } from "@/types/matchup";
