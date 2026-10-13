@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 import { FastForward, RotateCcw, SkipForward } from "lucide-react";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { DeskDialog } from "@/components/desk/DeskDialog";
@@ -18,6 +19,7 @@ import { pickIsUndoable, undoBlocker } from "@/lib/draft-undo";
 import { canDraftLabel, sendFailureMessage } from "@/lib/espn-draft/sync-state";
 import { sendToastId } from "@/hooks/useEspnDraftSync";
 import { useVisibleRows } from "@/hooks/useBoardView";
+import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
 import type { BoardSource, DraftBoardRow, DraftKeeper, DraftRecommendation, DraftSession } from "@/types/draft";
 import { BoardTable, BoardToolbar } from "./Board";
@@ -105,7 +107,20 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
   const router = useRouter();
   const toggleTheme = useDeskTheme((st) => st.toggle);
   const { highlightId, setHighlight, search, setSearch, boardSource, setBoardSource, toggleSort, setPositionFilter, onlyLikelyGone, setOnlyLikelyGone } =
-    useDraftRoomStore();
+    useDraftRoomStore(
+      useShallow((st) => ({
+        highlightId: st.highlightId,
+        setHighlight: st.setHighlight,
+        search: st.search,
+        setSearch: st.setSearch,
+        boardSource: st.boardSource,
+        setBoardSource: st.setBoardSource,
+        toggleSort: st.toggleSort,
+        setPositionFilter: st.setPositionFilter,
+        onlyLikelyGone: st.onlyLikelyGone,
+        setOnlyLikelyGone: st.setOnlyLikelyGone,
+      }))
+    );
   const searchRef = useRef<HTMLInputElement>(null);
   const [seatOpen, setSeatOpen] = useState(false);
   const [keepersOpen, setKeepersOpen] = useState(false);
@@ -494,6 +509,21 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
   }, [clock]);
   const secondsLeft = clock ? Math.max(0, Math.round((clock.at + clock.msRemaining - now) / 1000)) : null;
 
+  // ---- what the memoized toolbar and board are handed ----
+  // `mark`, `draftOnEspn` and `onSearchKey` change identity on every render (the model and
+  // the sync object are rebuilt each time), so these keep one identity and call the latest.
+  // Without them every highlight and every sync frame re-rendered all ~600 rows.
+  const onBoardMark = useLatestCallback(mark);
+  const onBoardEspn = useLatestCallback((row: DraftBoardRow) => void draftOnEspn(row));
+  const onToolbarSearchKey = useLatestCallback(onSearchKey);
+  const onToolbarSearch = useCallback(
+    (v: string) => {
+      setSearch(v);
+      setHighlight(null);
+    },
+    [setSearch, setHighlight]
+  );
+
   const nextRound = tape.find((c) => c.state === "now")?.round ?? null;
   const total = session.total_picks;
   const statusKeys: Array<[string, string]> = [
@@ -625,11 +655,8 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
             rows={rows}
             visibleCount={visible.length}
             search={search}
-            onSearch={(v) => {
-              setSearch(v);
-              setHighlight(null);
-            }}
-            onSearchKey={onSearchKey}
+            onSearch={onToolbarSearch}
+            onSearchKey={onToolbarSearchKey}
             atRisk={atRisk}
           />
           {model.boardError ? (
@@ -647,8 +674,8 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
               keeperIds={keeperIds}
               loading={model.boardLoading}
               message={board?.message ?? ""}
-              onMark={mark}
-              onEspn={writeUi ? (row) => void draftOnEspn(row) : undefined}
+              onMark={onBoardMark}
+              onEspn={writeUi ? onBoardEspn : undefined}
               espnDisabled={espnDisabled}
               marking={model.picking || completed}
               pendingEspnId={sync?.state.pending?.playerId ?? null}
