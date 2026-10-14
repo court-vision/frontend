@@ -23,6 +23,8 @@ export const API_KEYS_API = `${API_BASE}/v1/internal/api-keys`;
 // Draft Lab: sessions, picks, and the board scored for either.
 export const DRAFTS_API = `${API_BASE}/v1/internal/drafts`;
 export const SQLMATE_INTERNAL_API = `${API_BASE}/v1/internal/sqlmate`;
+// The AI desk: conversations with the agent (docs/AI_AGENT_PLAN.md)
+export const AI_API = `${API_BASE}/v1/internal/ai`;
 
 // The Draft Tap extension. Live ESPN draft sync connects to it; unset means the
 // feature is off and the room stays fully manual.

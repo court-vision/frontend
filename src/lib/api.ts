@@ -24,6 +24,7 @@ import {
   API_KEYS_API,
   DRAFTS_API,
   CONNECTIONS_API,
+  AI_API,
 } from "@/endpoints";
 import type {
   LeagueInfoRequest,
@@ -53,6 +54,16 @@ import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actio
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
+import type {
+  AiConversation,
+  AiConversationListResponse,
+  AiConversationResponse,
+  AiConversationSummary,
+  AiFeedback,
+  AiTurnFeedbackResponse,
+  AiUsage,
+  AiUsageResponse,
+} from "@/types/ai";
 import type {
   ESPNMarketData,
   ESPNMarketMovementData,
@@ -1090,6 +1101,50 @@ class ApiClient {
       { getToken, method: "POST", timeoutMs: 30_000 }
     );
     return unwrap(env);
+  }
+
+  // ---- The AI desk (/v1/internal/ai): conversations with the agent. A turn
+  // itself streams, so it goes through `streamTurn` (lib/ai-stream), not here.
+
+  /** Whether the caller may use the agent (invite-only) and this month's spend. */
+  async getAiUsage(getToken: GetTokenFn, opts?: RequestOptions): Promise<AiUsage> {
+    return unwrap(await fetchJson<AiUsageResponse>(`${AI_API}/usage`, { ...opts, getToken }));
+  }
+
+  async listAiConversations(getToken: GetTokenFn, opts?: RequestOptions): Promise<AiConversationSummary[]> {
+    return unwrap(await fetchJson<AiConversationListResponse>(`${AI_API}/conversations`, { ...opts, getToken }), []);
+  }
+
+  async getAiConversation(getToken: GetTokenFn, id: number, opts?: RequestOptions): Promise<AiConversation> {
+    return unwrap(await fetchJson<AiConversationResponse>(`${AI_API}/conversations/${id}`, { ...opts, getToken }));
+  }
+
+  /** A new conversation; `teamId` is what "my team" means in it. */
+  async createAiConversation(getToken: GetTokenFn, teamId: number | null): Promise<AiConversation> {
+    const env = await fetchJson<AiConversationResponse>(`${AI_API}/conversations`, {
+      getToken,
+      method: "POST",
+      body: teamId != null ? { team_id: teamId } : {},
+    });
+    return unwrap(env);
+  }
+
+  async deleteAiConversation(getToken: GetTokenFn, id: number): Promise<void> {
+    await fetchJson(`${AI_API}/conversations/${id}`, { getToken, method: "DELETE" });
+  }
+
+  /** Thumbs up or down on one answer; null clears it. */
+  async sendAiFeedback(getToken: GetTokenFn, turnId: number, feedback: AiFeedback | null): Promise<void> {
+    await fetchJson<AiTurnFeedbackResponse>(`${AI_API}/turns/${turnId}/feedback`, {
+      getToken,
+      method: "POST",
+      body: { feedback },
+    });
+  }
+
+  /** The URL a turn streams from (see `streamTurn`). */
+  aiTurnUrl(conversationId: number): string {
+    return `${AI_API}/conversations/${conversationId}/turns`;
   }
 }
 

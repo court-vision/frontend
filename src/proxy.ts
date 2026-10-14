@@ -3,14 +3,14 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
 import { isDeskDemo, isDeskPath, WEEK_DESK, withFlagValues } from "@/components/desk/routes";
 import { hasSessionHint, isRouterRequest } from "@/lib/session-hint";
 
-// Desks that need an account. Week shows its own sign-in prompt (and a demo),
-// Scout and Developer are public.
+// Desks that need an account. Week and AI show their own sign-in prompt (Week
+// a demo too), Scout and Developer are public.
 const isProtectedRoute = createRouteMatcher(["/draft(.*)", "/account(.*)"]);
 
 // Where Clerk's middleware runs: the routes whose server side reads the session
 // (the two desks above and Clerk's own forms), plus Clerk's Frontend API proxy
 // path and API routes. Everywhere else the session lives in the browser alone:
-// Week, Scout and Developer resolve it with clerk-js, and the landing, /privacy
+// Week, Scout, AI and Developer resolve it with clerk-js, and the landing, /privacy
 // and the 404 have none. Running Clerk on every page cost a returning
 // signed-in user's hard load a handshake whenever the session token was over
 // 60 s old (www -> clerk.courtvision.dev/v1/client/handshake -> www, 300-550 ms
