@@ -52,3 +52,6 @@ next-env.d.ts
 
 # headless screenshot output (scripts/mobile-shots.sh)
 /.mobile-shots/
+
+# Playwright MCP snapshots and console logs (scripts/playwright-mcp.sh)
+/.playwright-mcp/
