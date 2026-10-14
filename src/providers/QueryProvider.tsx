@@ -7,10 +7,10 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import * as Sentry from "@sentry/nextjs";
 import { toast } from "sonner";
 import { useState } from "react";
 import { ApiError, isEmptyResult, toApiError, userMessage } from "@/lib/api-error";
+import { captureError, recordBreadcrumb } from "@/lib/report-error";
 
 const SIGN_IN_URL = process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL ?? "/sign-in";
 
@@ -40,7 +40,7 @@ function notifyError(error: unknown) {
 
 function recordFailure(error: unknown, category: "query" | "mutation", key: unknown) {
   const err = toApiError(error);
-  Sentry.addBreadcrumb({
+  recordBreadcrumb({
     category,
     level: "error",
     message: `${err.kind} ${err.status}${err.code ? ` ${err.code}` : ""}`,
@@ -48,7 +48,7 @@ function recordFailure(error: unknown, category: "query" | "mutation", key: unkn
   });
   // API failures belong to the backend's Sentry; anything else is a client bug.
   if (!(error instanceof ApiError) && err.kind === "unknown") {
-    Sentry.captureException(error);
+    captureError(error);
   }
 }
 

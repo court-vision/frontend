@@ -3,9 +3,11 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import { SENTRY_DSN } from "@/lib/sentry";
 
 Sentry.init({
-  dsn: "https://113f1fb150c5bff0e89966c7d9adea21@o4511164601139200.ingest.us.sentry.io/4511979052728320",
+  // The project DSN, shared with the browser (NEXT_PUBLIC_SENTRY_DSN overrides it).
+  dsn: SENTRY_DSN,
 
   dataCollection: {
     // To disable sending user data and HTTP bodies, uncomment the lines below. For more info visit:
