@@ -1,3 +1,4 @@
+import type { DraftSession } from "@/types/draft";
 /** "Nikola Jokić" → "N. Jokić"; suffixes (Jr., III) dropped. */
 export function shortName(name: string): string {
   const parts = name.split(" ").filter((p) => !/^(jr\.?|sr\.?|ii|iii|iv|v)$/i.test(p));
@@ -46,3 +47,8 @@ export function apiTime(value: string | null | undefined): number {
 }
 
 export const KIND_LABEL = { live: "ESPN draft", mock: "Mock", manual: "Manual", import: "Imported" } as const;
+
+/** Where a room's picks come from, as the lobby and the room header say it. */
+export function pickSource(room: Pick<DraftSession, "kind" | "league_pending">): string {
+  return room.league_pending ? "ESPN draft · league on connect" : KIND_LABEL[room.kind];
+}

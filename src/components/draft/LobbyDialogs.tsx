@@ -7,18 +7,26 @@ import dk from "@/components/desk/desk.module.css";
 import { toApiError } from "@/lib/api-error";
 import { importFailure, type ImportFailure } from "@/lib/draft-import";
 import { DEMO_POOL } from "@/lib/draft-demo";
+import { DEFAULT_ROUNDS, draftableSpots } from "@/lib/draft-roster";
 import { useTeamLeagueQuery } from "@/hooks/useTeams";
 import type { DraftKind, DraftSession, DraftType, ScoringFormat } from "@/types/draft";
 import { NO_TEAM, createFormStart, importFormStart, type LobbyModel, type TeamChoice } from "./model";
 import s from "./draft.module.css";
 
 /** Where the picks come from — the one choice that shapes everything else about a room. */
-const SOURCES: Array<{ value: DraftKind; title: string; text: string; espnOnly?: boolean }> = [
+const SOURCES: Array<{ value: DraftKind; title: string; text: string; espnOnly?: boolean; noTeamOnly?: boolean }> = [
   {
     value: "live",
     title: "This league's ESPN draft",
     text: "Picks arrive from your league's ESPN draft room through the Draft Tap. The room is linked to that league from the start.",
     espnOnly: true,
+  },
+  {
+    // A league joined minutes before its draft: no time to add the team first.
+    value: "live",
+    title: "An ESPN draft I'm joining now",
+    text: "Start the room first. When the Draft Tap connects to the ESPN draft room, this room links to that league, reads its settings and adds your team to your account.",
+    noTeamOnly: true,
   },
   {
     value: "mock",
@@ -80,7 +88,7 @@ export function CreateRoomDialog({
   }, [open, startTeam, startKind]);
 
   const team: TeamChoice | null = model.teams.find((t) => t.id === teamId) ?? null;
-  const sources = SOURCES.filter((src) => !src.espnOnly || team?.espn);
+  const sources = SOURCES.filter((src) => (!src.espnOnly || team?.espn) && (!src.noTeamOnly || !team));
   useEffect(() => {
     if (!sources.some((src) => src.value === kind)) setKind("mock");
   }, [sources, kind]);
@@ -102,7 +110,10 @@ export function CreateRoomDialog({
     setSlot((x) => (x != null && x > seatCount ? null : x));
   }, [seatCount]);
   const roundsValue = rounds === "" ? null : Math.max(1, Math.floor(Number(rounds)));
-  const tooBig = model.demo && ownSeats != null && ownSeats * (roundsValue ?? 13) > DEMO_POOL;
+  // What a blank field means, as the backend fills it: the league's draftable
+  // roster (starters plus bench) when it has synced one, else the standard 13.
+  const defaultRounds = (team ? draftableSpots(league.data?.roster_slots) : null) ?? DEFAULT_ROUNDS;
+  const tooBig = model.demo && ownSeats != null && ownSeats * (roundsValue ?? defaultRounds) > DEMO_POOL;
   const slotRequired = leagueSeats > 0;
   const blocked = (slotRequired && slot == null) || leagueUnknown || (!team && ownSeats == null) || tooBig;
 
@@ -154,7 +165,16 @@ export function CreateRoomDialog({
       {!model.demo ? (
         <div className={s.field}>
           <span className={s.fieldLabel}>Settings from</span>
-          <select className={dk.input} value={teamId} onChange={(e) => setTeamId(Number(e.target.value))}>
+          <select
+            className={dk.input}
+            value={teamId}
+            onChange={(e) => {
+              const id = Number(e.target.value);
+              setTeamId(id);
+              // Dropping the team keeps "live" from quietly becoming a league-pending room: that one is chosen, not inherited.
+              if (id === NO_TEAM && kind === "live") setKind("mock");
+            }}
+          >
             <option value={NO_TEAM}>No league — generic settings</option>
             {model.teams.map((t) => (
               <option key={t.id} value={t.id}>
@@ -163,7 +183,11 @@ export function CreateRoomDialog({
             ))}
           </select>
           <span className={s.fieldHelp}>
-            {team ? "Draft type, pick order, rounds and keepers come from this team's league." : "Say how many teams and how the league scores."}
+            {team
+              ? "Draft type, pick order, rounds and keepers come from this team's league."
+              : kind === "live"
+                ? "Placeholders until the Draft Tap connects: the ESPN league's own teams, scoring and rounds take over."
+                : "Say how many teams and how the league scores."}
           </span>
         </div>
       ) : null}
@@ -193,7 +217,7 @@ export function CreateRoomDialog({
           <span className={s.fieldLabel}>Picks come from</span>
           <div className={s.choices} role="radiogroup">
             {sources.map((src) => (
-              <button key={src.value} type="button" role="radio" aria-checked={kind === src.value} className={s.choice} onClick={() => setKind(src.value)}>
+              <button key={src.title} type="button" role="radio" aria-checked={kind === src.value} className={s.choice} onClick={() => setKind(src.value)}>
                 <span className={s.radio} />
                 <span>
                   <div className={s.choiceTitle}>{src.title}</div>
@@ -242,7 +266,7 @@ export function CreateRoomDialog({
         ) : null}
         <div className={s.field}>
           <span className={s.fieldLabel}>Rounds</span>
-          <input className={dk.input} type="number" min={1} max={40} value={rounds} placeholder={team ? "League's roster size" : "13"} onChange={(e) => setRounds(e.target.value)} />
+          <input className={dk.input} type="number" min={1} max={40} value={rounds} placeholder={String(defaultRounds)} onChange={(e) => setRounds(e.target.value)} />
         </div>
       </div>
       {tooBig ? <span className={dk.error}>The demo pool holds {DEMO_POOL} players: fewer teams or rounds.</span> : null}

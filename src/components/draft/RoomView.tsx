@@ -27,7 +27,7 @@ import { Calls, Needs, Roster } from "./Rail";
 import { KeepersDialog, SeatDialog } from "./RoomDialogs";
 import { PickTape } from "./Tape";
 import { SyncPill } from "./SyncPill";
-import { KIND_LABEL } from "./format";
+import { pickSource } from "./format";
 import type { RoomModel } from "./model";
 import s from "./draft.module.css";
 import { DRAFT_DESK } from "@/components/desk/routes";
@@ -44,7 +44,7 @@ export function roomTitle(session: Pick<DraftSession, "id" | "name" | "kind">): 
 
 export function roomFacts(session: DraftSession): string {
   const parts = [
-    KIND_LABEL[session.kind],
+    pickSource(session),
     session.league_size ? `${session.league_size} teams` : null,
     session.scoring_format === "categories" ? "9-cat" : session.scoring_format === "points" ? "points" : null,
     session.draft_type,
@@ -377,6 +377,20 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
     }
   }, [sync, router]);
 
+  // A league-pending room is here for exactly this: it links to the first
+  // ESPN draft the tap shows it, unasked, and the INIT that follows adopts the
+  // league. Once per room and league seen, so a refusal (another room has it) is
+  // not retried on every render and the banner's own button still works. Keyed
+  // by room too: navigating to another room keeps this component mounted.
+  const autoLinked = useRef<string | null>(null);
+  useEffect(() => {
+    const target = sync?.unbound && !sync.unbound.dismissed ? sync.unbound.espnLeagueId : null;
+    const key = `${session.id}:${target}`;
+    if (!session.league_pending || target == null || autoLinked.current === key) return;
+    autoLinked.current = key;
+    void linkRoom();
+  }, [session.id, session.league_pending, sync?.unbound, linkRoom]);
+
   // ---- keyboard ----
   const move = useCallback(
     (delta: 1 | -1) => setHighlight(stepHighlight(visible.map((r) => r.player_id), activeId, delta)),
@@ -626,7 +640,9 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
       ) : sync?.unbound && !sync.unbound.dismissed ? (
         <div className={`${s.banner} ${s.bannerWarn}`}>
           <span className={dk.grow}>
-            An ESPN draft room is open (league {sync.unbound.espnLeagueId}). Link this room to it and its picks arrive here.
+            {session.league_pending
+              ? `Linking to ESPN draft ${sync.unbound.espnLeagueId}: the room takes that league's settings and adds your team.`
+              : `An ESPN draft room is open (league ${sync.unbound.espnLeagueId}). Link this room to it and its picks arrive here.`}
           </span>
           <button type="button" className={`${dk.btn} ${dk.btnSmall} ${dk.btnPrimary}`} onClick={() => void linkRoom()}>
             Link

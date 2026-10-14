@@ -3917,6 +3917,29 @@
             "title": "Inserted",
             "type": "integer"
           },
+          "league_adopted": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftLeagueAdoption"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when this INIT turned a league-pending room into a room on a real league (see `session.league_pending`)"
+          },
+          "league_adoption_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why a league-pending room could not adopt its league this time (ESPN unreachable, a private league with no ESPN connection on the account, \u2026). Picks still sync; the room keeps its placeholder settings and tries again on the next connect.",
+            "title": "League Adoption Error"
+          },
           "made": {
             "description": "Picks made in the INIT snapshot",
             "title": "Made",
@@ -3962,7 +3985,9 @@
           "warnings",
           "espn_front",
           "header_applied",
-          "position_limits"
+          "position_limits",
+          "league_adopted",
+          "league_adoption_error"
         ],
         "title": "DraftInitSyncResp",
         "type": "object"
@@ -4157,6 +4182,67 @@
           "overall_pick"
         ],
         "title": "DraftKeeper",
+        "type": "object"
+      },
+      "DraftLeagueAdoption": {
+        "description": "What a league-pending room took from the ESPN draft it connected to.",
+        "properties": {
+          "espn_league_id": {
+            "title": "Espn League Id",
+            "type": "integer"
+          },
+          "espn_team_id": {
+            "title": "Espn Team Id",
+            "type": "integer"
+          },
+          "league_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The synced league row; null if ESPN's settings could not be read",
+            "title": "League Id"
+          },
+          "league_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Name"
+          },
+          "team_created": {
+            "description": "False when the team was already on your account",
+            "title": "Team Created",
+            "type": "boolean"
+          },
+          "team_id": {
+            "description": "Your team in that league, in `usr.teams` \u2014 created now unless it already existed",
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id",
+          "league_id",
+          "espn_league_id",
+          "espn_team_id",
+          "team_name",
+          "league_name",
+          "team_created"
+        ],
+        "title": "DraftLeagueAdoption",
         "type": "object"
       },
       "DraftPickCreate": {
@@ -4887,7 +4973,7 @@
           },
           "kind": {
             "default": "manual",
-            "description": "Where the picks come from. `live`: this team's own ESPN draft (needs a team in a synced ESPN league; the room is linked to it at once). `mock`: an ESPN mock lobby, linked on the first INIT it reconciles with. `manual`: the caller enters every pick.",
+            "description": "Where the picks come from. `live`: an ESPN draft. With a `team_id` it is that team's own draft (the team needs a synced ESPN league) and the room is linked to it at once; without one the room is `league_pending`: it links to the ESPN draft the Draft Tap connects to, reads that league's settings and adds your team there on the first INIT. `mock`: an ESPN mock lobby, linked on the first INIT it reconciles with. `manual`: the caller enters every pick.",
             "enum": [
               "live",
               "manual",
@@ -4949,7 +5035,7 @@
                 "type": "null"
               }
             ],
-            "description": "Defaults to the league's draftable roster size",
+            "description": "Defaults to the league's draftable roster spots (starters plus bench, IR excluded), else 13",
             "title": "Rounds"
           },
           "scoring_format": {
@@ -5133,7 +5219,7 @@
                 "type": "null"
               }
             ],
-            "description": "The ESPN draft this room follows; null until a mock room links to one",
+            "description": "The ESPN draft this room follows; null until a mock or league-pending room links to one",
             "title": "Espn League Id"
           },
           "id": {
@@ -5180,6 +5266,12 @@
               }
             ],
             "title": "League Id"
+          },
+          "league_pending": {
+            "default": false,
+            "description": "A live room started without a team: on the first INIT it adopts the ESPN league the Draft Tap connected to (settings synced, your team added) and this turns false. Until then its teams, scoring and rounds are the placeholders it was created with.",
+            "title": "League Pending",
+            "type": "boolean"
           },
           "league_size": {
             "anyOf": [
@@ -5369,6 +5461,7 @@
           "status",
           "name",
           "espn_league_id",
+          "league_pending",
           "draft_type",
           "pick_order",
           "my_slot",
@@ -21927,7 +22020,7 @@
         ]
       },
       "post": {
-        "description": "Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for generic settings.\n\n`kind` says where the picks come from. `live` follows the team's own ESPN draft and is linked to it at once \u2014 one active live room per league, so a second is refused with the first's id. `mock` follows an ESPN mock lobby and links to the first one it reconciles with. `manual` follows nothing.\n\n`my_slot` is the one thing the caller must supply: `pick_order` holds ESPN team ids that nothing maps back to our teams, so the room asks which seat is yours.",
+        "description": "Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster spots, starters plus bench) and the keeper allowance. Omit `team_id` for generic settings: a snake of 13 rounds.\n\nA `live` room without a `team_id` is `league_pending`: for a league joined minutes before its draft. It opens on the generic settings and, when the Draft Tap connects, links to that ESPN draft, syncs the league and adds your team there (`sync/init`).\n\n`kind` says where the picks come from. `live` follows the team's own ESPN draft and is linked to it at once \u2014 one active live room per league, so a second is refused with the first's id. `mock` follows an ESPN mock lobby and links to the first one it reconciles with. `manual` follows nothing.\n\n`my_slot` is the one thing the caller must supply: `pick_order` holds ESPN team ids that nothing maps back to our teams, so the room asks which seat is yours.",
         "operationId": "create_draft_session_v1_internal_drafts_post",
         "requestBody": {
           "content": {
@@ -22673,7 +22766,7 @@
     },
     "/v1/internal/drafts/{session_id}/sync/init": {
       "post": {
-        "description": "Decodes the ESPN draft room's INIT snapshot and folds it into this session. On a session with no picks yet it sets the pick order, slot, rounds and draft type from the room; then it records every pick the room has made, at that pick's ESPN number, skipping the ones already recorded and reporting (never overwriting) any that disagree.\n\nIdempotent by design: the room's tab posts this on every connect, so a reconnect re-posts the whole snapshot and only the newly-made picks are inserted.",
+        "description": "Decodes the ESPN draft room's INIT snapshot and folds it into this session. On a session with no picks yet it sets the pick order, slot, rounds and draft type from the room; then it records every pick the room has made, at that pick's ESPN number, skipping the ones already recorded and reporting (never overwriting) any that disagree.\n\nIdempotent by design: the room's tab posts this on every connect, so a reconnect re-posts the whole snapshot and only the newly-made picks are inserted.\n\nA `league_pending` room (a live room started without a team) links to the ESPN draft this INIT came from and then adopts its league: the league's settings are synced and your team in it is added to your account, as the add-team flow would, and the room takes the league's scoring and roster. `league_adopted` reports it; when ESPN cannot be read `league_adoption_error` says why and the next connect tries again.",
         "operationId": "sync_draft_init_v1_internal_drafts__session_id__sync_init_post",
         "parameters": [
           {

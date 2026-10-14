@@ -61,14 +61,16 @@ export function useLiveRoom(sessionId: number): RoomModel {
   const advanceMock = useMockAdvanceMutation(sessionId);
 
   // A room follows exactly one ESPN draft: a live room is linked at creation,
-  // a mock room links to the first ESPN room the user accepts, a manual room follows none.
+  // a mock room links to the first ESPN room the user accepts, a league-pending
+  // live room links to the first one it sees (RoomView links it unasked), a
+  // manual room follows none.
   const s = session.data;
   const sync = useEspnDraftSync({
     sessionId,
     session: s,
     board: board.data,
     expectedLeagueId: s?.espn_league_id ?? null,
-    bindable: s?.kind === "mock" && s.espn_league_id == null,
+    bindable: s != null && s.espn_league_id == null && (s.kind === "mock" || s.league_pending),
     enabled: Boolean(s && s.status === "active" && s.kind !== "manual"),
   });
 

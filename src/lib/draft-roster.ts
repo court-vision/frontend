@@ -19,7 +19,7 @@ export const SLOT_ORDER = [
  * an unrecognized label would silently drop those seats and understate the
  * roster, so it is normalized rather than trusted.
  */
-const SLOT_ALIASES: Record<string, string> = { UTIL: "UT", BN: "BE", BENCH: "BE", IL: "IR" };
+const SLOT_ALIASES: Record<string, string> = { UTIL: "UT", BN: "BE", BENCH: "BE", IL: "IR", "IL+": "IR" };
 
 export function canonicalSlot(slot: string): string {
   const name = String(slot).trim();
@@ -105,6 +105,24 @@ export function fillLineup(rosterSlots: Record<string, number>, players: RosterP
     else overflow.push(player);
   }
   return { slots, overflow };
+}
+
+/** Rounds a room drafts when its league cannot say: ESPN's standard ten starters and a three-deep bench. */
+export const DEFAULT_ROUNDS = 13;
+
+/**
+ * Rounds a full draft of these slots takes — every seat but IR, which is filled
+ * from the roster. Null when the league has not synced a roster, so the caller
+ * can fall back to `DEFAULT_ROUNDS` the way the backend does.
+ */
+export function draftableSpots(rosterSlots: Record<string, number> | null | undefined): number | null {
+  let total = 0;
+  for (const [raw, value] of Object.entries(rosterSlots ?? {})) {
+    const name = canonicalSlot(raw);
+    if (name === "" || name === "IR") continue;
+    total += Math.max(0, Math.floor(Number(value) || 0));
+  }
+  return total > 0 ? total : null;
 }
 
 /** Empty starting slots by name — the bench is excluded, it says nothing about need. */
