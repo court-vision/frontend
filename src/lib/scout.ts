@@ -116,6 +116,69 @@ export function lensOf(focus: Focus): Lens {
 }
 
 // ---------------------------------------------------------------------------
+// Opening a player
+// ---------------------------------------------------------------------------
+
+/**
+ * Where an arrow-key flip lands: the row next to the open focus in `dir`, or
+ * next to the cursor when the focus isn't in the list. `opens` is false at
+ * either end of the list, where the flip would land on the row already open;
+ * null when there are no rows to flip through.
+ */
+export function flipTarget(rows: readonly Focus[], focus: Focus | null, cursor: number, dir: 1 | -1): { row: number; opens: boolean } | null {
+  if (!rows.length) return null;
+  const at = focus ? rows.findIndex((r) => sameFocus(r, focus)) : -1;
+  const row = Math.max(0, Math.min(rows.length - 1, (at >= 0 ? at : cursor) + dir));
+  return { row, opens: row !== at };
+}
+
+/**
+ * The players either side of row `at`: what an arrow-key flip from there
+ * would open next, so their stats can be asked for before the key lands.
+ */
+export function flipNeighbours(rows: readonly Focus[], at: number): number[] {
+  const ids: number[] = [];
+  for (const i of [at + 1, at - 1]) {
+    const f = rows[i];
+    if (f?.kind === "player") ids.push(f.id);
+  }
+  return ids;
+}
+
+/** A player's name and team as some source has them; null where it doesn't know. */
+export interface PlayerIdentity {
+  name: string | null;
+  team: string | null;
+}
+
+/**
+ * The name and team a player sheet goes by. Stats win once they land (the
+ * player dimension and his latest game). Until then a seed the page already
+ * holds (his pool row, or an earlier visit) stands in, so the header shows at
+ * once and the requests that need a name (the ESPN market line) or a team
+ * (the schedule) start beside stats instead of after it. The profile's team
+ * counts only once stats has answered without one: before a season it is
+ * often his new team while stats and the pool still have the old one (147 of
+ * 582 ranked players on 2026-10-13), and going by it first would fetch one
+ * team's schedule and then the other's.
+ */
+export function sheetIdentity({
+  stats,
+  profile,
+  seed,
+  statsPending,
+}: {
+  stats: PlayerIdentity | null | undefined;
+  profile: PlayerIdentity | null | undefined;
+  seed: PlayerIdentity | null | undefined;
+  statsPending: boolean;
+}): PlayerIdentity {
+  const name = stats?.name || profile?.name || seed?.name || null;
+  const team = stats?.team || seed?.team || (statsPending ? null : profile?.team) || null;
+  return { name, team };
+}
+
+// ---------------------------------------------------------------------------
 // Lens: the list beside the sheet
 // ---------------------------------------------------------------------------
 
@@ -500,6 +563,21 @@ export function matchPool(q: string, pool: readonly RankingsPlayer[], limit: num
     .sort((a, b) => a.s - b.s || a.p.rank - b.p.rank)
     .slice(0, limit)
     .map((x) => x.p);
+}
+
+/**
+ * The directory's answer as it applies to what is typed now. An answer to
+ * this very term is the server's, whole. An answer to an earlier term (kept
+ * on screen while the new one is asked for) keeps only the names that still
+ * contain the term, the server's own test, so a narrowing search never shows
+ * a name the new answer wouldn't.
+ */
+export function directoryMatches<P extends { name: string }>(answer: { query: string; players: P[] } | null | undefined, q: string): P[] {
+  const term = q.trim();
+  if (!answer || term.length < 2) return [];
+  if (answer.query === term) return answer.players;
+  const s = fold(term);
+  return answer.players.filter((p) => fold(p.name).includes(s));
 }
 
 // ---------------------------------------------------------------------------

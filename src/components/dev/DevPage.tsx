@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { motion } from "motion/react";
 import { LayoutList, Search } from "lucide-react";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
+import { SegRail } from "@/components/desk/SegRail";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import { API_BASE } from "@/endpoints";
 import { getTodayDate } from "@/hooks/useGames";
@@ -196,7 +196,7 @@ function DevDesk({ demo, initial, keys, query }: { demo: boolean; initial: DevIn
           <LayoutList size={13} />
           {pane === "list" ? "Sheet" : "List"}
         </button>
-        <div className={dk.rail} role="radiogroup" aria-label="View">
+        <SegRail label="View" active={view}>
           {VIEWS.map((v) => {
             const on = view === v.id;
             return (
@@ -212,12 +212,11 @@ function DevDesk({ demo, initial, keys, query }: { demo: boolean; initial: DevIn
                 }}
                 title={v.title}
               >
-                {on ? <motion.span layoutId="dev-view-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
                 <span className={dk.segLabel}>{v.label}</span>
               </button>
             );
           })}
-        </div>
+        </SegRail>
         <span className={dk.kbd}>[ ]</span>
         <span className={dk.divider} />
         <button type="button" className={dk.btn} onClick={() => setFinderOpen(true)} disabled={ops.length === 0} title="Find a route (⌘K)">

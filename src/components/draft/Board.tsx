@@ -2,11 +2,11 @@
 
 import { forwardRef, memo, useEffect, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { motion } from "motion/react";
 import { ArrowDown, ArrowUp, ChevronDown, Search } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { Headshot } from "@/components/desk/Headshot";
 import { useDeskPortal } from "@/components/desk/DeskFrame";
+import { SegRail } from "@/components/desk/SegRail";
 import dk from "@/components/desk/desk.module.css";
 import {
   basisNote,
@@ -111,17 +111,16 @@ export const BoardToolbar = memo(forwardRef<HTMLInputElement, ToolbarProps>(func
         />
         <span className={`${dk.kbd} ${s.searchKey}`}>/</span>
       </label>
-      <div className={dk.rail} role="radiogroup" aria-label="Position">
+      <SegRail label="Position" active={positionFilter}>
         {POSITION_FILTERS.map((p) => {
           const on = positionFilter === p;
           return (
             <button key={p} type="button" role="radio" aria-checked={on} className={`${dk.seg} ${on ? dk.segOn : ""}`} onClick={() => setPositionFilter(p)}>
-              {on ? <motion.span layoutId="pos-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
               <span className={dk.segLabel}>{p === "all" ? "ALL" : p}</span>
             </button>
           );
         })}
-      </div>
+      </SegRail>
       <button
         type="button"
         className={`${dk.btn} ${dk.btnSmall} ${onlyLikelyGone ? dk.toggleOn : ""}`}
@@ -146,17 +145,16 @@ export const BoardToolbar = memo(forwardRef<HTMLInputElement, ToolbarProps>(func
       <span className={dk.label} title={note?.title}>
         Board
       </span>
-      <div className={dk.rail} role="radiogroup" aria-label="Whose rankings order the board">
+      <SegRail label="Whose rankings order the board" active={boardSource}>
         {(["espn", "cv", "my_team"] as const).map((src) => {
           const on = boardSource === src;
           return (
             <button key={src} type="button" role="radio" aria-checked={on} className={`${dk.seg} ${on ? dk.segOn : ""}`} onClick={() => setBoardSource(src)} title={SOURCE_TITLE[src]}>
-              {on ? <motion.span layoutId="src-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
               <span className={dk.segLabel}>{SOURCE_LABEL[src].toUpperCase()}</span>
             </button>
           );
         })}
-      </div>
+      </SegRail>
       <span className={dk.kbd}>B</span>
       {playoffs ? (
         <Popover.Root open={poOpen} onOpenChange={setPoOpen}>

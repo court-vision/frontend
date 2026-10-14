@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
 import { Download, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { DeskDialog } from "@/components/desk/DeskDialog";
 import { Headshot } from "@/components/desk/Headshot";
+import { SegRail } from "@/components/desk/SegRail";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import dk from "@/components/desk/desk.module.css";
 import { formatRelativeTime } from "@/lib/relative-time";
@@ -124,19 +124,18 @@ export function Lobby({ model }: { model: LobbyModel }) {
       ) : (
         <>
           <div className={s.toolbar}>
-            <div className={dk.rail} role="radiogroup" aria-label="Rooms">
+            <SegRail label="Rooms" active={filter}>
               {(["all", "active", "completed"] as const).map((f) => {
                 const on = filter === f;
                 return (
                   <button key={f} type="button" role="radio" aria-checked={on} className={`${dk.seg} ${on ? dk.segOn : ""}`} onClick={() => setFilter(f)}>
-                    {on ? <motion.span layoutId="lobby-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
                     <span className={dk.segLabel}>
                       {f === "completed" ? "DONE" : f.toUpperCase()} <span className={dk.sub}>{counts[f]}</span>
                     </span>
                   </button>
                 );
               })}
-            </div>
+            </SegRail>
             <span className={dk.spacer} />
             {model.reset ? (
               <button type="button" className={dk.btn} onClick={model.reset} title="Put the demo rooms back as they started">

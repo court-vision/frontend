@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { motion } from "motion/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { LayoutList } from "lucide-react";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
+import { SegRail } from "@/components/desk/SegRail";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import { getTodayDate } from "@/hooks/useGames";
+import { playerStatsQuery } from "@/hooks/usePlayer";
 import { useLeagueRankingsQuery, useRankingsListQuery } from "@/hooks/useRankings";
 import { useLiveLeadersQuery } from "@/hooks/useScout";
 import { useSeason } from "@/hooks/useSeason";
@@ -15,7 +17,7 @@ import { useTeamsQuery } from "@/hooks/useTeams";
 import { useUIStore } from "@/stores/useUIStore";
 import { userMessage } from "@/lib/api-error";
 import { DEFAULT_9CAT } from "@/lib/category-format";
-import { LENSES, dayName, focusFromSearch, focusKey, focusToSearch, leagueChoiceFor, leagueChoices, lensInfo, lensOf, nextLens, nextWindow, poolScore, sameFocus, scoredBy, teamInfo, windowLabel, type Focus, type Window } from "@/lib/scout";
+import { LENSES, dayName, flipNeighbours, flipTarget, focusFromSearch, focusKey, focusToSearch, leagueChoiceFor, leagueChoices, lensInfo, lensOf, nextLens, nextWindow, poolScore, sameFocus, scoredBy, teamInfo, windowLabel, type Focus, type Window } from "@/lib/scout";
 import type { RankingsParams } from "@/types/rankings";
 import { Bench } from "./Bench";
 import { BoardSheet } from "./BoardSheet";
@@ -59,7 +61,10 @@ interface Identity {
  */
 export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const [focus, setFocusState] = useState<Focus | null>(initialFocus);
+  // Whether the focus came by an arrow-key flip: only then does a player sheet wait to rest before its extras.
+  const [flipped, setFlipped] = useState(false);
   const [compare, setCompare] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [cursor, setCursor] = useState(0);
@@ -153,8 +158,9 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
   // ---- focus ↔ URL
 
   const open = useCallback(
-    (f: Focus | null, mode: "push" | "replace" = "push") => {
+    (f: Focus | null, mode: "push" | "replace" = "push", how: "jump" | "flip" = "jump") => {
       setFocusState(f);
+      setFlipped(how === "flip");
       setCompare(false);
       if (f) {
         remember(f);
@@ -191,6 +197,7 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
     const onPop = () => {
       const f = focusFromSearch(new URLSearchParams(window.location.search));
       setFocusState(f);
+      setFlipped(false);
       setCompare(false);
       setPane(f ? "sheet" : "list");
       if (f?.kind === "game") setSlateDay(f.date);
@@ -203,6 +210,7 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
   const initialKey = initialFocus ? focusKey(initialFocus) : "";
   useEffect(() => {
     setFocusState(initialRef.current);
+    setFlipped(false);
   }, [initialKey]);
 
   useEffect(() => {
@@ -317,20 +325,28 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
         case "ArrowRight":
         case "ArrowLeft": {
           const list = rows.current;
-          if (!list.length) return;
+          const flip = flipTarget(list, L.focus, L.cursor, e.key === "ArrowRight" ? 1 : -1);
+          if (!flip) return;
           e.preventDefault();
-          const at = L.focus ? list.findIndex((r) => sameFocus(r, L.focus)) : -1;
-          const base = at >= 0 ? at : L.cursor;
-          const next = Math.max(0, Math.min(list.length - 1, base + (e.key === "ArrowRight" ? 1 : -1)));
+          const next = flip.row;
           setCursor(next);
-          open(list[next]);
+          // At either end the flip lands on the sheet already open. Reopening it
+          // would only mark it flipped and hold its extras back for another rest.
+          if (!flip.opens) return;
+          open(list[next], "push", "flip");
+          // Ask for the next flip's stats now, so the sheet it opens has its numbers waiting.
+          for (const id of flipNeighbours(list, next)) {
+            for (const w of new Set<Window>(["season", L.window])) {
+              void queryClient.prefetchQuery({ ...playerStatsQuery(id, "nba", w), meta: { toast: false } });
+            }
+          }
           return;
         }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, setLens, setWindow, togglePin, toggleTheme]);
+  }, [open, queryClient, setLens, setWindow, togglePin, toggleTheme]);
 
   // ---- render
 
@@ -381,6 +397,8 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
         canCompare={canCompare}
         onCompare={() => setCompare(true)}
         live={focusLive}
+        flip={flipped}
+        known={identities[focus.id]}
         onIdentity={onIdentity}
       />
     );
@@ -443,17 +461,16 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
             <LayoutList size={13} />
             {pane === "list" ? "Sheet" : "List"}
           </button>
-          <div className={dk.rail} role="radiogroup" aria-label="Lens">
+          <SegRail label="Lens" active={lens}>
             {LENSES.map((l) => {
               const on = lens === l.id;
               return (
                 <button key={l.id} type="button" role="radio" aria-checked={on} className={`${dk.seg} ${on ? dk.segOn : ""}`} onClick={() => setLens(l.id)} title={l.title}>
-                  {on ? <motion.span layoutId="lens-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
                   <span className={dk.segLabel}>{l.label}</span>
                 </button>
               );
             })}
-          </div>
+          </SegRail>
           <span className={dk.kbd}>[ ]</span>
         </div>
         <div className={s.toolCenter}>
@@ -461,17 +478,16 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
         </div>
         <div className={s.toolRight}>
           <span className={dk.label}>Window</span>
-          <div className={dk.rail} role="radiogroup" aria-label="Stat window">
+          <SegRail label="Stat window" active={window_}>
             {(["season", "l5", "l10", "l15", "l30"] as const).map((w: Window) => {
               const on = window_ === w;
               return (
                 <button key={w} type="button" role="radio" aria-checked={on} className={`${dk.seg} ${on ? dk.segOn : ""}`} onClick={() => setWindow(w)} title="Per-game averages over the season or the last N games">
-                  {on ? <motion.span layoutId="window-pill" className={dk.segPill} transition={{ type: "spring", stiffness: 600, damping: 45 }} /> : null}
                   <span className={dk.segLabel}>{windowLabel(w)}</span>
                 </button>
               );
             })}
-          </div>
+          </SegRail>
           <span className={dk.kbd}>W</span>
         </div>
       </div>

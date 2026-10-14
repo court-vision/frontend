@@ -173,15 +173,18 @@ export function DeltaChip({ value, better = "high", digits = 1, suffix = "" }: {
   );
 }
 
-/** True once `key` has stayed the same for `ms`: the extras of a sheet load when it rests, not while flipping. */
+/**
+ * True once `key` has stayed the same for `ms`: the extras of a sheet load
+ * when it rests, not while flipping. With no wait (`ms` 0, anything but a
+ * flip) it is settled at once.
+ */
 export function useSettled(key: string | number | null, ms: number = 400): boolean {
-  const [settled, setSettled] = useState(false);
+  const [rested, setRested] = useState<string | number | null>(null);
   useEffect(() => {
-    setSettled(false);
-    if (key == null) return;
-    const t = setTimeout(() => setSettled(true), ms);
+    if (key == null || ms <= 0) return;
+    const t = setTimeout(() => setRested(key), ms);
     return () => clearTimeout(t);
   }, [key, ms]);
-  return settled;
+  return key != null && (ms <= 0 || rested === key);
 }
 

@@ -5,11 +5,19 @@ import { Command } from "cmdk";
 import { CalendarDays, Clock, Search } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
 import { TeamLogo } from "@/components/desk/TeamLogo";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePlayerSearchQuery } from "@/hooks/useScout";
-import { dayName, matchPool, matchTeams, parseDateQuery, teamInfo, type Focus } from "@/lib/scout";
+import { dayName, directoryMatches, matchPool, matchTeams, parseDateQuery, teamInfo, type Focus } from "@/lib/scout";
 import type { RankingsPlayer } from "@/types/rankings";
 import dk from "@/components/desk/desk.module.css";
 import s from "./scout.module.css";
+
+/**
+ * How long typing must pause before the directory is asked. A typed name was
+ * a request (and a CORS preflight) per keystroke; the pool, the teams and the
+ * nights are matched locally and still answer every keystroke.
+ */
+const DIRECTORY_DEBOUNCE_MS = 150;
 
 /** What the box can open: a focus, or a night to expand in the slate's sidebar. */
 export type SearchPick = Focus | { kind: "night"; date: string };
@@ -40,11 +48,14 @@ export function SearchBox({ pool, recent, today, onPick, nameOf, inputRef, onOpe
   const poolHits = useMemo(() => matchPool(q, pool, 6), [q, pool]);
   const teamHits = useMemo(() => matchTeams(q, 4), [q]);
   const date = useMemo(() => parseDateQuery(q, today), [q, today]);
-  const directory = usePlayerSearchQuery(open && q.trim().length >= 2 ? q : "");
+  const wanted = open && q.trim().length >= 2 ? q.trim() : "";
+  const asked = useDebouncedValue(wanted, DIRECTORY_DEBOUNCE_MS);
+  const directory = usePlayerSearchQuery(asked);
+  const searching = wanted !== asked || directory.isFetching;
   const poolIds = useMemo(() => new Set(poolHits.map((p) => p.id)), [poolHits]);
-  const directoryHits = (directory.data?.query === q.trim() ? directory.data.players : []).filter((p) => !poolIds.has(p.id)).slice(0, 5);
+  const directoryHits = directoryMatches(directory.data, q).filter((p) => !poolIds.has(p.id)).slice(0, 5);
   const empty = q.trim().length === 0;
-  const nothing = q.trim().length >= 2 && poolHits.length === 0 && teamHits.length === 0 && !date && directoryHits.length === 0 && !directory.isFetching;
+  const nothing = q.trim().length >= 2 && poolHits.length === 0 && teamHits.length === 0 && !date && directoryHits.length === 0 && !searching;
 
   const measure = useCallback(() => {
     const el = inputRef.current;
@@ -201,7 +212,7 @@ export function SearchBox({ pool, recent, today, onPick, nameOf, inputRef, onOpe
                   ))}
                 </Command.Group>
               ) : null}
-              {!empty && directory.isFetching && poolHits.length === 0 ? <div className={dk.menuEmpty}>Searching the directory…</div> : null}
+              {!empty && searching && poolHits.length === 0 && directoryHits.length === 0 ? <div className={dk.menuEmpty}>Searching the directory…</div> : null}
               {nothing ? <div className={dk.menuEmpty}>Nothing for “{q}”. Try a surname, a team, or a night like “fri”.</div> : null}
             </Command.List>
             <div className={s.searchFoot}>

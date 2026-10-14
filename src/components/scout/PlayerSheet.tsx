@@ -34,7 +34,9 @@ import {
   type StatLine,
   type Window,
   projectionRows,
+  sheetIdentity,
   teamInfo,
+  type PlayerIdentity,
 } from "@/lib/scout";
 import { windowGames } from "@/lib/statWindow";
 import type { GameLog, PercentileData, PlayerStats } from "@/types/player";
@@ -58,9 +60,16 @@ export interface PlayerSheetProps {
   canCompare: boolean;
   onCompare: () => void;
   live: LivePlayerData | undefined;
+  /** Reached by an arrow-key flip: the extras wait until the sheet rests here. */
+  flip: boolean;
+  /** The name and team the page learned on an earlier visit, if any. */
+  known: PlayerIdentity | undefined;
   /** Tell the page the player's name and team once known, for chips and the G key. */
   onIdentity: (identity: { id: number; name: string; team: string | null }) => void;
 }
+
+/** How long a flipped-to sheet must rest before its extras load. */
+const FLIP_SETTLE_MS = 400;
 
 const PCT_KEYS: Array<{ key: keyof StatLine; pct: keyof PercentileData; label: string }> = [
   { key: "fpts", pct: "avg_fpts", label: "FPTS" },
@@ -90,19 +99,27 @@ function ordinal(n: number): string {
 }
 
 export function PlayerSheet(props: PlayerSheetProps) {
-  const { id, window, setWindow, poolRow, categories, today, open, pinned, togglePin, canCompare, onCompare, live, onIdentity } = props;
+  const { id, window, setWindow, poolRow, categories, today, open, pinned, togglePin, canCompare, onCompare, live, flip, known, onIdentity } = props;
   const stats = usePlayerStatsQuery(id, "nba", window);
   const season = usePlayerStatsQuery(id, "nba", "season");
   const percentiles = usePlayerPercentilesQuery(id);
   const status = usePlayerStatusQuery(id);
   const ownership = usePlayerOwnershipQuery(id);
-  // The extras wait until the sheet has rested on this player: flipping through the pool costs four requests, not nine.
-  const settled = useSettled(id);
+  // While flipping through the pool with the arrow keys the extras wait until
+  // the sheet rests on a player: four requests a flip, not nine. A click, a
+  // search pick or a link asks for all of them at once; waiting there only
+  // held the sheet's lower half back by the full 400 ms.
+  const settled = useSettled(id, flip ? FLIP_SETTLE_MS : 0);
   const profile = usePlayerProfileQuery(id, settled);
   const trends = usePlayerTrendsQuery(id, settled);
   const projection = usePlayerProjectionQuery(id, settled);
-  const name = stats.data?.name ?? profile.data?.name ?? poolRow?.player_name ?? null;
-  const team = stats.data?.team ?? profile.data?.profile?.team ?? poolRow?.team ?? null;
+  const statsLoading = stats.isLoading && !stats.data;
+  const { name, team } = sheetIdentity({
+    stats: stats.data,
+    profile: profile.data ? { name: profile.data.name, team: profile.data.profile?.team ?? null } : null,
+    seed: { name: known?.name || poolRow?.player_name || null, team: known?.team || poolRow?.team || null },
+    statsPending: stats.isLoading,
+  });
   const market = useEspnMarketLineQuery(name, id, settled);
   const schedule = useTeamScheduleQuery(settled ? team : null, true, 7);
 
@@ -123,7 +140,8 @@ export function PlayerSheet(props: PlayerSheetProps) {
   const age = ageOn(prof?.birthdate, today);
   const info = teamInfo(team);
 
-  if (stats.isLoading && !stats.data) return <Skeleton rows={9} />;
+  // With nothing to name him by yet (a link, before the pool loads) the whole sheet waits for stats.
+  if (statsLoading && !name) return <Skeleton rows={9} />;
   if (stats.error && !stats.data) return <div className={s.sheetError}>{userMessage(stats.error, "Couldn't load this player")}</div>;
 
   const noStats = !stats.data;
@@ -258,7 +276,9 @@ export function PlayerSheet(props: PlayerSheetProps) {
         </Block>
       ) : null}
 
-      {noStats ? (
+      {statsLoading ? (
+        <Skeleton rows={8} />
+      ) : noStats ? (
         <Block title="Per game" note="no games on record">
           <div className={s.blockEmpty}>No box scores for this player yet. The profile and ESPN&apos;s projection below are all there is.</div>
         </Block>
@@ -455,7 +475,7 @@ export function PlayerSheet(props: PlayerSheetProps) {
                 ))}
               </tbody>
             </table>
-          ) : schedule.isLoading || !settled ? (
+          ) : schedule.isLoading || !settled || (!team && statsLoading) ? (
             <Skeleton rows={4} className={s.ledgerSkel} />
           ) : (
             <div className={s.blockEmpty}>{team ? "No games ahead on the schedule." : "No team, no schedule."}</div>

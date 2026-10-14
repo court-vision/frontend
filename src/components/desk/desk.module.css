@@ -568,13 +568,35 @@
   color: var(--text);
 }
 
-.segPill {
+.segPill,
+.segIndicator,
+.segRail:not([data-pill]) > .segOn::before {
   position: absolute;
   inset: 0;
   border-radius: 5px;
   background: var(--pill);
   box-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(0, 0, 0, 0.3);
   z-index: 0;
+}
+
+/* SegRail: one pill per rail, placed over the checked segment and slid there
+   by a transition (motion's spring settled in about this long). Until it has
+   measured, the checked segment draws the pill itself. */
+.segRail {
+  position: relative;
+}
+
+.segIndicator {
+  inset: 0 auto auto 0;
+  pointer-events: none;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.segRail:not([data-pill]) > .segOn::before {
+  content: "";
 }
 
 .segLabel {
@@ -1258,5 +1280,9 @@ button.menuItem:hover:not(:disabled) {
   .dialog,
   .overlay {
     animation: none;
+  }
+
+  .segIndicator {
+    transition: none;
   }
 }

@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 
 export type PlayerIdType = "espn" | "nba";
@@ -14,6 +14,15 @@ export const playerKeys = {
     [...playerKeys.all, "percentiles", playerId] as const,
 };
 
+/** One player's stats over one window: the hook's query, and what a prefetch asks so it fills the same cache entry. */
+export function playerStatsQuery(playerId: number, idType: PlayerIdType = "espn", window: string = "season") {
+  return queryOptions({
+    queryKey: playerKeys.stats(playerId, idType, window),
+    queryFn: () => apiClient.getPlayerStats(playerId, idType, window),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
 // Hooks
 export function usePlayerStatsQuery(
   playerId: number | null,
@@ -21,10 +30,8 @@ export function usePlayerStatsQuery(
   window: string = "season"
 ) {
   return useQuery({
-    queryKey: playerKeys.stats(playerId!, idType, window),
-    queryFn: () => apiClient.getPlayerStats(playerId!, idType, window),
+    ...playerStatsQuery(playerId!, idType, window),
     enabled: !!playerId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
     // Switching windows swaps the numbers in place instead of blanking the card.
     placeholderData: keepPreviousData,
   });
