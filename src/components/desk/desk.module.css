@@ -1126,17 +1126,18 @@ button.menuItem:hover:not(:disabled) {
 /* ---------------------------------------------------------------- command palette */
 
 /*
- * ⌘K: a finder hung from the top of the frame, wider than a dialog and
- * without a title bar; the input is the first thing in it.
+ * ⌘K: a panel that floats under the bar while it is open, wider than a
+ * menu, with no overlay behind it and no title; the input is the first thing
+ * in it. Nothing of it is on screen otherwise.
  */
 .palette {
   position: fixed;
   left: 50%;
-  top: 11vh;
+  top: 58px;
   z-index: 91;
   width: min(600px, calc(100vw - 32px));
   max-height: 70vh;
-  max-height: min(70vh, calc(100dvh - 11vh - 16px));
+  max-height: min(70vh, calc(100dvh - 58px - 16px));
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -1250,26 +1251,12 @@ button.menuItem:hover:not(:disabled) {
   gap: 5px;
 }
 
-/* Phones: the keys mean nothing on a touch screen, and the bar's button opens it. */
+/* Phones: the keys mean nothing on a touch screen. */
 @media (max-width: 639.98px) {
-  .palette {
-    top: 8vh;
-  }
-
   .paletteEsc,
   .paletteFoot {
     display: none;
   }
-}
-
-/* A title the dialog needs and the eye does not. */
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 /* ---------------------------------------------------------------- states */

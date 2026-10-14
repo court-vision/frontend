@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, useClerk } from "@clerk/nextjs";
-import * as Dialog from "@radix-ui/react-dialog";
 import { Command } from "cmdk";
 import {
   Activity,
@@ -54,14 +54,19 @@ const GROUP_ORDER = ["Desks", "Scout", "Teams", "Theme", "Account"];
 /**
  * ⌘K on every desk: the desks, Scout's lists, your teams, the themes and your
  * account as commands, and any player or NBA team by name, which open in
- * Scout. The desk on screen can add its own (`useDeskCommands`). The body
- * mounts when the palette opens, so its queries run then and not before.
+ * Scout. The desk on screen can add its own (`useDeskCommands`).
+ *
+ * Not a dialog: a panel that floats under the bar while it is open, with no
+ * overlay and nothing of it on screen otherwise. Esc, a press anywhere else,
+ * focus leaving it or a command run put it away. It mounts when it opens, so
+ * its queries run then and not before.
  */
 export function CommandPalette() {
   const open = usePalette((s) => s.open);
   const setOpen = usePalette((s) => s.setOpen);
   const toggle = usePalette((s) => s.toggle);
   const container = useDeskPortal();
+  const close = useCallback(() => setOpen(false), [setOpen]);
 
   // ⌘K (Ctrl+K elsewhere) from anywhere, a field included: the one key every
   // desk leaves alone. Captured, so a field that keeps its keys cannot keep this one.
@@ -76,16 +81,52 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [toggle]);
 
+  if (!open || !container) return null;
+  return createPortal(<PalettePanel close={close} />, container);
+}
+
+/** The floating panel: where it sits, and what puts it away. */
+function PalettePanel({ close }: { close: () => void }) {
+  const root = useRef<HTMLDivElement>(null);
+
+  // Focus goes back where it was when the panel closes.
+  useEffect(() => {
+    const before = document.activeElement;
+    return () => {
+      if (before instanceof HTMLElement && before.isConnected) before.focus();
+    };
+  }, []);
+
+  // A press anywhere else lets go.
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      if (root.current && !root.current.contains(e.target as Node)) close();
+    };
+    window.addEventListener("pointerdown", onDown);
+    return () => window.removeEventListener("pointerdown", onDown);
+  }, [close]);
+
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Portal container={container}>
-        <Dialog.Overlay className={dk.overlay} />
-        <Dialog.Content className={dk.palette} aria-describedby={undefined}>
-          <Dialog.Title className={dk.srOnly}>Search and commands</Dialog.Title>
-          <PaletteBody close={() => setOpen(false)} />
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <div
+      ref={root}
+      className={dk.palette}
+      onKeyDown={(e) => {
+        if (e.key !== "Escape") return;
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      }}
+      // Focus leaving the panel (a Tab out, a click on a control elsewhere) closes it.
+      onBlur={(e) => {
+        if (!root.current?.contains(e.relatedTarget as Node | null)) close();
+      }}
+      // A press on a row or the foot keeps the focus in the input, so the row's click still lands.
+      onMouseDown={(e) => {
+        if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
+      }}
+    >
+      <PaletteBody close={close} />
+    </div>
   );
 }
 
