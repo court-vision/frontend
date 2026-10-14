@@ -7,6 +7,7 @@ import {
   sendFailureMessage,
   initialState,
   reduce,
+  secondsOnClock,
   type SyncContext,
   type SyncEffect,
   type SyncEvent,
@@ -395,6 +396,20 @@ describe("the clock", () => {
     expect(s.onClock?.teamId).toBe(3);
     s = run([frameRec("SELECTED 3 4431671 12 {SWID}")], CTX(), s).state;
     expect(s.onClock).toBeNull();
+  });
+
+  test("the countdown runs on the wall clock from the frame's timestamp, in whole seconds", () => {
+    const clock = { teamId: 3, msRemaining: 90_000, at: 10_000 };
+    expect(secondsOnClock(clock, 10_000)).toBe(90);
+    expect(secondsOnClock(clock, 10_400)).toBe(90); // 89.6 s rounds back up
+    expect(secondsOnClock(clock, 10_600)).toBe(89);
+    expect(secondsOnClock(clock, 99_500)).toBe(1);
+  });
+
+  test("an expired clock reads zero, never negative", () => {
+    const clock = { teamId: 3, msRemaining: 5_000, at: 0 };
+    expect(secondsOnClock(clock, 5_000)).toBe(0);
+    expect(secondsOnClock(clock, 60_000)).toBe(0);
   });
 });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { columnsFor, sortableKey, visibleRows, type BoardView } from "@/lib/draft-board";
 import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
@@ -16,8 +17,19 @@ import type { DraftBoardMeta, DraftBoardRow } from "@/types/draft";
  * saying anything. One hook, one object, no way to diverge.
  */
 export function useBoardView(meta: DraftBoardMeta | null = null): BoardView {
+  // Only the fields the view is made of: the board table calls this too, and a highlight
+  // (the store's busiest field) must not re-render it from here.
   const { sortKey, sortDirection, positionFilter, hideCapped, onlyLikelyGone, search } =
-    useDraftRoomStore();
+    useDraftRoomStore(
+      useShallow((st) => ({
+        sortKey: st.sortKey,
+        sortDirection: st.sortDirection,
+        positionFilter: st.positionFilter,
+        hideCapped: st.hideCapped,
+        onlyLikelyGone: st.onlyLikelyGone,
+        search: st.search,
+      }))
+    );
   // The store remembers the last sort across reloads *and* across rooms, so a
   // fit or category column chosen in a category league has to be sent back to
   // the big board when the next room is scored by points.
