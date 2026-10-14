@@ -12,7 +12,9 @@ import { arcPoint, BALL_RADIUS, buildField, type Field } from "./court-field";
  * into the ball, which settles before it starts to dribble. Drawn in the desk
  * theme's own ink and accent: printed dots on the light themes, lit ones on
  * the dark. A click moves it to the next shape; the pointer leans the camera.
- * Still (one frame of the shots) when the visitor prefers reduced motion.
+ * When the visitor prefers reduced motion it runs calm instead: at half
+ * speed, the ball spinning without a dribble, each shape dissolving into the
+ * next with the camera cutting between them rather than flying, and no lean.
  */
 
 const BALL = 0;
@@ -25,6 +27,12 @@ const MORPH = 2.4;
 const FLOAT = 1.1;
 const GATHER = 2.6;
 const INTRO = FLOAT + GATHER;
+/** How far the ball squashes at the floor once it is dribbling, and as it lands from the gather. */
+const SQUASH = 0.1;
+const FIRST_SQUASH = 0.03;
+/** Calm mode: the speed of its clock, and the seconds its first picture takes to fade in. */
+const CALM_SPEED = 0.5;
+const CALM_FADE = 1.2;
 
 /**
  * Per shape: how high the camera looks down, how far back it sits, the point
@@ -94,7 +102,7 @@ export function CourtField({ className, onLive, cycle = true, across }: CourtFie
     const canvas = ref.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     let w = 0;
     let h = 0;
@@ -125,9 +133,10 @@ export function CourtField({ className, onLive, cycle = true, across }: CourtFie
     };
 
     // Clock: seconds of animation, paused while off screen or hidden.
-    let clock = still ? 1.6 : 0;
-    let phase = still ? SHOTS : BALL;
-    let phaseStart = still ? 0 : INTRO;
+    // Calm mode skips the gather: the ball fades in where it will be.
+    let clock = calm ? INTRO : 0;
+    let phase = BALL;
+    let phaseStart = INTRO;
     let pointerX = 0;
     let pointerY = 0;
     let leanX = 0;
@@ -178,27 +187,32 @@ export function CourtField({ className, onLive, cycle = true, across }: CourtFie
       const f = field;
 
       // The opening: floating (G = 0), then gathering into the ball (G 0 → 1).
-      const intro = !still && t < INTRO;
+      const intro = !calm && t < INTRO;
       const G = intro ? clamp((t - FLOAT) / GATHER, 0, 1) : 1;
-      const introFade = intro ? clamp(t / 0.9, 0, 1) : 1;
+      const introFade = intro ? clamp(t / 0.9, 0, 1) : calm ? clamp((t - INTRO) / (CALM_FADE * CALM_SPEED), 0, 1) : 1;
 
       // Which shape, or which two and how far between.
       let local = t - phaseStart;
       const loops = opts.current.cycle;
-      while (!still && loops && local > HOLD[phase] + MORPH) {
+      while (loops && local > HOLD[phase] + MORPH) {
         phaseStart += HOLD[phase] + MORPH;
         local -= HOLD[phase] + MORPH;
         phase = (phase + 1) % 3;
       }
-      const morphing = !still && loops && local > HOLD[phase];
+      const morphing = loops && local > HOLD[phase];
       const T = morphing ? (local - HOLD[phase]) / MORPH : 0;
       const next = (phase + 1) % 3;
-      const camT = ease(clamp(T * 1.15 - 0.1, 0, 1));
+      // Calm mode cuts at the dissolve's midpoint, when every dot is out.
+      const camT = calm ? (T < 0.5 ? 0 : 1) : ease(clamp(T * 1.15 - 0.1, 0, 1));
 
       // The dribble: a bounce every 0.7 s, squashed for an instant at the floor.
-      // It starts once the ball has gathered, from the floor.
-      const bounce = Math.abs(Math.sin((Math.PI * (still ? t : Math.max(0, t - INTRO))) / 0.7));
-      const squash = bounce < 0.12 ? 0.9 + (bounce / 0.12) * 0.1 : 1;
+      // It starts once the ball has gathered, from the floor: round while it
+      // gathers, giving a little as it lands, then the full squash by the
+      // second bounce. Calm mode holds it round on the floor.
+      const dribble = calm ? 0 : Math.max(0, t - INTRO);
+      const bounce = Math.abs(Math.sin((Math.PI * dribble) / 0.7));
+      const give = intro ? FIRST_SQUASH * ease(G) : FIRST_SQUASH + (SQUASH - FIRST_SQUASH) * clamp(dribble / 0.7, 0, 1);
+      const squash = bounce < 0.12 ? 1 - give * (1 - bounce / 0.12) : 1;
       const ballY = BALL_RADIUS * 0.98 + 6 * bounce;
       // Spin about a tilted axis (Rodrigues).
       const ang = t * 2.2;
@@ -276,6 +290,17 @@ export function CourtField({ className, onLive, cycle = true, across }: CourtFie
             fade = introFade * (0.6 + 0.4 * p);
             // Loose dots are quiet; they take the ball's colours as they arrive.
             tone = p > 0.55 ? f.ballTone[i] : f.ballTone[i] === 1 ? 2 : 0;
+          } else if (morphing && calm) {
+            // Dissolve: out of this shape by the midpoint, then into the next.
+            const d = f.delay[i] * 0.2;
+            if (T < 0.5) {
+              fade = shapeAt(phase, i, t, pos, spin, ballY, squash) * (1 - clamp((T - d) / 0.3, 0, 1));
+              tone = toneOf(phase, i);
+            } else {
+              fade = shapeAt(next, i, t, pos, spin, ballY, squash) * clamp((T - 0.5 - d) / 0.3, 0, 1);
+              tone = toneOf(next, i);
+            }
+            fade *= introFade;
           } else if (morphing) {
             const fa = shapeAt(phase, i, t, a3, spin, ballY, squash);
             const fb = shapeAt(next, i, t, b3, spin, ballY, squash);
@@ -290,7 +315,7 @@ export function CourtField({ className, onLive, cycle = true, across }: CourtFie
             fade = fa + (fb - fa) * p;
             tone = toneOf(p < 0.5 ? phase : next, i);
           } else {
-            fade = shapeAt(phase, i, t, pos, spin, ballY, squash);
+            fade = shapeAt(phase, i, t, pos, spin, ballY, squash) * introFade;
             tone = toneOf(phase, i);
           }
           size = tone === 2 ? 0.65 : 1;
@@ -353,12 +378,12 @@ export function CourtField({ className, onLive, cycle = true, across }: CourtFie
     const loop = (now: number) => {
       const dt = last ? Math.min((now - last) / 1000, 0.1) : 0;
       last = now;
-      clock += dt;
+      clock += calm ? dt * CALM_SPEED : dt;
       frame();
       raf = requestAnimationFrame(loop);
     };
     const start = () => {
-      if (still || raf || !visible) return;
+      if (raf || !visible) return;
       last = 0;
       raf = requestAnimationFrame(loop);
     };
@@ -384,13 +409,13 @@ export function CourtField({ className, onLive, cycle = true, across }: CourtFie
     io.observe(canvas);
 
     const onMove = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") return;
+      if (calm || e.pointerType !== "mouse") return;
       pointerX = e.clientX / window.innerWidth - 0.5;
       pointerY = e.clientY / window.innerHeight - 0.5;
     };
     // A click moves on to the next shape.
     const onClick = () => {
-      if (still || clock < INTRO || !opts.current.cycle) return;
+      if (clock < INTRO || !opts.current.cycle) return;
       const local = clock - phaseStart;
       if (local < HOLD[phase]) phaseStart = clock - HOLD[phase];
     };
