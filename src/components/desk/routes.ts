@@ -11,18 +11,33 @@ export const SCOUT_DESK = "/scout";
 export const DEVELOPER_DESK = "/developer";
 export const ACCOUNT_DESK = "/account";
 
-/** The desks a tab is shown for: where fantasy work happens, and the Scout. */
+/**
+ * The desks a tab is shown for: where fantasy work happens, and the Scout.
+ * `note` and `keywords` are how the command palette (⌘K) lists and finds each.
+ */
 export const DESKS = [
-  { id: "week", label: "Week", href: WEEK_DESK, key: "1" },
-  { id: "draft", label: "Draft", href: DRAFT_DESK, key: "2" },
-  { id: "scout", label: "Scout", href: SCOUT_DESK, key: "3" },
+  { id: "week", label: "Week", href: WEEK_DESK, key: "1", note: "Your team's matchup week", keywords: ["matchup", "lineup", "roster", "streamers", "market", "moves"] },
+  { id: "draft", label: "Draft", href: DRAFT_DESK, key: "2", note: "A draft room, live or mock", keywords: ["draft", "room", "board", "mock", "lab", "picks"] },
+  { id: "scout", label: "Scout", href: SCOUT_DESK, key: "3", note: "One player, NBA team or night of games", keywords: ["players", "rankings", "standings", "tonight", "terminal"] },
 ] as const;
 
 /** The Developer desk sits behind an icon at the bar's far end, not among the tabs. */
-export const DEVELOPER = { id: "developer", label: "Developer", href: DEVELOPER_DESK } as const;
+export const DEVELOPER = {
+  id: "developer",
+  label: "Developer",
+  href: DEVELOPER_DESK,
+  note: "The API, keys and the query builder",
+  keywords: ["api", "keys", "sql", "query", "playground", "reference", "dev", "docs"],
+} as const;
 
 /** The Account desk sits behind your avatar, last on the bar. */
-export const ACCOUNT = { id: "account", label: "Account", href: ACCOUNT_DESK } as const;
+export const ACCOUNT = {
+  id: "account",
+  label: "Account",
+  href: ACCOUNT_DESK,
+  note: "Your teams, the accounts they read through, alerts",
+  keywords: ["teams", "connections", "espn", "yahoo", "alerts", "settings", "profile", "me"],
+} as const;
 
 export const ALL_DESKS = [...DESKS, DEVELOPER, ACCOUNT] as const;
 

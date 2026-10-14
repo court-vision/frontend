@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { Braces, RotateCw, Sparkles, UserRound } from "lucide-react";
+import { Braces, RotateCw, Search, Sparkles, UserRound } from "lucide-react";
 import { ACCOUNT, DESKS, DEVELOPER, type DeskId } from "./routes";
 import { ThemePicker } from "./ThemePicker";
+import { usePalette } from "./usePalette";
 import dk from "./desk.module.css";
+
+/** The one key that works the same on every desk, listed after the desk's own. */
+const PALETTE_KEY: [string, string] = ["⌘K", "commands"];
 
 interface DeskBarProps {
   desk: DeskId;
@@ -24,6 +28,7 @@ interface DeskBarProps {
  * when it does not fit, so no control is squeezed or pushed off screen.
  */
 export function DeskBar({ desk, demo = false, children, right, onRefresh }: DeskBarProps) {
+  const openPalette = usePalette((s) => s.setOpen);
   return (
     <header className={dk.bar}>
       {/* The old UI's wordmark: the full word from md, its initials on phones. */}
@@ -57,6 +62,10 @@ export function DeskBar({ desk, demo = false, children, right, onRefresh }: Desk
             <Sparkles size={11} /> Demo
           </span>
         ) : null}
+        {/* The command palette's door for a pointer or a thumb; ⌘K opens it from the keyboard. */}
+        <button type="button" className={dk.iconBtn} onClick={() => openPalette(true)} aria-label="Search and commands" title="Search and commands (⌘K)">
+          <Search size={14} />
+        </button>
         {onRefresh ? (
           <button type="button" className={dk.iconBtn} onClick={onRefresh} aria-label="Refresh" title="Refresh">
             <RotateCw size={14} />
@@ -107,12 +116,12 @@ function AccountDoor({ desk, demo }: { desk: DeskId; demo: boolean }) {
   );
 }
 
-/** The bottom line of every desk: the keys that work here, then whatever the desk reports. */
+/** The bottom line of every desk: the keys that work here (then ⌘K, which works everywhere), then whatever the desk reports. */
 export function DeskStatus({ keys, children }: { keys: Array<[string, string]>; children?: React.ReactNode }) {
   return (
     <footer className={dk.status}>
       <span className={dk.keys}>
-        {keys.map(([k, label]) => (
+        {[...keys, PALETTE_KEY].map(([k, label]) => (
           <span key={`${k}-${label}`}>
             <span className={dk.kbd}>{k}</span> {label}
           </span>
