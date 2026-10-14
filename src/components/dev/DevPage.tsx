@@ -6,6 +6,7 @@ import { LayoutList, Search } from "lucide-react";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { SegRail } from "@/components/desk/SegRail";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
+import { useDeskCommands, type PaletteCommand } from "@/components/desk/usePalette";
 import { API_BASE } from "@/endpoints";
 import { getTodayDate } from "@/hooks/useGames";
 import { useOpenApiQuery, useRawHealthQuery } from "@/hooks/useDev";
@@ -26,7 +27,7 @@ import s from "./dev.module.css";
 
 const KEYS: Array<[string, string]> = [
   ["[ ]", "view"],
-  ["⌘K", "route"],
+  ["/", "route"],
   ["⌘⏎", "send / run"],
   ["T", "theme"],
 ];
@@ -125,19 +126,37 @@ function DevDesk({ demo, initial, keys, query }: { demo: boolean; initial: DevIn
     };
     const onKey = (e: KeyboardEvent) => {
       const L = latest.current;
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      // ⌘K is the command palette's, on every desk; / finds a route here, as it finds on Scout and in a draft room.
+      if (L.finderOpen || e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
+      if (e.key === "/") {
         e.preventDefault();
         setFinderOpen(true);
-        return;
-      }
-      if (L.finderOpen || e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
-      if (e.key === "[") go(nextView(L.view, -1));
+      } else if (e.key === "[") go(nextView(L.view, -1));
       else if (e.key === "]") go(nextView(L.view, 1));
       else if (e.key === "t" || e.key === "T") toggleTheme();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [go, toggleTheme]);
+
+  // The route finder from the command palette too, listed first while this desk is up.
+  useDeskCommands(
+    useMemo<PaletteCommand[]>(
+      () => [
+        {
+          id: "developer-route",
+          label: "Find a route…",
+          note: "Every public route, by path, words or tag",
+          icon: <Search size={14} />,
+          keys: "/",
+          group: "Developer",
+          keywords: ["route", "api", "endpoint", "reference", "find", "search", "openapi"],
+          run: () => setFinderOpen(true),
+        },
+      ],
+      []
+    )
+  );
 
   // ---- selections
 
@@ -219,10 +238,10 @@ function DevDesk({ demo, initial, keys, query }: { demo: boolean; initial: DevIn
         </SegRail>
         <span className={dk.kbd}>[ ]</span>
         <span className={dk.divider} />
-        <button type="button" className={dk.btn} onClick={() => setFinderOpen(true)} disabled={ops.length === 0} title="Find a route (⌘K)">
+        <button type="button" className={dk.btn} onClick={() => setFinderOpen(true)} disabled={ops.length === 0} title="Find a route (/)">
           <Search size={13} />
           Find a route
-          <span className={dk.kbd}>⌘K</span>
+          <span className={dk.kbd}>/</span>
         </button>
         <span className={dk.spacer} />
         {spec.isError ? <span className={dk.error}>Couldn&apos;t read the API&apos;s OpenAPI document: {userMessage(spec.error, "unreachable")}</span> : null}

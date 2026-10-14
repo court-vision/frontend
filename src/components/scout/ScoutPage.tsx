@@ -258,12 +258,7 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
     };
     const onKey = (e: KeyboardEvent) => {
       const L = latest.current;
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        searchInput.current?.focus();
-        searchInput.current?.select();
-        return;
-      }
+      // ⌘K is the command palette's, on every desk; / is the box here.
       if (L.searchOpen || e.metaKey || e.ctrlKey || e.altKey) return;
       if (typing(e.target)) return;
       // Enter or space on a focused button or link is that control's, not the ledger's.

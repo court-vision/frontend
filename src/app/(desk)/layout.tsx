@@ -1,4 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import { CommandPalette } from "@/components/desk/CommandPalette";
 import { ACCOUNT_DESK, WEEK_DESK } from "@/components/desk/routes";
 
 /**
@@ -15,6 +16,8 @@ export default function DeskLayout({ children }: { children: React.ReactNode }) 
   return (
     <ClerkProvider signInFallbackRedirectUrl={WEEK_DESK} signUpFallbackRedirectUrl={`${ACCOUNT_DESK}?add`} afterSignOutUrl="/">
       {children}
+      {/* ⌘K on every desk and on the way in. It reads Clerk (your teams, sign out), so it sits here rather than in the frame. */}
+      <CommandPalette />
     </ClerkProvider>
   );
 }
