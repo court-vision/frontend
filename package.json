@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "bun test src/lib",
+    "check:clerk-pins": "node scripts/check-clerk-pins.mjs",
     "generate:api": "openapi-typescript openapi/openapi.json -o src/types/generated/api.ts --default-non-nullable=false"
   },
   "dependencies": {
