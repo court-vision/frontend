@@ -19,7 +19,7 @@ export const SLOT_ORDER = [
  * an unrecognized label would silently drop those seats and understate the
  * roster, so it is normalized rather than trusted.
  */
-const SLOT_ALIASES: Record<string, string> = { UTIL: "UT", BN: "BE", BENCH: "BE", IL: "IR" };
+const SLOT_ALIASES: Record<string, string> = { UTIL: "UT", BN: "BE", BENCH: "BE", IL: "IR", "IL+": "IR" };
 
 export function canonicalSlot(slot: string): string {
   const name = String(slot).trim();

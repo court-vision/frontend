@@ -33,6 +33,7 @@ import {
   useUpdateDraftSessionMutation,
 } from "@/hooks/useDrafts";
 import { useDraftSyncStore } from "@/stores/useDraftSyncStore";
+import { connectionKeys } from "@/hooks/useConnections";
 import { teamsKeys } from "@/hooks/useTeams";
 import type { DraftBoardResult, DraftBoardRow, DraftSession } from "@/types/draft";
 
@@ -214,6 +215,8 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
           const league = got.league_name ?? `ESPN league ${got.espn_league_id}`;
           toast.success(`Linked to ${league} · ${got.team_name}${got.team_created ? " added to your teams" : ""}`, { id: "draft-adopt" });
           void queryClient.invalidateQueries({ queryKey: teamsKeys.all });
+          // Connection responses embed their teams, as after the add-team flow.
+          void queryClient.invalidateQueries({ queryKey: connectionKeys.all });
         } else if (result.league_adoption_error) {
           toast.error(`Linked to ESPN draft ${result.espn_league_id}, but its league could not be read: ${result.league_adoption_error}`, { id: "draft-adopt" });
         }

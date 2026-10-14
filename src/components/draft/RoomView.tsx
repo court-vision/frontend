@@ -364,15 +364,17 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
 
   // A league-pending room is here for exactly this: it links to the first
   // ESPN draft the tap shows it, unasked, and the INIT that follows adopts the
-  // league. Once per room seen, so a refusal (another room has it) is not retried
-  // on every render and the banner's own button still works.
-  const autoLinked = useRef<number | null>(null);
+  // league. Once per room and league seen, so a refusal (another room has it) is
+  // not retried on every render and the banner's own button still works. Keyed
+  // by room too: navigating to another room keeps this component mounted.
+  const autoLinked = useRef<string | null>(null);
   useEffect(() => {
     const target = sync?.unbound && !sync.unbound.dismissed ? sync.unbound.espnLeagueId : null;
-    if (!session.league_pending || target == null || autoLinked.current === target) return;
-    autoLinked.current = target;
+    const key = `${session.id}:${target}`;
+    if (!session.league_pending || target == null || autoLinked.current === key) return;
+    autoLinked.current = key;
     void linkRoom();
-  }, [session.league_pending, sync?.unbound, linkRoom]);
+  }, [session.id, session.league_pending, sync?.unbound, linkRoom]);
 
   // ---- keyboard ----
   const move = useCallback(

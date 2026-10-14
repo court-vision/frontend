@@ -86,7 +86,7 @@ describe("draftableSpots", () => {
   });
 
   test("reads provider spellings and ignores what is not a seat", () => {
-    expect(draftableSpots({ PG: 1, UTIL: 2, BN: 3, IL: 2, "": 4 })).toBe(6);
+    expect(draftableSpots({ PG: 1, UTIL: 2, BN: 3, IL: 2, "IL+": 1, "": 4 })).toBe(6);
   });
 
   test("is null, not zero, when the league has no roster yet", () => {
