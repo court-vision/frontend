@@ -55,3 +55,6 @@ next-env.d.ts
 
 # Playwright MCP snapshots and console logs (scripts/playwright-mcp.sh)
 /.playwright-mcp/
+# screenshots it saves under an explicit filename land in the repo root
+/*.png
+/*.jpeg
