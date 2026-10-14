@@ -2,13 +2,11 @@ import type { Metadata, Viewport } from "next";
 
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Outfit } from "next/font/google";
 import { preconnect } from "react-dom";
 
 import { DeskFrame } from "@/components/desk/DeskFrame";
 import { deskMono, deskSans } from "@/components/desk/fonts";
-import { ACCOUNT_DESK, WEEK_DESK } from "@/components/desk/routes";
 import { API_BASE } from "@/endpoints";
 import { QueryProvider } from "@/providers/QueryProvider";
 import "./globals.css";
@@ -123,16 +121,11 @@ export default function RootLayout({
       </head>
 
       <body className={`${outfit.variable} ${deskSans.variable} ${deskMono.variable}`}>
-        <ClerkProvider
-          signInFallbackRedirectUrl={WEEK_DESK}
-          signUpFallbackRedirectUrl={`${ACCOUNT_DESK}?add`}
-          afterSignOutUrl="/"
-        >
-          <QueryProvider>
-            {/* Every page is a desk-framed page: the desks, the landing, sign-in, errors. */}
-            <DeskFrame>{children}</DeskFrame>
-          </QueryProvider>
-        </ClerkProvider>
+        <QueryProvider>
+          {/* Every page is a desk-framed page: the desks, the landing, sign-in, errors.
+              Clerk wraps only the pages that use it: (desk)/layout.tsx. */}
+          <DeskFrame>{children}</DeskFrame>
+        </QueryProvider>
 
         <SpeedInsights />
         <Analytics />
