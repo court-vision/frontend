@@ -47,7 +47,8 @@ export class SseParser {
   private buffer = "";
 
   push(chunk: string): AiStreamEvent[] {
-    this.buffer += chunk.replace(/\r\n/g, "\n");
+    // Normalised after joining: a chunk can end between the \r and the \n of one line end
+    this.buffer = (this.buffer + chunk).replace(/\r\n/g, "\n");
     const out: AiStreamEvent[] = [];
     let end = this.buffer.indexOf("\n\n");
     while (end !== -1) {
@@ -82,8 +83,9 @@ function parseEvent(raw: string): AiStreamEvent | null {
 
 /**
  * Send one message and call `onEvent` for each event as it arrives. Resolves
- * when the stream ends. Throws `ApiError` for a refusal before the stream (or
- * a dropped connection); a failure during the turn arrives as an `error` event.
+ * once `done` has arrived. Throws `ApiError` for a refusal before the stream,
+ * a dropped connection, or a stream that ends without `done`; a failure the
+ * server reports during the turn arrives as an `error` event.
  */
 export async function streamTurn(
   getToken: GetTokenFn,
@@ -125,11 +127,15 @@ export async function streamTurn(
 
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
   const parser = new SseParser();
+  let finished = false;
   try {
     for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
-      for (const event of parser.push(value)) onEvent(event);
+      for (const event of parser.push(value)) {
+        if (event.event === "done") finished = true;
+        onEvent(event);
+      }
     }
   } catch (err) {
     if (signal?.aborted) throw err;
@@ -137,4 +143,6 @@ export async function streamTurn(
   } finally {
     reader.releaseLock();
   }
+  // The server always ends with `done`: a stream that stops short was cut off
+  if (!finished) throw ApiError.network(new Error("The answer's stream ended before it finished"));
 }

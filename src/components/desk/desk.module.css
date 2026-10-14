@@ -219,6 +219,7 @@
 /* ---------------------------------------------------------------- bar */
 
 .bar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1123,6 +1124,179 @@ button.menuItem:hover:not(:disabled) {
   border-top: 1px solid var(--line);
 }
 
+/* ---------------------------------------------------------------- command palette */
+
+/*
+ * ⌘K: the bar opens. The field stands where the desk tabs were, with a tab's
+ * underline, and the results unroll under the bar edge to edge, in the bar's
+ * surface, with the bar's line as the seam. No window, no overlay; nothing of
+ * it is on screen otherwise.
+ */
+.palette {
+  flex: 0 1 560px;
+  min-width: 160px;
+  align-self: stretch;
+  display: flex;
+  color: var(--text);
+}
+
+/* cmdk's root: the field in the bar; the drawer hangs from the bar, not from it. */
+.paletteCmd {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+}
+
+.paletteHead {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* The field's underline, where the current tab's is. */
+.paletteHead::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent);
+  box-shadow: var(--glow);
+}
+
+.paletteSearchIcon {
+  position: absolute;
+  left: 8px;
+  color: var(--text-3);
+  pointer-events: none;
+}
+
+.paletteInput {
+  width: 100%;
+  height: 100%;
+  padding: 0 44px 0 30px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  outline: none;
+}
+
+.paletteInput::placeholder {
+  color: var(--text-3);
+}
+
+.paletteEsc {
+  position: absolute;
+  right: 8px;
+  pointer-events: none;
+}
+
+/* The drawer: under the bar's line, edge to edge, in the bar's surface, one line at the bottom. */
+.paletteDrawer {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 91;
+  display: flex;
+  flex-direction: column;
+  max-height: min(70vh, calc(100dvh - 46px - 28px - 8px));
+  margin-top: 1px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 24px 40px -28px rgba(0, 0, 0, 0.55);
+  animation: paletteIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes paletteIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The rows: a column from the bar's left edge, no wider than a wide menu. */
+.paletteList {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: 720px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 6px 10px;
+}
+
+/* Nothing typed yet: everything there is, as a site's menu, two columns across when there is room. */
+@media (min-width: 900px) {
+  .paletteBrowse {
+    max-width: 1100px;
+  }
+
+  .paletteBrowse > [cmdk-list-sizer] {
+    column-count: 2;
+    column-gap: 20px;
+  }
+
+  .paletteBrowse [cmdk-group] {
+    break-inside: avoid;
+  }
+}
+
+.paletteIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  color: var(--text-3);
+}
+
+.paletteText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.paletteLabel,
+.paletteNote {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paletteFoot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-top: 1px solid var(--line);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.paletteFoot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Phones: the keys mean nothing on a touch screen. */
+@media (max-width: 639.98px) {
+  .paletteEsc,
+  .paletteFoot {
+    display: none;
+  }
+}
+
 /* ---------------------------------------------------------------- states */
 
 .empty {
@@ -1278,6 +1452,7 @@ button.menuItem:hover:not(:disabled) {
   .skel,
   .menu,
   .dialog,
+  .paletteDrawer,
   .overlay {
     animation: none;
   }

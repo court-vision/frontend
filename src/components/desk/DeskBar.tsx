@@ -3,9 +3,14 @@
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { Braces, RotateCw, Sparkles, UserRound } from "lucide-react";
+import { PaletteBar } from "./CommandPalette";
 import { ACCOUNT, DESKS, DEVELOPER, type DeskId } from "./routes";
 import { ThemePicker } from "./ThemePicker";
+import { usePalette } from "./usePalette";
 import dk from "./desk.module.css";
+
+/** The command palette's key, the same on every desk, listed after the desk's own. Nothing else of it is on screen until pressed. */
+const PALETTE_KEY: [string, string] = ["⌘K", "commands"];
 
 interface DeskBarProps {
   desk: DeskId;
@@ -21,9 +26,11 @@ interface DeskBarProps {
 /**
  * The top of every desk: the mark, the desks, the desk's context, then status.
  * The mark and the desk tabs stay put; everything after them scrolls sideways
- * when it does not fit, so no control is squeezed or pushed off screen.
+ * when it does not fit, so no control is squeezed or pushed off screen. While
+ * the command palette is open its field stands where the tabs were.
  */
 export function DeskBar({ desk, demo = false, children, right, onRefresh }: DeskBarProps) {
+  const paletteOpen = usePalette((s) => s.open);
   return (
     <header className={dk.bar}>
       {/* The old UI's wordmark: the full word from md, its initials on phones. */}
@@ -35,18 +42,22 @@ export function DeskBar({ desk, demo = false, children, right, onRefresh }: Desk
           COURT<span className={dk.markAccent}>VISION</span>
         </span>
       </Link>
-      <nav className={dk.tabs} aria-label="Desks">
-        {DESKS.map((x) => (
-          <Link
-            key={x.id}
-            href={demo ? `${x.href}?demo` : x.href}
-            className={dk.tab}
-            aria-current={x.id === desk ? "page" : undefined}
-          >
-            {x.label}
-          </Link>
-        ))}
-      </nav>
+      {paletteOpen ? (
+        <PaletteBar />
+      ) : (
+        <nav className={dk.tabs} aria-label="Desks">
+          {DESKS.map((x) => (
+            <Link
+              key={x.id}
+              href={demo ? `${x.href}?demo` : x.href}
+              className={dk.tab}
+              aria-current={x.id === desk ? "page" : undefined}
+            >
+              {x.label}
+            </Link>
+          ))}
+        </nav>
+      )}
       <div className={dk.barScroll}>
         <span className={dk.divider} />
         {children}
@@ -107,12 +118,12 @@ function AccountDoor({ desk, demo }: { desk: DeskId; demo: boolean }) {
   );
 }
 
-/** The bottom line of every desk: the keys that work here, then whatever the desk reports. */
+/** The bottom line of every desk: the keys that work here (then ⌘K, which works everywhere), then whatever the desk reports. */
 export function DeskStatus({ keys, children }: { keys: Array<[string, string]>; children?: React.ReactNode }) {
   return (
     <footer className={dk.status}>
       <span className={dk.keys}>
-        {keys.map(([k, label]) => (
+        {[...keys, PALETTE_KEY].map(([k, label]) => (
           <span key={`${k}-${label}`}>
             <span className={dk.kbd}>{k}</span> {label}
           </span>

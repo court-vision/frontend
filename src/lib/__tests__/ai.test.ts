@@ -1,6 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { prose, spans } from "../ai-prose";
-import { SseParser } from "../ai-stream";
+import { SseParser, streamTurn, type AiStreamEvent } from "../ai-stream";
 
 describe("SseParser", () => {
   test("reads events split across chunks, in order", () => {
@@ -21,9 +21,55 @@ describe("SseParser", () => {
     expect(out).toEqual([{ event: "done", data: { turn_id: 4 } } as never]);
   });
 
-  test("CRLF line endings work too", () => {
+  test("CRLF line endings work too, even split between chunks", () => {
     const p = new SseParser();
     expect(p.push('event: text\r\ndata: {"delta":"a"}\r\n\r\n')).toEqual([{ event: "text", data: { delta: "a" } }]);
+    expect(p.push('event: text\r\ndata: {"delta":"b"}\r')).toEqual([]);
+    expect(p.push("\n\r\n")).toEqual([{ event: "text", data: { delta: "b" } }]);
+  });
+});
+
+describe("streamTurn", () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  function serve(...chunks: string[]) {
+    globalThis.fetch = (async () =>
+      new Response(
+        new ReadableStream({
+          start(c) {
+            for (const chunk of chunks) c.enqueue(new TextEncoder().encode(chunk));
+            c.close();
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "text/event-stream" } }
+      )) as unknown as typeof fetch;
+  }
+
+  test("delivers events in order and resolves on done", async () => {
+    serve('event: text\ndata: {"delta":"Hi"}\n\n', 'event: done\ndata: {"turn_id":3,"outcome":"ok"}\n\n');
+    const seen: AiStreamEvent[] = [];
+    await streamTurn(async () => "tok", "https://api/x", "hello", (e) => seen.push(e));
+    expect(seen.map((e) => e.event)).toEqual(["text", "done"]);
+  });
+
+  test("a stream that ends without done is an error, not a finished turn", async () => {
+    serve('event: text\ndata: {"delta":"Hi"}\n\n');
+    await expect(streamTurn(async () => "tok", "https://api/x", "hello", () => {})).rejects.toThrow();
+  });
+
+  test("a refusal before the stream is an ApiError with the server's code", async () => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ status: "error", message: "busy", error_code: "AI_CONVERSATION_BUSY" }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      })) as unknown as typeof fetch;
+    await expect(streamTurn(async () => "tok", "https://api/x", "hello", () => {})).rejects.toMatchObject({
+      status: 409,
+      code: "AI_CONVERSATION_BUSY",
+    });
   });
 });
 

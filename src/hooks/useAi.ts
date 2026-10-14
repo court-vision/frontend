@@ -17,18 +17,24 @@ export function aiMessage(error: unknown, fallback?: string): string {
   return userMessage(err, fallback);
 }
 
+/**
+ * Keyed by the Clerk user: another account signed in on the same page must
+ * never be shown the last one's cached conversations, even for the seconds
+ * they'd still count as fresh.
+ */
 export const aiKeys = {
   all: ["ai"] as const,
-  usage: () => [...aiKeys.all, "usage"] as const,
-  conversations: () => [...aiKeys.all, "conversations"] as const,
-  conversation: (id: number) => [...aiKeys.all, "conversation", id] as const,
+  user: (userId: string | null | undefined) => [...aiKeys.all, userId ?? "signed-out"] as const,
+  usage: (userId: string | null | undefined) => [...aiKeys.user(userId), "usage"] as const,
+  conversations: (userId: string | null | undefined) => [...aiKeys.user(userId), "conversations"] as const,
+  conversation: (userId: string | null | undefined, id: number) => [...aiKeys.user(userId), "conversation", id] as const,
 };
 
 /** Whether the caller may use the agent, and this month's spend. 503 = turned off. */
 export function useAiUsageQuery() {
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn, userId } = useAuth();
   return useQuery<AiUsage>({
-    queryKey: aiKeys.usage(),
+    queryKey: aiKeys.usage(userId),
     queryFn: ({ signal }) => apiClient.getAiUsage(getToken, { signal }),
     enabled: isSignedIn === true,
     staleTime: 60_000,
@@ -38,9 +44,9 @@ export function useAiUsageQuery() {
 }
 
 export function useAiConversationsQuery(enabled: boolean) {
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn, userId } = useAuth();
   return useQuery<AiConversationSummary[]>({
-    queryKey: aiKeys.conversations(),
+    queryKey: aiKeys.conversations(userId),
     queryFn: ({ signal }) => apiClient.listAiConversations(getToken, { signal }),
     enabled: enabled && isSignedIn === true,
     staleTime: 30_000,
@@ -49,9 +55,9 @@ export function useAiConversationsQuery(enabled: boolean) {
 }
 
 export function useAiConversationQuery(id: number | null, enabled: boolean) {
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn, userId } = useAuth();
   return useQuery<AiConversation>({
-    queryKey: aiKeys.conversation(id!),
+    queryKey: aiKeys.conversation(userId, id!),
     queryFn: ({ signal }) => apiClient.getAiConversation(getToken, id!, { signal }),
     enabled: enabled && id != null && isSignedIn === true,
     staleTime: 30_000,
@@ -60,39 +66,39 @@ export function useAiConversationQuery(id: number | null, enabled: boolean) {
 }
 
 export function useCreateAiConversation() {
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (teamId: number | null) => apiClient.createAiConversation(getToken, teamId),
     onSuccess: (conversation) => {
-      queryClient.setQueryData(aiKeys.conversation(conversation.id), conversation);
-      void queryClient.invalidateQueries({ queryKey: aiKeys.conversations() });
+      queryClient.setQueryData(aiKeys.conversation(userId, conversation.id), conversation);
+      void queryClient.invalidateQueries({ queryKey: aiKeys.conversations(userId) });
     },
   });
 }
 
 export function useDeleteAiConversation() {
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => apiClient.deleteAiConversation(getToken, id),
     onSuccess: (_, id) => {
-      queryClient.removeQueries({ queryKey: aiKeys.conversation(id) });
-      void queryClient.invalidateQueries({ queryKey: aiKeys.conversations() });
+      queryClient.removeQueries({ queryKey: aiKeys.conversation(userId, id) });
+      void queryClient.invalidateQueries({ queryKey: aiKeys.conversations(userId) });
     },
   });
 }
 
 /** 👍 / 👎 on an answer, shown at once and put back if the save fails. */
 export function useAiFeedback(conversationId: number | null) {
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ turnId, feedback }: { turnId: number; feedback: AiFeedback | null }) =>
       apiClient.sendAiFeedback(getToken, turnId, feedback),
     onMutate: ({ turnId, feedback }) => {
       if (conversationId == null) return undefined;
-      const key = aiKeys.conversation(conversationId);
+      const key = aiKeys.conversation(userId, conversationId);
       const before = queryClient.getQueryData<AiConversation>(key);
       if (before) {
         queryClient.setQueryData<AiConversation>(key, {
@@ -103,7 +109,7 @@ export function useAiFeedback(conversationId: number | null) {
       return before;
     },
     onError: (_err, _vars, before) => {
-      if (conversationId != null && before) queryClient.setQueryData(aiKeys.conversation(conversationId), before);
+      if (conversationId != null && before) queryClient.setQueryData(aiKeys.conversation(userId, conversationId), before);
     },
   });
 }
@@ -129,12 +135,17 @@ export interface LiveTurn {
  * the stored turn in place of the live one once the conversation has it.
  */
 export function useAiTurn() {
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
   const queryClient = useQueryClient();
   const [live, setLive] = useState<LiveTurn | null>(null);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => () => abort.current?.abort(), []);
+  // Another account signed in: the last one's turn is not theirs to see
+  useEffect(() => {
+    abort.current?.abort();
+    setLive(null);
+  }, [userId]);
 
   const send = useCallback(
     async (conversationId: number, message: string): Promise<boolean> => {
@@ -188,12 +199,12 @@ export function useAiTurn() {
         return false;
       } finally {
         if (abort.current === controller) abort.current = null;
-        void queryClient.invalidateQueries({ queryKey: aiKeys.conversation(conversationId) });
-        void queryClient.invalidateQueries({ queryKey: aiKeys.conversations() });
-        void queryClient.invalidateQueries({ queryKey: aiKeys.usage() });
+        void queryClient.invalidateQueries({ queryKey: aiKeys.conversation(userId, conversationId) });
+        void queryClient.invalidateQueries({ queryKey: aiKeys.conversations(userId) });
+        void queryClient.invalidateQueries({ queryKey: aiKeys.usage(userId) });
       }
     },
-    [getToken, queryClient]
+    [getToken, queryClient, userId]
   );
 
   const clear = useCallback(() => setLive(null), []);
