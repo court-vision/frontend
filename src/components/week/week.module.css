@@ -2885,7 +2885,7 @@ button.marketRow:hover {
 
 /* ---------------------------------------------------------------- today's moves */
 
-/* A tick in the tape: one move at a time on a split-flap board, its Stage button beside it. */
+/* A tick in the tape: one move at a time, rolling over to the next, its Stage button beside it. */
 .todayTick {
   cursor: default;
   gap: 6px;
@@ -2941,6 +2941,16 @@ button.marketRow:hover {
   gap: 10px;
 }
 
+/* What opens the box on hover or a click: the label and the move, not the buttons or the strip's edges. */
+.todayOpens {
+  cursor: pointer;
+}
+
+.todayMove {
+  display: inline-flex;
+  align-items: center;
+}
+
 .todayStage {
   height: 22px;
   padding: 0 8px;
@@ -2956,112 +2966,81 @@ button.marketRow:hover {
   white-space: nowrap;
 }
 
-/* The board. Each flap is two halves on a hinge; a change folds the old top
-   half down and drops the new bottom half into place. */
-.flaps {
-  display: inline-flex;
-  gap: 2px;
-  perspective: 240px;
-}
-
-.flap {
-  position: relative;
-  display: inline-block;
-  width: 11px;
+/* The line. Every line the strip can show sits invisibly in the same cell
+   (so it is as wide as the longest); the shown one rolls over to the next
+   word by word, the old words turning up and away, the new rising from below. */
+.flip {
+  display: inline-grid;
   height: 20px;
-  font-family: var(--desk-mono), ui-monospace, monospace;
-  font-size: 13px;
+  line-height: 20px;
+  font-size: 13.5px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--text);
-  text-align: center;
-}
-
-.flapToned {
-  color: var(--flap-ink, var(--text));
-}
-
-.flapTop,
-.flapBottom {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 50%;
+  white-space: nowrap;
+  perspective: 300px;
   overflow: hidden;
-  background: color-mix(in srgb, var(--text) 9%, var(--bg));
+}
+
+.flip > *,
+.flipSizer > * {
+  grid-area: 1 / 1;
+}
+
+.flipSizer {
+  display: grid;
+  visibility: hidden;
+}
+
+.flipFace {
+  display: inline-flex;
+  gap: 0.28em;
+}
+
+.flipWord {
+  display: inline-block;
+  transform-origin: 50% 50% -10px;
   backface-visibility: hidden;
 }
 
-.flapTop {
-  top: 0;
-  border-radius: 2px 2px 0 0;
-  transform-origin: 50% 100%;
+.flipIn {
+  animation: flipIn 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
-.flapBottom {
-  bottom: 0;
-  border-radius: 0 0 2px 2px;
-  transform-origin: 50% 0;
+.flipOut {
+  animation: flipOut 260ms cubic-bezier(0.4, 0, 0.7, 0.4) both;
 }
 
-.flapTop > span,
-.flapBottom > span {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 20px;
-  line-height: 20px;
-}
-
-.flapTop > span {
-  top: 0;
-}
-
-.flapBottom > span {
-  bottom: 0;
-}
-
-/* The hinge. */
-.flap::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(50% - 0.5px);
-  height: 1px;
-  background: var(--surface);
-  z-index: 3;
-}
-
-.flapFold {
-  z-index: 2;
-  animation: flapFold 70ms ease-in forwards;
-}
-
-.flapDrop {
-  z-index: 2;
-  transform: rotateX(90deg);
-  animation: flapDrop 70ms ease-out 70ms forwards;
-}
-
-@keyframes flapFold {
-  to {
-    transform: rotateX(-90deg);
-  }
-}
-
-@keyframes flapDrop {
+@keyframes flipIn {
   from {
-    transform: rotateX(90deg);
+    transform: rotateX(-90deg);
+    opacity: 0;
   }
   to {
     transform: rotateX(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes flipOut {
+  from {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: rotateX(90deg);
+    opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flapFold,
-  .flapDrop {
+  .flipIn,
+  .flipOut {
     animation: none;
+  }
+
+  .flipOut {
+    visibility: hidden;
   }
 }
 
