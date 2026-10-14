@@ -9,8 +9,6 @@ import { ROSTER_MOVE_INVALID, toApiError, userMessage } from "@/lib/api-error";
 import { staleLineup } from "@/lib/lineup-editor";
 import { shareLineup } from "@/lib/lineup-sharing";
 import { lineupKeys, useTeamLineupQuery } from "@/hooks/useLineupEditor";
-import { matchupKeys } from "@/hooks/useMatchup";
-import { teamsKeys } from "@/hooks/useTeams";
 import type { WeekDay } from "@/lib/week-grid";
 import type { FantasyProvider } from "@/types/team";
 import type {
@@ -20,6 +18,7 @@ import type {
   LineupPlanData,
   LineupState,
 } from "@/types/lineup-editor";
+import { settleLineupWrites, writeLineupDay, type SentDay } from "./lineup-send";
 
 /**
  * Every day's ESPN lineup in the matchup week, and the writes that change one.
@@ -36,8 +35,14 @@ export interface DayLineups {
   /** ESPN's day number for a day index. */
   periodOf: (day: number) => number | null;
   loading: boolean;
-  /** Send one day's moves. Rejects with the API error; a stale board is swapped in first. */
-  apply: (day: number, board: LineupState, moves: LineupMove[]) => Promise<LineupState>;
+  /**
+   * Send one day's moves and cache the board the write returns; reads nothing
+   * again (`settle` does, once per send). Rejects with the API error; a stale
+   * board is swapped in first.
+   */
+  apply: (day: number, board: LineupState, moves: LineupMove[]) => Promise<SentDay>;
+  /** After a send of one or more days, once: read again what its writes may have changed. */
+  settle: (sent: SentDay[], failed?: unknown) => void;
   /** Read a day's lineup again (after an earlier day's write may have changed it). */
   refresh: (day: number) => Promise<LineupState | null>;
   /** Today's fill-only plan from the server (today only). */
@@ -139,56 +144,29 @@ export function useDayBoards(
     meta: { toast: false },
   });
 
-  const cacheBoard = useCallback(
-    (board: LineupState) => {
-      if (!teamId) return;
-      const isToday =
-        board.current_scoring_period_id == null || board.scoring_period_id === board.current_scoring_period_id;
-      if (isToday) queryClient.setQueryData(lineupKeys.state(teamId), board);
-      else if (board.scoring_period_id != null) queryClient.setQueryData(lineupKeys.day(teamId, board.scoring_period_id), board);
-    },
-    [queryClient, teamId]
-  );
-
   const mutateAsync = mutation.mutateAsync;
   const apply = useCallback(
     async (day: number, board: LineupState, moves: LineupMove[]) => {
       if (!teamId || board.scoring_period_id == null) throw new Error("This day can't be edited");
       try {
-        const data = await mutateAsync({
-          teamId,
-          body: {
-            moves,
-            expected_scoring_period_id: board.scoring_period_id,
-            roster_version: board.roster_version,
-          },
-        });
-        cacheBoard(data.lineup);
-        // Later days may have inherited this edit, and everything that shows the roster moved.
-        await queryClient.invalidateQueries({ queryKey: lineupKeys.days(teamId) });
-        if (board.scoring_period_id !== board.current_scoring_period_id) {
-          void queryClient.invalidateQueries({ queryKey: lineupKeys.state(teamId) });
-        }
-        queryClient.removeQueries({ queryKey: lineupKeys.plan(teamId) });
-        void queryClient.invalidateQueries({ queryKey: lineupKeys.actions(teamId) });
-        void queryClient.invalidateQueries({ queryKey: teamsKeys.insights(teamId) });
-        void queryClient.invalidateQueries({ queryKey: teamsKeys.roster(teamId) });
-        void queryClient.invalidateQueries({ queryKey: matchupKeys.live(teamId) });
-        void queryClient.invalidateQueries({ queryKey: matchupKeys.week(teamId) });
-        if (!data.verified) toast.warning(`Sent to ESPN for ${board.nba_date ?? "that day"} — not confirmed yet`);
-        return data.lineup;
+        const sent = await writeLineupDay(queryClient, teamId, (body) => mutateAsync({ teamId, body }), board, moves);
+        if (!sent.verified) toast.warning(`Sent to ESPN for ${board.nba_date ?? "that day"} — not confirmed yet`);
+        return sent;
       } catch (err) {
-        const fresh = staleLineup(err);
-        if (fresh) {
-          cacheBoard(fresh);
-          void queryClient.invalidateQueries({ queryKey: lineupKeys.days(teamId) });
-        } else if (toApiError(err).code !== ROSTER_MOVE_INVALID) {
+        if (!staleLineup(err) && toApiError(err).code !== ROSTER_MOVE_INVALID) {
           console.error("Apply lineup moves error:", err);
         }
         throw err;
       }
     },
-    [teamId, mutateAsync, cacheBoard, queryClient]
+    [teamId, mutateAsync, queryClient]
+  );
+
+  const settle = useCallback(
+    (sent: SentDay[], failed?: unknown) => {
+      if (teamId) settleLineupWrites(queryClient, teamId, sent, failed);
+    },
+    [teamId, queryClient]
   );
 
   const refresh = useCallback(
@@ -227,7 +205,7 @@ export function useDayBoards(
   const loading = today.isLoading || laterDays.loading;
   const applying = mutation.isPending;
   return useMemo(
-    () => ({ boards, todayDay: todayDay >= 0 ? todayDay : null, periodOf, loading, apply, refresh, planToday, applying }),
-    [boards, todayDay, periodOf, loading, apply, refresh, planToday, applying]
+    () => ({ boards, todayDay: todayDay >= 0 ? todayDay : null, periodOf, loading, apply, settle, refresh, planToday, applying }),
+    [boards, todayDay, periodOf, loading, apply, settle, refresh, planToday, applying]
   );
 }

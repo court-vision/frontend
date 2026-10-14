@@ -212,7 +212,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
       // Functional: several days can be written in one send, each must re-render.
       setVersion((v) => v + 1);
       setApplying(false);
-      return boardFor(roster, day, Date.now());
+      return { lineup: boardFor(roster, day, Date.now()), verified: true };
     },
     [roster, boardFor]
   );
@@ -223,6 +223,8 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     periodOf: (day) => demoPeriod(day),
     loading: false,
     apply,
+    // The demo's boards are built from its own edits on every render: nothing to read again.
+    settle: () => {},
     refresh: async (day) => (day >= DEMO_TODAY ? boardFor(roster, day, Date.now()) : null),
     planToday: async () => demoPlan(boards[DEMO_TODAY]!),
     applying,
