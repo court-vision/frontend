@@ -14,7 +14,7 @@ import dk from "@/components/desk/desk.module.css";
 import { formatRelativeTime } from "@/lib/relative-time";
 import type { DraftSession } from "@/types/draft";
 import { CreateRoomDialog, ImportDialog } from "./LobbyDialogs";
-import { KIND_LABEL, apiTime } from "./format";
+import { apiTime, pickSource } from "./format";
 import { roomTitle } from "./RoomView";
 import type { LobbyModel } from "./model";
 import s from "./draft.module.css";
@@ -289,9 +289,9 @@ function BlotterRow({ room, selected, onSelect, onOpen }: { room: DraftSession; 
       <span className={s.statusDot} data-status={room.status} title={room.status} />
       <span style={{ minWidth: 0 }}>
         <div className={s.roomName}>{roomTitle(room)}</div>
-        <div className={dk.sub}>{room.espn_league_id != null ? `ESPN ${room.espn_league_id}` : room.id > 0 ? `#${room.id}` : "demo"}</div>
+        <div className={dk.sub}>{room.espn_league_id != null ? `ESPN ${room.espn_league_id}` : room.league_pending ? "ESPN · on connect" : room.id > 0 ? `#${room.id}` : "demo"}</div>
       </span>
-      <span className={s.cellText}>{KIND_LABEL[room.kind]}</span>
+      <span className={s.cellText}>{pickSource(room)}</span>
       <span className={s.cellText}>
         {[room.league_size ? `${room.league_size} teams` : "no order", room.scoring_format === "categories" ? "9-cat" : room.scoring_format ?? "league", room.draft_type].join(" · ")}
       </span>
@@ -344,7 +344,7 @@ function RoomDetail({
         <h2 className={s.detailTitle}>{roomTitle(room)}</h2>
         <dl className={s.kv} style={{ padding: 0 }}>
           <dt>Picks from</dt>
-          <dd>{KIND_LABEL[room.kind]}</dd>
+          <dd>{pickSource(room)}</dd>
           <dt>Teams</dt>
           <dd>{room.league_size ?? "—"}</dd>
           <dt>Your seat</dt>

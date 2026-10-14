@@ -33,6 +33,7 @@ import {
   useUpdateDraftSessionMutation,
 } from "@/hooks/useDrafts";
 import { useDraftSyncStore } from "@/stores/useDraftSyncStore";
+import { teamsKeys } from "@/hooks/useTeams";
 import type { DraftBoardResult, DraftBoardRow, DraftSession } from "@/types/draft";
 
 /** How long a sent pick waits for ESPN's SELECTED before the room gives up on it. */
@@ -207,6 +208,15 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
       try {
         const result = await refs.current.syncInit.mutateAsync(eff.payload);
         if (gen !== genRef.current) return;
+        // A league-pending room took its league from this INIT (or could not).
+        if (result.league_adopted) {
+          const got = result.league_adopted;
+          const league = got.league_name ?? `ESPN league ${got.espn_league_id}`;
+          toast.success(`Linked to ${league} · ${got.team_name}${got.team_created ? " added to your teams" : ""}`, { id: "draft-adopt" });
+          void queryClient.invalidateQueries({ queryKey: teamsKeys.all });
+        } else if (result.league_adoption_error) {
+          toast.error(`Linked to ESPN draft ${result.espn_league_id}, but its league could not be read: ${result.league_adoption_error}`, { id: "draft-adopt" });
+        }
         dispatch({
           type: "init-result",
           ok: true,
@@ -229,7 +239,7 @@ export function useEspnDraftSync(input: EspnDraftSyncInput): EspnDraftSync {
         });
       }
     },
-    [cachedSession, dispatch]
+    [cachedSession, dispatch, queryClient]
   );
 
   const runPick = useCallback(

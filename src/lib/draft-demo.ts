@@ -169,6 +169,7 @@ export function demoSession(room: DemoRoom, fixture: DemoFixture): DraftSession 
     status: room.status,
     name: room.name,
     espn_league_id: null,
+    league_pending: false,
     draft_type: "snake",
     pick_order: Array.from({ length: room.size }, (_, i) => i + 1),
     my_slot: room.mySlot,

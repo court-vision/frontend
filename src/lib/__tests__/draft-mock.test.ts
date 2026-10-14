@@ -21,6 +21,7 @@ function session(overrides: Partial<DraftSession> = {}): DraftSession {
     status: "active",
     name: null,
     espn_league_id: null,
+    league_pending: false,
     draft_type: "snake",
     pick_order: [1, 2, 3, 4],
     my_slot: 3,
