@@ -69,6 +69,8 @@ describe("isDeskPath", () => {
       "/draft/demo-3/recap",
       "/scout",
       "/scout/",
+      "/ai",
+      "/ai/",
       "/developer",
       "/developer/",
       "/account",

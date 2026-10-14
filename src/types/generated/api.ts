@@ -135,6 +135,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's conversations, most recent first */
+        get: operations["list_conversations_v1_internal_ai_conversations_get"];
+        put?: never;
+        /** Start a conversation with the agent */
+        post: operations["create_conversation_v1_internal_ai_conversations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One conversation with every turn */
+        get: operations["get_conversation_v1_internal_ai_conversations__conversation_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete a conversation and its turns */
+        delete: operations["delete_conversation_v1_internal_ai_conversations__conversation_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/conversations/{conversation_id}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send the agent a message; the answer streams back
+         * @description A `text/event-stream` of the turn as it happens:
+         *
+         *     - `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note);
+         *     - `text` `{delta}`: the answer's prose, as it is written;
+         *     - `block` (an `AiTable`): a table the server built from the agent's lookups;
+         *     - `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);
+         *     - `done` `{turn_id, outcome, cost_usd, model_calls, duration_ms, spend}`: always last.
+         *
+         *     Text and blocks arrive in the order the user should see them. Lines starting with `:` are keepalives. Errors before the stream starts are ordinary JSON errors.
+         */
+        post: operations["send_turn_v1_internal_ai_conversations__conversation_id__turns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/ai/questions/{question_id}/feedback": {
         parameters: {
             query?: never;
@@ -169,6 +233,46 @@ export interface paths {
          * @description Returns one of three kinds. `show`: a Court Vision view, as a terminal or page `target` the client applies. `statmuse`: an NBA stat question no view covers, with a server-built `statmuse_url` the user opens. `cannot`: neither covers it, with `suggestions`. Every ID in a target has been checked, and a fantasy team is always one of the caller's. Shares the daily allowance with /ai/ask and is off unless AI_ENABLED is set.
          */
         post: operations["route_v1_internal_ai_route_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/turns/{turn_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rate one of the agent's answers
+         * @description Thumbs up or down on one of the caller's own turns; null clears it.
+         */
+        post: operations["turn_feedback_v1_internal_ai_turns__turn_id__feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's access to the agent and this month's spend
+         * @description Open to any signed-in user, so the desk can say whether the agent is available to them.
+         */
+        get: operations["agent_usage_v1_internal_ai_usage_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2436,6 +2540,15 @@ export interface components {
             /** Usg Pct */
             usg_pct: number | null;
         };
+        /** AiBlockPart */
+        AiBlockPart: {
+            block: components["schemas"]["AiTable"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "block";
+        };
         /**
          * AiContext
          * @description Where the user is when they ask. IDs only -- never names from league data,
@@ -2478,6 +2591,98 @@ export interface components {
              */
             window?: string | null;
         };
+        /**
+         * AiConversationCreateReq
+         * @description Body for POST /v1/internal/ai/conversations.
+         */
+        AiConversationCreateReq: {
+            /**
+             * Team Id
+             * @description One of the caller's teams: what 'my team' means in this conversation
+             */
+            team_id?: number | null;
+        };
+        /** AiConversationDetail */
+        AiConversationDetail: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Full
+             * @description True when the conversation takes no more turns: start a new one
+             */
+            full: boolean;
+            /**
+             * History
+             * @description Every turn, oldest first, failed ones included
+             */
+            history: components["schemas"]["AiTurnView"][];
+            /** Id */
+            id: number;
+            /** Team Id */
+            team_id: number | null;
+            /**
+             * Title
+             * @description The first message, shortened; null until one is sent
+             */
+            title: string | null;
+            /** Turns */
+            turns: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** AiConversationListResp */
+        AiConversationListResp: {
+            /** Data */
+            data: components["schemas"]["AiConversationSummary"][] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** AiConversationResp */
+        AiConversationResp: {
+            data: components["schemas"]["AiConversationDetail"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** AiConversationSummary */
+        AiConversationSummary: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Team Id */
+            team_id: number | null;
+            /**
+             * Title
+             * @description The first message, shortened; null until one is sent
+             */
+            title: string | null;
+            /** Turns */
+            turns: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** AiFeedbackData */
         AiFeedbackData: {
             /** Feedback */
@@ -2508,6 +2713,64 @@ export interface components {
             timestamp: string | null;
         };
         /**
+         * AiTable
+         * @description A table the server built from the agent's tool results; the model never types its values.
+         */
+        AiTable: {
+            /** Columns */
+            columns: components["schemas"]["AiTableColumn"][];
+            /**
+             * Id
+             * @description Unique within its turn, e.g. 't1'
+             */
+            id: string;
+            /**
+             * Result Ids
+             * @description The tool results the rows were copied from
+             */
+            result_ids: string[];
+            /**
+             * Rows
+             * @description One list of cells per row, in column order
+             */
+            rows: unknown[][];
+            /** Title */
+            title: string;
+            /**
+             * Tools
+             * @description The lookups behind those results
+             */
+            tools: string[];
+            /**
+             * Total Rows
+             * @description Rows before the table's limit
+             */
+            total_rows: number;
+            /**
+             * Type
+             * @default table
+             * @constant
+             */
+            type: "table";
+        };
+        /** AiTableColumn */
+        AiTableColumn: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /** AiTextPart */
+        AiTextPart: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "text";
+            /** Text */
+            text: string;
+        };
+        /**
          * AiToolCall
          * @description One Court Vision lookup the model made while answering.
          */
@@ -2529,6 +2792,58 @@ export interface components {
              * @description Tool name, e.g. get_player_stats
              */
             name: string;
+        };
+        /** AiTurnFeedbackData */
+        AiTurnFeedbackData: {
+            /** Feedback */
+            feedback: ("up" | "down") | null;
+            /** Turn Id */
+            turn_id: number;
+        };
+        /** AiTurnFeedbackResp */
+        AiTurnFeedbackResp: {
+            data: components["schemas"]["AiTurnFeedbackData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiTurnReq
+         * @description Body for POST /v1/internal/ai/conversations/{conversation_id}/turns.
+         */
+        AiTurnReq: {
+            /** Message */
+            message: string;
+        };
+        /** AiTurnView */
+        AiTurnView: {
+            /** Cost Usd */
+            cost_usd: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Feedback */
+            feedback: ("up" | "down") | null;
+            /** Id */
+            id: number;
+            /** Message */
+            message: string;
+            /**
+             * Outcome
+             * @description 'ok', or the error code the turn ended with
+             */
+            outcome: string;
+            /**
+             * Parts
+             * @description The answer as the user saw it: text and blocks, in order
+             */
+            parts: (components["schemas"]["AiTextPart"] | components["schemas"]["AiBlockPart"])[];
         };
         /**
          * AiUsage
@@ -2558,6 +2873,39 @@ export interface components {
             model_calls: number;
             /** Output Tokens */
             output_tokens: number;
+        };
+        /** AiUsageData */
+        AiUsageData: {
+            /**
+             * Access
+             * @description Whether the caller may use the agent (it is invite-only)
+             */
+            access: boolean;
+            /**
+             * Cap Usd
+             * @description The caller's monthly cap
+             */
+            cap_usd: number;
+            /** Effort */
+            effort: string;
+            /** Model */
+            model: string;
+            /**
+             * Month Usd
+             * @description The caller's agent spend this calendar month (UTC)
+             */
+            month_usd: number;
+        };
+        /** AiUsageResp */
+        AiUsageResp: {
+            data: components["schemas"]["AiUsageData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /**
          * ApiKeyListItem
@@ -2717,6 +3065,22 @@ export interface components {
             avg_ts_pct: number;
             /** Avg Turnovers */
             avg_turnovers: number;
+        };
+        /**
+         * BaseResponse
+         * @description Base response model that all API responses should extend.
+         *     Provides consistent structure across all endpoints.
+         */
+        BaseResponse: {
+            /** Data */
+            data: unknown | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /**
          * BreakoutBeneficiary
@@ -10257,6 +10621,269 @@ export interface operations {
             };
         };
     };
+    list_conversations_v1_internal_ai_conversations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiConversationListResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_conversation_v1_internal_ai_conversations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AiConversationCreateReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiConversationResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description team_id is not one of the caller's teams (TEAM_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_conversation_v1_internal_ai_conversations__conversation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiConversationResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such conversation for this caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_conversation_v1_internal_ai_conversations__conversation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BaseResponse"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such conversation for this caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    send_turn_v1_internal_ai_conversations__conversation_id__turns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiTurnReq"];
+            };
+        };
+        responses: {
+            /** @description The turn's events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such conversation for this caller (AI_CONVERSATION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Another turn is running (AI_CONVERSATION_BUSY), or the conversation is full (AI_CONVERSATION_FULL) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The caller's monthly budget is used up (AI_USER_BUDGET_REACHED) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     question_feedback_v1_internal_ai_questions__question_id__feedback_post: {
         parameters: {
             query?: never;
@@ -10351,6 +10978,89 @@ export interface operations {
             };
             /** @description The assistant took too long (AI_TIMEOUT) */
             504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    turn_feedback_v1_internal_ai_turns__turn_id__feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                turn_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiFeedbackReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiTurnFeedbackResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such turn for this caller (AI_TURN_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    agent_usage_v1_internal_ai_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiUsageResp"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

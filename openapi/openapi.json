@@ -270,6 +270,25 @@
         "title": "AdvancedStatsData",
         "type": "object"
       },
+      "AiBlockPart": {
+        "properties": {
+          "block": {
+            "$ref": "#/components/schemas/AiTable"
+          },
+          "kind": {
+            "const": "block",
+            "default": "block",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "block"
+        ],
+        "title": "AiBlockPart",
+        "type": "object"
+      },
       "AiContext": {
         "description": "Where the user is when they ask. IDs only -- never names from league data,\nso the context adds no prompt-injection surface.",
         "properties": {
@@ -372,6 +391,260 @@
           }
         },
         "title": "AiContext",
+        "type": "object"
+      },
+      "AiConversationCreateReq": {
+        "description": "Body for POST /v1/internal/ai/conversations.",
+        "properties": {
+          "team_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 2147483647.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "One of the caller's teams: what 'my team' means in this conversation",
+            "title": "Team Id"
+          }
+        },
+        "title": "AiConversationCreateReq",
+        "type": "object"
+      },
+      "AiConversationDetail": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "full": {
+            "description": "True when the conversation takes no more turns: start a new one",
+            "title": "Full",
+            "type": "boolean"
+          },
+          "history": {
+            "description": "Every turn, oldest first, failed ones included",
+            "items": {
+              "$ref": "#/components/schemas/AiTurnView"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first message, shortened; null until one is sent",
+            "title": "Title"
+          },
+          "turns": {
+            "title": "Turns",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "team_id",
+          "created_at",
+          "updated_at",
+          "turns",
+          "full",
+          "history"
+        ],
+        "title": "AiConversationDetail",
+        "type": "object"
+      },
+      "AiConversationListResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AiConversationSummary"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiConversationListResp",
+        "type": "object"
+      },
+      "AiConversationResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiConversationDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiConversationResp",
+        "type": "object"
+      },
+      "AiConversationSummary": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first message, shortened; null until one is sent",
+            "title": "Title"
+          },
+          "turns": {
+            "title": "Turns",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "team_id",
+          "created_at",
+          "updated_at",
+          "turns"
+        ],
+        "title": "AiConversationSummary",
         "type": "object"
       },
       "AiFeedbackData": {
@@ -481,6 +754,113 @@
         "title": "AiFeedbackResp",
         "type": "object"
       },
+      "AiTable": {
+        "description": "A table the server built from the agent's tool results; the model never types its values.",
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/AiTableColumn"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "id": {
+            "description": "Unique within its turn, e.g. 't1'",
+            "title": "Id",
+            "type": "string"
+          },
+          "result_ids": {
+            "description": "The tool results the rows were copied from",
+            "items": {
+              "type": "string"
+            },
+            "title": "Result Ids",
+            "type": "array"
+          },
+          "rows": {
+            "description": "One list of cells per row, in column order",
+            "items": {
+              "items": {},
+              "type": "array"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tools": {
+            "description": "The lookups behind those results",
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools",
+            "type": "array"
+          },
+          "total_rows": {
+            "description": "Rows before the table's limit",
+            "title": "Total Rows",
+            "type": "integer"
+          },
+          "type": {
+            "const": "table",
+            "default": "table",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "title",
+          "result_ids",
+          "tools",
+          "columns",
+          "rows",
+          "total_rows"
+        ],
+        "title": "AiTable",
+        "type": "object"
+      },
+      "AiTableColumn": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "AiTableColumn",
+        "type": "object"
+      },
+      "AiTextPart": {
+        "properties": {
+          "kind": {
+            "const": "text",
+            "default": "text",
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "AiTextPart",
+        "type": "object"
+      },
       "AiToolCall": {
         "description": "One Court Vision lookup the model made while answering.",
         "properties": {
@@ -507,6 +887,178 @@
           "is_error"
         ],
         "title": "AiToolCall",
+        "type": "object"
+      },
+      "AiTurnFeedbackData": {
+        "properties": {
+          "feedback": {
+            "anyOf": [
+              {
+                "enum": [
+                  "up",
+                  "down"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "turn_id",
+          "feedback"
+        ],
+        "title": "AiTurnFeedbackData",
+        "type": "object"
+      },
+      "AiTurnFeedbackResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiTurnFeedbackData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiTurnFeedbackResp",
+        "type": "object"
+      },
+      "AiTurnReq": {
+        "description": "Body for POST /v1/internal/ai/conversations/{conversation_id}/turns.",
+        "properties": {
+          "message": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "pattern": "^[^\\x00]*$",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "AiTurnReq",
+        "type": "object"
+      },
+      "AiTurnView": {
+        "properties": {
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "enum": [
+                  "up",
+                  "down"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "outcome": {
+            "description": "'ok', or the error code the turn ended with",
+            "title": "Outcome",
+            "type": "string"
+          },
+          "parts": {
+            "description": "The answer as the user saw it: text and blocks, in order",
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "block": "#/components/schemas/AiBlockPart",
+                  "text": "#/components/schemas/AiTextPart"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/AiTextPart"
+                },
+                {
+                  "$ref": "#/components/schemas/AiBlockPart"
+                }
+              ]
+            },
+            "title": "Parts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "message",
+          "parts",
+          "outcome",
+          "feedback",
+          "cost_usd"
+        ],
+        "title": "AiTurnView",
         "type": "object"
       },
       "AiUsage": {
@@ -554,6 +1106,94 @@
           "fallback"
         ],
         "title": "AiUsage",
+        "type": "object"
+      },
+      "AiUsageData": {
+        "properties": {
+          "access": {
+            "description": "Whether the caller may use the agent (it is invite-only)",
+            "title": "Access",
+            "type": "boolean"
+          },
+          "cap_usd": {
+            "description": "The caller's monthly cap",
+            "title": "Cap Usd",
+            "type": "number"
+          },
+          "effort": {
+            "title": "Effort",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "month_usd": {
+            "description": "The caller's agent spend this calendar month (UTC)",
+            "title": "Month Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "access",
+          "month_usd",
+          "cap_usd",
+          "model",
+          "effort"
+        ],
+        "title": "AiUsageData",
+        "type": "object"
+      },
+      "AiUsageResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiUsageData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiUsageResp",
         "type": "object"
       },
       "ApiKeyListItem": {
@@ -1033,6 +1673,58 @@
           "avg_fta"
         ],
         "title": "AvgStats",
+        "type": "object"
+      },
+      "BaseResponse": {
+        "description": "Base response model that all API responses should extend.\nProvides consistent structure across all endpoints.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "BaseResponse",
         "type": "object"
       },
       "BreakoutBeneficiary": {
@@ -21542,6 +22234,275 @@
         ]
       }
     },
+    "/v1/internal/ai/conversations": {
+      "get": {
+        "operationId": "list_conversations_v1_internal_ai_conversations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConversationListResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The caller's conversations, most recent first",
+        "tags": [
+          "AI"
+        ]
+      },
+      "post": {
+        "operationId": "create_conversation_v1_internal_ai_conversations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiConversationCreateReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConversationResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "team_id is not one of the caller's teams (TEAM_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start a conversation with the agent",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/conversations/{conversation_id}": {
+      "delete": {
+        "operationId": "delete_conversation_v1_internal_ai_conversations__conversation_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Conversation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such conversation for this caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete a conversation and its turns",
+        "tags": [
+          "AI"
+        ]
+      },
+      "get": {
+        "operationId": "get_conversation_v1_internal_ai_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Conversation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConversationResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such conversation for this caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One conversation with every turn",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/conversations/{conversation_id}/turns": {
+      "post": {
+        "description": "A `text/event-stream` of the turn as it happens:\n\n- `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note);\n- `text` `{delta}`: the answer's prose, as it is written;\n- `block` (an `AiTable`): a table the server built from the agent's lookups;\n- `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);\n- `done` `{turn_id, outcome, cost_usd, model_calls, duration_ms, spend}`: always last.\n\nText and blocks arrive in the order the user should see them. Lines starting with `:` are keepalives. Errors before the stream starts are ordinary JSON errors.",
+        "operationId": "send_turn_v1_internal_ai_conversations__conversation_id__turns_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Conversation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiTurnReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/event-stream": {}
+            },
+            "description": "The turn's events"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such conversation for this caller (AI_CONVERSATION_NOT_FOUND)"
+          },
+          "409": {
+            "description": "Another turn is running (AI_CONVERSATION_BUSY), or the conversation is full (AI_CONVERSATION_FULL)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "The caller's monthly budget is used up (AI_USER_BUDGET_REACHED)"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send the agent a message; the answer streams back",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
     "/v1/internal/ai/questions/{question_id}/feedback": {
       "post": {
         "description": "Thumbs up or down on one of the caller's own routed questions; null clears it.",
@@ -21651,6 +22612,104 @@
           }
         ],
         "summary": "Route a question to the place that answers it",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/turns/{turn_id}/feedback": {
+      "post": {
+        "description": "Thumbs up or down on one of the caller's own turns; null clears it.",
+        "operationId": "turn_feedback_v1_internal_ai_turns__turn_id__feedback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "turn_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Turn Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiFeedbackReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiTurnFeedbackResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such turn for this caller (AI_TURN_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rate one of the agent's answers",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/usage": {
+      "get": {
+        "description": "Open to any signed-in user, so the desk can say whether the agent is available to them.",
+        "operationId": "agent_usage_v1_internal_ai_usage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiUsageResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The caller's access to the agent and this month's spend",
         "tags": [
           "AI"
         ]

@@ -1,24 +1,27 @@
 /**
  * The desks: full-screen workspaces that share one frame. Each owns one
  * subject end to end — Week your team's matchup week, Draft a draft room, Scout
- * one player, NBA team or night of games, Developer the API and the data
- * behind the app, Account your teams and alerts — and anything about that
+ * one player, NBA team or night of games, AI a conversation with the agent,
+ * Developer the API and the data behind the app, Account your teams and
+ * alerts — and anything about that
  * subject is a pane, mode or overlay inside it rather than a page of its own.
  */
 export const WEEK_DESK = "/week";
 export const DRAFT_DESK = "/draft";
 export const SCOUT_DESK = "/scout";
+export const AI_DESK = "/ai";
 export const DEVELOPER_DESK = "/developer";
 export const ACCOUNT_DESK = "/account";
 
 /**
- * The desks a tab is shown for: where fantasy work happens, and the Scout.
+ * The desks a tab is shown for: where fantasy work happens, the Scout, and the agent.
  * `note` and `keywords` are how the command palette (⌘K) lists and finds each.
  */
 export const DESKS = [
   { id: "week", label: "Week", href: WEEK_DESK, key: "1", note: "Your team's matchup week", keywords: ["matchup", "lineup", "roster", "streamers", "market", "moves"] },
   { id: "draft", label: "Draft", href: DRAFT_DESK, key: "2", note: "A draft room, live or mock", keywords: ["draft", "room", "board", "mock", "lab", "picks"] },
   { id: "scout", label: "Scout", href: SCOUT_DESK, key: "3", note: "One player, NBA team or night of games", keywords: ["players", "rankings", "standings", "tonight", "terminal"] },
+  { id: "ai", label: "AI", href: AI_DESK, key: "4", note: "Ask CV AI about your team", keywords: ["ai", "assistant", "chat", "ask", "agent", "question"] },
 ] as const;
 
 /** The Developer desk sits behind an icon at the bar's far end, not among the tabs. */
