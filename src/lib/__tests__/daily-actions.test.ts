@@ -1,15 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
-  FLAP_DRUM,
   boardMismatch,
-  fitFlap,
-  flapSteps,
-  flapText,
-  flapWidth,
   isAddStaged,
   isLineupAction,
   isRowStaged,
   isTransactionAction,
+  moveLine,
   rowButton,
   sortActions,
   stageAllFold,
@@ -213,44 +209,21 @@ describe("rows and staging", () => {
   });
 });
 
-describe("the split-flap line", () => {
-  test("surnames, upper case, suffixes dropped", () => {
-    expect(surname("Jaren Jackson Jr.")).toBe("JACKSON");
-    expect(surname("Alperen Şengün")).toBe("ŞENGÜN");
-    expect(surname("Nenê")).toBe("NENÊ");
-    expect(surname("Karl-Anthony Towns")).toBe("TOWNS");
+describe("the strip's line", () => {
+  test("surnames, suffixes dropped", () => {
+    expect(surname("Jaren Jackson Jr.")).toBe("Jackson");
+    expect(surname("Alperen Şengün")).toBe("Şengün");
+    expect(surname("Nenê")).toBe("Nenê");
+    expect(surname("Karl-Anthony Towns")).toBe("Towns");
   });
 
   test("each kind reads as a verb and names", () => {
-    expect(flapText({ ...START, player: who(11, "Derrick White") })).toBe("START WHITE");
-    expect(flapText({ ...IR_IN, player: who(8, "Tyrese Maxey") })).toBe("MAXEY TO IR");
-    expect(flapText({ ...IR_OUT, player: who(14, "Joel Embiid") })).toBe("EMBIID OFF IR");
-    expect(flapText({ ...ADD, player: who(98, "Day'Ron Sharpe") })).toBe("ADD SHARPE");
-    expect(flapText({ ...ADD_DROP, player: who(99, "Kawhi Leonard") })).toBe("LEONARD FOR MURRAY");
-    // Too long for the board: the pickup alone.
-    expect(flapText({ ...ADD_DROP, player: who(99, "Nickeil Alexander-Walker"), counterpart: who(12, "Kentavious Caldwell-Pope") })).toBe("ADD ALEXANDER-WALKER");
-  });
-
-  test("the board is as wide as the longest line, within bounds", () => {
-    expect(flapWidth(["START WHITE"])).toBe(12);
-    expect(flapWidth(["START WHITE", "LEONARD FOR MURRAY"])).toBe(18);
-    expect(flapWidth(["ADD ALEXANDER-WALKER / DROP CALDWELL-POPE"])).toBe(20);
-    expect(flapWidth([])).toBe(12);
-  });
-
-  test("lines are padded with blank flaps or cut with an ellipsis", () => {
-    expect(fitFlap("ADD X", 8)).toEqual(["A", "D", "D", " ", "X", " ", " ", " "]);
-    expect(fitFlap("ABCDEFGHIJ", 6).join("")).toBe("ABCDE…");
-    expect(fitFlap("ŞENGÜN", 6)).toHaveLength(6);
-  });
-
-  test("a flap turns through the drum's next faces, then lands", () => {
-    expect(flapSteps("A", "A")).toEqual([]);
-    expect(flapSteps("A", "B")).toEqual(["B"]);
-    expect(flapSteps("A", "Z")).toEqual(["B", "C", "Z"]);
-    expect(flapSteps(" ", "S", 1)).toEqual(["A", "S"]);
-    expect(flapSteps("-", "M")).toEqual([" ", "A", "M"]);
-    expect(flapSteps("Ş", "T")).toEqual(["A", "B", "T"]);
-    expect(FLAP_DRUM[0]).toBe(" ");
+    expect(moveLine({ ...START, player: who(11, "Derrick White") })).toBe("Start White");
+    expect(moveLine({ ...IR_IN, player: who(8, "Tyrese Maxey") })).toBe("Maxey to IR");
+    expect(moveLine({ ...IR_OUT, player: who(14, "Joel Embiid") })).toBe("Embiid off IR");
+    expect(moveLine({ ...ADD, player: who(98, "Day'Ron Sharpe") })).toBe("Add Sharpe");
+    expect(moveLine({ ...ADD_DROP, player: who(99, "Kawhi Leonard") })).toBe("Leonard for Murray");
+    // Too long for the strip: the pickup alone.
+    expect(moveLine({ ...ADD_DROP, player: who(99, "Nickeil Alexander-Walker"), counterpart: who(12, "Kentavious Caldwell-Pope") })).toBe("Add Alexander-Walker");
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Today's moves on the Week desk: row order, which rows stage lineup moves and
  * which stage an add, whether a row is staged, the one button each row gets,
- * and how a row reads on the strip's split-flap board. The server writes the
+ * and how a row reads on the strip. The server writes the
  * row copy; this file decides what the buttons do. Pure.
  */
 import { IR_SLOT_ID, stageMoves, unstageMoves, validateStaged, type Staged } from "./lineup-editor";
@@ -198,71 +198,37 @@ export function streamersHint(data: Pick<DailyActionsData, "streamers_error">): 
 }
 
 // ---------------------------------------------------------------------------
-// The split-flap line
+// The strip's line
 // ---------------------------------------------------------------------------
 
 const SUFFIXES = new Set(["JR", "JR.", "SR", "SR.", "II", "III", "IV", "V"]);
 
-/** "Jaren Jackson Jr." → "JACKSON": a surname for the board, suffixes dropped. */
+/** "Jaren Jackson Jr." → "Jackson": a surname for the strip, suffixes dropped. */
 export function surname(name: string): string {
   const parts = name.split(" ").filter(Boolean);
   while (parts.length > 1 && SUFFIXES.has(parts[parts.length - 1].toUpperCase())) parts.pop();
-  return (parts.length > 1 ? parts.slice(1).join(" ") : parts[0] ?? "").toUpperCase();
+  return parts.length > 1 ? parts.slice(1).join(" ") : parts[0] ?? "";
 }
 
-/** The most cells the board ever has: it shares the tape with the week's numbers. */
-export const FLAP_MAX = 20;
+/** The longest a line gets: the strip shares the tape with the week's numbers. */
+export const LINE_MAX = 20;
 
-/** How a row reads on the board: a verb and surnames, upper case. */
-export function flapText(a: DailyAction): string {
+/** How a row reads on the strip: a verb and surnames. */
+export function moveLine(a: DailyAction): string {
   const who = surname(a.player.name);
   switch (a.kind) {
     case "start":
-      return `START ${who}`;
+      return `Start ${who}`;
     case "ir_in":
-      return `${who} TO IR`;
+      return `${who} to IR`;
     case "ir_out":
-      return `${who} OFF IR`;
+      return `${who} off IR`;
     case "add":
-      return `ADD ${who}`;
+      return `Add ${who}`;
     case "add_drop": {
-      // "THOMPSON FOR MURRAY" when it fits the board; the pickup alone when it doesn't.
-      const swap = a.counterpart ? `${who} FOR ${surname(a.counterpart.name)}` : "";
-      return swap && [...swap].length <= FLAP_MAX ? swap : `ADD ${who}`;
+      // "Thompson for Murray" when it fits the strip; the pickup alone when it doesn't.
+      const swap = a.counterpart ? `${who} for ${surname(a.counterpart.name)}` : "";
+      return swap && [...swap].length <= LINE_MAX ? swap : `Add ${who}`;
     }
   }
-}
-
-/** Cells on the board: the longest line, within bounds, so short days don't sprawl and long ones don't scroll. */
-export function flapWidth(lines: readonly string[], min: number = 12, max: number = FLAP_MAX): number {
-  const longest = lines.reduce((n, l) => Math.max(n, [...l].length), 0);
-  return Math.min(max, Math.max(min, longest));
-}
-
-/** A line padded with blank flaps, or cut with an ellipsis, to exactly `width` cells. */
-export function fitFlap(line: string, width: number): string[] {
-  const chars = [...line];
-  if (chars.length > width) return [...chars.slice(0, width - 1), "…"];
-  return [...chars, ...Array.from({ length: width - chars.length }, () => " ")];
-}
-
-/** The order a flap's drum turns through: what a real board shows between two letters. */
-export const FLAP_DRUM = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/·-";
-
-/**
- * The faces a flap shows going from `from` to `to`: up to `extra` faces after
- * `from` on the drum (stopping early at `to`), then `to`. Nothing when they're
- * the same. A face off the drum (Ş, Ć) starts from the blank.
- */
-export function flapSteps(from: string, to: string, extra: number = 2): string[] {
-  if (from === to) return [];
-  const at = FLAP_DRUM.indexOf(from);
-  const out: string[] = [];
-  for (let i = 1; i <= extra; i++) {
-    const face = FLAP_DRUM[(Math.max(at, 0) + i) % FLAP_DRUM.length];
-    if (face === to) break;
-    out.push(face);
-  }
-  out.push(to);
-  return out;
 }

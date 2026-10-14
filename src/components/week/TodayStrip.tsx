@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
-import { KIND_WORD, fitFlap, flapSteps, flapText, flapWidth, type RowButton } from "@/lib/daily-actions";
+import { KIND_WORD, moveLine, type RowButton } from "@/lib/daily-actions";
 import type { DailyAction, DailyActionKind } from "@/types/daily-actions";
 import { tip } from "./format";
 import { TickBox, useReducedMotion, useTickHover, type TickOpen } from "./TickBox";
@@ -36,8 +36,9 @@ export interface TodayStripProps {
 }
 
 const CYCLE_MS = 4500;
-const STEP_MS = 140;
-const STAGGER_MS = 22;
+const STAGGER_MS = 45;
+/** The new line starts rolling in once the old one is on its way out. */
+const IN_AFTER_MS = 130;
 
 const TONE: Record<DailyActionKind, string> = {
   start: "var(--up)",
@@ -48,43 +49,55 @@ const TONE: Record<DailyActionKind, string> = {
 };
 
 /**
- * Today's moves, one at a time on a split-flap board in the week's tape, with
- * the shown move's Stage button beside it. Hovering (or D, or a click) opens
- * the whole list in a box that grows out of the strip: every row with its own
- * Stage button. Nothing here sends: lineup moves wait in the tray, an add in
- * the dock.
+ * Today's moves, one at a time in the week's tape, each new one rolling in
+ * over the last, with the shown move's Stage button beside it. Resting on the
+ * move itself (or D, or a click on it) opens the whole list in a box that
+ * grows out of the strip: every row with its own Stage button. The Stage
+ * button and the strip's edges never open it, so the button stays reachable,
+ * and the moves hold still while the pointer is anywhere on the strip. Nothing
+ * here sends: lineup moves wait in the tray, an add in the dock.
  */
 export function TodayStrip(props: TodayStripProps) {
   const { status, rows, error, open, onOpen, onButton } = props;
   const reduced = useReducedMotion();
   const [picked, setPicked] = useState(0);
   const [strip, setStrip] = useState<HTMLDivElement | null>(null);
+  const [near, setNear] = useState(false);
   const hover = useTickHover(open, onOpen);
   const at = rows.length ? picked % rows.length : 0;
   const current = status === "ready" ? rows[at] ?? null : null;
 
   // One move after another while nobody is looking closer (and motion is welcome).
   useEffect(() => {
-    if (rows.length < 2 || open || hover.hovering || reduced) return;
+    if (rows.length < 2 || open || near || hover.hovering || reduced) return;
     const t = setInterval(() => {
       if (document.visibilityState === "visible") setPicked((i) => i + 1);
     }, CYCLE_MS);
     return () => clearInterval(t);
-  }, [rows.length, open, hover.hovering, reduced]);
+  }, [rows.length, open, near, hover.hovering, reduced]);
 
-  const lines = rows.map((r) => flapText(r.action));
-  const width = flapWidth(lines);
+  const lines = rows.map((r) => moveLine(r.action));
   const line =
-    status === "loading" ? "READING ESPN" : status === "error" ? "UNAVAILABLE" : current ? lines[at] : "ALL SET";
+    status === "loading" ? "Reading ESPN" : status === "error" ? "Unavailable" : current ? lines[at] : "All set";
   const tone = current ? TONE[current.action.kind] : status === "ready" ? "var(--up)" : "var(--text-3)";
   // The verb (or the whole line when it's a status) wears the move's colour.
   const toned = current ? toneLength(current.action.kind, lines[at]) : line.length;
+  // Only the move itself opens the box: hovering it, or a click on it.
+  const opens = hover.tick;
 
   return (
     <>
-      <div ref={setStrip} className={`${s.tick} ${s.todayTick}`} data-open={open ? true : undefined} {...hover.tick}>
+      <div
+        ref={setStrip}
+        className={`${s.tick} ${s.todayTick}`}
+        data-open={open ? true : undefined}
+        onPointerEnter={() => setNear(true)}
+        onPointerLeave={() => setNear(false)}
+      >
         <span className={s.todayHead}>
-          <span className={dk.label}>Today&apos;s moves</span>
+          <span className={`${dk.label} ${s.todayOpens}`} {...opens}>
+            Today&apos;s moves
+          </span>
           {rows.length > 1 && status === "ready" ? (
             <button type="button" className={s.todayCount} onClick={() => setPicked(at + 1)} title="Next move" aria-label={`Move ${at + 1} of ${rows.length}; show the next`}>
               {at + 1}/{rows.length}
@@ -102,10 +115,16 @@ export function TodayStrip(props: TodayStripProps) {
             <span className={dk.kbd}>D</span>
           </button>
         </span>
-        <span className={s.todayLine} title={current ? [current.action.title, current.action.detail].filter(Boolean).join(" · ") : error ?? undefined}>
-          <SplitFlap chars={fitFlap(line, width)} tone={tone} toned={toned} still={reduced} />
-          <span className={s.srOnly} aria-live="off">
-            {current ? current.action.title : line}
+        <span className={s.todayLine}>
+          <span
+            className={`${s.todayMove} ${s.todayOpens}`}
+            title={current ? [current.action.title, current.action.detail].filter(Boolean).join(" · ") : error ?? undefined}
+            {...opens}
+          >
+            <FlipLine text={line} tone={tone} toned={toned} lines={lines} still={reduced} />
+            <span className={s.srOnly} aria-live="off">
+              {current ? current.action.title : line}
+            </span>
           </span>
           {current ? <StageButton row={current} onButton={onButton} /> : null}
         </span>
@@ -117,9 +136,9 @@ export function TodayStrip(props: TodayStripProps) {
 
 /** Cells that wear the move's colour: the verb, the pickup's name in a swap, or the whole IR line. */
 function toneLength(kind: DailyActionKind, line: string): number {
-  if (kind === "start") return "START".length;
-  if (kind === "add") return "ADD".length;
-  if (kind === "add_drop") return line.startsWith("ADD ") ? 3 : Math.max(0, line.indexOf(" FOR "));
+  if (kind === "start") return "Start".length;
+  if (kind === "add") return "Add".length;
+  if (kind === "add_drop") return line.startsWith("Add ") ? 3 : Math.max(0, line.indexOf(" for "));
   return line.length;
 }
 
@@ -143,62 +162,59 @@ function StageButton({ row, onButton, wide = false }: { row: TodayRow; onButton:
 }
 
 // ---------------------------------------------------------------------------
-// The board
+// The line
 // ---------------------------------------------------------------------------
 
-function SplitFlap({ chars, tone, toned, still }: { chars: string[]; tone: string; toned: number; still: boolean }) {
+interface Face {
+  text: string;
+  tone: string;
+  toned: number;
+}
+
+/**
+ * The shown move. A new one rolls in from below as the old one rolls up and
+ * away, word by word, like a drum turning over. Every line the strip can show
+ * sits invisibly underneath, so the line is always as wide as the longest and
+ * the Stage button never moves.
+ */
+function FlipLine({ text, tone, toned, lines, still }: Face & { lines: string[]; still: boolean }) {
+  const [state, setState] = useState<{ cur: Face; prev: Face | null; n: number }>({ cur: { text, tone, toned }, prev: null, n: 0 });
+  if (state.cur.text !== text || state.cur.tone !== tone || state.cur.toned !== toned) {
+    const changed = state.cur.text !== text;
+    setState({ cur: { text, tone, toned }, prev: changed && !still ? state.cur : state.prev, n: changed ? state.n + 1 : state.n });
+  }
+  const { cur, prev, n } = state;
+  const moving = n > 0 && !still;
   return (
-    <span className={s.flaps} aria-hidden style={{ ["--flap-ink" as string]: tone }}>
-      {chars.map((c, i) => (
-        <Flap key={i} face={c} delay={i * STAGGER_MS} still={still} toned={i < toned} />
-      ))}
+    <span className={s.flip} aria-hidden>
+      <span className={s.flipSizer}>
+        {[...new Set([...lines, text])].map((l) => (
+          <span key={l}>{l}</span>
+        ))}
+      </span>
+      {moving && prev ? <FaceWords key={`o${n}`} face={prev} motion={s.flipOut} /> : null}
+      <FaceWords key={`i${n}`} face={cur} motion={moving ? s.flipIn : undefined} after={IN_AFTER_MS} />
     </span>
   );
 }
 
-/**
- * One flap. A new face turns the drum through a couple of faces on the way,
- * like the real boards: each step folds the old top half down over the new
- * one, then drops the new bottom half into place.
- */
-function Flap({ face, delay, still, toned }: { face: string; delay: number; still: boolean; toned: boolean }) {
-  const [state, setState] = useState({ cur: face, prev: face, n: 0 });
-  const shown = useRef(face);
-  useEffect(() => {
-    if (still) return;
-    const steps = flapSteps(shown.current, face);
-    if (!steps.length) return;
-    let i = 0;
-    let t: ReturnType<typeof setTimeout>;
-    const step = () => {
-      const next = steps[i++];
-      const prev = shown.current;
-      shown.current = next;
-      setState((st) => ({ cur: next, prev, n: st.n + 1 }));
-      if (i < steps.length) t = setTimeout(step, STEP_MS);
-    };
-    t = setTimeout(step, delay);
-    return () => clearTimeout(t);
-  }, [face, delay, still]);
-  const { cur, prev, n } = still ? { cur: face, prev: face, n: 0 } : state;
+function FaceWords({ face, motion, after = 0 }: { face: Face; motion?: string; after?: number }) {
+  let offset = 0;
   return (
-    <span className={`${s.flap} ${toned ? s.flapToned : ""}`}>
-      <span className={s.flapTop}>
-        <span>{cur}</span>
-      </span>
-      <span className={s.flapBottom}>
-        <span>{n > 0 ? prev : cur}</span>
-      </span>
-      {n > 0 ? (
-        <>
-          <span key={`f${n}`} className={`${s.flapTop} ${s.flapFold}`}>
-            <span>{prev}</span>
+    <span className={s.flipFace}>
+      {face.text.split(" ").map((w, i) => {
+        const toned = offset < face.toned;
+        offset += w.length + 1;
+        return (
+          <span
+            key={i}
+            className={`${s.flipWord} ${motion ?? ""}`}
+            style={{ color: toned ? face.tone : undefined, animationDelay: motion ? `${after + i * STAGGER_MS}ms` : undefined }}
+          >
+            {w}
           </span>
-          <span key={`d${n}`} className={`${s.flapBottom} ${s.flapDrop}`}>
-            <span>{cur}</span>
-          </span>
-        </>
-      ) : null}
+        );
+      })}
     </span>
   );
 }
