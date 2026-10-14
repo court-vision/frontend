@@ -340,7 +340,7 @@ export interface paths {
         put?: never;
         /**
          * Start a draft session
-         * @description Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster size) and the keeper allowance. Omit `team_id` for generic settings.
+         * @description Creates a draft room. With a `team_id`, everything the provider already told us is prefilled from that team's synced league: draft type, pick order, rounds (the league's draftable roster spots, starters plus bench) and the keeper allowance. Omit `team_id` for generic settings: a snake of 13 rounds.
          *
          *     `kind` says where the picks come from. `live` follows the team's own ESPN draft and is linked to it at once — one active live room per league, so a second is refused with the first's id. `mock` follows an ESPN mock lobby and links to the first one it reconciles with. `manual` follows nothing.
          *
@@ -4242,7 +4242,7 @@ export interface components {
             pick_order?: number[] | null;
             /**
              * Rounds
-             * @description Defaults to the league's draftable roster size
+             * @description Defaults to the league's draftable roster spots (starters plus bench, IR excluded), else 13
              */
             rounds?: number | null;
             /**

@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
+  DEFAULT_ROUNDS,
   canonicalSlot,
+  draftableSpots,
   capStatuses,
   congestionSummary,
   fillLineup,
@@ -74,6 +76,24 @@ describe("startableSlots", () => {
   test("falls back to what the primary position implies, then to UT alone", () => {
     expect(startableSlots({ primary_position: "PG", positions: null })).toEqual(["PG", "G", "G/F", "UT"]);
     expect(startableSlots({ primary_position: null, positions: [] })).toEqual(["UT"]);
+  });
+});
+
+describe("draftableSpots", () => {
+  test("counts every seat but IR, so the bench drafts too", () => {
+    expect(draftableSpots(ESPN_SLOTS)).toBe(13);
+    expect(draftableSpots({ ...ESPN_SLOTS, BE: 5 })).toBe(15);
+  });
+
+  test("reads provider spellings and ignores what is not a seat", () => {
+    expect(draftableSpots({ PG: 1, UTIL: 2, BN: 3, IL: 2, "": 4 })).toBe(6);
+  });
+
+  test("is null, not zero, when the league has no roster yet", () => {
+    expect(draftableSpots({})).toBeNull();
+    expect(draftableSpots(null)).toBeNull();
+    expect(draftableSpots(undefined)).toBeNull();
+    expect(DEFAULT_ROUNDS).toBe(13);
   });
 });
 

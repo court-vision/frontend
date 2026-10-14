@@ -7,6 +7,7 @@ import dk from "@/components/desk/desk.module.css";
 import { toApiError } from "@/lib/api-error";
 import { importFailure, type ImportFailure } from "@/lib/draft-import";
 import { DEMO_POOL } from "@/lib/draft-demo";
+import { DEFAULT_ROUNDS, draftableSpots } from "@/lib/draft-roster";
 import { useTeamLeagueQuery } from "@/hooks/useTeams";
 import type { DraftKind, DraftSession, DraftType, ScoringFormat } from "@/types/draft";
 import { NO_TEAM, createFormStart, importFormStart, type LobbyModel, type TeamChoice } from "./model";
@@ -102,7 +103,10 @@ export function CreateRoomDialog({
     setSlot((x) => (x != null && x > seatCount ? null : x));
   }, [seatCount]);
   const roundsValue = rounds === "" ? null : Math.max(1, Math.floor(Number(rounds)));
-  const tooBig = model.demo && ownSeats != null && ownSeats * (roundsValue ?? 13) > DEMO_POOL;
+  // What a blank field means, as the backend fills it: the league's draftable
+  // roster (starters plus bench) when it has synced one, else the standard 13.
+  const defaultRounds = (team ? draftableSpots(league.data?.roster_slots) : null) ?? DEFAULT_ROUNDS;
+  const tooBig = model.demo && ownSeats != null && ownSeats * (roundsValue ?? defaultRounds) > DEMO_POOL;
   const slotRequired = leagueSeats > 0;
   const blocked = (slotRequired && slot == null) || leagueUnknown || (!team && ownSeats == null) || tooBig;
 
@@ -242,7 +246,7 @@ export function CreateRoomDialog({
         ) : null}
         <div className={s.field}>
           <span className={s.fieldLabel}>Rounds</span>
-          <input className={dk.input} type="number" min={1} max={40} value={rounds} placeholder={team ? "League's roster size" : "13"} onChange={(e) => setRounds(e.target.value)} />
+          <input className={dk.input} type="number" min={1} max={40} value={rounds} placeholder={String(defaultRounds)} onChange={(e) => setRounds(e.target.value)} />
         </div>
       </div>
       {tooBig ? <span className={dk.error}>The demo pool holds {DEMO_POOL} players: fewer teams or rounds.</span> : null}
