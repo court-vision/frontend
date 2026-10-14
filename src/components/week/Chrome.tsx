@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { QueryKey } from "@tanstack/react-query";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { motion } from "motion/react";
 import { AlertTriangle, Flame, Store } from "lucide-react";
 import { TeamSwitch } from "@/components/desk/TeamSwitch";
 import type { LineupMode, WeekDay, WeekGrid } from "@/lib/week-grid";
 import { formatRelativeTime } from "@/lib/relative-time";
+import { useDataUpdatedAt } from "@/hooks/useDataUpdatedAt";
 import type { BarNotice, TeamOption } from "./WeekPage";
 import { monthDay, periodRange, pts, signed, tip } from "./format";
 import dk from "@/components/desk/desk.module.css";
@@ -345,7 +347,9 @@ const WEEK_KEYS: Array<[string, string]> = [
   ["esc", "clear"],
 ];
 
-export function StatusLine({ updatedAt, demo }: { updatedAt: number | null; demo: boolean }) {
+/** `watch`: the queries whose last answer "Updated …" reports; the line follows them itself. */
+export function StatusLine({ watch, demo }: { watch: readonly QueryKey[]; demo: boolean }) {
+  const updatedAt = useDataUpdatedAt(watch);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 5000);
