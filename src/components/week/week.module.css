@@ -100,6 +100,10 @@
   white-space: nowrap;
 }
 
+.note[data-tone="down"] {
+  color: var(--down);
+}
+
 /* Everything else in the toolbar keeps its size; the bar scrolls before it squeezes. */
 .toolbar > :not(.note) {
   flex-shrink: 0;
@@ -674,8 +678,19 @@ button.headCell:hover {
 
 .dockGroup {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+
+/* The add / drop's slide: the tray's slider, narrower. */
+.dockSlide {
+  flex: 0 1 340px;
+  min-width: 220px;
+}
+
+.dockSlide .slide {
   min-width: 0;
 }
 
@@ -2548,10 +2563,9 @@ button.marketRow:hover {
 .slideLabel {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 0 72px 0 56px;
+  line-height: 44px;
+  text-align: center;
   overflow: hidden;
   font-family: var(--desk-mono), ui-monospace, monospace;
   font-size: 11px;
@@ -2560,6 +2574,10 @@ button.marketRow:hover {
   white-space: nowrap;
   text-overflow: ellipsis;
   pointer-events: none;
+}
+
+.slide[data-long-end="true"] .slideLabel {
+  padding-right: 104px;
 }
 
 .slideEnd {

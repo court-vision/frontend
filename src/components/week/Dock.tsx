@@ -3,6 +3,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import type { StreamerPlayer } from "@/types/streamer";
 import { signed } from "./format";
+import { SlideToSend } from "./SlideToSend";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
@@ -29,14 +30,22 @@ export interface SwapTiming {
 
 interface DockProps {
   swap: PendingSwap | null;
+  /** Being sent (or scheduled) right now. */
+  busy: boolean;
+  /** Why the last send failed. */
+  error: string | null;
   onTiming: (day: number | null) => void;
   onCancelSwap: () => void;
-  onReviewSwap: () => void;
+  /** Make it (or schedule it); resolves when ESPN (or the server) has answered. */
+  onSend: () => Promise<unknown>;
 }
 
-/** The pending add / drop (now or scheduled); staged lineup moves live in the tray. */
-export function Dock({ swap, onTiming, onCancelSwap, onReviewSwap }: DockProps) {
+/** The pending add / drop (now or scheduled), sent with the same slide as the tray's lineup moves. */
+export function Dock({ swap, busy, error, onTiming, onCancelSwap, onSend }: DockProps) {
   if (!swap) return null;
+  const scheduled = swap.from != null;
+  const what = `${scheduled ? `Schedule for ${swap.timings.find((t) => t.day === swap.from)?.label ?? "later"}: add` : "Add"} ${swap.fa.name}${swap.out ? `, drop ${swap.out.name}` : ""}`;
+  const label = swap.blocked ? "Can't send this yet" : scheduled ? "Slide to schedule" : "Slide to send to ESPN";
   return (
     <div className={s.dock} role="region" aria-label="Pending changes">
       {swap ? (
@@ -74,24 +83,41 @@ export function Dock({ swap, onTiming, onCancelSwap, onReviewSwap }: DockProps) 
           ) : (
             <span className={`${dk.chip} ${dk.pv}`} title="Started on his game days">{signed(swap.delta)} week</span>
           )}
-          {swap.blocked ? (
+          {error ? (
+            <span className={s.note} data-tone="down" title={error}>
+              {error}
+            </span>
+          ) : swap.blocked ? (
             <span className={s.note}>{swap.blocked}</span>
           ) : (
-            <span className={s.note}>
+            <span
+              className={s.note}
+              title={
+                scheduled
+                  ? "If he is gone by then, nothing happens. You'll get an email with the result."
+                  : "He joins your bench; move him into a slot afterwards."
+              }
+            >
               {swap.timing ? `${swap.timing} · click a player to drop him instead` : "Click a player in the grid to drop him instead"}
             </span>
           )}
-          <button type="button" className={dk.btn} onClick={onCancelSwap}>
+          <button type="button" className={dk.btn} onClick={onCancelSwap} disabled={busy}>
             Cancel
           </button>
-          <button
-            type="button"
-            className={`${dk.btn} ${dk.btnPrimary}`}
-            onClick={onReviewSwap}
-            disabled={!!swap.blocked}
-          >
-            {swap.from != null ? "Review pickup" : swap.out ? "Review add / drop" : "Review add"}
-          </button>
+          <span className={s.dockSlide}>
+            <SlideToSend
+              locked={!!swap.blocked}
+              busy={busy}
+              label={label}
+              endLabel={scheduled ? "SCHEDULE" : "SEND"}
+              ariaLabel={what}
+              valueNow={0}
+              valueMax={1}
+              valueText={busy ? (scheduled ? "Scheduling" : "Sending") : "Not sent"}
+              onFinish={onSend}
+              thumbAttr="data-dock-slide"
+            />
+          </span>
         </div>
       ) : null}
     </div>

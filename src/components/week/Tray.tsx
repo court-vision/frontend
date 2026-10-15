@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronsRight, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { slotName, type MoveRole } from "@/lib/lineup-editor";
 import type { LineupMove, MoveError } from "@/types/lineup-editor";
 import { shortName, signed } from "./format";
+import { SlideToSend } from "./SlideToSend";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
@@ -56,19 +57,8 @@ interface TrayProps {
   onHeight?: (px: number) => void;
 }
 
-const THUMB = 44;
-
 /** A confirmation is of a day's moves as they stand: change them and it lapses. */
 const keyOf = (d: TrayDay) => `${d.day}:${d.moves.map((m) => `${m.playerId}>${m.to}`).join(",")}`;
-const last = <T,>(list: T[]): T | undefined => list[list.length - 1];
-
-interface Track {
-  left: number;
-  /** The thumb's travel: at this offset it has reached the end. */
-  end: number;
-  /** Each day's checkpoint, as a thumb offset: passing it confirms the day. */
-  points: Array<{ day: number; at: number }>;
-}
 
 /**
  * Staged lineup moves before they go to ESPN: one column per day, in day order,
@@ -111,62 +101,24 @@ export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay,
       return next;
     });
 
-  // ---- the slider ----
-  const trackRef = useRef<HTMLDivElement>(null);
+  // ---- the slider: passing under a day confirms it, the end sends ----
   const cols = useRef(new Map<number, HTMLElement>());
-  const [x, setX] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const drag = useRef<(Track & { grab: number; fired: boolean; passed: Set<number> }) | null>(null);
-
-  /** Where each day's checkpoint sits: under its column, or evenly when the columns overflow. */
-  const measure = (): Track | null => {
-    const track = trackRef.current;
-    if (!track) return null;
-    const r = track.getBoundingClientRect();
-    const end = Math.max(0, r.width - THUMB);
-    let points = days.map((d) => {
-      const c = cols.current.get(d.day)?.getBoundingClientRect();
-      return { day: d.day, at: c ? c.left + c.width / 2 - r.left - THUMB / 2 : NaN };
-    });
-    const aligned = points.every((p, i) => Number.isFinite(p.at) && p.at > 0 && p.at < end - 8 && (i === 0 || p.at > points[i - 1].at));
-    if (!aligned) points = days.map((d, i) => ({ day: d.day, at: ((i + 1) / (days.length + 1)) * end }));
-    return { left: r.left, end, points };
-  };
-  const passedAt = (t: Track, at: number) => new Set(t.points.filter((p) => at >= p.at).map((p) => p.day));
   const reveal = (day: number | undefined) =>
     day != null && cols.current.get(day)?.scrollIntoView({ block: "nearest", inline: "nearest" });
-
   /** The thumb reached the end: everything it passed (and everything ticked) goes. */
   const finish = (over: ReadonlySet<number>) => {
     const list = days.filter((d) => sendable.has(d.day) && (picked.has(keyOf(d)) || over.has(d.day))).map((d) => d.day);
     keep(over);
     setPassed(new Set());
-    void send(list).finally(() => setX(0));
+    return send(list);
   };
-  /** Let go short of the end: the days passed stay confirmed, the thumb goes home. */
+  /** Let go short of the end: the days passed stay confirmed. */
   const release = (over: ReadonlySet<number>) => {
     keep(over);
     setPassed(new Set());
-    setX(0);
-  };
-
-  const step = (dir: 1 | -1 | "end" | "home") => {
-    const t = measure();
-    if (!t || locked) return;
-    let at: number;
-    if (dir === "home") at = 0;
-    else if (dir === "end") at = t.end;
-    else if (dir === 1) at = t.points.find((p) => p.at > x + 0.5)?.at ?? t.end;
-    else at = [...t.points].reverse().find((p) => p.at < x - 0.5)?.at ?? 0;
-    const over = passedAt(t, at);
-    setX(at);
-    setPassed(over);
-    reveal(last(t.points.filter((p) => at >= p.at))?.day);
-    if (at >= t.end) finish(over);
   };
 
   const confirmedLabel = days.filter((d) => confirmed.has(d.day)).map((d) => d.dow);
-  const fill = x + THUMB / 2;
 
   return (
     <section ref={rootRef} className={s.tray} data-tray aria-label="Staged lineup moves">
@@ -288,77 +240,23 @@ export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay,
           })}
         </div>
 
-        <div
-          ref={trackRef}
-          className={s.slide}
-          data-dragging={dragging}
-          data-locked={locked}
-          style={{ ["--fill" as string]: `${fill}px` }}
-        >
-          <span className={s.slideFill} />
-          <span className={s.slideLabel} style={{ opacity: Math.max(0, 1 - x / 140) }}>
-            {blocked ? blocked : "Slide to confirm each day · send at the end"}
-          </span>
-          <span className={s.slideEnd}>SEND</span>
-          <button
-            type="button"
-            role="slider"
-            aria-label="Confirm days and send"
-            aria-valuemin={0}
-            aria-valuemax={days.length + 1}
-            aria-valuenow={confirmed.size}
-            aria-valuetext={confirmedLabel.length ? `${confirmedLabel.join(", ")} confirmed` : "No days confirmed"}
-            aria-disabled={locked}
-            className={s.slideThumb}
-            style={{ transform: `translateX(${x}px)` }}
-            onPointerDown={(e) => {
-              if (locked) return;
-              const t = measure();
-              if (!t) return;
-              e.currentTarget.setPointerCapture(e.pointerId);
-              drag.current = { ...t, grab: e.clientX - t.left - x, fired: false, passed: new Set() };
-              setDragging(true);
-            }}
-            onPointerMove={(e) => {
-              const d = drag.current;
-              if (!d || d.fired) return;
-              const at = Math.max(0, Math.min(d.end, e.clientX - d.left - d.grab));
-              const over = passedAt(d, at);
-              if (over.size !== d.passed.size) reveal(last(d.points.filter((p) => at >= p.at))?.day);
-              d.passed = over;
-              setX(at);
-              setPassed(over);
-              if (at >= d.end - 1) {
-                d.fired = true;
-                finish(over);
-              }
-            }}
-            onPointerUp={() => {
-              const d = drag.current;
-              drag.current = null;
-              setDragging(false);
-              if (d && !d.fired) release(d.passed);
-            }}
-            onPointerCancel={() => {
-              const d = drag.current;
-              drag.current = null;
-              setDragging(false);
-              if (d && !d.fired) release(d.passed);
-            }}
-            onKeyDown={(e) => {
-              const keys: Record<string, 1 | -1 | "end" | "home"> = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1, End: "end", Home: "home" };
-              const dir = keys[e.key];
-              if (dir == null) return;
-              e.preventDefault();
-              step(dir);
-            }}
-            onBlur={() => {
-              if (!drag.current && x > 0 && !sending) release(passed);
-            }}
-          >
-            {sending ? <span className={dk.spin} /> : <ChevronsRight size={16} />}
-          </button>
-        </div>
+        <SlideToSend
+          stops={days.map((d) => d.day)}
+          anchorOf={(day) => cols.current.get(day)}
+          locked={!!blocked}
+          busy={sending}
+          label={blocked ? blocked : "Slide to confirm each day · send at the end"}
+          ariaLabel="Confirm days and send"
+          valueNow={confirmed.size}
+          valueMax={days.length + 1}
+          valueText={confirmedLabel.length ? `${confirmedLabel.join(", ")} confirmed` : "No days confirmed"}
+          onPass={(over, latest) => {
+            setPassed(over);
+            reveal(latest);
+          }}
+          onRelease={release}
+          onFinish={finish}
+        />
       </div>
     </section>
   );

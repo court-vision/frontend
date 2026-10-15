@@ -415,7 +415,7 @@ export function WeekTerminal({
       const a = row.action;
       if (row.button.intent === "none" || todayDay == null) return;
       if (a.transaction) {
-        // An add is staged in the dock: it previews in the grid and is reviewed and sent from there.
+        // An add is staged in the dock: it previews in the grid and is sent from there with its slide.
         if (row.button.intent === "unstage") setPinned(null);
         else {
           setHover(null);
@@ -464,7 +464,7 @@ export function WeekTerminal({
   // ---- cursor and menus ----
   const [cursor, setCursor] = useState<Cursor | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
-  const [confirm, setConfirm] = useState<"swap" | "stop-lane" | null>(null);
+  const [confirm, setConfirm] = useState<"stop-lane" | null>(null);
   // The spot a stream lane is being set up on.
   const [laneFor, setLaneFor] = useState<{ id: number; name: string } | null>(null);
 
@@ -809,16 +809,16 @@ export function WeekTerminal({
           ? await data.schedulePickup(swapFa, drop, pinned.from)
           : "refused"
         : await data.transact(pinned.faId, drop, todayBoard);
-    if (outcome === "ok") {
-      setPinned(null);
-      setConfirm(null);
-    }
+    if (outcome === "ok") setPinned(null);
   }, [pinned, todayBoard, data, swapFa]);
-  const reviewSwap = useCallback(() => {
-    data.clearTransactError();
-    data.clearScheduleError();
-    setConfirm("swap");
-  }, [data]);
+  // A different add / drop starts without the last one's error.
+  const swapKey = pinned ? `${pinned.faId}:${pinned.replaces}:${pinned.from}` : null;
+  const { clearTransactError, clearScheduleError } = data;
+  useEffect(() => {
+    clearTransactError();
+    clearScheduleError();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [swapKey]);
 
   // Hovering a pending pickup previews it (the pool has to know him first).
   const previewPickup = useCallback(
@@ -1309,20 +1309,17 @@ export function WeekTerminal({
               setHover(null);
               setPinned(pick ? { ...pick, from: pinned?.faId === pick.faId ? pinned.from : null } : null);
             }}
-            onAdd={(pick: MarketPick) => {
-              setPinned({ ...pick, from: pinned?.faId === pick.faId ? pinned.from : null });
-              setHover(null);
-              reviewSwap();
-            }}
             onClose={closeMarket}
           />
         ) : null}
         </div>
         <Dock
           swap={swap}
+          busy={swap?.from != null ? data.scheduling : data.transacting}
+          error={swap?.from != null ? data.scheduleError : data.transactError}
           onTiming={(day) => pinned && setPinned({ ...pinned, from: day })}
           onCancelSwap={() => setPinned(null)}
-          onReviewSwap={reviewSwap}
+          onSend={sendSwap}
         />
       </>
     );
@@ -1399,51 +1396,6 @@ export function WeekTerminal({
           }}
         />
       ) : null}
-
-      <ConfirmDialog
-        open={confirm === "swap" && !!swap}
-        onOpenChange={(open) => !open && setConfirm(null)}
-        container={root}
-        title={
-          swap
-            ? `${swap.from != null ? `Schedule for ${dayLabel(swap.from)}: add` : "Add"} ${shortName(swap.fa.name)}${swap.out ? `, drop ${shortName(swap.out.name)}` : ""}`
-            : ""
-        }
-        body={
-          swap?.from != null
-            ? data.demo
-              ? "Demo: the pickup is scheduled here only, and nothing runs."
-              : `${swap.timing}, the earliest it counts for ${dayLabel(swap.from)}. If ${shortName(swap.fa.name)} is gone by then, nothing happens. You can cancel it until then, and you'll get an email with the result.`
-            : data.demo
-              ? "Demo: the add and drop apply here only."
-              : "One add/drop on ESPN. He joins your bench; move him into a slot afterwards."
-        }
-        lines={
-          swap
-            ? [
-                {
-                  key: "add",
-                  left: <><span style={{ color: "var(--up)" }}>+</span> {swap.fa.name}</>,
-                  right: (
-                    <span className={dk.sub}>
-                      {swap.fa.team} ·{" "}
-                      {swap.from != null
-                        ? `${swap.fa.game_days.filter((d) => d >= swap.from!).length} games from ${dayLabel(swap.from).split(" ")[0]}`
-                        : `${swap.fa.games_remaining} games left`}
-                    </span>
-                  ),
-                },
-                swap.out
-                  ? { key: "drop", left: <><span style={{ color: "var(--down)" }}>−</span> {swap.out.name}</>, right: <span className={`${dk.chip} ${dk.pv}`}>{signed(swap.delta)} week</span> }
-                  : { key: "room", left: <span className={dk.sub}>Into an open roster spot</span>, right: <span className={`${dk.chip} ${dk.pv}`}>{signed(swap.delta)} week</span> },
-              ]
-            : []
-        }
-        confirmLabel={swap?.from != null ? "Schedule pickup" : "Send to ESPN"}
-        busy={swap?.from != null ? data.scheduling : data.transacting}
-        error={swap?.from != null ? data.scheduleError : data.transactError}
-        onConfirm={() => void sendSwap()}
-      />
 
       <LaneSheet
         player={laneFor}
