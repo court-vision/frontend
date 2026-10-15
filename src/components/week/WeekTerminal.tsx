@@ -61,8 +61,8 @@ import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar, type WeekView 
 import { MatchupView } from "./MatchupView";
 import { MarketPane, type MarketMode, type MarketPick } from "./Market";
 import { NO_DROP, addsCountFrom, dropCandidates, gainOf, openSpots, rosterRoom } from "@/lib/market";
-import { ConfirmDialog, Dock, type PendingSwap, type SwapTiming } from "./Dock";
-import { Tray, type PendingDay, type TrayDay } from "./Tray";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { Tray, type PendingDay, type SwapTiming, type TrayDay, type TraySwap } from "./Tray";
 import { TodayStrip, type TodayRow } from "./TodayStrip";
 import { sendLineupDays } from "./lineup-send";
 import { EdgeTick } from "./EdgeTick";
@@ -80,6 +80,8 @@ import { useDeskTheme } from "@/components/desk/useDeskTheme";
 
 const NO_STAGING: Staged = {};
 const MAX_REPLACE_OPTIONS = 80;
+/** The tray column an add / drop made now sits in when today is not on the board. */
+const NOW_DAY = -1;
 
 /**
  * `day` is the day the menu acts on (a column in the daily view, the selected
@@ -236,7 +238,7 @@ export function WeekTerminal({
   const bestGain = gridBest && gridNoPreview && mode === "espn" ? gridBest.projected.you - gridNoPreview.projected.you : 0;
   // What an add does to the week on screen: the lineup view in force (as set,
   // or the best each day) with him seated where he helps most. The market, the
-  // replace menu, the preview and the dock all read this one number.
+  // replace menu, the preview and the tray all read this one number.
   const faGain = useCallback(
     (fa: StreamerPlayer, replaces: number, from: number | null = null) => {
       if (!source || !gridNoPreview) return 0;
@@ -286,11 +288,10 @@ export function WeekTerminal({
 
   // ---- the market: free agents ranked by what they add to this week ----
   const [marketOpen, setMarketOpen] = useState(initialMarket != null);
-  // Closing the market lets go of the free agent picked in it, and of any hover.
+  // Closing the market lets go of any hover; a free agent picked in it is staged in the tray and stays.
   const closeMarket = useCallback(() => {
     setMarketOpen(false);
     setHover(null);
-    setPinned(null);
   }, []);
   const toggleMarket = useCallback(() => {
     if (marketOpen) closeMarket();
@@ -415,7 +416,7 @@ export function WeekTerminal({
       const a = row.action;
       if (row.button.intent === "none" || todayDay == null) return;
       if (a.transaction) {
-        // An add is staged in the dock: it previews in the grid and is reviewed and sent from there.
+        // An add is staged in the tray: it previews in the grid and is sent from there with the day.
         if (row.button.intent === "unstage") setPinned(null);
         else {
           setHover(null);
@@ -464,7 +465,7 @@ export function WeekTerminal({
   // ---- cursor and menus ----
   const [cursor, setCursor] = useState<Cursor | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
-  const [confirm, setConfirm] = useState<"swap" | "stop-lane" | null>(null);
+  const [confirm, setConfirm] = useState<"stop-lane" | null>(null);
   // The spot a stream lane is being set up on.
   const [laneFor, setLaneFor] = useState<{ id: number; name: string } | null>(null);
 
@@ -487,17 +488,12 @@ export function WeekTerminal({
   const openMove = useCallback(
     (key: string, el?: HTMLElement | null, day?: number) => {
       const row = rowByKey(key);
-      // With a free agent picked, the roster player clicked becomes the one he replaces.
-      if (pinned && row?.player && row.kind === "player") {
-        if (row.player.id !== pinned.replaces) setPinned({ ...pinned, replaces: row.player.id });
-        return;
-      }
       const anchor = el ?? anchorFor(key);
       if (!row?.player || row.kind !== "player" || !anchor) return;
       if (day === undefined) setCursor({ key, col: 0 });
       setMenu({ type: "move", rowKey: key, anchor, day: day ?? viewDay, from: null });
     },
-    [rowByKey, anchorFor, viewDay, pinned]
+    [rowByKey, anchorFor, viewDay]
   );
   const openSeat = useCallback(
     (playerId: number, day: number, el: HTMLElement) => openMove(`player-${playerId}`, el, day),
@@ -687,71 +683,6 @@ export function WeekTerminal({
     setDay(day, next);
   }, [autoslotDay, boards, source, editableOn, todayDay, lineup, dayLabel, setDay]);
 
-  // ---- the tray: staged moves by day, confirmed and sent from there ----
-  const [sendingDay, setSendingDay] = useState<number | null>(null);
-  const [trayHeight, setTrayHeight] = useState(0);
-  const [dayErrors, setDayErrors] = useState<Record<number, string>>({});
-  const dropDay = useCallback((day: number) => {
-    setStagedByDay((prev) => {
-      const out = { ...prev };
-      delete out[day];
-      return out;
-    });
-  }, []);
-  /** Write the chosen days, earliest first; stop at the first one ESPN refuses (`sendLineupDays`). */
-  const sendDays = useCallback(
-    async (chosen: number[]) => {
-      const order = pending.filter((p) => chosen.includes(p.day));
-      if (order.length === 0) return;
-      setDayErrors((prev) => Object.fromEntries(Object.entries(prev).filter(([d]) => !chosen.includes(Number(d)))));
-      const snapshot = { ...stagedByDay };
-      const { done, failed } = await sendLineupDays(order, {
-        board: (day) => boards[day],
-        moves: (day, b) => diff(b, normalize(b, snapshot[day] ?? NO_STAGING)),
-        apply: lineup.apply,
-        refresh: lineup.refresh,
-        settle: lineup.settle,
-        onSending: setSendingDay,
-        onDone: dropDay,
-      });
-      const sent = done.map((p) => p.label);
-      if (failed) {
-        const e = toApiError(failed.error);
-        const reasons = e.code === ROSTER_MOVE_INVALID ? ((e.data as { errors?: MoveError[] } | null)?.errors ?? []) : [];
-        setDayErrors((prev) => ({ ...prev, [failed.step.day]: reasons[0]?.message ?? userMessage(failed.error) }));
-        if (sent.length) toast.success(`Lineup updated for ${sent.join(", ")}; ${failed.step.label} was refused`);
-        return;
-      }
-      if (data.demo) toast.success(`Lineup updated (demo): ${sent.join(", ")}`);
-      else toast.success(`Lineup updated on ESPN for ${sent.join(", ")}`);
-    },
-    [pending, stagedByDay, boards, lineup, data.demo, dropDay]
-  );
-  const trayDays = useMemo<TrayDay[]>(
-    () =>
-      pending.map((p) => {
-        const d = source?.days[p.day];
-        const names = new Map((boards[p.day]?.players ?? []).map((x) => [x.player_id, x.name]));
-        return {
-          day: p.day,
-          dow: d?.dow ?? p.label,
-          date: d ? monthDay(d.date) : "",
-          moves: p.moves.map((m) => ({
-            playerId: m.player_id,
-            name: names.get(m.player_id) ?? `#${m.player_id}`,
-            from: m.from_slot_id,
-            to: m.to_slot_id,
-            role: moveRole(m),
-          })),
-          // What this day's own moves add: the week with them, less the week without.
-          delta: gridNoPreview ? gridNoPreview.projected.you - weekWith(p.day, NO_STAGING) : 0,
-          problems: p.problems.map((e) => e.message),
-          error: dayErrors[p.day] ?? null,
-        };
-      }),
-    [pending, source, boards, gridNoPreview, weekWith, dayErrors]
-  );
-
   // ---- add / drop, now or scheduled ----
   const swapOut = pinned && pinned.replaces !== NO_DROP ? source?.mine.find((p) => p.id === pinned.replaces) ?? null : null;
   const swapFa = pinned ? faById.get(pinned.faId) ?? null : null;
@@ -770,8 +701,9 @@ export function WeekTerminal({
     ];
   }, [pinned, swapFa, source, canSchedule, faGain]);
 
-  let swap: PendingSwap | null = null;
-  if (pinned && swapFa && source && (swapOut || pinned.replaces === NO_DROP)) {
+  /** The staged add / drop as the tray shows it: in the column of the day it is made. */
+  const swap = useMemo<(TraySwap & { blocked: string | null; delta: number; day: number }) | null>(() => {
+    if (!pinned || !swapFa || !source || !(swapOut || pinned.replaces === NO_DROP)) return null;
     let blocked: string | null = null;
     if (swapFrom != null) {
       // Scheduled: locks and waivers are the server's to wait out when the day comes.
@@ -789,19 +721,31 @@ export function WeekTerminal({
     } else if (swapFa.acquisition_status === "waivers") blocked = `${swapFa.name} is on waivers.`;
     else if (!data.demo && !todayBoard.can_write) blocked = writeBlockedCopy(todayBoard.write_blocked_reason);
     else if (!swapOut && rosterRoom(todayBoard) === 0) blocked = "Your roster is full: pick someone to drop.";
-    swap = {
-      fa: swapFa,
-      out: swapOut ? { id: swapOut.id, name: swapOut.name } : null,
-      delta: pinnedDelta,
-      blocked,
+    const fromDow = swapFrom != null ? source.days[swapFrom]?.dow ?? "" : "";
+    return {
+      add: {
+        id: swapFa.player_id,
+        name: swapFa.name,
+        team: swapFa.team,
+        games:
+          swapFrom != null
+            ? `${swapFa.game_days.filter((d) => d >= swapFrom).length} games from ${fromDow}`
+            : `${swapFa.games_remaining} games left`,
+      },
+      drop: swapOut ? { id: swapOut.id, name: swapOut.name } : null,
       from: swapFrom,
       timings,
       timing: swapFrom != null ? pickupTiming(source.days, swapFrom, swapOut, todayIndex, addFrom) : null,
+      blocked,
+      delta: pinnedDelta,
+      // Made now, it sits in today's column (or one of its own when today isn't on the board).
+      day: swapFrom ?? todayDay ?? NOW_DAY,
     };
-  }
+  }, [pinned, swapFa, source, swapOut, swapFrom, pendingPickups, todayBoard, data.demo, pickupDayLabel, timings, todayIndex, addFrom, pinnedDelta, todayDay]);
 
-  const sendSwap = useCallback(async () => {
-    if (!pinned || !todayBoard) return;
+  /** Make (or schedule) the add / drop; "ok" takes it off the tray. */
+  const sendSwap = useCallback(async (): Promise<"ok" | "refused"> => {
+    if (!pinned || !todayBoard) return "refused";
     const drop = pinned.replaces === NO_DROP ? null : pinned.replaces;
     const outcome =
       pinned.from != null
@@ -809,16 +753,136 @@ export function WeekTerminal({
           ? await data.schedulePickup(swapFa, drop, pinned.from)
           : "refused"
         : await data.transact(pinned.faId, drop, todayBoard);
-    if (outcome === "ok") {
-      setPinned(null);
-      setConfirm(null);
-    }
+    if (outcome === "ok") setPinned(null);
+    return outcome;
   }, [pinned, todayBoard, data, swapFa]);
-  const reviewSwap = useCallback(() => {
-    data.clearTransactError();
-    data.clearScheduleError();
-    setConfirm("swap");
-  }, [data]);
+  // A different add / drop starts without the last one's error.
+  const swapKey = pinned ? `${pinned.faId}:${pinned.replaces}:${pinned.from}` : null;
+  const { clearTransactError, clearScheduleError } = data;
+  useEffect(() => {
+    clearTransactError();
+    clearScheduleError();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [swapKey]);
+
+  // ---- the tray: everything staged, by day, confirmed and sent from there ----
+  const [sendingDay, setSendingDay] = useState<number | null>(null);
+  const [trayHeight, setTrayHeight] = useState(0);
+  const [dayErrors, setDayErrors] = useState<Record<number, string>>({});
+  const dropDay = useCallback((day: number) => {
+    setStagedByDay((prev) => {
+      const out = { ...prev };
+      delete out[day];
+      return out;
+    });
+  }, []);
+  /**
+   * Write the chosen days' lineups, earliest first; stop at the first one ESPN refuses
+   * (`sendLineupDays`). After an add / drop made now the boards on screen are behind
+   * the roster: every day is read again before its write.
+   */
+  const sendDays = useCallback(
+    async (chosen: number[], rosterChanged: boolean) => {
+      const order = pending.filter((p) => chosen.includes(p.day));
+      if (order.length === 0) return;
+      setDayErrors((prev) => Object.fromEntries(Object.entries(prev).filter(([d]) => !chosen.includes(Number(d)))));
+      const snapshot = { ...stagedByDay };
+      const fresh = new Map<number, LineupState | null>();
+      if (rosterChanged) {
+        await Promise.all(order.map(async (p) => fresh.set(p.day, await lineup.refresh(p.day).catch(() => null))));
+      }
+      const { done, failed } = await sendLineupDays(order, {
+        board: (day) => fresh.get(day) ?? boards[day],
+        moves: (day, b) => diff(b, normalize(b, snapshot[day] ?? NO_STAGING)),
+        apply: lineup.apply,
+        refresh: lineup.refresh,
+        settle: lineup.settle,
+        onSending: setSendingDay,
+        onDone: dropDay,
+      });
+      const sent = done.map((p) => p.label);
+      if (failed) {
+        const e = toApiError(failed.error);
+        const reasons = e.code === ROSTER_MOVE_INVALID ? ((e.data as { errors?: MoveError[] } | null)?.errors ?? []) : [];
+        setDayErrors((prev) => ({ ...prev, [failed.step.day]: reasons[0]?.message ?? userMessage(failed.error) }));
+        if (sent.length) toast.success(`Lineup updated for ${sent.join(", ")}; ${failed.step.label} was refused`);
+        return;
+      }
+      if (sent.length === 0) return;
+      if (data.demo) toast.success(`Lineup updated (demo): ${sent.join(", ")}`);
+      else toast.success(`Lineup updated on ESPN for ${sent.join(", ")}`);
+    },
+    [pending, stagedByDay, boards, lineup, data.demo, dropDay]
+  );
+  /**
+   * Send the confirmed days: the add / drop first (its board is the one on screen), then the
+   * lineups in day order. A refused add / drop stops the send, as a refused day does: the
+   * lineups confirmed with it stay in the tray, with its error, for a retry. The tray stays
+   * locked from the first write to the last, so nothing is sent twice or discarded under a send.
+   */
+  const sendAll = useCallback(
+    async (chosen: number[]) => {
+      const first = swap && !swap.blocked && chosen.includes(swap.day) ? swap : null;
+      setSendingDay(first ? first.day : chosen[0] ?? null);
+      try {
+        let rosterChanged = false;
+        if (first) {
+          if ((await sendSwap()) !== "ok") return;
+          rosterChanged = first.from == null;
+        }
+        await sendDays(chosen, rosterChanged);
+      } finally {
+        setSendingDay(null);
+      }
+    },
+    [swap, sendSwap, sendDays]
+  );
+  const trayDays = useMemo<TrayDay[]>(() => {
+    const columns = new Map<number, TrayDay>();
+    for (const p of pending) {
+      const d = source?.days[p.day];
+      const names = new Map((boards[p.day]?.players ?? []).map((x) => [x.player_id, x.name]));
+      columns.set(p.day, {
+        day: p.day,
+        dow: d?.dow ?? p.label,
+        date: d ? monthDay(d.date) : "",
+        moves: p.moves.map((m) => ({
+          playerId: m.player_id,
+          name: names.get(m.player_id) ?? `#${m.player_id}`,
+          from: m.from_slot_id,
+          to: m.to_slot_id,
+          role: moveRole(m),
+        })),
+        swap: null,
+        // What this day's own moves add: the week with them, less the week without.
+        delta: gridNoPreview ? gridNoPreview.projected.you - weekWith(p.day, NO_STAGING) : 0,
+        problems: p.problems.map((e) => e.message),
+        error: dayErrors[p.day] ?? null,
+      });
+    }
+    if (swap) {
+      const d = source?.days[swap.day];
+      const col = columns.get(swap.day) ?? {
+        day: swap.day,
+        dow: d?.dow ?? "Now",
+        date: d ? monthDay(d.date) : "",
+        moves: [],
+        swap: null,
+        delta: 0,
+        problems: [],
+        error: null,
+      };
+      const { blocked, delta, day: _day, ...rest } = swap;
+      columns.set(swap.day, {
+        ...col,
+        swap: rest,
+        delta: col.delta + delta,
+        problems: blocked ? [...col.problems, blocked] : col.problems,
+        error: col.error ?? (swap.from != null ? data.scheduleError : data.transactError),
+      });
+    }
+    return [...columns.values()].sort((a, b) => a.day - b.day);
+  }, [pending, source, boards, gridNoPreview, weekWith, dayErrors, swap, data.scheduleError, data.transactError]);
 
   // Hovering a pending pickup previews it (the pool has to know him first).
   const previewPickup = useCallback(
@@ -926,8 +990,8 @@ export function WeekTerminal({
           return;
         }
         case "Escape":
+          // A staged add / drop is the tray's to take back, like a staged lineup move.
           if (tapeBox) setTapeBox(null);
-          else if (pinned) setPinned(null);
           else setCursor(null);
           return;
       }
@@ -1061,7 +1125,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, toggleMarket, streamable, laneFor, tapeBox, data.actions]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, toggleMarket, streamable, laneFor, tapeBox, data.actions]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
@@ -1233,7 +1297,6 @@ export function WeekTerminal({
             youName={source.you.name}
             oppName={source.opp.name}
             onSeat={openSeat}
-            picking={!!pinned}
             drag={seatDrag}
             pickups={pickupRows}
             onPreviewPickup={previewPickup}
@@ -1254,7 +1317,6 @@ export function WeekTerminal({
             oppName={source.opp.name}
             onViewDay={setViewDay}
             onMove={openMove}
-            picking={!!pinned}
             onReplace={openReplace}
             drag={drag}
             mode={mode}
@@ -1264,15 +1326,22 @@ export function WeekTerminal({
           <Tray
             days={trayDays}
             blocked={movesBlocked}
-            demo={data.demo}
             sendingDay={sendingDay}
             onUnstage={(day, playerId) => {
               const b = boards[day];
               if (b) setDay(day, unstagePure(b, staging[day], playerId));
             }}
-            onDiscardDay={dropDay}
-            onDiscardAll={() => setStagedByDay({})}
-            onSend={sendDays}
+            onDiscardDay={(day) => {
+              dropDay(day);
+              if (swap?.day === day) setPinned(null);
+            }}
+            onDiscardAll={() => {
+              setStagedByDay({});
+              setPinned(null);
+            }}
+            onTiming={(day) => pinned && setPinned({ ...pinned, from: day })}
+            onCancelSwap={() => setPinned(null)}
+            onSend={sendAll}
             onHeight={setTrayHeight}
           />
         ) : null}
@@ -1309,21 +1378,10 @@ export function WeekTerminal({
               setHover(null);
               setPinned(pick ? { ...pick, from: pinned?.faId === pick.faId ? pinned.from : null } : null);
             }}
-            onAdd={(pick: MarketPick) => {
-              setPinned({ ...pick, from: pinned?.faId === pick.faId ? pinned.from : null });
-              setHover(null);
-              reviewSwap();
-            }}
             onClose={closeMarket}
           />
         ) : null}
         </div>
-        <Dock
-          swap={swap}
-          onTiming={(day) => pinned && setPinned({ ...pinned, from: day })}
-          onCancelSwap={() => setPinned(null)}
-          onReviewSwap={reviewSwap}
-        />
       </>
     );
   }
@@ -1399,51 +1457,6 @@ export function WeekTerminal({
           }}
         />
       ) : null}
-
-      <ConfirmDialog
-        open={confirm === "swap" && !!swap}
-        onOpenChange={(open) => !open && setConfirm(null)}
-        container={root}
-        title={
-          swap
-            ? `${swap.from != null ? `Schedule for ${dayLabel(swap.from)}: add` : "Add"} ${shortName(swap.fa.name)}${swap.out ? `, drop ${shortName(swap.out.name)}` : ""}`
-            : ""
-        }
-        body={
-          swap?.from != null
-            ? data.demo
-              ? "Demo: the pickup is scheduled here only, and nothing runs."
-              : `${swap.timing}, the earliest it counts for ${dayLabel(swap.from)}. If ${shortName(swap.fa.name)} is gone by then, nothing happens. You can cancel it until then, and you'll get an email with the result.`
-            : data.demo
-              ? "Demo: the add and drop apply here only."
-              : "One add/drop on ESPN. He joins your bench; move him into a slot afterwards."
-        }
-        lines={
-          swap
-            ? [
-                {
-                  key: "add",
-                  left: <><span style={{ color: "var(--up)" }}>+</span> {swap.fa.name}</>,
-                  right: (
-                    <span className={dk.sub}>
-                      {swap.fa.team} ·{" "}
-                      {swap.from != null
-                        ? `${swap.fa.game_days.filter((d) => d >= swap.from!).length} games from ${dayLabel(swap.from).split(" ")[0]}`
-                        : `${swap.fa.games_remaining} games left`}
-                    </span>
-                  ),
-                },
-                swap.out
-                  ? { key: "drop", left: <><span style={{ color: "var(--down)" }}>−</span> {swap.out.name}</>, right: <span className={`${dk.chip} ${dk.pv}`}>{signed(swap.delta)} week</span> }
-                  : { key: "room", left: <span className={dk.sub}>Into an open roster spot</span>, right: <span className={`${dk.chip} ${dk.pv}`}>{signed(swap.delta)} week</span> },
-              ]
-            : []
-        }
-        confirmLabel={swap?.from != null ? "Schedule pickup" : "Send to ESPN"}
-        busy={swap?.from != null ? data.scheduling : data.transacting}
-        error={swap?.from != null ? data.scheduleError : data.transactError}
-        onConfirm={() => void sendSwap()}
-      />
 
       <LaneSheet
         player={laneFor}

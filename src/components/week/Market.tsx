@@ -82,7 +82,6 @@ interface MarketProps {
   scheduled: ReadonlyMap<number, string>;
   onHover: (pick: MarketPick | null) => void;
   onPin: (pick: MarketPick | null) => void;
-  onAdd: (pick: MarketPick) => void;
   onClose: () => void;
 }
 
@@ -357,7 +356,7 @@ function FaItem(props: ItemProps) {
 }
 
 /** The selected free agent: every drop that could make room, ranked, and the add. Evaluated only when open. */
-function DropOptions({ fa, target, days, evaluate, allDrops, room, nameOf, avgOf, pinned, pinnedBlocked, onHover, onPin, onAdd }: ItemProps) {
+function DropOptions({ fa, target, days, evaluate, allDrops, room, nameOf, avgOf, pinned, pinnedBlocked, onHover, onPin }: ItemProps) {
   const picked = pinned && pinned.faId === fa.player_id ? pinned.replaces : null;
   const from = pinned && pinned.faId === fa.player_id ? pinned.from ?? null : null;
   const options = useMemo(() => {
@@ -371,7 +370,7 @@ function DropOptions({ fa, target, days, evaluate, allDrops, room, nameOf, avgOf
   return (
     <div className={s.marketDetail}>
       <span className={dk.label}>
-        {day ? `Make room from ${day.dow}` : "Make room"} · your weakest players, or click anyone in the grid
+        {day ? `Make room from ${day.dow}` : "Make room"} · your weakest players
       </span>
       <div className={s.marketOptions}>
         {options.filter((o, i) => i < 6 || o.dropId === picked).map((o) => {
@@ -394,14 +393,9 @@ function DropOptions({ fa, target, days, evaluate, allDrops, room, nameOf, avgOf
           );
         })}
       </div>
-      {pick ? (
+      {pick && pinnedBlocked ? (
         <div className={s.marketActs}>
-          {pinnedBlocked ? <span className={s.marketBlocked}>{pinnedBlocked}</span> : null}
-          <button type="button" className={`${dk.btn} ${dk.btnPrimary} ${dk.btnSmall}`} disabled={!!pinnedBlocked} onClick={() => onAdd(pick)}>
-            {day ? `Schedule for ${day.dow}: ` : ""}
-            {day ? "add" : "Add"} {shortName(fa.name)}
-            {pick.replaces === NO_DROP ? "" : `, drop ${shortName(nameOf(pick.replaces))}`}
-          </button>
+          <span className={s.marketBlocked}>{pinnedBlocked}</span>
         </div>
       ) : null}
     </div>

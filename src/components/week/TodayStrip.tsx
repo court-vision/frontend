@@ -55,7 +55,7 @@ const TONE: Record<DailyActionKind, string> = {
  * grows out of the strip: every row with its own Stage button. The Stage
  * button and the strip's edges never open it, so the button stays reachable,
  * and the moves hold still while the pointer is anywhere on the strip. Nothing
- * here sends: lineup moves wait in the tray, an add in the dock.
+ * here sends: everything waits in the tray.
  */
 export function TodayStrip(props: TodayStripProps) {
   const { status, rows, error, open, onOpen, onButton } = props;
@@ -152,7 +152,7 @@ function StageButton({ row, onButton, wide = false }: { row: TodayRow; onButton:
       style={wide ? { minWidth: 84, justifyContent: "center" } : undefined}
       disabled={b.disabled}
       aria-pressed={b.intent === "none" ? undefined : staged}
-      title={b.reason ?? (staged ? "Staged: press to take it back" : row.action.kind === "add" || row.action.kind === "add_drop" ? "Put the pickup in the dock to review and send" : "Stage the moves; they wait in the tray until you send them")}
+      title={b.reason ?? (staged ? "Staged: press to take it back" : row.action.kind === "add" || row.action.kind === "add_drop" ? "Stage the pickup; it waits in the tray until you send it" : "Stage the moves; they wait in the tray until you send them")}
       onClick={() => onButton(row)}
     >
       {staged ? <Check size={12} /> : null}
@@ -250,8 +250,8 @@ function MovesBox({ status, rows, error, hint, dayLabel, open, onOpen, onButton,
               Stage all {stageAllCount} lineup moves
             </button>
           ) : null}
-          <span className={s.note} title="Nothing is sent from here: staged lineup moves wait in the tray, a staged add in the dock.">
-            {hint ?? "Staged moves wait in the tray, adds in the dock."}
+          <span className={s.note} title="Nothing is sent from here: staged moves and adds wait in the tray.">
+            {hint ?? "Staged moves wait in the tray."}
           </span>
         </>
       }
