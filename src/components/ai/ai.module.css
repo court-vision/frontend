@@ -322,16 +322,16 @@
   gap: 8px;
 }
 
-/* ---------------------------------------------------------------- tables */
+/* ---------------------------------------------------------------- blocks: tables and charts */
 
-.tableBox {
+.block {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--raised);
   overflow: hidden;
 }
 
-.tableTitle {
+.blockTitle {
   display: flex;
   align-items: baseline;
   gap: 10px;
@@ -339,6 +339,31 @@
   border-bottom: 1px solid var(--line);
   font-size: 12.5px;
   font-weight: 600;
+}
+
+/* Chart ↔ table, in the caption */
+.blockToggle {
+  padding: 1px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.blockToggle:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.blockToggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .tableScroll {
@@ -385,6 +410,235 @@
 
 .nil {
   color: var(--text-3);
+}
+
+/*
+ * Charts. A mark takes its hue from the theme's series tokens (desk.module.css)
+ * by its series number (scoped to .block: a CSS module selector needs a class); every word stays in text ink. Bars run sideways, one
+ * row per category with the name beside it; lines run left to right in an
+ * SVG that scales with the column.
+ */
+
+.block [data-series="1"] {
+  --series: var(--series-1);
+}
+
+.block [data-series="2"] {
+  --series: var(--series-2);
+}
+
+.block [data-series="3"] {
+  --series: var(--series-3);
+}
+
+.block [data-series="4"] {
+  --series: var(--series-4);
+}
+
+.bars {
+  display: grid;
+  grid-template-columns: minmax(64px, 136px) minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 6px;
+  padding: 12px 48px 8px 12px;
+  font-size: 12px;
+}
+
+.barGrid {
+  position: relative;
+  z-index: 0;
+  grid-column: 2;
+  pointer-events: none;
+}
+
+.gridLine,
+.zeroLine {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--line);
+}
+
+.zeroLine {
+  background: var(--line-2);
+}
+
+.barLabel {
+  grid-column: 1;
+  align-self: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-2);
+}
+
+.barTrack {
+  position: relative;
+  z-index: 1;
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 14px;
+}
+
+.barLane {
+  position: relative;
+  height: 12px;
+}
+
+.bars[data-grouped] .barLane {
+  height: 8px;
+}
+
+.bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 1px;
+  border-radius: 0 4px 4px 0;
+  background: var(--series);
+  transition: opacity 120ms;
+}
+
+.bar[data-neg] {
+  border-radius: 4px 0 0 4px;
+}
+
+.barTrack[data-dim] .bar {
+  opacity: 0.45;
+}
+
+.barValue,
+.barGap {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 6px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--text-2);
+}
+
+.barValue[data-neg] {
+  margin-left: 0;
+  margin-right: 6px;
+}
+
+.barGap {
+  color: var(--text-3);
+}
+
+.barAxis {
+  position: relative;
+  grid-column: 2;
+  height: 14px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+}
+
+.barAxis span {
+  position: absolute;
+  top: 3px;
+  transform: translateX(-50%);
+}
+
+.lineChart {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: auto;
+  padding: 8px 12px 0;
+}
+
+.gridHair,
+.zeroHair,
+.crosshair {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.zeroHair {
+  stroke: var(--line-2);
+}
+
+.crosshair {
+  stroke: var(--line-2);
+  stroke-dasharray: 3 3;
+}
+
+.axisText {
+  fill: var(--text-3);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.linePath {
+  fill: none;
+  stroke: var(--series);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.marker {
+  fill: var(--series);
+  stroke: var(--raised);
+  stroke-width: 2;
+}
+
+.endLabel {
+  fill: var(--text-2);
+  font-size: 11px;
+}
+
+.hit {
+  fill: transparent;
+}
+
+/* The values at one category, under the plot: the legend and the hover reading in one line */
+.readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 6px 12px 9px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+.readoutX {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.readoutItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--series);
+}
+
+.readoutValue {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
 }
 
 /* ---------------------------------------------------------------- empty, heroes */

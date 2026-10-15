@@ -34,6 +34,12 @@
  *
  * Effects are tokens too: --glow lights the accent marks and --bar-bg paints
  * the bar (Noon and Midnight use both).
+ *
+ * Chart series (the AI desk's blocks) are --series-1 to --series-4, in the
+ * same fixed order in every theme: series 1 is the theme's accent hue at a
+ * step that reads on --raised, where a block sits, and the four were checked
+ * together for color-vision separation and contrast there. Text beside a mark
+ * stays in the text tokens; the hue alone never carries a name.
  */
 .tokens {
   --bg: #f6f3ec;
@@ -61,6 +67,10 @@
   --today-head: #f0dec2;
   --shadow: 0 14px 40px rgba(60, 45, 25, 0.16), 0 0 0 1px var(--line-2);
   --overlay: rgba(40, 32, 20, 0.32);
+  --series-1: #b4471a;
+  --series-2: #2a78d6;
+  --series-3: #eda100;
+  --series-4: #6250d6;
   --glow: none;
   color-scheme: light;
 }
@@ -91,6 +101,10 @@
   --today-head: #cfe1f6;
   --shadow: 0 14px 40px rgba(15, 26, 51, 0.14), 0 0 0 1px var(--line-2);
   --overlay: rgba(15, 26, 51, 0.3);
+  --series-1: #0a6dab;
+  --series-2: #eb6834;
+  --series-3: #6250d6;
+  --series-4: #eda100;
   --glow: 0 0 10px rgba(10, 109, 171, 0.3);
   --bar-bg: linear-gradient(180deg, #e9f0f9, #e1e9f4);
 }
@@ -121,6 +135,10 @@
   --today-head: #31281a;
   --shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--line-2);
   --overlay: rgba(12, 10, 8, 0.62);
+  --series-1: #c98500;
+  --series-2: #3987e5;
+  --series-3: #d55181;
+  --series-4: #9085e9;
   color-scheme: dark;
 }
 
@@ -150,6 +168,10 @@
   --today-head: #1a2d50;
   --shadow: 0 16px 48px rgba(2, 6, 16, 0.6), 0 0 0 1px var(--line-2);
   --overlay: rgba(4, 8, 18, 0.62);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #9085e9;
+  --series-4: #c98500;
   --glow: 0 0 14px rgba(92, 200, 255, 0.45);
   --bar-bg: linear-gradient(180deg, #1c294a, #162039);
   color-scheme: dark;

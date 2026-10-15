@@ -4,7 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
-import type { AiConversation, AiConversationSummary, AiFeedback, AiTable, AiUsage } from "@/types/ai";
+import type { AiBlock, AiConversation, AiConversationSummary, AiFeedback, AiUsage } from "@/types/ai";
 
 /**
  * The words for an AI desk error. The backend writes its AI_* refusals for the
@@ -132,7 +132,7 @@ export function useAiComment(conversationId: number | null) {
 
 // ---- the live turn
 
-export type LivePart = { kind: "text"; text: string } | { kind: "block"; block: AiTable };
+export type LivePart = { kind: "text"; text: string } | { kind: "block"; block: AiBlock };
 
 export interface LiveTurn {
   conversationId: number;
