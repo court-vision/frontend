@@ -113,7 +113,12 @@ function NoteEditor({ initial, onSave, onCancel }: { initial: string; onSave: (t
         placeholder="What was wrong or missing? Notes are for reviewing answers later."
         aria-label="Your note on this answer"
         onChange={(e) => setText(e.target.value)}
+        readOnly={saving}
+        aria-busy={saving}
         onKeyDown={(e) => {
+          // No shortcuts while a save is in flight (a second write could land out of order),
+          // and none while an IME is composing (Escape dismisses the candidate, not the editor)
+          if (saving || e.nativeEvent.isComposing) return;
           if (e.key === "Escape") onCancel();
           else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();

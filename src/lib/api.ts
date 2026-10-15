@@ -1150,7 +1150,10 @@ class ApiClient {
       method: "POST",
       body: { comment },
     });
-    return env.data?.comment ?? null;
+    const stored = env.data?.comment ?? null;
+    // A note that was sent must come back: a null here would read as "cleared" and drop it from the page
+    if (comment?.trim() && stored == null) throw ApiError.empty({ message: "The note wasn't saved" });
+    return stored;
   }
 
   /** The URL a turn streams from (see `streamTurn`). */

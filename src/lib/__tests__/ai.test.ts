@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { prose, spans } from "../ai-prose";
 import { SseParser, streamTurn, type AiStreamEvent } from "../ai-stream";
+import { apiClient } from "../api";
 
 describe("SseParser", () => {
   test("reads events split across chunks, in order", () => {
@@ -164,5 +165,36 @@ describe("drafts", () => {
     fakeStorage(true);
     expect(() => saveDraft(draftKey("u", 1), "x")).not.toThrow();
     expect(loadDraft(draftKey("u", 1))).toBe("");
+  });
+});
+
+describe("sendAiComment", () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  function stored(comment: string | null) {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ status: "success", message: "Note saved", data: { turn_id: 7, comment } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })) as unknown as typeof fetch;
+  }
+
+  test("returns what the server stored", async () => {
+    stored("Missed his injury");
+    expect(await apiClient.sendAiComment(async () => "tok", 7, "Missed his injury")).toBe("Missed his injury");
+  });
+
+  test("a clear comes back null", async () => {
+    stored(null);
+    expect(await apiClient.sendAiComment(async () => "tok", 7, null)).toBeNull();
+    expect(await apiClient.sendAiComment(async () => "tok", 7, "   ")).toBeNull();
+  });
+
+  test("a note that was sent but not stored is an error, not a clear", async () => {
+    stored(null);
+    await expect(apiClient.sendAiComment(async () => "tok", 7, "Missed his injury")).rejects.toMatchObject({ code: "EMPTY_RESULT" });
   });
 });
