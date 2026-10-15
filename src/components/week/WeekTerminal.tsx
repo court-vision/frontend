@@ -288,11 +288,10 @@ export function WeekTerminal({
 
   // ---- the market: free agents ranked by what they add to this week ----
   const [marketOpen, setMarketOpen] = useState(initialMarket != null);
-  // Closing the market lets go of the free agent picked in it, and of any hover.
+  // Closing the market lets go of any hover; a free agent picked in it is staged in the tray and stays.
   const closeMarket = useCallback(() => {
     setMarketOpen(false);
     setHover(null);
-    setPinned(null);
   }, []);
   const toggleMarket = useCallback(() => {
     if (marketOpen) closeMarket();
@@ -815,7 +814,11 @@ export function WeekTerminal({
     },
     [pending, stagedByDay, boards, lineup, data.demo, dropDay]
   );
-  /** Send the confirmed days: the add / drop first (its board is the one on screen), then the lineups in day order. */
+  /**
+   * Send the confirmed days: the add / drop first (its board is the one on screen), then the
+   * lineups in day order. A refused add / drop stops the send, as a refused day does: the
+   * lineups confirmed with it stay in the tray, with its error, for a retry.
+   */
   const sendAll = useCallback(
     async (chosen: number[]) => {
       let rosterChanged = false;
@@ -823,7 +826,8 @@ export function WeekTerminal({
         setSendingDay(swap.day);
         const outcome = await sendSwap();
         setSendingDay(null);
-        rosterChanged = outcome === "ok" && swap.from == null;
+        if (outcome !== "ok") return;
+        rosterChanged = swap.from == null;
       }
       await sendDays(chosen, rosterChanged);
     },
@@ -982,8 +986,8 @@ export function WeekTerminal({
           return;
         }
         case "Escape":
+          // A staged add / drop is the tray's to take back, like a staged lineup move.
           if (tapeBox) setTapeBox(null);
-          else if (pinned) setPinned(null);
           else setCursor(null);
           return;
       }
@@ -1117,7 +1121,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, toggleMarket, streamable, laneFor, tapeBox, data.actions]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, toggleMarket, streamable, laneFor, tapeBox, data.actions]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
