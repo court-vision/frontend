@@ -5,7 +5,7 @@ import { ChevronsRight } from "lucide-react";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
-const THUMB = 44;
+const THUMB = 36;
 
 const last = <T,>(list: T[]): T | undefined => list[list.length - 1];
 

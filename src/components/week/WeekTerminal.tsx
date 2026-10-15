@@ -489,17 +489,12 @@ export function WeekTerminal({
   const openMove = useCallback(
     (key: string, el?: HTMLElement | null, day?: number) => {
       const row = rowByKey(key);
-      // With a free agent picked, the roster player clicked becomes the one he replaces.
-      if (pinned && row?.player && row.kind === "player") {
-        if (row.player.id !== pinned.replaces) setPinned({ ...pinned, replaces: row.player.id });
-        return;
-      }
       const anchor = el ?? anchorFor(key);
       if (!row?.player || row.kind !== "player" || !anchor) return;
       if (day === undefined) setCursor({ key, col: 0 });
       setMenu({ type: "move", rowKey: key, anchor, day: day ?? viewDay, from: null });
     },
-    [rowByKey, anchorFor, viewDay, pinned]
+    [rowByKey, anchorFor, viewDay]
   );
   const openSeat = useCallback(
     (playerId: number, day: number, el: HTMLElement) => openMove(`player-${playerId}`, el, day),
@@ -1294,7 +1289,6 @@ export function WeekTerminal({
             youName={source.you.name}
             oppName={source.opp.name}
             onSeat={openSeat}
-            picking={!!pinned}
             drag={seatDrag}
             pickups={pickupRows}
             onPreviewPickup={previewPickup}
@@ -1315,7 +1309,6 @@ export function WeekTerminal({
             oppName={source.opp.name}
             onViewDay={setViewDay}
             onMove={openMove}
-            picking={!!pinned}
             onReplace={openReplace}
             drag={drag}
             mode={mode}
@@ -1325,7 +1318,6 @@ export function WeekTerminal({
           <Tray
             days={trayDays}
             blocked={movesBlocked}
-            demo={data.demo}
             sendingDay={sendingDay}
             onUnstage={(day, playerId) => {
               const b = boards[day];

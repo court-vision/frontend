@@ -60,7 +60,6 @@ interface DailyGridProps {
   onSeat: (playerId: number, day: number, el: HTMLElement) => void;
   drag: SeatDragApi | null;
   /** A free agent is picked: clicking a roster player makes him the drop. */
-  picking?: boolean;
   /** Scheduled pickups: a row each above the lineup, the free agent from his day on. */
   pickups?: PickupView[];
   /** Hovering a pending pickup previews it in the grid. */
@@ -114,7 +113,6 @@ export function DailyGrid({
   oppName,
   onSeat,
   drag,
-  picking = false,
   pickups = [],
   onPreviewPickup,
   onCancelPickup,
@@ -264,7 +262,7 @@ export function DailyGrid({
         aria-label="Daily lineups for the week"
         onMouseLeave={() => setHotDay(null)}
       >
-        <div className={s.grid} style={{ ["--cols" as string]: cols, minWidth }} data-picking={picking}>
+        <div className={s.grid} style={{ ["--cols" as string]: cols, minWidth }}>
           <div className={s.head} role="row">
             <div className={s.slotCell} role="columnheader">
               <span className={dk.label}>Slot</span>

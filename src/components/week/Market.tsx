@@ -370,7 +370,7 @@ function DropOptions({ fa, target, days, evaluate, allDrops, room, nameOf, avgOf
   return (
     <div className={s.marketDetail}>
       <span className={dk.label}>
-        {day ? `Make room from ${day.dow}` : "Make room"} · your weakest players, or click anyone in the grid
+        {day ? `Make room from ${day.dow}` : "Make room"} · your weakest players
       </span>
       <div className={s.marketOptions}>
         {options.filter((o, i) => i < 6 || o.dropId === picked).map((o) => {

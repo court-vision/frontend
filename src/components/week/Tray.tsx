@@ -66,7 +66,6 @@ interface TrayProps {
   days: TrayDay[];
   /** Why nothing can be sent (the team's lineup writes are blocked). */
   blocked: string | null;
-  demo: boolean;
   /** The day being written right now. */
   sendingDay: number | null;
   onUnstage: (day: number, playerId: number) => void;
@@ -93,19 +92,7 @@ const keyOf = (d: TrayDay) =>
  * end) writes the confirmed days, earliest first, since each day's edit carries
  * into the days after it.
  */
-export function Tray({
-  days,
-  blocked,
-  demo,
-  sendingDay,
-  onUnstage,
-  onDiscardDay,
-  onDiscardAll,
-  onTiming,
-  onCancelSwap,
-  onSend,
-  onHeight,
-}: TrayProps) {
+export function Tray({ days, blocked, sendingDay, onUnstage, onDiscardDay, onDiscardAll, onTiming, onCancelSwap, onSend, onHeight }: TrayProps) {
   const rootRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const el = rootRef.current;
@@ -126,10 +113,6 @@ export function Tray({
   );
   const keep = (over: ReadonlySet<number>) =>
     setPicked((p) => new Set([...p, ...days.filter((d) => over.has(d.day)).map(keyOf)]));
-  const allPicked = sendable.size > 0 && days.every((d) => !sendable.has(d.day) || picked.has(keyOf(d)));
-  const moveCount = days.reduce((n, d) => n + d.moves.length, 0);
-  const swap = days.find((d) => d.swap)?.swap ?? null;
-  const total = days.reduce((n, d) => n + d.delta, 0);
 
   // Days that go out leave the tray; one that fails stays confirmed for a retry.
   const send = (list: number[]) => (list.length ? onSend(list) : Promise.resolve());
@@ -159,53 +142,9 @@ export function Tray({
   };
 
   const confirmedLabel = days.filter((d) => confirmed.has(d.day)).map((d) => d.dow);
-  const what = [
-    moveCount ? `${moveCount} move${moveCount === 1 ? "" : "s"}` : "",
-    swap ? (swap.from != null ? "1 pickup" : swap.drop ? "1 add / drop" : "1 add") : "",
-    `${days.length} day${days.length === 1 ? "" : "s"}`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const note = blocked
-    ? blocked
-    : demo
-      ? "Demo: sends apply here only"
-      : moveCount
-        ? "Each day's edit carries into later days until one has its own; days go in order"
-        : swap?.from != null
-          ? "The pickup is made for you when its day comes; you can cancel it until then"
-          : "He joins your bench; move him into a slot afterwards";
 
   return (
     <section ref={rootRef} className={s.tray} data-tray aria-label="Staged roster changes">
-      <div className={s.trayHead}>
-        <span className={dk.label}>{swap ? "ESPN roster" : "ESPN lineup"}</span>
-        <span className={dk.sub}>{what}</span>
-        <span className={`${dk.chip} ${total > 0.05 ? dk.up : total < -0.05 ? dk.down : dk.flat}`} title="Change to your week">
-          {signed(total)}
-        </span>
-        <span className={s.note}>{note}</span>
-        <button type="button" className={dk.btn} onClick={onDiscardAll} disabled={sending}>
-          Discard all
-        </button>
-        <button
-          type="button"
-          className={dk.btn}
-          disabled={locked || sendable.size === 0}
-          onClick={() => setPicked(allPicked ? new Set() : new Set(days.filter((d) => sendable.has(d.day)).map(keyOf)))}
-        >
-          {allPicked ? "Clear" : "Select all"}
-        </button>
-        <button
-          type="button"
-          className={`${dk.btn} ${dk.btnPrimary}`}
-          disabled={locked || confirmed.size === 0}
-          onClick={() => void send([...confirmed])}
-        >
-          {sending ? "Sending…" : confirmed.size === 0 ? "Send" : `Send ${confirmedLabel.join(", ")}`}
-        </button>
-      </div>
-
       <div className={s.trayBody}>
         <div className={s.trayCols} role="group" aria-label="Days with staged changes">
           {days.map((d) => {
@@ -213,7 +152,6 @@ export function Tray({
             const on = confirmed.has(d.day);
             const sw = d.swap;
             const note = d.error ?? d.problems[0] ?? null;
-            const hint = sw ? (sw.timing ? `${sw.timing} · click a player in the grid to drop him instead` : "Click a player in the grid to drop him instead") : null;
             return (
               <div
                 key={d.day}
@@ -240,7 +178,7 @@ export function Tray({
                     <span className={s.trayDow}>{d.dow}</span>
                     <span className={dk.sub}>{d.date}</span>
                   </button>
-                  <span className={`${dk.chip} ${d.delta > 0.05 ? dk.up : d.delta < -0.05 ? dk.down : dk.flat}`}>
+                  <span className={`${dk.chip} ${d.delta > 0.05 ? dk.up : d.delta < -0.05 ? dk.down : dk.flat}`} title="Change to your week">
                     {signed(d.delta)}
                   </span>
                   <button
@@ -340,31 +278,47 @@ export function Tray({
                   <div className={s.trayColNote} data-tone="down">
                     {note}
                   </div>
-                ) : hint ? (
-                  <div className={s.trayColNote}>{hint}</div>
+                ) : sw?.timing ? (
+                  <div className={s.trayColNote} data-tone="hint" title={sw.timing}>
+                    {sw.timing}
+                  </div>
                 ) : null}
               </div>
             );
           })}
         </div>
 
-        <SlideToSend
-          stops={days.map((d) => d.day)}
-          anchorOf={(day) => cols.current.get(day)}
-          locked={!!blocked}
-          busy={sending}
-          label={blocked ? blocked : "Slide to confirm each day · send at the end"}
-          ariaLabel="Confirm days and send"
-          valueNow={confirmed.size}
-          valueMax={days.length + 1}
-          valueText={confirmedLabel.length ? `${confirmedLabel.join(", ")} confirmed` : "No days confirmed"}
-          onPass={(over, latest) => {
-            setPassed(over);
-            reveal(latest);
-          }}
-          onRelease={release}
-          onFinish={finish}
-        />
+        <div className={s.trayFoot}>
+          <SlideToSend
+            stops={days.map((d) => d.day)}
+            anchorOf={(day) => cols.current.get(day)}
+            locked={!!blocked}
+            busy={sending}
+            label={blocked ? blocked : "Slide to confirm each day, then send"}
+            ariaLabel="Confirm days and send"
+            valueNow={confirmed.size}
+            valueMax={days.length + 1}
+            valueText={confirmedLabel.length ? `${confirmedLabel.join(", ")} confirmed` : "No days confirmed"}
+            onPass={(over, latest) => {
+              setPassed(over);
+              reveal(latest);
+            }}
+            onRelease={release}
+            onFinish={finish}
+          />
+          <button
+            type="button"
+            className={`${dk.btn} ${dk.btnSmall} ${dk.btnPrimary}`}
+            disabled={locked || confirmed.size === 0}
+            onClick={() => void send([...confirmed])}
+            title="Send the days ticked, earliest first: each day's edit carries into later days until one has its own"
+          >
+            {sending ? "Sending…" : confirmed.size === 0 ? "Send" : `Send ${confirmedLabel.join(", ")}`}
+          </button>
+          <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={onDiscardAll} disabled={sending}>
+            Discard all
+          </button>
+        </div>
       </div>
     </section>
   );

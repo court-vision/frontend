@@ -61,7 +61,6 @@ interface WeekGridProps {
   drag: DragApi | null;
   mode: LineupMode;
   /** A free agent is picked: clicking a roster player makes him the drop. */
-  picking?: boolean;
 }
 
 type Group = "active" | "bench" | "ir" | "drop";
@@ -94,7 +93,6 @@ export function WeekGrid({
   onReplace,
   drag,
   mode,
-  picking = false,
 }: WeekGridProps) {
   const [hotCol, setHotCol] = useState<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -196,7 +194,7 @@ export function WeekGrid({
         aria-rowcount={grid.rows.length + 4}
         onMouseLeave={() => setHotCol(null)}
       >
-        <div className={s.grid} style={{ ["--cols" as string]: cols }} data-picking={picking}>
+        <div className={s.grid} style={{ ["--cols" as string]: cols }}>
           <div className={s.head} role="row">
             <div className={s.rosterCell} role="columnheader">
               <span className={dk.label}>
