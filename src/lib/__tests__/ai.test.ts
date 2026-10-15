@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { prose, spans } from "../ai-prose";
 import { SseParser, streamTurn, type AiStreamEvent } from "../ai-stream";
+import { apiClient } from "../api";
 
 describe("SseParser", () => {
   test("reads events split across chunks, in order", () => {
@@ -104,5 +105,96 @@ describe("prose", () => {
     expect(prose("<img src=x onerror=alert(1)>")).toEqual([
       { kind: "p", spans: [{ text: "<img src=x onerror=alert(1)>", bold: false }] },
     ]);
+  });
+});
+
+describe("drafts", () => {
+  const hadWindow = "window" in globalThis;
+  const realWindow = (globalThis as { window?: unknown }).window;
+  afterEach(() => {
+    if (hadWindow) (globalThis as { window?: unknown }).window = realWindow;
+    else delete (globalThis as { window?: unknown }).window;
+  });
+
+  function fakeStorage(fail = false) {
+    const store = new Map<string, string>();
+    const storage = {
+      get length() {
+        return store.size;
+      },
+      key: (i: number) => [...store.keys()][i] ?? null,
+      getItem: (k: string) => {
+        if (fail) throw new Error("blocked");
+        return store.get(k) ?? null;
+      },
+      setItem: (k: string, v: string) => {
+        if (fail) throw new Error("blocked");
+        store.set(k, v);
+      },
+      removeItem: (k: string) => void store.delete(k),
+    };
+    (globalThis as unknown as { window: unknown }).window = { localStorage: storage };
+    return store;
+  }
+
+  test("one per conversation and user; blank removes it", async () => {
+    const { draftKey, loadDraft, saveDraft } = await import("../ai-drafts");
+    fakeStorage();
+    expect(draftKey(null, 3)).toBeNull();
+    const a = draftKey("user_1", 3);
+    const fresh = draftKey("user_1", null);
+    expect(fresh).toBe("cv.ai.draft.user_1.new");
+    saveDraft(a, "who should I drop");
+    saveDraft(fresh, "new one");
+    expect(loadDraft(a)).toBe("who should I drop");
+    expect(loadDraft(fresh)).toBe("new one");
+    expect(loadDraft(draftKey("user_2", 3))).toBe("");
+    saveDraft(a, "   ");
+    expect(loadDraft(a)).toBe("");
+  });
+
+  test("keeps only the newest drafts", async () => {
+    const { draftKey, saveDraft } = await import("../ai-drafts");
+    const store = fakeStorage();
+    for (let i = 1; i <= 45; i++) saveDraft(draftKey("u", i), `draft ${i}`);
+    expect(store.size).toBe(40);
+  });
+
+  test("blocked storage loses the draft, never the page", async () => {
+    const { draftKey, loadDraft, saveDraft } = await import("../ai-drafts");
+    fakeStorage(true);
+    expect(() => saveDraft(draftKey("u", 1), "x")).not.toThrow();
+    expect(loadDraft(draftKey("u", 1))).toBe("");
+  });
+});
+
+describe("sendAiComment", () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  function stored(comment: string | null) {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ status: "success", message: "Note saved", data: { turn_id: 7, comment } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })) as unknown as typeof fetch;
+  }
+
+  test("returns what the server stored", async () => {
+    stored("Missed his injury");
+    expect(await apiClient.sendAiComment(async () => "tok", 7, "Missed his injury")).toBe("Missed his injury");
+  });
+
+  test("a clear comes back null", async () => {
+    stored(null);
+    expect(await apiClient.sendAiComment(async () => "tok", 7, null)).toBeNull();
+    expect(await apiClient.sendAiComment(async () => "tok", 7, "   ")).toBeNull();
+  });
+
+  test("a note that was sent but not stored is an error, not a clear", async () => {
+    stored(null);
+    await expect(apiClient.sendAiComment(async () => "tok", 7, "Missed his injury")).rejects.toMatchObject({ code: "EMPTY_RESULT" });
   });
 });

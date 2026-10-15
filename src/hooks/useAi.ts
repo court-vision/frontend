@@ -114,6 +114,22 @@ export function useAiFeedback(conversationId: number | null) {
   });
 }
 
+/** A note on an answer: saved, then written into the cached conversation. */
+export function useAiComment(conversationId: number | null) {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ turnId, comment }: { turnId: number; comment: string | null }) =>
+      apiClient.sendAiComment(getToken, turnId, comment),
+    onSuccess: (stored, { turnId }) => {
+      if (conversationId == null) return;
+      queryClient.setQueryData<AiConversation>(aiKeys.conversation(userId, conversationId), (c) =>
+        c ? { ...c, history: c.history.map((t) => (t.id === turnId ? { ...t, comment: stored } : t)) } : c
+      );
+    },
+  });
+}
+
 // ---- the live turn
 
 export type LivePart = { kind: "text"; text: string } | { kind: "block"; block: AiTable };

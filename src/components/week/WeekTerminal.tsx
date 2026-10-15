@@ -368,12 +368,11 @@ export function WeekTerminal({
 
   // ---- the market: free agents ranked by what they add to this week ----
   const [marketOpen, setMarketOpen] = useState(initialMarket != null);
-  // Closing the market lets go of the free agent picked in it, and of any hover.
+  // Closing the market lets go of any hover; a free agent picked in it is staged in the tray and stays.
   const closeMarket = useCallback(() => {
     setMarketOpen(false);
     setHover(null);
-    pin(null);
-  }, [pin]);
+  }, []);
   const toggleMarket = useCallback(() => {
     if (marketOpen) closeMarket();
     else setMarketOpen(true);
@@ -1008,47 +1007,53 @@ export function WeekTerminal({
    * call after a roster change is pinned to today's board read again: a drop
    * moves the roster version the next request must match. A refused drop holds
    * back only what needs it: the add riding on it (sent together, they fail
-   * together) and a day whose moves need his spot.
+   * together) and a day whose moves need his spot. A refused add / drop stops
+   * the send, as a refused day does: the lineups confirmed with it stay in the
+   * tray, with its error, for a retry. The tray stays locked from the first
+   * write to the last, so nothing is sent twice or discarded under a send.
    */
   const sendAll = useCallback(
     async (chosen: number[]) => {
-      let today = rawToday;
-      let moved = false;
-      const readToday = async () => {
-        if (moved && todayDay != null) today = (await lineup.refresh(todayDay).catch(() => null)) ?? today;
-        moved = false;
-      };
-      let rosterChanged = false;
-      let waiting = drops;
-      if (chosen.includes(nowColumn) && loneDrops.length) {
-        setSendingDay(nowColumn);
-        const made: number[] = [];
-        const errors: Record<number, string> = {};
-        for (const id of loneDrops) {
+      const dropsFirst = chosen.includes(nowColumn) ? loneDrops : [];
+      const first = swap && !swap.blocked && chosen.includes(swap.day) ? swap : null;
+      setSendingDay(dropsFirst.length ? nowColumn : first ? first.day : chosen[0] ?? null);
+      try {
+        let today = rawToday;
+        let moved = false;
+        const readToday = async () => {
+          if (moved && todayDay != null) today = (await lineup.refresh(todayDay).catch(() => null)) ?? today;
+          moved = false;
+        };
+        let rosterChanged = false;
+        let waiting = drops;
+        if (dropsFirst.length) {
+          const made: number[] = [];
+          const errors: Record<number, string> = {};
+          for (const id of dropsFirst) {
+            await readToday();
+            if (!today) break;
+            const r = await data.transact(null, id, today);
+            if (r.status === "ok") made.push(id);
+            else errors[id] = r.status === "stale" ? "Your roster changed on ESPN: check it, then send again." : r.message;
+            moved = r.status !== "refused";
+          }
+          rosterChanged = made.length > 0;
+          waiting = waiting.filter((id) => !made.includes(id));
+          setDrops((prev) => prev.filter((id) => !made.includes(id)));
+          setDropErrors(errors);
+        }
+        if (first) {
+          setSendingDay(first.day);
           await readToday();
-          if (!today) break;
-          const r = await data.transact(null, id, today);
-          if (r.status === "ok") made.push(id);
-          else errors[id] = r.status === "stale" ? "Your roster changed on ESPN: check it, then send again." : r.message;
-          moved = r.status !== "refused";
+          const outcome = await sendSwap(today);
+          if (outcome === "refused") return;
+          if (first.from == null) rosterChanged = true;
+          if (outcome === "ok" && paired != null) waiting = waiting.filter((id) => id !== paired);
         }
+        await sendDays(chosen, rosterChanged, waiting);
+      } finally {
         setSendingDay(null);
-        rosterChanged = made.length > 0;
-        waiting = waiting.filter((id) => !made.includes(id));
-        setDrops((prev) => prev.filter((id) => !made.includes(id)));
-        setDropErrors(errors);
       }
-      if (swap && !swap.blocked && chosen.includes(swap.day)) {
-        setSendingDay(swap.day);
-        await readToday();
-        const outcome = await sendSwap(today);
-        setSendingDay(null);
-        if (outcome === "ok") {
-          if (swap.from == null) rosterChanged = true;
-          if (paired != null) waiting = waiting.filter((id) => id !== paired);
-        }
-      }
-      await sendDays(chosen, rosterChanged, waiting);
     },
     [rawToday, todayDay, lineup, drops, nowColumn, loneDrops, data, swap, sendSwap, paired, sendDays]
   );
@@ -1226,8 +1231,8 @@ export function WeekTerminal({
           return;
         }
         case "Escape":
+          // A staged add / drop is the tray's to take back, like a staged lineup move.
           if (tapeBox) setTapeBox(null);
-          else if (pinned) pin(null);
           else setCursor(null);
           return;
       }
@@ -1372,7 +1377,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, pin, toggleMarket, streamable, toggleDrop, laneFor, tapeBox, data.actions]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, toggleMarket, streamable, toggleDrop, laneFor, tapeBox, data.actions]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
