@@ -550,10 +550,16 @@
   transform: translateX(-50%);
 }
 
+/* The SVG scales with the column, text included, so a narrow column scrolls it rather than shrinking the labels past reading */
+.lineScroll {
+  overflow-x: auto;
+}
+
 .lineChart {
   display: block;
   box-sizing: border-box;
   width: 100%;
+  min-width: 560px;
   height: auto;
   padding: 8px 12px 0;
 }

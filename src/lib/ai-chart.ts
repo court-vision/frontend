@@ -69,7 +69,8 @@ export function niceScale(values: ReadonlyArray<number | null | undefined>, maxT
   // Trimmed to 12 digits so that -0.4 / 0.1 is -4, not a hair below it
   const q = (n: number) => Number(n.toPrecision(12));
   const step = q((STEPS.find((s) => s * mag >= raw) ?? 10) * mag);
-  const places = (String(step).split(".")[1] ?? "").length;
+  // The decimals a tick needs: one past the step's magnitude (a 2.5 step at 0.1 is 0.25), whatever notation it prints in
+  const places = Math.max(0, Math.ceil(-Math.log10(step)) + 1);
   const fix = (n: number) => Number(n.toFixed(places)) || 0; // and never -0
   const min = fix(Math.floor(q(lo / step)) * step);
   const max = fix(Math.ceil(q(hi / step)) * step);

@@ -65,6 +65,11 @@ describe("the value axis", () => {
     expect(niceScale([-0.4, -0.1])).toEqual({ min: -0.4, max: 0, ticks: [-0.4, -0.3, -0.2, -0.1, 0] });
   });
 
+  test("tiny values keep their precision", () => {
+    expect(niceScale([1e-6])).toEqual({ min: 0, max: 1e-6, ticks: [0, 2e-7, 4e-7, 6e-7, 8e-7, 1e-6] });
+    expect(niceScale([0.003, 0.011])).toEqual({ min: 0, max: 0.012, ticks: [0, 0.002, 0.004, 0.006, 0.008, 0.01, 0.012] });
+  });
+
   test("all zero or nothing at all gives 0..1", () => {
     expect(niceScale([0, 0])).toEqual({ min: 0, max: 1, ticks: [0, 0.2, 0.4, 0.6, 0.8, 1] });
     expect(niceScale([])).toEqual({ min: 0, max: 1, ticks: [0, 0.2, 0.4, 0.6, 0.8, 1] });
