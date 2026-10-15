@@ -209,7 +209,7 @@ export function DailyGrid({
                   ? "games here don't count"
                   : def.group === "ir"
                     ? "doesn't score"
-                    : "leaves the roster for the free agent: his games stop counting"}
+                    : "leaves the roster: his games stop counting"}
               </span>
             </div>
           </div>
@@ -360,7 +360,7 @@ export function DailyGrid({
           </LayoutGroup>
 
           <div className={s.foot}>
-            {/* A previewed add's outgoing player stays in view, pinned above the totals. */}
+            {/* Players leaving the roster stay in view, pinned above the totals. */}
             {slots.map((def, r) => (def.group === "drop" ? renderRow(def, r) : null))}
             {(["you", "opp", "edge"] as const).map((line) => (
               <div key={line} className={s.footRow} role="row">
@@ -647,13 +647,16 @@ const SeatPair = memo(function SeatPair({
         onMouseEnter={() => onHot(day)}
         onClick={() => {
           onCursor({ key: def.key, col: day });
-          if (p && nameRef.current && !seat?.incoming && !seat?.outgoing) onSeat(p.id, day, nameRef.current);
+          // A player staged to drop opens his menu too: it takes the drop back.
+          if (p && nameRef.current && !seat?.incoming && (!seat?.outgoing || seat.dropped)) onSeat(p.id, day, nameRef.current);
         }}
         title={
           p
             ? seat?.shifted
               ? `${p.name} moves here to make room for the free agent`
-              : seat?.outgoing
+              : seat?.dropped
+                ? `${p.name} is staged to drop`
+                : seat?.outgoing
                 ? `${p.name} is dropped for the free agent`
                 : `${p.name} · ${p.team} · ${statusTitle}`
             : undefined
@@ -733,7 +736,7 @@ function cellTitle(cell: GridCell): string | undefined {
   if (cell.tag === "BENCH") return "On the bench: this game doesn't count";
   if (cell.tag === "SITS") return "No room in the best lineup that day";
   if (cell.tag === "IR") return "On IR";
-  if (cell.tag === "DROP") return "Being replaced in the preview";
+  if (cell.tag === "DROP") return "Leaves the roster: this game doesn't count";
   if (cell.state === "out") return "Out for this game";
   if (cell.state === "dnp") return "Didn't play";
   return undefined;

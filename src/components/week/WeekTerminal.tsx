@@ -61,6 +61,7 @@ import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar, type WeekView 
 import { MatchupView } from "./MatchupView";
 import { MarketPane, type MarketMode, type MarketPick } from "./Market";
 import { NO_DROP, addsCountFrom, dropCandidates, gainOf, openSpots, rosterRoom } from "@/lib/market";
+import { dropBlockedReason, unstageEverywhere, withoutDropped, type DropLeave } from "@/lib/drops";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Tray, type PendingDay, type SwapTiming, type TrayDay, type TraySwap } from "./Tray";
 import { TodayStrip, type TodayRow } from "./TodayStrip";
@@ -92,9 +93,11 @@ type Menu = { type: "move" | "replace"; rowKey: string; anchor: HTMLElement; day
 type View = WeekView;
 /**
  * A free agent in the preview: who he replaces, and the day it's scheduled for
- * (null: made now). `pickup` is the scheduled pickup a hover came from.
+ * (null: made now). `pickup` is the scheduled pickup a hover came from. `held`:
+ * the staged drop this add took over by dropping the same player, given back
+ * to the tray when the add is let go.
  */
-type PreviewRef = { faId: number; replaces: number; from: number | null; pickup?: number };
+type PreviewRef = { faId: number; replaces: number; from: number | null; pickup?: number; held?: number };
 type Planned = DropTarget & { moves: Array<{ player_id: number; to_slot_id: number }> };
 
 export function WeekTerminal({
@@ -108,11 +111,35 @@ export function WeekTerminal({
   initialMarket?: MarketMode;
 }) {
   const lineup = data.lineup;
-  const boards = lineup.boards;
+  const rawBoards = lineup.boards;
   const todayDay = lineup.todayDay;
+  // Today's lineup as ESPN holds it: what an add / drop is pinned to.
+  const rawToday = todayDay != null ? rawBoards[todayDay] ?? null : null;
+  const [root, setRoot] = useState<HTMLDivElement | null>(null);
+
+  // ---- drops made now: players staged to leave the roster, and the boards as they'll stand after ----
+  const [drops, setDrops] = useState<number[]>([]);
+  // The free agent kept in the preview (and the tray): an add / drop, made now or scheduled.
+  const [pinned, setPinned] = useState<PreviewRef | null>(null);
+  // An add into an open spot on a full roster rides on a staged drop: made now they go to ESPN as
+  // one add / drop, scheduled the drop becomes the pickup's, so neither happens without the other.
+  // A player on IR frees no spot.
+  const paired = useMemo(() => {
+    if (!pinned || pinned.replaces !== NO_DROP || !rawToday || rosterRoom(rawToday) > 0) return null;
+    const onBoard = (id: number) => rawToday.players.find((p) => p.player_id === id);
+    return drops.find((id) => !!onBoard(id) && onBoard(id)!.lineup_slot_id !== IR_SLOT_ID) ?? null;
+  }, [pinned, rawToday, drops]);
+  // Drops made now leave from today; one a scheduled pickup carries leaves on the pickup's day.
+  const pairedFrom = paired != null ? pinned?.from ?? null : null;
+  const leaves = useMemo<DropLeave[]>(
+    () => (todayDay == null ? [] : drops.map((id) => ({ id, from: id === paired && pairedFrom != null ? pairedFrom : todayDay }))),
+    [drops, paired, pairedFrom, todayDay]
+  );
+  // Lineup moves are staged on these: each day's lineup without the players gone by then.
+  const boards = useMemo(() => withoutDropped(rawBoards, leaves), [rawBoards, leaves]);
   // Today's lineup anchors eligibility, slots and the add/drop; any day's will do before it loads.
   const board: LineupState | null = (todayDay != null ? boards[todayDay] : undefined) ?? boards.find((b) => !!b) ?? null;
-  const [root, setRoot] = useState<HTMLDivElement | null>(null);
+  const rawBoard: LineupState | null = rawToday ?? rawBoards.find((b) => !!b) ?? null;
 
   // ---- view switches ----
   const toggleTheme = useDeskTheme((st) => st.toggle);
@@ -135,15 +162,16 @@ export function WeekTerminal({
     [boards, staging]
   );
   const unstagedBoards = useMemo<Array<DayBoard | null>>(
-    () => boards.map((b) => (b ? { board: b, staged: NO_STAGING } : null)),
-    [boards]
+    () => rawBoards.map((b) => (b ? { board: b, staged: NO_STAGING } : null)),
+    [rawBoards]
   );
   const staged = todayDay != null ? staging[todayDay] : NO_STAGING;
-  const anyStaging = staging.some((st) => Object.keys(st).length > 0);
+  const anyStaging = staging.some((st) => Object.keys(st).length > 0) || drops.length > 0;
 
   // ---- the week ----
   const { makeSource } = data;
-  const source = useMemo(() => makeSource(board), [makeSource, board]);
+  // The week reads the roster as ESPN holds it: a player staged to drop is still on it, leaving.
+  const source = useMemo(() => makeSource(rawBoard), [makeSource, rawBoard]);
   const viewableList = useMemo(() => (source ? viewableDays(source) : []), [source]);
   const viewable = useMemo(() => new Set(viewableList), [viewableList]);
   const [viewDayPick, setViewDay] = useState<number | null>(null);
@@ -163,13 +191,36 @@ export function WeekTerminal({
 
   // ---- free-agent preview: a highlighted one (in the menu) wins over a kept one ----
   const [hover, setHover] = useState<PreviewRef | null>(null);
-  const [pinned, setPinned] = useState<PreviewRef | null>(null);
+  /**
+   * Keep an add / drop in the tray, or let it go (null). One that drops a
+   * player staged to drop takes that drop over, and a let-go one gives back the
+   * drop it took (his moves taken back again, as staging a drop does).
+   */
+  const pin = useCallback(
+    (next: PreviewRef | null) => {
+      let list = drops;
+      const back = pinned?.held;
+      if (back != null && !list.includes(back)) {
+        list = [...list, back];
+        setStagedByDay((prev) => unstageEverywhere(boards, prev, back));
+      }
+      let ref: PreviewRef | null = next ? { ...next, held: undefined } : null;
+      if (ref && ref.replaces !== NO_DROP && list.includes(ref.replaces)) {
+        const id = ref.replaces;
+        list = list.filter((x) => x !== id);
+        ref = { ...ref, held: id };
+      }
+      if (list !== drops) setDrops(list);
+      setPinned(ref);
+    },
+    [drops, pinned, boards]
+  );
   // A hovered pickup that was cancelled (or ran) under the pointer previews nothing.
   const hoverLive =
     hover && (hover.pickup == null || data.pickups.pending.some((p) => p.id === hover.pickup)) ? hover : null;
   const preview = hoverLive ?? pinned;
   // After today's first tip an add counts from tomorrow; the previews and the market both obey.
-  const addFrom = useMemo(() => (source ? addsCountFrom(source, board) : null), [source, board]);
+  const addFrom = useMemo(() => (source ? addsCountFrom(source, rawBoard) : null), [source, rawBoard]);
   // Free agents the desk has loaded: today's moves' pickups, the one-day search, and
   // the rest-of-week pool (later wins: the pool knows his whole week).
   const actionsData = data.actions?.data ?? null;
@@ -220,17 +271,37 @@ export function WeekTerminal({
   // the grid on screen, not every option's gain.
   const build = useCallback(
     (src: WeekSource, over: Partial<GridInput> = {}) =>
-      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, viewDay, mode, ...over }),
-    [board, staged, dayBoards, viewDay, mode]
+      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, dropping: leaves, viewDay, mode, ...over }),
+    [board, staged, dayBoards, leaves, viewDay, mode]
   );
   const gridNoPreview = useMemo(() => (source ? build(source) : null), [source, build]);
   const grid = useMemo(
     () => (source && incoming ? build(source, { incoming }) : gridNoPreview),
     [source, incoming, build, gridNoPreview]
   );
+  // The week as ESPN holds it: no moves, no drops.
   const gridUnstaged = useMemo(
-    () => (source && anyStaging ? build(source, { staged: NO_STAGING, dayBoards: unstagedBoards }) : gridNoPreview),
-    [source, anyStaging, build, unstagedBoards, gridNoPreview]
+    () =>
+      source && anyStaging
+        ? build(source, { board: rawBoard, staged: NO_STAGING, dayBoards: unstagedBoards, dropping: [] })
+        : gridNoPreview,
+    [source, anyStaging, build, rawBoard, unstagedBoards, gridNoPreview]
+  );
+  /**
+   * The projected week with these drops and this staging, each day's moves
+   * staged on its lineup as it stands after the drops: what a drop (or taking
+   * one back) does to the week.
+   */
+  const weekFor = useCallback(
+    (leavesX: readonly DropLeave[], stagedX: Readonly<Record<number, Staged>>) => {
+      if (!source) return 0;
+      const bs = withoutDropped(rawBoards, leavesX);
+      const dbs = bs.map((b, i) => (b ? { board: b, staged: normalize(b, stagedX[i] ?? NO_STAGING) } : null));
+      const b0 = (todayDay != null ? bs[todayDay] : undefined) ?? bs.find((b) => !!b) ?? null;
+      const st0 = todayDay != null ? dbs[todayDay]?.staged ?? NO_STAGING : NO_STAGING;
+      return build(source, { board: b0, staged: st0, dayBoards: dbs, dropping: leavesX }).projected.you;
+    },
+    [source, rawBoards, todayDay, build]
   );
   const stagedDelta = gridNoPreview && gridUnstaged ? gridNoPreview.projected.you - gridUnstaged.projected.you : 0;
 
@@ -263,6 +334,15 @@ export function WeekTerminal({
     (day: number) => !!source && source.days[day]?.kind === "future" && periodOf(day) != null,
     [source, periodOf]
   );
+  // After today's first tip an add made now would count from tomorrow, so it is made as a
+  // pickup scheduled for tomorrow instead. On the matchup's last day tomorrow isn't on the
+  // board to schedule for, and the add stays one made now (ESPN puts it on tomorrow).
+  const nowFrom = addFrom != null && canSchedule(addFrom) ? addFrom : null;
+  /** The day a replace from `day`'s spot is scheduled for: that day in the daily view when it can be, else now. */
+  const replaceFrom = useCallback(
+    (day: number | null | undefined) => (view === "daily" && day != null && canSchedule(day) ? day : nowFrom),
+    [view, canSchedule, nowFrom]
+  );
   const pendingPickups = data.pickups.pending;
   const pickupDay = useCallback(
     (date: string) => source?.days.find((d) => d.date === date) ?? null,
@@ -292,8 +372,8 @@ export function WeekTerminal({
   const closeMarket = useCallback(() => {
     setMarketOpen(false);
     setHover(null);
-    setPinned(null);
-  }, []);
+    pin(null);
+  }, [pin]);
   const toggleMarket = useCallback(() => {
     if (marketOpen) closeMarket();
     else setMarketOpen(true);
@@ -303,8 +383,8 @@ export function WeekTerminal({
   // hovering a row never re-ranks the list.
   const gainBuild = useCallback(
     (src: WeekSource, over: Partial<GridInput> = {}) =>
-      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, viewDay: todayIndex ?? 0, mode, ...over }),
-    [board, staged, dayBoards, todayIndex, mode]
+      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, dropping: leaves, viewDay: todayIndex ?? 0, mode, ...over }),
+    [board, staged, dayBoards, leaves, todayIndex, mode]
   );
   const marketBase = useMemo(() => (source && marketOpen ? gainBuild(source) : null), [source, marketOpen, gainBuild]);
   const evaluate = useCallback(
@@ -319,12 +399,21 @@ export function WeekTerminal({
   // The one-day search follows the expanded day, never a day already played.
   const firstOpenDay = addFrom ?? source?.days.find((d) => d.kind !== "past")?.index ?? 0;
   const marketDay = Math.max(focusDay ?? defaultFocus, firstOpenDay);
-  const marketDrops = useMemo(() => (source ? dropCandidates(source, board) : []), [source, board]);
+  // Players staged to drop are already leaving: the market offers the spot they free instead.
+  const keptSource = useMemo(
+    () => (source && drops.length ? { ...source, mine: source.mine.filter((p) => !drops.includes(p.id)) } : source),
+    [source, drops]
+  );
+  const marketDrops = useMemo(() => (keptSource ? dropCandidates(keptSource, board) : []), [keptSource, board]);
   // The detail offers a few more, never the stars: a week's gain can't see what a player is worth
   // the rest of the season (an injured star projects nothing this week, and is still no drop).
-  const marketAllDrops = useMemo(() => (source ? dropCandidates(source, board, 7) : []), [source, board]);
+  const marketAllDrops = useMemo(() => (keptSource ? dropCandidates(keptSource, board, 7) : []), [keptSource, board]);
   const avgOf = useCallback((id: number) => source?.mine.find((p) => p.id === id)?.avg ?? null, [source]);
-  const marketRoom = rosterRoom(todayDay != null ? boards[todayDay] ?? board : board);
+  // Open spots once every staged drop is made (one an add rides on included, whenever it lands).
+  const marketRoom = useMemo(() => {
+    const b = rawToday ?? board;
+    return rosterRoom(b && drops.length ? { ...b, players: b.players.filter((p) => !drops.includes(p.player_id)) } : b);
+  }, [rawToday, board, drops]);
   const nameOf = useCallback((id: number) => source?.mine.find((p) => p.id === id)?.name ?? `#${id}`, [source]);
   const { setDailyDay, requestBreakouts, requestStreamers: requestPool } = data;
   useEffect(() => {
@@ -337,7 +426,7 @@ export function WeekTerminal({
     if (marketOpen && marketMode === "breakouts") requestBreakouts();
   }, [marketOpen, marketMode, requestBreakouts]);
 
-  const boardById = useMemo(() => new Map((board?.players ?? []).map((p) => [p.player_id, p])), [board]);
+  const boardById = useMemo(() => new Map((rawBoard?.players ?? []).map((p) => [p.player_id, p])), [rawBoard]);
   const dayLabel = useCallback(
     (day: number) => {
       const d = source?.days[day];
@@ -406,22 +495,22 @@ export function WeekTerminal({
         ? "Your lineup changed since these were worked out: reading them again"
         : null;
     return sortActions(actionsData?.actions ?? []).map((a) => {
-      const staged = isTransactionAction(a) ? isAddStaged(a, pinned, NO_DROP) : isRowStaged(todayStaging, a);
+      const staged = isTransactionAction(a) ? isAddStaged(a, pinned, NO_DROP, nowFrom) : isRowStaged(todayStaging, a);
       const drop = a.transaction?.drop_player_id ?? null;
       const gone = drop != null && !source?.mine.some((p) => p.id === drop) ? "The player to drop is no longer on your roster" : null;
       return { action: a, button: rowButton(a, { staged, cannot: cannot ?? gone }) };
     });
-  }, [actionsData, todayBoardNow, actionsStale, pinned, todayStaging, source]);
+  }, [actionsData, todayBoardNow, actionsStale, pinned, nowFrom, todayStaging, source]);
   const onTodayButton = useCallback(
     (row: TodayRow) => {
       const a = row.action;
       if (row.button.intent === "none" || todayDay == null) return;
       if (a.transaction) {
         // An add is staged in the tray: it previews in the grid and is sent from there with the day.
-        if (row.button.intent === "unstage") setPinned(null);
+        if (row.button.intent === "unstage") pin(null);
         else {
           setHover(null);
-          setPinned({ faId: a.transaction.pickup.player_id, replaces: a.transaction.drop_player_id ?? NO_DROP, from: null });
+          pin({ faId: a.transaction.pickup.player_id, replaces: a.transaction.drop_player_id ?? NO_DROP, from: nowFrom });
         }
         return;
       }
@@ -431,7 +520,7 @@ export function WeekTerminal({
       if (row.button.intent === "unstage") setDay(todayDay, unstageRow(b, staging[todayDay], a, actionsData?.actions ?? []));
       else setDay(todayDay, stageRow(b, staging[todayDay], a));
     },
-    [todayDay, boards, staging, setDay, actionsData]
+    [todayDay, boards, staging, setDay, actionsData, pin, nowFrom]
   );
   // Stage all takes the rows that fit together; one that would overfill a slot keeps its own button.
   const stageAll = useMemo(
@@ -509,10 +598,9 @@ export function WeekTerminal({
       if (!row?.player || row.kind !== "player" || !anchor) return;
       requestStreamers();
       if (view === "players") setCursor({ key, col: 0 });
-      const from = view === "daily" && day != null && canSchedule(day) ? day : null;
-      setMenu({ type: "replace", rowKey: key, anchor, day: day ?? viewDay, from });
+      setMenu({ type: "replace", rowKey: key, anchor, day: day ?? viewDay, from: replaceFrom(day) });
     },
-    [rowByKey, anchorFor, requestStreamers, view, viewDay, canSchedule]
+    [rowByKey, anchorFor, requestStreamers, view, viewDay, replaceFrom]
   );
   const closeMenu = useCallback(() => {
     setMenu(null);
@@ -536,6 +624,8 @@ export function WeekTerminal({
   const moveInfo = useMemo(() => {
     if (!menu || menu.type !== "move" || !menuPlayer || !grid || !gridNoPreview) return null;
     const day = menu.day;
+    // Staged to drop, he has no spot to move from: the menu offers the drop back instead.
+    if (drops.includes(menuPlayer.id)) return { blocked: null, targets: [], day };
     const b = boards[day];
     const onDay = b?.players.find((p) => p.player_id === menuPlayer.id);
     let blocked: string | null = null;
@@ -558,7 +648,7 @@ export function WeekTerminal({
       }));
     }
     return { blocked, targets, day };
-  }, [menu, menuPlayer, grid, gridNoPreview, boards, board, editableOn, source, mode, staging, weekWith]);
+  }, [menu, menuPlayer, grid, gridNoPreview, drops, boards, board, editableOn, source, mode, staging, weekWith]);
 
   // Free agents for the replace menu, best change to the week first.
   const replaceOptions = useMemo<ReplaceOption[]>(() => {
@@ -689,40 +779,104 @@ export function WeekTerminal({
   const swapFa = pinned ? faById.get(pinned.faId) ?? null : null;
   const swapFrom = pinned?.from ?? null;
   const pinnedDelta = pinned && swapFa ? faGain(swapFa, pinned.replaces, swapFrom) : 0;
-  const todayBoard = todayDay != null ? boards[todayDay] ?? null : null;
   // When to make it: now, or before any later day he plays (the day picked stays on offer).
+  // After today's first tip an add made now is tomorrow's pickup, so Now isn't on offer.
   const timings = useMemo<SwapTiming[]>(() => {
     if (!pinned || !swapFa || !source) return [];
     const days = source.days.filter((d) => canSchedule(d.index) && swapFa.game_days.includes(d.index)).map((d) => d.index);
     if (pinned.from != null && !days.includes(pinned.from)) days.push(pinned.from);
     days.sort((a, b) => a - b);
     return [
-      { day: null, label: "Now", delta: faGain(swapFa, pinned.replaces, null) },
+      ...(nowFrom == null ? [{ day: null, label: "Now", delta: faGain(swapFa, pinned.replaces, null) }] : []),
       ...days.map((d) => ({ day: d, label: source.days[d].dow, delta: faGain(swapFa, pinned.replaces, d) })),
     ];
-  }, [pinned, swapFa, source, canSchedule, faGain]);
+  }, [pinned, swapFa, source, canSchedule, faGain, nowFrom]);
+
+  // ---- drops: staged on their own, made now ----
+  const laneHolder = openLane?.status === "active" ? openLane.holder.player_id : null;
+  /** Why this player can't be dropped now, or null when he can. */
+  const dropReason = useCallback(
+    (id: number) => {
+      const pickup = pendingPickups.find((p) => p.drop?.player_id === id);
+      return dropBlockedReason({
+        player: { id, name: nameOf(id) },
+        board: rawToday,
+        laneHolder,
+        scheduled: pickup ? { add: pickup.add.name, day: pickupDayLabel(pickup.nba_date) } : null,
+        pinnedDrops: pinned?.replaces === id,
+        demo: data.demo,
+      });
+    },
+    [pendingPickups, nameOf, rawToday, laneHolder, pickupDayLabel, pinned, data.demo]
+  );
+  // Why a staged drop's last send failed, by player.
+  const [dropErrors, setDropErrors] = useState<Record<number, string>>({});
+  /** Stage a drop: his staged moves on every day are taken back, swaps and all. */
+  const stageDrop = useCallback(
+    (id: number) => {
+      setStagedByDay((prev) => unstageEverywhere(boards, prev, id));
+      setDrops((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    },
+    [boards]
+  );
+  const undrop = useCallback((id: number) => {
+    setDrops((prev) => prev.filter((x) => x !== id));
+    setDropErrors(({ [id]: _sent, ...rest }) => rest);
+  }, []);
+  /** The X key: stage his drop, or take it back; a drop that can't be made says why. */
+  const toggleDrop = useCallback(
+    (id: number) => {
+      if (drops.includes(id)) return undrop(id);
+      const why = dropReason(id);
+      if (why) toast(why);
+      else stageDrop(id);
+    },
+    [drops, undrop, dropReason, stageDrop]
+  );
+  // The drops that go to ESPN on their own (the one an add rides on goes with the add), and
+  // what they and the ridden one do to the week: the week now, less the week without them.
+  const loneDrops = useMemo(() => (paired == null ? drops : drops.filter((id) => id !== paired)), [drops, paired]);
+  const weekNow = gridNoPreview?.projected.you ?? 0;
+  const loneDropsDelta = useMemo(
+    () => (loneDrops.length ? weekNow - weekFor(leaves.filter((x) => !loneDrops.includes(x.id)), stagedByDay) : 0),
+    [loneDrops, weekNow, weekFor, leaves, stagedByDay]
+  );
+  const pairedDelta = useMemo(
+    () => (paired != null ? weekNow - weekFor(leaves.filter((x) => x.id !== paired), stagedByDay) : 0),
+    [paired, weekNow, weekFor, leaves, stagedByDay]
+  );
+  // The move menu's Drop item: what dropping him now does to the week, or why he can't be dropped.
+  const dropInfo = useMemo(() => {
+    if (!menu || menu.type !== "move" || !menuPlayer) return null;
+    const id = menuPlayer.id;
+    if (drops.includes(id)) return { dropped: true, note: null, delta: 0 };
+    const note = dropReason(id);
+    if (note || todayDay == null) return { dropped: false, note, delta: 0 };
+    const delta = weekFor([...leaves, { id, from: todayDay }], unstageEverywhere(boards, stagedByDay, id)) - weekNow;
+    return { dropped: false, note: null, delta };
+  }, [menu, menuPlayer, drops, dropReason, todayDay, weekFor, leaves, boards, stagedByDay, weekNow]);
 
   /** The staged add / drop as the tray shows it: in the column of the day it is made. */
   const swap = useMemo<(TraySwap & { blocked: string | null; delta: number; day: number }) | null>(() => {
     if (!pinned || !swapFa || !source || !(swapOut || pinned.replaces === NO_DROP)) return null;
+    // Who leaves: the player it replaces, or the staged drop it rides on.
+    const rides = paired != null ? { id: paired, name: nameOf(paired) } : null;
+    const out = swapOut ? { id: swapOut.id, name: swapOut.name } : rides;
+    const dup = swapFrom != null ? pendingPickups.find((p) => p.add.player_id === swapFa.player_id) : undefined;
+    const already = out ? pendingPickups.find((p) => p.drop?.player_id === out.id) : undefined;
+    // Scheduled, locks and waivers are the server's to wait out when the day comes.
     let blocked: string | null = null;
-    if (swapFrom != null) {
-      // Scheduled: locks and waivers are the server's to wait out when the day comes.
-      const dup = pendingPickups.find((p) => p.add.player_id === swapFa.player_id);
-      const dropping = swapOut ? pendingPickups.find((p) => p.drop?.player_id === swapOut.id) : undefined;
-      if (!todayBoard) blocked = "Scheduling a pickup needs an ESPN team.";
-      else if (dup) blocked = `${swapFa.name} is already scheduled for ${pickupDayLabel(dup.nba_date)}.`;
-      else if (dropping && swapOut) {
-        blocked = `${swapOut.name} is already being dropped for ${dropping.add.name} on ${pickupDayLabel(dropping.nba_date)}.`;
-      } else if (!data.demo && !todayBoard.can_write) blocked = writeBlockedCopy(todayBoard.write_blocked_reason);
-      else if (!swapOut && rosterRoom(todayBoard) === 0) blocked = "Your roster is full: pick someone to drop.";
-    } else if (!todayBoard) blocked = "Add and drop from here need an ESPN team.";
-    else if (swapOut && todayBoard.players.find((p) => p.player_id === swapOut.id)?.locked) {
-      blocked = `${swapOut.name} is locked until his game ends.`;
-    } else if (swapFa.acquisition_status === "waivers") blocked = `${swapFa.name} is on waivers.`;
-    else if (!data.demo && !todayBoard.can_write) blocked = writeBlockedCopy(todayBoard.write_blocked_reason);
-    else if (!swapOut && rosterRoom(todayBoard) === 0) blocked = "Your roster is full: pick someone to drop.";
+    if (!rawToday) blocked = swapFrom != null ? "Scheduling a pickup needs an ESPN team." : "Add and drop from here need an ESPN team.";
+    else if (dup) blocked = `${swapFa.name} is already scheduled for ${pickupDayLabel(dup.nba_date)}.`;
+    else if (already && out) blocked = `${out.name} is already being dropped for ${already.add.name} on ${pickupDayLabel(already.nba_date)}.`;
+    else if (out && out.id === laneHolder) blocked = "A stream lane is streaming his spot: stop it to drop him.";
+    else if (swapFrom == null && out && rawToday.players.find((p) => p.player_id === out.id)?.locked) {
+      blocked = `${out.name} is locked until his game ends.`;
+    } else if (swapFrom == null && swapFa.acquisition_status === "waivers") blocked = `${swapFa.name} is on waivers.`;
+    else if (!data.demo && !rawToday.can_write) blocked = writeBlockedCopy(rawToday.write_blocked_reason);
+    else if (!out && rosterRoom(rawToday) === 0) blocked = "Your roster is full: pick someone to drop.";
     const fromDow = swapFrom != null ? source.days[swapFrom]?.dow ?? "" : "";
+    const leaving = swapOut ?? (rides ? source.mine.find((p) => p.id === rides.id) ?? null : null);
     return {
       add: {
         id: swapFa.player_id,
@@ -733,36 +887,51 @@ export function WeekTerminal({
             ? `${swapFa.game_days.filter((d) => d >= swapFrom).length} games from ${fromDow}`
             : `${swapFa.games_remaining} games left`,
       },
-      drop: swapOut ? { id: swapOut.id, name: swapOut.name } : null,
+      drop: out ? { ...out, staged: rides != null || undefined } : null,
       from: swapFrom,
       timings,
-      timing: swapFrom != null ? pickupTiming(source.days, swapFrom, swapOut, todayIndex, addFrom) : null,
+      timing: swapFrom != null ? pickupTiming(source.days, swapFrom, leaving, todayIndex, addFrom) : null,
       blocked,
-      delta: pinnedDelta,
+      // The drop it rides on counts with it: the add fills the spot that drop frees.
+      delta: pinnedDelta + pairedDelta,
       // Made now, it sits in today's column (or one of its own when today isn't on the board).
       day: swapFrom ?? todayDay ?? NOW_DAY,
     };
-  }, [pinned, swapFa, source, swapOut, swapFrom, pendingPickups, todayBoard, data.demo, pickupDayLabel, timings, todayIndex, addFrom, pinnedDelta, todayDay]);
+  }, [pinned, swapFa, source, swapOut, paired, nameOf, swapFrom, pendingPickups, rawToday, laneHolder, data.demo, pickupDayLabel, timings, todayIndex, addFrom, pinnedDelta, pairedDelta, todayDay]);
 
-  /** Make (or schedule) the add / drop; "ok" takes it off the tray. */
-  const sendSwap = useCallback(async (): Promise<"ok" | "refused"> => {
-    if (!pinned || !todayBoard) return "refused";
-    const drop = pinned.replaces === NO_DROP ? null : pinned.replaces;
-    const outcome =
-      pinned.from != null
-        ? swapFa
-          ? await data.schedulePickup(swapFa, drop, pinned.from)
-          : "refused"
-        : await data.transact(pinned.faId, drop, todayBoard);
-    if (outcome === "ok") setPinned(null);
-    return outcome;
-  }, [pinned, todayBoard, data, swapFa]);
+  const [swapError, setSwapError] = useState<string | null>(null);
+  /**
+   * Make (or schedule) the add / drop, pinned to `today` (today's board as ESPN
+   * holds it now), with the staged drop it rides on, if any. "ok" takes it off
+   * the tray; "stale" (the board moved on ESPN, so the preview no longer
+   * applies) lets it go, giving back a drop it took over.
+   */
+  const sendSwap = useCallback(
+    async (today: LineupState | null): Promise<"ok" | "stale" | "refused"> => {
+      if (!pinned || !today) return "refused";
+      const drop = pinned.replaces !== NO_DROP ? pinned.replaces : paired;
+      let outcome: "ok" | "stale" | "refused";
+      if (pinned.from != null) outcome = swapFa ? await data.schedulePickup(swapFa, drop, pinned.from) : "refused";
+      else {
+        const r = await data.transact(pinned.faId, drop, today);
+        outcome = r.status;
+        setSwapError(r.status === "refused" ? r.message : null);
+      }
+      if (outcome === "ok") {
+        setPinned(null);
+        if (paired != null) setDrops((prev) => prev.filter((x) => x !== paired));
+      } else if (outcome === "stale") pin(null);
+      return outcome;
+    },
+    [pinned, paired, data, swapFa, pin]
+  );
   // A different add / drop starts without the last one's error.
   const swapKey = pinned ? `${pinned.faId}:${pinned.replaces}:${pinned.from}` : null;
   const { clearTransactError, clearScheduleError } = data;
   useEffect(() => {
     clearTransactError();
     clearScheduleError();
+    setSwapError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [swapKey]);
 
@@ -770,6 +939,8 @@ export function WeekTerminal({
   const [sendingDay, setSendingDay] = useState<number | null>(null);
   const [trayHeight, setTrayHeight] = useState(0);
   const [dayErrors, setDayErrors] = useState<Record<number, string>>({});
+  // The column drops made now sit in: today's, or one of their own when today isn't on the board.
+  const nowColumn = todayDay ?? NOW_DAY;
   const dropDay = useCallback((day: number) => {
     setStagedByDay((prev) => {
       const out = { ...prev };
@@ -779,11 +950,12 @@ export function WeekTerminal({
   }, []);
   /**
    * Write the chosen days' lineups, earliest first; stop at the first one ESPN refuses
-   * (`sendLineupDays`). After an add / drop made now the boards on screen are behind
-   * the roster: every day is read again before its write.
+   * (`sendLineupDays`). After a roster change made now the boards on screen are behind
+   * the roster: every day is read again before its write. While drops are still staged
+   * (`waiting`), a day whose moves don't fit the roster with them on it waits for them.
    */
   const sendDays = useCallback(
-    async (chosen: number[], rosterChanged: boolean) => {
+    async (chosen: number[], rosterChanged: boolean, waiting: readonly number[]) => {
       const order = pending.filter((p) => chosen.includes(p.day));
       if (order.length === 0) return;
       setDayErrors((prev) => Object.fromEntries(Object.entries(prev).filter(([d]) => !chosen.includes(Number(d)))));
@@ -792,8 +964,23 @@ export function WeekTerminal({
       if (rosterChanged) {
         await Promise.all(order.map(async (p) => fresh.set(p.day, await lineup.refresh(p.day).catch(() => null))));
       }
-      const { done, failed } = await sendLineupDays(order, {
-        board: (day) => fresh.get(day) ?? boards[day],
+      // Each write is pinned to the lineup ESPN holds: read again, or as read before any drop.
+      const boardOf = (day: number) => fresh.get(day) ?? rawBoards[day];
+      const held = waiting.length
+        ? order.filter((p) => {
+            const b = boardOf(p.day);
+            return !!b && validateStaged(b, normalize(b, snapshot[p.day] ?? NO_STAGING)).length > 0;
+          })
+        : [];
+      if (held.length) {
+        const who = waiting.map((id) => shortName(nameOf(id)));
+        const note = who.length === 1 ? `Waits on ${who[0]}'s drop` : `Waits on the drops of ${who.join(" and ")}`;
+        setDayErrors((prev) => ({ ...prev, ...Object.fromEntries(held.map((p) => [p.day, note])) }));
+      }
+      const go = order.filter((p) => !held.includes(p));
+      if (go.length === 0) return;
+      const { done, failed } = await sendLineupDays(go, {
+        board: boardOf,
         moves: (day, b) => diff(b, normalize(b, snapshot[day] ?? NO_STAGING)),
         apply: lineup.apply,
         refresh: lineup.refresh,
@@ -813,24 +1000,76 @@ export function WeekTerminal({
       if (data.demo) toast.success(`Lineup updated (demo): ${sent.join(", ")}`);
       else toast.success(`Lineup updated on ESPN for ${sent.join(", ")}`);
     },
-    [pending, stagedByDay, boards, lineup, data.demo, dropDay]
+    [pending, stagedByDay, rawBoards, lineup, data.demo, dropDay, nameOf]
   );
-  /** Send the confirmed days: the add / drop first (its board is the one on screen), then the lineups in day order. */
+  /**
+   * Send the confirmed days. Today's drops go first, one ESPN call each, then the
+   * add / drop (with the drop it rides on), then the lineups in day order. Each
+   * call after a roster change is pinned to today's board read again: a drop
+   * moves the roster version the next request must match. A refused drop holds
+   * back only what needs it: the add riding on it (sent together, they fail
+   * together) and a day whose moves need his spot.
+   */
   const sendAll = useCallback(
     async (chosen: number[]) => {
+      let today = rawToday;
+      let moved = false;
+      const readToday = async () => {
+        if (moved && todayDay != null) today = (await lineup.refresh(todayDay).catch(() => null)) ?? today;
+        moved = false;
+      };
       let rosterChanged = false;
+      let waiting = drops;
+      if (chosen.includes(nowColumn) && loneDrops.length) {
+        setSendingDay(nowColumn);
+        const made: number[] = [];
+        const errors: Record<number, string> = {};
+        for (const id of loneDrops) {
+          await readToday();
+          if (!today) break;
+          const r = await data.transact(null, id, today);
+          if (r.status === "ok") made.push(id);
+          else errors[id] = r.status === "stale" ? "Your roster changed on ESPN: check it, then send again." : r.message;
+          moved = r.status !== "refused";
+        }
+        setSendingDay(null);
+        rosterChanged = made.length > 0;
+        waiting = waiting.filter((id) => !made.includes(id));
+        setDrops((prev) => prev.filter((id) => !made.includes(id)));
+        setDropErrors(errors);
+      }
       if (swap && !swap.blocked && chosen.includes(swap.day)) {
         setSendingDay(swap.day);
-        const outcome = await sendSwap();
+        await readToday();
+        const outcome = await sendSwap(today);
         setSendingDay(null);
-        rosterChanged = outcome === "ok" && swap.from == null;
+        if (outcome === "ok") {
+          if (swap.from == null) rosterChanged = true;
+          if (paired != null) waiting = waiting.filter((id) => id !== paired);
+        }
       }
-      await sendDays(chosen, rosterChanged);
+      await sendDays(chosen, rosterChanged, waiting);
     },
-    [swap, sendSwap, sendDays]
+    [rawToday, todayDay, lineup, drops, nowColumn, loneDrops, data, swap, sendSwap, paired, sendDays]
   );
   const trayDays = useMemo<TrayDay[]>(() => {
     const columns = new Map<number, TrayDay>();
+    const column = (day: number): TrayDay => {
+      const d = source?.days[day];
+      return (
+        columns.get(day) ?? {
+          day,
+          dow: d?.dow ?? "Now",
+          date: d ? monthDay(d.date) : "",
+          moves: [],
+          drops: [],
+          swap: null,
+          delta: 0,
+          problems: [],
+          error: null,
+        }
+      );
+    };
     for (const p of pending) {
       const d = source?.days[p.day];
       const names = new Map((boards[p.day]?.players ?? []).map((x) => [x.player_id, x.name]));
@@ -845,6 +1084,7 @@ export function WeekTerminal({
           to: m.to_slot_id,
           role: moveRole(m),
         })),
+        drops: [],
         swap: null,
         // What this day's own moves add: the week with them, less the week without.
         delta: gridNoPreview ? gridNoPreview.projected.you - weekWith(p.day, NO_STAGING) : 0,
@@ -852,29 +1092,32 @@ export function WeekTerminal({
         error: dayErrors[p.day] ?? null,
       });
     }
+    if (loneDrops.length) {
+      const col = column(nowColumn);
+      const failed = loneDrops.map((id) => dropErrors[id]).find(Boolean) ?? null;
+      columns.set(nowColumn, {
+        ...col,
+        drops: loneDrops.map((id) => ({ id, name: nameOf(id) })),
+        delta: col.delta + loneDropsDelta,
+        // A drop that can't be made now (his game started since, a lane took his spot) keeps the column back.
+        problems: [...col.problems, ...loneDrops.map(dropReason).filter((r): r is string => r != null)],
+        // Why a drop failed says more than the days waiting on it.
+        error: failed ?? col.error,
+      });
+    }
     if (swap) {
-      const d = source?.days[swap.day];
-      const col = columns.get(swap.day) ?? {
-        day: swap.day,
-        dow: d?.dow ?? "Now",
-        date: d ? monthDay(d.date) : "",
-        moves: [],
-        swap: null,
-        delta: 0,
-        problems: [],
-        error: null,
-      };
+      const col = column(swap.day);
       const { blocked, delta, day: _day, ...rest } = swap;
       columns.set(swap.day, {
         ...col,
         swap: rest,
         delta: col.delta + delta,
         problems: blocked ? [...col.problems, blocked] : col.problems,
-        error: col.error ?? (swap.from != null ? data.scheduleError : data.transactError),
+        error: col.error ?? (swap.from != null ? data.scheduleError : swapError),
       });
     }
     return [...columns.values()].sort((a, b) => a.day - b.day);
-  }, [pending, source, boards, gridNoPreview, weekWith, dayErrors, swap, data.scheduleError, data.transactError]);
+  }, [pending, source, boards, gridNoPreview, weekWith, dayErrors, loneDrops, nowColumn, dropErrors, nameOf, loneDropsDelta, dropReason, swap, data.scheduleError, swapError]);
 
   // Hovering a pending pickup previews it (the pool has to know him first).
   const previewPickup = useCallback(
@@ -897,7 +1140,8 @@ export function WeekTerminal({
   /** Why this player's spot can't be streamed, or null when it can. */
   const streamable = useCallback(
     (playerId: number): string | null => {
-      if (!data.demo && !todayBoard) return "Stream lanes need an ESPN team.";
+      if (!data.demo && !rawToday) return "Stream lanes need an ESPN team.";
+      if (drops.includes(playerId)) return "He's staged to drop.";
       if (openLane) {
         return openLane.holder.player_id === playerId
           ? "A stream lane is streaming this spot."
@@ -906,7 +1150,7 @@ export function WeekTerminal({
       if (boardById.get(playerId)?.lineup_slot_id === IR_SLOT_ID) return "A player on IR holds no spot to stream.";
       return null;
     },
-    [data.demo, todayBoard, openLane, boardById]
+    [data.demo, rawToday, drops, openLane, boardById]
   );
   const { updateLane, clearLaneError } = data;
   const laneModel: LaneRowModel | null = useMemo(() => {
@@ -983,7 +1227,7 @@ export function WeekTerminal({
         }
         case "Escape":
           if (tapeBox) setTapeBox(null);
-          else if (pinned) setPinned(null);
+          else if (pinned) pin(null);
           else setCursor(null);
           return;
       }
@@ -1045,9 +1289,15 @@ export function WeekTerminal({
           case "Enter":
           case "m": {
             const seat = seatHere();
-            if (!seat || seat.incoming || seat.outgoing || !cursor) return;
+            // A player staged to drop opens his menu too: it takes the drop back.
+            if (!seat || seat.incoming || (seat.outgoing && !seat.dropped) || !cursor) return;
             e.preventDefault();
             openMove(`player-${seat.player.id}`, seatEl(), cursor.col);
+            return;
+          }
+          case "x": {
+            const seat = seatHere();
+            if (seat && !seat.incoming && (!seat.outgoing || seat.dropped)) toggleDrop(seat.player.id);
             return;
           }
           case "r": {
@@ -1107,6 +1357,11 @@ export function WeekTerminal({
         case "r":
           if (cursor) openReplace(cursor.key);
           return;
+        case "x": {
+          const row = cursor ? rows.find((r) => r.key === cursor.key) : null;
+          if (row?.player && row.kind === "player" && (!row.outgoing || row.dropped)) toggleDrop(row.player.id);
+          return;
+        }
         case "[":
           stepDay(-1);
           return;
@@ -1117,7 +1372,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, toggleMarket, streamable, laneFor, tapeBox, data.actions]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, pinned, pin, toggleMarket, streamable, toggleDrop, laneFor, tapeBox, data.actions]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
@@ -1197,7 +1452,7 @@ export function WeekTerminal({
         <Tape
           grid={grid}
           stagedDelta={stagedDelta}
-          stagedCount={moveCount}
+          stagedCount={moveCount + drops.length}
           previewDelta={previewDelta}
           tonight={tonight}
           edge={
@@ -1323,16 +1578,27 @@ export function WeekTerminal({
               const b = boards[day];
               if (b) setDay(day, unstagePure(b, staging[day], playerId));
             }}
+            onUndrop={undrop}
             onDiscardDay={(day) => {
               dropDay(day);
-              if (swap?.day === day) setPinned(null);
+              // Today's column holds the drops: they go with it (and the add riding on one stays, short a spot).
+              if (day === nowColumn) {
+                setDrops([]);
+                setDropErrors({});
+              }
+              if (swap?.day === day) {
+                if (day === nowColumn) setPinned(null);
+                else pin(null);
+              }
             }}
             onDiscardAll={() => {
               setStagedByDay({});
               setPinned(null);
+              setDrops([]);
+              setDropErrors({});
             }}
-            onTiming={(day) => pinned && setPinned({ ...pinned, from: day })}
-            onCancelSwap={() => setPinned(null)}
+            onTiming={(day) => pinned && pin({ ...pinned, from: day })}
+            onCancelSwap={() => pin(null)}
             onSend={sendAll}
             onHeight={setTrayHeight}
           />
@@ -1365,10 +1631,10 @@ export function WeekTerminal({
             pinnedBlocked={swap?.blocked ?? null}
             scheduled={scheduledFa}
             // A pick keeps its day while it stays on the same free agent; a new one is made now.
-            onHover={(pick: MarketPick | null) => setHover(pick ? { ...pick, from: pinned?.faId === pick.faId ? pinned.from : null } : null)}
+            onHover={(pick: MarketPick | null) => setHover(pick ? { ...pick, from: pinned?.faId === pick.faId ? pinned.from : nowFrom } : null)}
             onPin={(pick: MarketPick | null) => {
               setHover(null);
-              setPinned(pick ? { ...pick, from: pinned?.faId === pick.faId ? pinned.from : null } : null);
+              pin(pick ? { ...pick, from: pinned?.faId === pick.faId ? pinned.from : nowFrom } : null);
             }}
             onClose={closeMarket}
           />
@@ -1406,7 +1672,24 @@ export function WeekTerminal({
           currentSlot={`${dayLabel(moveInfo.day)} · ${menuRow?.slot ?? ""}`}
           targets={moveInfo.targets}
           blocked={moveInfo.blocked}
-          scheduleFor={view === "daily" && canSchedule(menu.day) ? source?.days[menu.day]?.dow ?? null : null}
+          scheduleFor={(() => {
+            const from = replaceFrom(menu.day);
+            return from != null ? source?.days[from]?.dow ?? null : null;
+          })()}
+          drop={
+            dropInfo
+              ? {
+                  name: shortName(menuPlayer.name),
+                  delta: dropInfo.delta,
+                  note: dropInfo.note,
+                  staged: dropInfo.dropped,
+                  onToggle: () => {
+                    toggleDrop(menuPlayer.id);
+                    closeMenu();
+                  },
+                }
+              : null
+          }
           onStream={
             streamable(menuPlayer.id) === null
               ? () => {
@@ -1444,7 +1727,7 @@ export function WeekTerminal({
           from={menu.from}
           onHighlight={(id) => setHover(id != null ? { faId: id, replaces: menuPlayer.id, from: menu.from } : null)}
           onPick={(fa) => {
-            setPinned({ faId: fa.player_id, replaces: menuPlayer.id, from: menu.from });
+            pin({ faId: fa.player_id, replaces: menuPlayer.id, from: menu.from });
             closeMenu();
           }}
         />
