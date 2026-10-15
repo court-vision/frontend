@@ -293,13 +293,13 @@ export function WeekTerminal({
    * one back) does to the week.
    */
   const weekFor = useCallback(
-    (leavesX: readonly DropLeave[], stagedX: Readonly<Record<number, Staged>>) => {
+    (leavesX: readonly DropLeave[], stagedX: Readonly<Record<number, Staged>>, incomingX: Incoming | null = null) => {
       if (!source) return 0;
       const bs = withoutDropped(rawBoards, leavesX);
       const dbs = bs.map((b, i) => (b ? { board: b, staged: normalize(b, stagedX[i] ?? NO_STAGING) } : null));
       const b0 = (todayDay != null ? bs[todayDay] : undefined) ?? bs.find((b) => !!b) ?? null;
       const st0 = todayDay != null ? dbs[todayDay]?.staged ?? NO_STAGING : NO_STAGING;
-      return build(source, { board: b0, staged: st0, dayBoards: dbs, dropping: leavesX }).projected.you;
+      return build(source, { board: b0, staged: st0, dayBoards: dbs, dropping: leavesX, incoming: incomingX }).projected.you;
     },
     [source, rawBoards, todayDay, build]
   );
@@ -777,7 +777,22 @@ export function WeekTerminal({
   const swapOut = pinned && pinned.replaces !== NO_DROP ? source?.mine.find((p) => p.id === pinned.replaces) ?? null : null;
   const swapFa = pinned ? faById.get(pinned.faId) ?? null : null;
   const swapFrom = pinned?.from ?? null;
-  const pinnedDelta = pinned && swapFa ? faGain(swapFa, pinned.replaces, swapFrom) : 0;
+  /**
+   * What the add / drop does to the week, made at `from` (null: now). One riding
+   * on a staged drop counts that drop with it, leaving when it does: the add
+   * fills the spot he frees.
+   */
+  const swapGain = useCallback(
+    (fa: StreamerPlayer, replaces: number, from: number | null) => {
+      if (paired == null || !source || todayDay == null) return faGain(fa, replaces, from);
+      const base = weekFor(leaves.filter((x) => x.id !== paired), stagedByDay);
+      const moved = leaves.map((x) => (x.id === paired ? { id: x.id, from: from ?? todayDay } : x));
+      const player = sourceFromStreamer(fa, source.days, null, from ?? addFrom);
+      return weekFor(moved, stagedByDay, incomingFor(player, replaces, from)) - base;
+    },
+    [paired, source, todayDay, faGain, weekFor, leaves, stagedByDay, addFrom]
+  );
+  const pinnedDelta = pinned && swapFa ? swapGain(swapFa, pinned.replaces, swapFrom) : 0;
   // When to make it: now, or before any later day he plays (the day picked stays on offer).
   // After today's first tip an add made now is tomorrow's pickup, so Now isn't on offer.
   const timings = useMemo<SwapTiming[]>(() => {
@@ -786,10 +801,10 @@ export function WeekTerminal({
     if (pinned.from != null && !days.includes(pinned.from)) days.push(pinned.from);
     days.sort((a, b) => a - b);
     return [
-      ...(nowFrom == null ? [{ day: null, label: "Now", delta: faGain(swapFa, pinned.replaces, null) }] : []),
-      ...days.map((d) => ({ day: d, label: source.days[d].dow, delta: faGain(swapFa, pinned.replaces, d) })),
+      ...(nowFrom == null ? [{ day: null, label: "Now", delta: swapGain(swapFa, pinned.replaces, null) }] : []),
+      ...days.map((d) => ({ day: d, label: source.days[d].dow, delta: swapGain(swapFa, pinned.replaces, d) })),
     ];
-  }, [pinned, swapFa, source, canSchedule, faGain, nowFrom]);
+  }, [pinned, swapFa, source, canSchedule, swapGain, nowFrom]);
 
   // ---- drops: staged on their own, made now ----
   const laneHolder = openLane?.status === "active" ? openLane.holder.player_id : null;
@@ -833,16 +848,12 @@ export function WeekTerminal({
     [drops, undrop, dropReason, stageDrop]
   );
   // The drops that go to ESPN on their own (the one an add rides on goes with the add), and
-  // what they and the ridden one do to the week: the week now, less the week without them.
+  // what they do to the week: the week now, less the week without them.
   const loneDrops = useMemo(() => (paired == null ? drops : drops.filter((id) => id !== paired)), [drops, paired]);
   const weekNow = gridNoPreview?.projected.you ?? 0;
   const loneDropsDelta = useMemo(
     () => (loneDrops.length ? weekNow - weekFor(leaves.filter((x) => !loneDrops.includes(x.id)), stagedByDay) : 0),
     [loneDrops, weekNow, weekFor, leaves, stagedByDay]
-  );
-  const pairedDelta = useMemo(
-    () => (paired != null ? weekNow - weekFor(leaves.filter((x) => x.id !== paired), stagedByDay) : 0),
-    [paired, weekNow, weekFor, leaves, stagedByDay]
   );
   // The move menu's Drop item: what dropping him now does to the week, or why he can't be dropped.
   const dropInfo = useMemo(() => {
@@ -891,12 +902,11 @@ export function WeekTerminal({
       timings,
       timing: swapFrom != null ? pickupTiming(source.days, swapFrom, leaving, todayIndex, addFrom) : null,
       blocked,
-      // The drop it rides on counts with it: the add fills the spot that drop frees.
-      delta: pinnedDelta + pairedDelta,
+      delta: pinnedDelta,
       // Made now, it sits in today's column (or one of its own when today isn't on the board).
       day: swapFrom ?? todayDay ?? NOW_DAY,
     };
-  }, [pinned, swapFa, source, swapOut, paired, nameOf, swapFrom, pendingPickups, rawToday, laneHolder, data.demo, pickupDayLabel, timings, todayIndex, addFrom, pinnedDelta, pairedDelta, todayDay]);
+  }, [pinned, swapFa, source, swapOut, paired, nameOf, swapFrom, pendingPickups, rawToday, laneHolder, data.demo, pickupDayLabel, timings, todayIndex, addFrom, pinnedDelta, todayDay]);
 
   const [swapError, setSwapError] = useState<string | null>(null);
   /**
@@ -1457,7 +1467,8 @@ export function WeekTerminal({
         <Tape
           grid={grid}
           stagedDelta={stagedDelta}
-          stagedCount={moveCount + drops.length}
+          stagedCount={moveCount}
+          dropCount={drops.length}
           previewDelta={previewDelta}
           tonight={tonight}
           edge={
