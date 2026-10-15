@@ -2234,14 +2234,20 @@ button.marketRow:hover {
 
 /* ---------------------------------------------------------------- the tray: staged moves by day */
 
+/*
+ * A three-column grid: the day columns and the slider in the middle, centered,
+ * with room reserved either side so the buttons at the bottom right never push
+ * them off center. Collapsed, it is one line: what is staged, and the way back.
+ */
 .tray {
   position: absolute;
   right: 0;
   bottom: 0;
   left: 0;
   z-index: 6;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(360px, max-content) minmax(200px, 1fr);
+  gap: 8px;
   padding: 8px 16px 10px;
   border-top: 1px solid var(--line-2);
   background: color-mix(in srgb, var(--surface) 90%, transparent);
@@ -2249,32 +2255,63 @@ button.marketRow:hover {
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
 }
 
-/* Columns and the slider share one width, centered under the grid. */
-.trayBody {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: max-content;
-  max-width: 100%;
-  margin: 0 auto;
-}
-
-/* The slider, with the buttons for the days ticked by hand beside it. */
-.trayFoot {
+.tray[data-collapsed="true"] {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 12px 3px 10px;
 }
 
-.trayFoot .slide {
-  flex: 1 1 auto;
+.tray > .slide {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+/* Send, Discard all and the fold, at the bottom right. */
+.trayActions {
+  grid-column: 3;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* The collapsed line's handle: what is staged, and a click opens the tray again. */
+.trayFold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.trayFold:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.trayFold:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .trayCols {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   justify-content: safe center;
   align-items: flex-start;
   gap: 8px;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 1px 1px 2px;
