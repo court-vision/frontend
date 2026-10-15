@@ -184,7 +184,7 @@ export interface paths {
          * Send the agent a message; the answer streams back
          * @description A `text/event-stream` of the turn as it happens:
          *
-         *     - `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note);
+         *     - `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note, `step` for the start of each step after the first, when whatever the last status said is done);
          *     - `text` `{delta}`: the answer's prose, as it is written;
          *     - `block` (an `AiTable`): a table the server built from the agent's lookups;
          *     - `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);
