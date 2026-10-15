@@ -27,8 +27,6 @@ interface SlideToSendProps {
   /** Sending right now: the thumb spins. */
   busy: boolean;
   label: string;
-  /** Written at the far end of the track. */
-  endLabel?: string;
   ariaLabel: string;
   valueNow: number;
   valueMax: number;
@@ -39,8 +37,6 @@ interface SlideToSendProps {
   onRelease?: (over: ReadonlySet<number>) => void;
   /** The thumb reached the end; it stays there until this settles. */
   onFinish: (over: ReadonlySet<number>) => Promise<unknown> | void;
-  /** Lets the page focus the thumb (to confirm from the keyboard). */
-  thumbAttr?: string;
 }
 
 /**
@@ -54,7 +50,6 @@ export function SlideToSend({
   locked,
   busy,
   label,
-  endLabel = "SEND",
   ariaLabel,
   valueNow,
   valueMax,
@@ -62,7 +57,6 @@ export function SlideToSend({
   onPass,
   onRelease,
   onFinish,
-  thumbAttr,
 }: SlideToSendProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [x, setX] = useState(0);
@@ -130,14 +124,13 @@ export function SlideToSend({
       className={s.slide}
       data-dragging={dragging}
       data-locked={off}
-      data-long-end={endLabel.length > 4}
       style={{ ["--fill" as string]: `${x + THUMB / 2}px` }}
     >
       <span className={s.slideFill} />
       <span className={s.slideLabel} style={{ opacity: Math.max(0, 1 - x / 140) }} title={label}>
         {label}
       </span>
-      <span className={s.slideEnd}>{endLabel}</span>
+      <span className={s.slideEnd}>SEND</span>
       <button
         type="button"
         role="slider"
@@ -147,7 +140,6 @@ export function SlideToSend({
         aria-valuenow={valueNow}
         aria-valuetext={valueText}
         aria-disabled={off}
-        {...(thumbAttr ? { [thumbAttr]: "" } : {})}
         className={s.slideThumb}
         style={{ transform: `translateX(${x}px)` }}
         onPointerDown={(e) => {

@@ -25,6 +25,26 @@ export interface TrayMove {
   role: MoveRole;
 }
 
+export interface SwapTiming {
+  /** null: made now. */
+  day: number | null;
+  label: string;
+  delta: number;
+}
+
+/** The add / drop staged in a day's column: made now (today's column) or scheduled for that day. */
+export interface TraySwap {
+  add: { id: number; name: string; team: string; games: string };
+  /** Who is dropped; null for an add into an open roster spot. */
+  drop: { id: number; name: string } | null;
+  /** The day it is scheduled for; null: made now. */
+  from: number | null;
+  /** When it could be made: now, or before one of his later game days, with what each does to the week. */
+  timings: SwapTiming[];
+  /** When the server makes a scheduled one, in words. */
+  timing: string | null;
+}
+
 /** A day's column in the tray. */
 export interface TrayDay {
   day: number;
@@ -33,6 +53,7 @@ export interface TrayDay {
   /** "11/12" */
   date: string;
   moves: TrayMove[];
+  swap: TraySwap | null;
   /** What this day's moves add to the week. */
   delta: number;
   /** Why ESPN would refuse them as they stand: the day can't be confirmed. */
@@ -51,22 +72,40 @@ interface TrayProps {
   onUnstage: (day: number, playerId: number) => void;
   onDiscardDay: (day: number) => void;
   onDiscardAll: () => void;
-  /** Send these days' moves, in day order; resolves when done (or stopped at a refusal). */
+  /** Move the add / drop to another day (null: make it now). */
+  onTiming: (day: number | null) => void;
+  onCancelSwap: () => void;
+  /** Send these days, in day order; resolves when done (or stopped at a refusal). */
   onSend: (days: number[]) => Promise<void>;
   /** The tray floats over the view: its height, so the view can scroll its last rows clear of it. */
   onHeight?: (px: number) => void;
 }
 
 /** A confirmation is of a day's moves as they stand: change them and it lapses. */
-const keyOf = (d: TrayDay) => `${d.day}:${d.moves.map((m) => `${m.playerId}>${m.to}`).join(",")}`;
+const keyOf = (d: TrayDay) =>
+  `${d.day}:${d.moves.map((m) => `${m.playerId}>${m.to}`).join(",")}|${d.swap ? `${d.swap.add.id}>${d.swap.drop?.id ?? 0}@${d.swap.from}` : ""}`;
 
 /**
- * Staged lineup moves before they go to ESPN: one column per day, in day order,
- * a row per move. A day is confirmed by ticking its column, or by the slider
- * passing under it; Send (or the slider reaching its end) writes the confirmed
- * days, earliest first, since each day's edit carries into the days after it.
+ * Everything staged for ESPN before it goes: one column per day, in day order,
+ * with that day's lineup moves and the add / drop made that day (now, in
+ * today's column; or scheduled for it). A day is confirmed by ticking its
+ * column, or by the slider passing under it; Send (or the slider reaching its
+ * end) writes the confirmed days, earliest first, since each day's edit carries
+ * into the days after it.
  */
-export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay, onDiscardAll, onSend, onHeight }: TrayProps) {
+export function Tray({
+  days,
+  blocked,
+  demo,
+  sendingDay,
+  onUnstage,
+  onDiscardDay,
+  onDiscardAll,
+  onTiming,
+  onCancelSwap,
+  onSend,
+  onHeight,
+}: TrayProps) {
   const rootRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const el = rootRef.current;
@@ -89,6 +128,7 @@ export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay,
     setPicked((p) => new Set([...p, ...days.filter((d) => over.has(d.day)).map(keyOf)]));
   const allPicked = sendable.size > 0 && days.every((d) => !sendable.has(d.day) || picked.has(keyOf(d)));
   const moveCount = days.reduce((n, d) => n + d.moves.length, 0);
+  const swap = days.find((d) => d.swap)?.swap ?? null;
   const total = days.reduce((n, d) => n + d.delta, 0);
 
   // Days that go out leave the tray; one that fails stays confirmed for a retry.
@@ -119,23 +159,32 @@ export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay,
   };
 
   const confirmedLabel = days.filter((d) => confirmed.has(d.day)).map((d) => d.dow);
+  const what = [
+    moveCount ? `${moveCount} move${moveCount === 1 ? "" : "s"}` : "",
+    swap ? (swap.from != null ? "1 pickup" : swap.drop ? "1 add / drop" : "1 add") : "",
+    `${days.length} day${days.length === 1 ? "" : "s"}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const note = blocked
+    ? blocked
+    : demo
+      ? "Demo: sends apply here only"
+      : moveCount
+        ? "Each day's edit carries into later days until one has its own; days go in order"
+        : swap?.from != null
+          ? "The pickup is made for you when its day comes; you can cancel it until then"
+          : "He joins your bench; move him into a slot afterwards";
 
   return (
-    <section ref={rootRef} className={s.tray} data-tray aria-label="Staged lineup moves">
+    <section ref={rootRef} className={s.tray} data-tray aria-label="Staged roster changes">
       <div className={s.trayHead}>
-        <span className={dk.label}>ESPN lineup</span>
-        <span className={dk.sub}>
-          {moveCount} move{moveCount === 1 ? "" : "s"} · {days.length} day{days.length === 1 ? "" : "s"}
-        </span>
+        <span className={dk.label}>{swap ? "ESPN roster" : "ESPN lineup"}</span>
+        <span className={dk.sub}>{what}</span>
         <span className={`${dk.chip} ${total > 0.05 ? dk.up : total < -0.05 ? dk.down : dk.flat}`} title="Change to your week">
           {signed(total)}
         </span>
-        <span className={s.note}>
-          {blocked ??
-            (demo
-              ? "Demo: sends apply here only"
-              : "Each day's edit carries into later days until one has its own; days go in order")}
-        </span>
+        <span className={s.note}>{note}</span>
         <button type="button" className={dk.btn} onClick={onDiscardAll} disabled={sending}>
           Discard all
         </button>
@@ -158,11 +207,13 @@ export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay,
       </div>
 
       <div className={s.trayBody}>
-        <div className={s.trayCols} role="group" aria-label="Days with staged moves">
+        <div className={s.trayCols} role="group" aria-label="Days with staged changes">
           {days.map((d) => {
             const ok = sendable.has(d.day);
             const on = confirmed.has(d.day);
+            const sw = d.swap;
             const note = d.error ?? d.problems[0] ?? null;
+            const hint = sw ? (sw.timing ? `${sw.timing} · click a player in the grid to drop him instead` : "Click a player in the grid to drop him instead") : null;
             return (
               <div
                 key={d.day}
@@ -174,6 +225,7 @@ export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay,
                 data-confirmed={on}
                 data-problem={!ok || !!d.error}
                 data-sending={sendingDay === d.day}
+                data-swap={!!sw}
               >
                 <div className={s.trayColHead}>
                   <button
@@ -182,7 +234,7 @@ export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay,
                     aria-pressed={on}
                     disabled={!ok || locked}
                     onClick={() => toggle(d)}
-                    title={ok ? (on ? `Don't send ${d.dow}` : `Confirm ${d.dow}'s moves`) : "Fix this day's moves first"}
+                    title={ok ? (on ? `Don't send ${d.dow}` : `Confirm ${d.dow}'s changes`) : "Fix this day's changes first"}
                   >
                     <span className={s.trayCheck}>{on ? <Check size={11} strokeWidth={3} /> : null}</span>
                     <span className={s.trayDow}>{d.dow}</span>
@@ -196,8 +248,8 @@ export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay,
                     className={s.trayX}
                     onClick={() => onDiscardDay(d.day)}
                     disabled={sending}
-                    aria-label={`Discard ${d.dow}'s moves`}
-                    title={`Discard ${d.dow}'s moves`}
+                    aria-label={`Discard ${d.dow}'s changes`}
+                    title={`Discard ${d.dow}'s changes`}
                   >
                     <X size={12} />
                   </button>
@@ -225,7 +277,61 @@ export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay,
                       </button>
                     </li>
                   ))}
+                  {sw ? (
+                    <>
+                      <li className={s.trayMove} data-role="add">
+                        <span className={s.trayMoveName} title={sw.add.name}>
+                          <b className={s.traySign}>+</b> {shortName(sw.add.name)}
+                        </span>
+                        <span className={s.trayMoveSlots} title={sw.add.games}>
+                          {sw.add.team}
+                        </span>
+                        <button
+                          type="button"
+                          className={s.trayX}
+                          onClick={onCancelSwap}
+                          disabled={sending}
+                          aria-label={`Take back the pickup of ${sw.add.name}`}
+                          title="Take the pickup back"
+                        >
+                          <X size={11} />
+                        </button>
+                      </li>
+                      <li className={s.trayMove} data-role="drop">
+                        {sw.drop ? (
+                          <span className={s.trayMoveName} title={sw.drop.name}>
+                            <b className={s.traySign}>−</b> {shortName(sw.drop.name)}
+                          </span>
+                        ) : (
+                          <span className={`${s.trayMoveName} ${dk.sub}`}>Into an open roster spot</span>
+                        )}
+                        <span className={s.trayMoveSlots}>{sw.drop ? "drop" : ""}</span>
+                        <span />
+                      </li>
+                    </>
+                  ) : null}
                 </ul>
+                {sw && sw.timings.length > 1 ? (
+                  <div className={s.trayTimings} role="radiogroup" aria-label="When to make it">
+                    {sw.timings.map((t) => (
+                      <button
+                        key={t.day ?? "now"}
+                        type="button"
+                        role="radio"
+                        aria-checked={t.day === sw.from}
+                        className={s.timing}
+                        disabled={sending}
+                        onClick={() => onTiming(t.day)}
+                        title={t.day == null ? "Add him now" : `Schedule it for ${t.label}: the player you drop plays until then`}
+                      >
+                        {t.label}
+                        <span className={s.timingDelta} data-sign={t.delta > 0.05 ? "up" : t.delta < -0.05 ? "down" : "flat"}>
+                          {signed(t.delta)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 {sendingDay === d.day ? (
                   <div className={s.trayColNote}>
                     <span className={dk.spin} /> Sending…
@@ -234,6 +340,8 @@ export function Tray({ days, blocked, demo, sendingDay, onUnstage, onDiscardDay,
                   <div className={s.trayColNote} data-tone="down">
                     {note}
                   </div>
+                ) : hint ? (
+                  <div className={s.trayColNote}>{hint}</div>
                 ) : null}
               </div>
             );

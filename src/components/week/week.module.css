@@ -100,10 +100,6 @@
   white-space: nowrap;
 }
 
-.note[data-tone="down"] {
-  color: var(--down);
-}
-
 /* Everything else in the toolbar keeps its size; the bar scrolls before it squeezes. */
 .toolbar > :not(.note) {
   flex-shrink: 0;
@@ -661,66 +657,6 @@ button.headCell:hover {
   font-size: 10.5px;
   color: var(--accent);
   white-space: nowrap;
-}
-
-/* ---------------------------------------------------------------- dock */
-
-.dock {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 18px;
-  padding: 10px 16px;
-  border-top: 1px solid var(--line-2);
-  background: var(--surface);
-  flex-shrink: 0;
-}
-
-.dockGroup {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-/* The add / drop's slide: the tray's slider, narrower. */
-.dockSlide {
-  flex: 0 1 340px;
-  min-width: 220px;
-}
-
-.dockSlide .slide {
-  min-width: 0;
-}
-
-.dockItems {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 24px;
-  padding: 0 8px;
-  border-radius: 4px;
-  border: 1px solid var(--line-2);
-  background: var(--surface-2);
-  font-family: var(--desk-mono), ui-monospace, monospace;
-  font-size: 11px;
-  color: var(--text);
-  white-space: nowrap;
-}
-
-.pillWarn {
-  border-color: color-mix(in srgb, var(--warn) 45%, var(--line-2));
-}
-
-.pillPreview {
-  border-color: color-mix(in srgb, var(--preview) 45%, var(--line-2));
 }
 
 .arrow {
@@ -2257,16 +2193,6 @@ button.marketRow:hover {
 }
 
 /* When to make an add: now, or before one of his later game days. */
-.timings {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-}
-
 .timing {
   display: inline-flex;
   align-items: baseline;
@@ -2371,6 +2297,11 @@ button.marketRow:hover {
   border-color: color-mix(in srgb, var(--accent) 75%, transparent);
   background: color-mix(in srgb, var(--accent) 6%, var(--bg));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* The add / drop's column: room for the day chips and a line of timing. */
+.trayCol[data-swap="true"] {
+  flex-basis: 264px;
 }
 
 .trayCol[data-problem="true"] {
@@ -2499,6 +2430,30 @@ button.marketRow:hover {
   color: var(--text-3);
 }
 
+.traySign {
+  font-weight: 600;
+}
+
+.trayMove[data-role="add"] .traySign {
+  color: var(--up);
+}
+
+.trayMove[data-role="drop"] .traySign {
+  color: var(--down);
+}
+
+.trayMove[data-role="drop"] .trayMoveSlots {
+  color: var(--text-3);
+}
+
+.trayTimings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px 6px 6px;
+  border-top: 1px solid var(--line);
+}
+
 .trayX {
   display: inline-flex;
   align-items: center;
@@ -2530,6 +2485,7 @@ button.marketRow:hover {
   padding: 6px 10px 8px;
   border-top: 1px solid var(--line);
   font-size: 11px;
+  line-height: 1.35;
   color: var(--text-3);
 }
 
@@ -2541,7 +2497,7 @@ button.marketRow:hover {
 .slide {
   position: relative;
   height: 44px;
-  min-width: 300px;
+  min-width: 360px;
   border-radius: 22px;
   background: var(--surface-2);
   box-shadow: inset 0 0 0 1px var(--line-2);
@@ -2574,10 +2530,6 @@ button.marketRow:hover {
   white-space: nowrap;
   text-overflow: ellipsis;
   pointer-events: none;
-}
-
-.slide[data-long-end="true"] .slideLabel {
-  padding-right: 104px;
 }
 
 .slideEnd {

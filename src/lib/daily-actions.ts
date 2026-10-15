@@ -51,7 +51,7 @@ export function isLineupAction(a: DailyAction): boolean {
   return (a.kind === "start" || a.kind === "ir_in" || a.kind === "ir_out") && movesOf(a).length > 0 && !a.blocked_reason;
 }
 
-/** A row that stages an add (and maybe a drop) into the desk's dock. */
+/** A row that stages an add (and maybe a drop) into the desk's tray. */
 export function isTransactionAction(a: DailyAction): boolean {
   return (a.kind === "add" || a.kind === "add_drop") && !!a.transaction;
 }
@@ -67,7 +67,7 @@ export function isRowStaged(staged: Staged, a: DailyAction): boolean {
   return !!first && staged[first.player_id] === first.to_slot_id;
 }
 
-/** An add row is staged when its free agent waits in the dock with the same drop, made now. */
+/** An add row is staged when its free agent waits in the tray with the same drop, made now. */
 export function isAddStaged(
   a: DailyAction,
   pinned: { faId: number; replaces: number; from: number | null } | null,
