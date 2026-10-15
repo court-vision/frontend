@@ -20,4 +20,5 @@ export type AiTurn = S["AiTurnView"];
 export type AiTable = S["AiTable"];
 export type AiPart = S["AiTextPart"] | S["AiBlockPart"];
 export type AiTurnFeedbackResponse = S["AiTurnFeedbackResp"];
+export type AiTurnCommentResponse = S["AiTurnCommentResp"];
 export type AiFeedback = "up" | "down";

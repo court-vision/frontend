@@ -1,7 +1,8 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
+import { loadDraft, saveDraft } from "@/lib/ai-drafts";
 import dk from "@/components/desk/desk.module.css";
 import s from "./ai.module.css";
 
@@ -16,17 +17,33 @@ export interface ComposerHandle {
 
 /**
  * The message box under the conversation. Enter sends, Shift+Enter starts a
- * new line; it grows with the text up to a few lines, then scrolls.
+ * new line; it grows with the text up to a few lines, then scrolls. What's
+ * typed and not sent is kept per conversation (`draftKey`), so it is still
+ * there after visiting another conversation or desk.
  */
 export const Composer = forwardRef<ComposerHandle, {
   disabled: boolean;
   busy: boolean;
   placeholder: string;
   banner?: React.ReactNode;
+  /** Where this conversation's unsent message is kept; null keeps nothing. */
+  draftKey: string | null;
   onSend: (message: string) => void;
-}>(function Composer({ disabled, busy, placeholder, banner, onSend }, ref) {
-  const [text, setText] = useState("");
+}>(function Composer({ disabled, busy, placeholder, banner, draftKey, onSend }, ref) {
+  const [text, setTextState] = useState("");
   const area = useRef<HTMLTextAreaElement>(null);
+  const key = useRef(draftKey);
+
+  // Another conversation: its own unsent message (read after mount, so the server render matches)
+  useEffect(() => {
+    key.current = draftKey;
+    setTextState(loadDraft(draftKey));
+  }, [draftKey]);
+
+  const setText = (t: string) => {
+    setTextState(t);
+    saveDraft(key.current, t);
+  };
 
   useImperativeHandle(ref, () => ({
     focus: () => area.current?.focus(),

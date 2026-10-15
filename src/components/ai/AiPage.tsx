@@ -14,6 +14,7 @@ import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import {
   useAiConversationQuery,
   useAiConversationsQuery,
+  useAiComment,
   useAiFeedback,
   useAiTurn,
   useAiUsageQuery,
@@ -22,6 +23,7 @@ import {
   useDeleteAiConversation,
 } from "@/hooks/useAi";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
+import { draftKey } from "@/lib/ai-drafts";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { teamName, teamTag } from "@/lib/account";
 import { useUIStore } from "@/stores/useUIStore";
@@ -127,6 +129,8 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
   const create = useCreateAiConversation();
   const remove = useDeleteAiConversation();
   const feedback = useAiFeedback(current);
+  const comment = useAiComment(current);
+  const { userId } = useAuth();
   const { live, running, send, clear } = useAiTurn();
 
   const selected = useSelectedTeam();
@@ -210,6 +214,18 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
       feedback.mutate({ turnId, feedback: value }, { onError: (err) => toast.error(userMessage(err, "Couldn't save that")) });
     },
     [feedback]
+  );
+
+  const onComment = useCallback(
+    (turnId: number, text: string | null) =>
+      comment
+        .mutateAsync({ turnId, comment: text })
+        .then(() => true)
+        .catch((err) => {
+          toast.error(aiMessage(err, "Couldn't save the note"));
+          return false;
+        }),
+    [comment]
   );
 
   const newConversation = useCallback(() => {
@@ -312,7 +328,7 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
               ) : turns.length === 0 && !showLive ? (
                 <Empty onPick={(q) => void onSend(q)} disabled={running} />
               ) : (
-                <Thread turns={turns} live={showLive} onVote={onVote} />
+                <Thread turns={turns} live={showLive} onVote={onVote} onComment={onComment} />
               )}
             </div>
           </div>
@@ -322,6 +338,7 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
             busy={running || create.isPending}
             placeholder={running ? "Answering…" : current == null ? "Ask about your team, a player, or the free-agent pool" : "Ask a follow-up"}
             banner={banner}
+            draftKey={draftKey(userId, current)}
             onSend={(m) => void onSend(m)}
           />
         </div>

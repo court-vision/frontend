@@ -239,6 +239,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/turns/{turn_id}/comment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Leave a note on one of the agent's answers
+         * @description Free text beside the 👍 / 👎, read back when answers are reviewed; null or blank clears it.
+         */
+        post: operations["turn_comment_v1_internal_ai_turns__turn_id__comment_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/ai/turns/{turn_id}/feedback": {
         parameters: {
             query?: never;
@@ -2793,6 +2813,35 @@ export interface components {
              */
             name: string;
         };
+        /** AiTurnCommentData */
+        AiTurnCommentData: {
+            /** Comment */
+            comment: string | null;
+            /** Turn Id */
+            turn_id: number;
+        };
+        /**
+         * AiTurnCommentReq
+         * @description Body for POST /v1/internal/ai/turns/{turn_id}/comment.
+         */
+        AiTurnCommentReq: {
+            /**
+             * Comment
+             * @description The note; null or blank clears it
+             */
+            comment: string | null;
+        };
+        /** AiTurnCommentResp */
+        AiTurnCommentResp: {
+            data: components["schemas"]["AiTurnCommentData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /** AiTurnFeedbackData */
         AiTurnFeedbackData: {
             /** Feedback */
@@ -2821,6 +2870,11 @@ export interface components {
         };
         /** AiTurnView */
         AiTurnView: {
+            /**
+             * Comment
+             * @description The user's own note on this answer
+             */
+            comment: string | null;
             /** Cost Usd */
             cost_usd: number;
             /**
@@ -10978,6 +11032,62 @@ export interface operations {
             };
             /** @description The assistant took too long (AI_TIMEOUT) */
             504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    turn_comment_v1_internal_ai_turns__turn_id__comment_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                turn_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiTurnCommentReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiTurnCommentResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such turn for this caller (AI_TURN_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

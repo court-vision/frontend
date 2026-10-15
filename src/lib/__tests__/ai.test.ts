@@ -106,3 +106,63 @@ describe("prose", () => {
     ]);
   });
 });
+
+describe("drafts", () => {
+  const hadWindow = "window" in globalThis;
+  const realWindow = (globalThis as { window?: unknown }).window;
+  afterEach(() => {
+    if (hadWindow) (globalThis as { window?: unknown }).window = realWindow;
+    else delete (globalThis as { window?: unknown }).window;
+  });
+
+  function fakeStorage(fail = false) {
+    const store = new Map<string, string>();
+    const storage = {
+      get length() {
+        return store.size;
+      },
+      key: (i: number) => [...store.keys()][i] ?? null,
+      getItem: (k: string) => {
+        if (fail) throw new Error("blocked");
+        return store.get(k) ?? null;
+      },
+      setItem: (k: string, v: string) => {
+        if (fail) throw new Error("blocked");
+        store.set(k, v);
+      },
+      removeItem: (k: string) => void store.delete(k),
+    };
+    (globalThis as unknown as { window: unknown }).window = { localStorage: storage };
+    return store;
+  }
+
+  test("one per conversation and user; blank removes it", async () => {
+    const { draftKey, loadDraft, saveDraft } = await import("../ai-drafts");
+    fakeStorage();
+    expect(draftKey(null, 3)).toBeNull();
+    const a = draftKey("user_1", 3);
+    const fresh = draftKey("user_1", null);
+    expect(fresh).toBe("cv.ai.draft.user_1.new");
+    saveDraft(a, "who should I drop");
+    saveDraft(fresh, "new one");
+    expect(loadDraft(a)).toBe("who should I drop");
+    expect(loadDraft(fresh)).toBe("new one");
+    expect(loadDraft(draftKey("user_2", 3))).toBe("");
+    saveDraft(a, "   ");
+    expect(loadDraft(a)).toBe("");
+  });
+
+  test("keeps only the newest drafts", async () => {
+    const { draftKey, saveDraft } = await import("../ai-drafts");
+    const store = fakeStorage();
+    for (let i = 1; i <= 45; i++) saveDraft(draftKey("u", i), `draft ${i}`);
+    expect(store.size).toBe(40);
+  });
+
+  test("blocked storage loses the draft, never the page", async () => {
+    const { draftKey, loadDraft, saveDraft } = await import("../ai-drafts");
+    fakeStorage(true);
+    expect(() => saveDraft(draftKey("u", 1), "x")).not.toThrow();
+    expect(loadDraft(draftKey("u", 1))).toBe("");
+  });
+});

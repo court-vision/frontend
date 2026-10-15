@@ -60,6 +60,7 @@ import type {
   AiConversationResponse,
   AiConversationSummary,
   AiFeedback,
+  AiTurnCommentResponse,
   AiTurnFeedbackResponse,
   AiUsage,
   AiUsageResponse,
@@ -1140,6 +1141,16 @@ class ApiClient {
       method: "POST",
       body: { feedback },
     });
+  }
+
+  /** A free-text note on one answer; null or blank clears it. Returns what was stored. */
+  async sendAiComment(getToken: GetTokenFn, turnId: number, comment: string | null): Promise<string | null> {
+    const env = await fetchJson<AiTurnCommentResponse>(`${AI_API}/turns/${turnId}/comment`, {
+      getToken,
+      method: "POST",
+      body: { comment },
+    });
+    return env.data?.comment ?? null;
   }
 
   /** The URL a turn streams from (see `streamTurn`). */
