@@ -817,19 +817,23 @@ export function WeekTerminal({
   /**
    * Send the confirmed days: the add / drop first (its board is the one on screen), then the
    * lineups in day order. A refused add / drop stops the send, as a refused day does: the
-   * lineups confirmed with it stay in the tray, with its error, for a retry.
+   * lineups confirmed with it stay in the tray, with its error, for a retry. The tray stays
+   * locked from the first write to the last, so nothing is sent twice or discarded under a send.
    */
   const sendAll = useCallback(
     async (chosen: number[]) => {
-      let rosterChanged = false;
-      if (swap && !swap.blocked && chosen.includes(swap.day)) {
-        setSendingDay(swap.day);
-        const outcome = await sendSwap();
+      const first = swap && !swap.blocked && chosen.includes(swap.day) ? swap : null;
+      setSendingDay(first ? first.day : chosen[0] ?? null);
+      try {
+        let rosterChanged = false;
+        if (first) {
+          if ((await sendSwap()) !== "ok") return;
+          rosterChanged = first.from == null;
+        }
+        await sendDays(chosen, rosterChanged);
+      } finally {
         setSendingDay(null);
-        if (outcome !== "ok") return;
-        rosterChanged = swap.from == null;
       }
-      await sendDays(chosen, rosterChanged);
     },
     [swap, sendSwap, sendDays]
   );
