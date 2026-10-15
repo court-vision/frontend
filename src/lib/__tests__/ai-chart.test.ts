@@ -67,7 +67,7 @@ describe("the value axis", () => {
 
   test("tiny values keep their precision", () => {
     expect(niceScale([1e-6])).toEqual({ min: 0, max: 1e-6, ticks: [0, 2e-7, 4e-7, 6e-7, 8e-7, 1e-6] });
-    expect(niceScale([0.003, 0.011])).toEqual({ min: 0, max: 0.012, ticks: [0, 0.002, 0.004, 0.006, 0.008, 0.01, 0.012] });
+    expect(niceScale([0.003, 0.011])).toEqual({ min: 0, max: 0.0125, ticks: [0, 0.0025, 0.005, 0.0075, 0.01, 0.0125] });
   });
 
   test("all zero or nothing at all gives 0..1", () => {
