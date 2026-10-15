@@ -60,6 +60,7 @@ import type {
   AiConversationResponse,
   AiConversationSummary,
   AiFeedback,
+  AiTurnCommentResponse,
   AiTurnFeedbackResponse,
   AiUsage,
   AiUsageResponse,
@@ -1140,6 +1141,19 @@ class ApiClient {
       method: "POST",
       body: { feedback },
     });
+  }
+
+  /** A free-text note on one answer; null or blank clears it. Returns what was stored. */
+  async sendAiComment(getToken: GetTokenFn, turnId: number, comment: string | null): Promise<string | null> {
+    const env = await fetchJson<AiTurnCommentResponse>(`${AI_API}/turns/${turnId}/comment`, {
+      getToken,
+      method: "POST",
+      body: { comment },
+    });
+    const stored = env.data?.comment ?? null;
+    // A note that was sent must come back: a null here would read as "cleared" and drop it from the page
+    if (comment?.trim() && stored == null) throw ApiError.empty({ message: "The note wasn't saved" });
+    return stored;
   }
 
   /** The URL a turn streams from (see `streamTurn`). */

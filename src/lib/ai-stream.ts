@@ -3,7 +3,8 @@
  * answers with server-sent events (backend api/v1/internal/ai.py):
  *
  * - `status` `{text, kind, tool?}`: what the agent is doing (`tool` for a
- *   lookup, `note` for its own progress note);
+ *   lookup, `note` for its own progress note, `step` for the start of each
+ *   step after the first, when whatever the last status said is done);
  * - `text` `{delta}`: the answer's prose, as it is written;
  * - `block`: a table the server built from the agent's lookups;
  * - `error` `{code, message}`: the turn failed;
@@ -21,7 +22,7 @@ import { CORRELATION_HEADER, type GetTokenFn } from "./http";
 import type { AiTable } from "@/types/ai";
 
 export type AiStreamEvent =
-  | { event: "status"; data: { text: string; kind: "tool" | "note"; tool?: string } }
+  | { event: "status"; data: { text: string; kind: "tool" | "note" | "step"; tool?: string } }
   | { event: "text"; data: { delta: string } }
   | { event: "block"; data: AiTable }
   | { event: "error"; data: { code: string; message: string } }

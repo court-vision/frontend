@@ -1,7 +1,7 @@
 "use client";
 
-import { memo } from "react";
-import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { memo, useState } from "react";
+import { MessageSquarePlus, ThumbsDown, ThumbsUp } from "lucide-react";
 import { prose } from "@/lib/ai-prose";
 import type { LivePart, LiveTurn } from "@/hooks/useAi";
 import type { AiFeedback, AiPart, AiTable, AiTurn } from "@/types/ai";
@@ -16,46 +16,129 @@ const OUTCOME_COPY: Record<string, string> = {
   AI_BUSY: "The assistant is busy. Try again in a minute.",
 };
 
+/** Save a note; resolves true when it was stored. */
+type OnComment = (turnId: number, text: string | null) => Promise<boolean>;
+
 export function Thread({
   turns,
   live,
   onVote,
+  onComment,
 }: {
   turns: AiTurn[];
   /** The turn streaming now (or just finished), until the stored copy replaces it. */
   live: LiveTurn | null;
   onVote: (turnId: number, feedback: AiFeedback | null) => void;
+  onComment: OnComment;
 }) {
   return (
     <>
       {turns.map((t) => (
-        <StoredTurn key={t.id} turn={t} onVote={onVote} />
+        <StoredTurn key={t.id} turn={t} onVote={onVote} onComment={onComment} />
       ))}
       {live ? <Live turn={live} /> : null}
     </>
   );
 }
 
-const StoredTurn = memo(function StoredTurn({ turn, onVote }: { turn: AiTurn; onVote: (turnId: number, f: AiFeedback | null) => void }) {
+const StoredTurn = memo(function StoredTurn({
+  turn,
+  onVote,
+  onComment,
+}: {
+  turn: AiTurn;
+  onVote: (turnId: number, f: AiFeedback | null) => void;
+  onComment: OnComment;
+}) {
   const ok = turn.outcome === "ok";
+  const [editing, setEditing] = useState(false);
   return (
     <section className={s.turn} aria-label="Question and answer">
       <div className={s.ask}>{turn.message}</div>
       <div className={s.answer}>
         <Parts parts={turn.parts} />
         {!ok ? <div className={s.failed}>{OUTCOME_COPY[turn.outcome] ?? "This answer didn't finish."}</div> : null}
-        {ok ? (
-          <div className={s.foot}>
-            <Vote turn={turn} onVote={onVote} />
+        <div className={s.foot}>
+          {ok ? <Vote turn={turn} onVote={onVote} /> : null}
+          {!editing ? (
+            <button type="button" className={s.vote} aria-label={turn.comment ? "Edit your note" : "Add a note"} title={turn.comment ? "Edit your note" : "Add a note on this answer"} onClick={() => setEditing(true)}>
+              <MessageSquarePlus size={13} />
+            </button>
+          ) : null}
+          {ok ? (
             <span className={dk.sub} style={{ marginLeft: 6 }} title="What this answer cost">
               {formatCost(turn.cost_usd)}
             </span>
-          </div>
+          ) : null}
+        </div>
+        {editing ? (
+          <NoteEditor
+            initial={turn.comment ?? ""}
+            onCancel={() => setEditing(false)}
+            onSave={async (text) => {
+              if (await onComment(turn.id, text.trim() ? text.trim() : null)) setEditing(false);
+            }}
+          />
+        ) : turn.comment ? (
+          <button type="button" className={s.note} onClick={() => setEditing(true)} title="Edit your note">
+            <span className={dk.label}>Your note</span>
+            <span className={s.noteText}>{turn.comment}</span>
+          </button>
         ) : null}
       </div>
     </section>
   );
 });
+
+/** A note on an answer: what was wrong, what you expected. ⌘⏎ saves, Esc cancels. */
+function NoteEditor({ initial, onSave, onCancel }: { initial: string; onSave: (text: string) => Promise<void>; onCancel: () => void }) {
+  const [text, setText] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave(text);
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className={s.noteEditor}>
+      <textarea
+        className={s.noteInput}
+        value={text}
+        autoFocus
+        rows={3}
+        maxLength={2000}
+        placeholder="What was wrong or missing? Notes are for reviewing answers later."
+        aria-label="Your note on this answer"
+        onChange={(e) => setText(e.target.value)}
+        readOnly={saving}
+        aria-busy={saving}
+        onKeyDown={(e) => {
+          // No shortcuts while a save is in flight (a second write could land out of order),
+          // and none while an IME is composing (Escape dismisses the candidate, not the editor)
+          if (saving || e.nativeEvent.isComposing) return;
+          if (e.key === "Escape") onCancel();
+          else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            void save();
+          }
+        }}
+      />
+      <div className={s.noteActions}>
+        <span className={dk.sub}>⌘⏎ save · Esc cancel</span>
+        <span className={dk.spacer} />
+        <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={onCancel} disabled={saving}>
+          Cancel
+        </button>
+        <button type="button" className={`${dk.btn} ${dk.btnSmall} ${dk.btnPrimary}`} onClick={() => void save()} disabled={saving || text.trim() === initial.trim()}>
+          {initial && !text.trim() ? "Remove note" : "Save note"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function Live({ turn }: { turn: LiveTurn }) {
   const writing = turn.phase === "sending" || turn.phase === "streaming";
@@ -134,6 +217,12 @@ const SOURCES: Record<string, string> = {
   get_game_log: "box scores",
   get_player_stats: "player stats",
   get_scheduled_pickups: "scheduled pickups",
+  get_projections: "projections",
+  get_draft_market: "the draft market",
+  get_market_movement: "draft market moves",
+  get_schedule: "the schedule",
+  get_draft_room: "your draft room",
+  get_draft_rooms: "your draft rooms",
   search_players: "player search",
 };
 

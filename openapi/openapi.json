@@ -889,6 +889,107 @@
         "title": "AiToolCall",
         "type": "object"
       },
+      "AiTurnCommentData": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "turn_id",
+          "comment"
+        ],
+        "title": "AiTurnCommentData",
+        "type": "object"
+      },
+      "AiTurnCommentReq": {
+        "description": "Body for POST /v1/internal/ai/turns/{turn_id}/comment.",
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The note; null or blank clears it",
+            "title": "Comment"
+          }
+        },
+        "required": [
+          "comment"
+        ],
+        "title": "AiTurnCommentReq",
+        "type": "object"
+      },
+      "AiTurnCommentResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiTurnCommentData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiTurnCommentResp",
+        "type": "object"
+      },
       "AiTurnFeedbackData": {
         "properties": {
           "feedback": {
@@ -989,6 +1090,18 @@
       },
       "AiTurnView": {
         "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The user's own note on this answer",
+            "title": "Comment"
+          },
           "cost_usd": {
             "title": "Cost Usd",
             "type": "number"
@@ -1056,6 +1169,7 @@
           "parts",
           "outcome",
           "feedback",
+          "comment",
           "cost_usd"
         ],
         "title": "AiTurnView",
@@ -22432,7 +22546,7 @@
     },
     "/v1/internal/ai/conversations/{conversation_id}/turns": {
       "post": {
-        "description": "A `text/event-stream` of the turn as it happens:\n\n- `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note);\n- `text` `{delta}`: the answer's prose, as it is written;\n- `block` (an `AiTable`): a table the server built from the agent's lookups;\n- `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);\n- `done` `{turn_id, outcome, cost_usd, model_calls, duration_ms, spend}`: always last.\n\nText and blocks arrive in the order the user should see them. Lines starting with `:` are keepalives. Errors before the stream starts are ordinary JSON errors.",
+        "description": "A `text/event-stream` of the turn as it happens:\n\n- `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note, `step` for the start of each step after the first, when whatever the last status said is done);\n- `text` `{delta}`: the answer's prose, as it is written;\n- `block` (an `AiTable`): a table the server built from the agent's lookups;\n- `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);\n- `done` `{turn_id, outcome, cost_usd, model_calls, duration_ms, spend}`: always last.\n\nText and blocks arrive in the order the user should see them. Lines starting with `:` are keepalives. Errors before the stream starts are ordinary JSON errors.",
         "operationId": "send_turn_v1_internal_ai_conversations__conversation_id__turns_post",
         "parameters": [
           {
@@ -22612,6 +22726,74 @@
           }
         ],
         "summary": "Route a question to the place that answers it",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/turns/{turn_id}/comment": {
+      "post": {
+        "description": "Free text beside the \ud83d\udc4d / \ud83d\udc4e, read back when answers are reviewed; null or blank clears it.",
+        "operationId": "turn_comment_v1_internal_ai_turns__turn_id__comment_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "turn_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Turn Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiTurnCommentReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiTurnCommentResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such turn for this caller (AI_TURN_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Leave a note on one of the agent's answers",
         "tags": [
           "AI"
         ]
