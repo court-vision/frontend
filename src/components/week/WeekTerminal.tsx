@@ -1058,7 +1058,9 @@ export function WeekTerminal({
           const outcome = await sendSwap(today);
           if (outcome === "refused") return;
           if (first.from == null) rosterChanged = true;
-          if (outcome === "ok" && paired != null) waiting = waiting.filter((id) => id !== paired);
+          // Only an add / drop made now frees the spot. Scheduled, the drop rides on the pickup and
+          // he stays on ESPN's roster until its day, so a lineup that needs his spot still waits.
+          if (outcome === "ok" && first.from == null && paired != null) waiting = waiting.filter((id) => id !== paired);
         }
         await sendDays(chosen, rosterChanged, waiting);
       } finally {
