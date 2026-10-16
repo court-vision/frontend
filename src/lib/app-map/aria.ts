@@ -123,18 +123,24 @@ export type IsChrome = (s: string) => boolean;
  * Children with repeated items left out: the first two of each list role
  * (rows, options, list items) and of each role of control whose names are
  * data (players, teams, games), and of each run of identical leaves ("away",
- * "home" under every game). Items named in the app's own words ("Adds",
- * "Drops", "Draft market") are choices, each kept. Each kept child comes with
+ * "home" under every game). A list whose items are mostly named in the
+ * app's own words ("Adds", "Drops", "Draft market") is choices, each kept.
+ * Each kept child comes with
  * the count of like items left out after it. The input is not changed.
  */
 function collapse(children: AriaNode[], isChrome: IsChrome): { node: AriaNode; more: number }[] {
+  // A list is data when most of its items are: "L. Black WAS F" is a player among players, whatever its words
+  const votes = new Map<string, number>();
+  for (const c of children) {
+    const label = c.name ?? c.value;
+    if (ITEM_ROLES.has(c.role)) votes.set(c.role, (votes.get(c.role) ?? 0) + (label && isChrome(label) ? -1 : 1));
+  }
   const seen = new Map<string, number>();
   const last = new Map<string, { node: AriaNode; more: number }>();
   const out: { node: AriaNode; more: number }[] = [];
   for (const c of children) {
     let group: string | null = null;
-    const label = c.name ?? c.value;
-    if (ITEM_ROLES.has(c.role) && !(label && isChrome(label))) group = `item:${c.role}`;
+    if (ITEM_ROLES.has(c.role) && (votes.get(c.role) ?? 0) >= 0) group = `item:${c.role}`;
     else if (!CHOICE_ROLES.has(c.role) && (CLICKABLE.has(c.role) || c.role === "group") && c.name && !isChrome(c.name)) group = `data:${c.role}`;
     else if (c.children.length === 0) group = rowLike(c) ?? `same:${normalize(nodeLine(c))}`;
     const entry = { node: c, more: 0 };

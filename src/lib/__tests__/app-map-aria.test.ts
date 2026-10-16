@@ -94,7 +94,16 @@ describe("prune", () => {
   - option "Drops"
   - option "Draft market"
   - option "Tyrese Maxey"`);
-    expect(prune(market, chrome(["adds", "drops", "draft", "market"]))[0].children.map((n) => n.name)).toEqual(["Adds", "Drops", "Draft market", "Tyrese Maxey"]);
+    expect(prune(market, chrome(["adds", "drops", "draft", "market", "tyrese"]))[0].children.map((n) => n.name)).toEqual(["Adds", "Drops", "Draft market", "Tyrese Maxey"]);
+  });
+
+  test("calls a list data when most of its items are, whatever one item's words", () => {
+    const pool = parseSnapshot(`- listbox "Pool":
+  - option "Nikola Jokic"
+  - option "Luka Doncic"
+  - option "Lindy Black"
+  - option "Trae Young"`);
+    expect(prune(pool, chrome(["black"]))[0].children.map((n) => n.name)).toEqual(["Nikola Jokic", "Luka Doncic"]);
   });
 
   test("collapses controls named by data, not the app's own controls or choices", () => {
