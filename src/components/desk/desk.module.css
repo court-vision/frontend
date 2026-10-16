@@ -33,7 +33,9 @@
  * the first desk palettes, at 1.2:1 and 1.4:1, lost every edge.
  *
  * Effects are tokens too: --glow lights the accent marks and --bar-bg paints
- * the bar (Noon and Midnight use both).
+ * the bar (Noon, Midnight, Dawn and Dusk use both; Blacktop only the glow).
+ * The base block sets both to their plain values, so a swatch never inherits
+ * the frame's.
  *
  * Chart series (the AI desk's blocks) are --series-1 to --series-4, in the
  * same fixed order in every theme: series 1 is the theme's accent hue at a
@@ -72,6 +74,7 @@
   --series-3: #eda100;
   --series-4: #6250d6;
   --glow: none;
+  --bar-bg: var(--surface);
   color-scheme: light;
 }
 
@@ -174,6 +177,141 @@
   --series-4: #c98500;
   --glow: 0 0 14px rgba(92, 200, 255, 0.45);
   --bar-bg: linear-gradient(180deg, #1c294a, #162039);
+  color-scheme: dark;
+}
+
+.tokens[data-theme="dawn"] {
+  --bg: #f5f2fa;
+  --surface: #ebe6f4;
+  --surface-2: #e0d9ee;
+  --raised: #fcfbff;
+  --pill: #fcfbff;
+  --hover: #e8e2f3;
+  --hover-col: #efebf7;
+  --line: #cdc3e0;
+  --line-2: #a093be;
+  --text: #1b1430;
+  --text-2: #443a60;
+  --text-3: #635882;
+  --accent: #6a3fd0;
+  --accent-soft: rgba(106, 63, 208, 0.1);
+  --accent-ink: #ffffff;
+  --up: #11784f;
+  --down: #c42d45;
+  --live: #11784f;
+  --warn: #8a5600;
+  --preview: #0a7379;
+  --preview-soft: rgba(10, 115, 121, 0.08);
+  --today: #eee7fb;
+  --today-head: #e2d6f8;
+  --shadow: 0 14px 40px rgba(27, 20, 48, 0.14), 0 0 0 1px var(--line-2);
+  --overlay: rgba(27, 20, 48, 0.3);
+  --series-1: #6a3fd0;
+  --series-2: #eb6834;
+  --series-3: #12968a;
+  --series-4: #eda100;
+  --glow: 0 0 10px rgba(106, 63, 208, 0.28);
+  --bar-bg: linear-gradient(180deg, #f1edf8, #ebe6f4);
+}
+
+.tokens[data-theme="dusk"] {
+  --bg: #151122;
+  --surface: #1d182f;
+  --surface-2: #272040;
+  --raised: #241d3a;
+  --pill: #382e57;
+  --hover: #221c37;
+  --hover-col: #19142a;
+  --line: #382f52;
+  --line-2: #514673;
+  --text: #f0ebfa;
+  --text-2: #bdb3d7;
+  --text-3: #978bb6;
+  --accent: #aa86ff;
+  --accent-soft: rgba(170, 134, 255, 0.16);
+  --accent-ink: #160d2b;
+  --up: #4fd8a2;
+  --down: #ff7b8c;
+  --live: #4fd8a2;
+  --warn: #ffc766;
+  --preview: #5fe0d0;
+  --preview-soft: rgba(95, 224, 208, 0.1);
+  --today: #1d1633;
+  --today-head: #281e47;
+  --shadow: 0 16px 48px rgba(6, 3, 14, 0.6), 0 0 0 1px var(--line-2);
+  --overlay: rgba(8, 5, 16, 0.64);
+  --series-1: #9d7cf2;
+  --series-2: #d55181;
+  --series-3: #c98500;
+  --series-4: #2fb3a3;
+  --glow: 0 0 14px rgba(170, 134, 255, 0.45);
+  --bar-bg: linear-gradient(180deg, #241d3d, #1d182f);
+  color-scheme: dark;
+}
+
+.tokens[data-theme="chalk"] {
+  --bg: #f7f7f5;
+  --surface: #ededea;
+  --surface-2: #e3e3df;
+  --raised: #ffffff;
+  --pill: #ffffff;
+  --hover: #ebebe7;
+  --hover-col: #f1f1ee;
+  --line: #cdcdc7;
+  --line-2: #a6a69f;
+  --text: #121211;
+  --text-2: #3e3e3a;
+  --text-3: #61615b;
+  --accent: #4b7300;
+  --accent-soft: rgba(75, 115, 0, 0.1);
+  --accent-ink: #ffffff;
+  --up: #0a7752;
+  --down: #c62f2a;
+  --live: #0a7752;
+  --warn: #965400;
+  --preview: #6a45c2;
+  --preview-soft: rgba(106, 69, 194, 0.08);
+  --today: #f2f6e1;
+  --today-head: #e6eec7;
+  --shadow: 0 14px 40px rgba(18, 18, 17, 0.14), 0 0 0 1px var(--line-2);
+  --overlay: rgba(18, 18, 17, 0.3);
+  --series-1: #4b7300;
+  --series-2: #2a78d6;
+  --series-3: #c98500;
+  --series-4: #c2417a;
+}
+
+.tokens[data-theme="blacktop"] {
+  --bg: #0d0e0e;
+  --surface: #161717;
+  --surface-2: #1f2121;
+  --raised: #1c1e1e;
+  --pill: #343737;
+  --hover: #1a1c1c;
+  --hover-col: #121313;
+  --line: #2f3232;
+  --line-2: #474b4b;
+  --text: #f3f4f0;
+  --text-2: #b8bbb4;
+  --text-3: #8d918a;
+  --accent: #d4f53c;
+  --accent-soft: rgba(212, 245, 60, 0.14);
+  --accent-ink: #141c00;
+  --up: #3ddc9b;
+  --down: #ff6262;
+  --live: #3ddc9b;
+  --warn: #ffb04a;
+  --preview: #c4a8ff;
+  --preview-soft: rgba(196, 168, 255, 0.11);
+  --today: #14170e;
+  --today-head: #1d2312;
+  --shadow: 0 16px 48px rgba(0, 0, 0, 0.66), 0 0 0 1px var(--line-2);
+  --overlay: rgba(0, 0, 0, 0.66);
+  --series-1: #a8c41a;
+  --series-2: #d95926;
+  --series-3: #8a6cf0;
+  --series-4: #2fb3a3;
+  --glow: 0 0 12px rgba(212, 245, 60, 0.35);
   color-scheme: dark;
 }
 

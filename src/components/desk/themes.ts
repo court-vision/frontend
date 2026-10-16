@@ -22,6 +22,10 @@ export const DESK_THEMES = [
   { id: "midnight", label: "Midnight", scheme: "dark", pair: "noon", note: "Deep navy, sky accent, a soft glow" },
   { id: "paper", label: "Paper", scheme: "light", pair: "ember", note: "Warm newsprint, ink and court orange" },
   { id: "ember", label: "Ember", scheme: "dark", pair: "paper", note: "Warm charcoal and amber" },
+  { id: "dawn", label: "Dawn", scheme: "light", pair: "dusk", note: "Lavender haze, plum ink, a violet accent" },
+  { id: "dusk", label: "Dusk", scheme: "dark", pair: "dawn", note: "Deep aubergine, violet glow, aqua previews" },
+  { id: "chalk", label: "Chalk", scheme: "light", pair: "blacktop", note: "Bare white, black ink, a lime accent" },
+  { id: "blacktop", label: "Blacktop", scheme: "dark", pair: "chalk", note: "Asphalt black and volt" },
 ] as const satisfies readonly DeskThemeInfo[];
 
 export type DeskThemeId = (typeof DESK_THEMES)[number]["id"];
