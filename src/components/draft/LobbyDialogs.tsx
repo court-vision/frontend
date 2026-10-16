@@ -167,6 +167,7 @@ export function CreateRoomDialog({
           <span className={s.fieldLabel}>Settings from</span>
           <select
             className={dk.input}
+            aria-label="Settings from"
             value={teamId}
             onChange={(e) => {
               const id = Number(e.target.value);
@@ -196,7 +197,7 @@ export function CreateRoomDialog({
         <div className={s.row2}>
           <div className={s.field}>
             <span className={s.fieldLabel}>Teams</span>
-            <input className={dk.input} type="number" min={2} max={model.demo ? 16 : 30} value={seats} onChange={(e) => setSeats(e.target.value)} />
+            <input className={dk.input} aria-label="Teams" type="number" min={2} max={model.demo ? 16 : 30} value={seats} onChange={(e) => setSeats(e.target.value)} />
           </div>
           <div className={s.field}>
             <span className={s.fieldLabel}>Scoring</span>
@@ -257,7 +258,7 @@ export function CreateRoomDialog({
         {!model.demo ? (
           <div className={s.field}>
             <span className={s.fieldLabel}>Draft type</span>
-            <select className={dk.input} value={draftType} onChange={(e) => setDraftType(e.target.value as DraftType | "")}>
+            <select className={dk.input} aria-label="Draft type" value={draftType} onChange={(e) => setDraftType(e.target.value as DraftType | "")}>
               <option value="">{team ? "League default" : "Snake"}</option>
               <option value="snake">Snake</option>
               <option value="auction">Auction</option>
@@ -348,7 +349,7 @@ export function ImportDialog({
         <>
           <div className={s.field}>
             <span className={s.fieldLabel}>Team</span>
-            <select className={dk.input} value={teamId ?? ""} onChange={(e) => setTeamId(Number(e.target.value))}>
+            <select className={dk.input} aria-label="Team" value={teamId ?? ""} onChange={(e) => setTeamId(Number(e.target.value))}>
               {teams.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name} · {t.tag}
