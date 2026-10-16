@@ -33,7 +33,7 @@
  * the first desk palettes, at 1.2:1 and 1.4:1, lost every edge.
  *
  * Effects are tokens too: --glow lights the accent marks and --bar-bg paints
- * the bar (Noon, Midnight, Dawn, Dusk and Blacktop use both).
+ * the bar (Noon, Midnight and Blacktop use both).
  * The base block sets both to their plain values, so a swatch never inherits
  * the frame's.
  *
@@ -41,7 +41,6 @@
  * --round scales every corner in every desk (0 is square, 2 is near a pill).
  * --ctl-w and --ctl-line outline buttons and inputs, --rail-line the rails;
  * --btn-*, --primary-* and --pill-* finish buttons and the chosen segment.
- * --raised-bg and --raised-filter can make menus, dialogs and toasts glass.
  * The bar's bottom edge is --bar-rule (a border-image) at --bar-rule-w, and
  * --bar-edge an inset shadow on it; --status-bg paints the status line,
  * --mark-h sets the accent marks under tabs, --label-track and --label-weight
@@ -104,8 +103,6 @@
   --primary-shadow: var(--glow);
   --pill-ink: var(--text);
   --pill-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(0, 0, 0, 0.3);
-  --raised-bg: var(--raised);
-  --raised-filter: none;
   --bar-rule: none;
   --bar-rule-w: 1px;
   --bar-edge: none;
@@ -225,118 +222,6 @@
   --series-4: #c98500;
   --glow: 0 0 14px rgba(92, 200, 255, 0.45);
   --bar-bg: linear-gradient(180deg, #1c294a, #162039);
-  color-scheme: dark;
-}
-
-.tokens[data-theme="dawn"] {
-  --bg: #f5f2fa;
-  --surface: #ebe6f4;
-  --surface-2: #e0d9ee;
-  --raised: #fcfbff;
-  --pill: #fcfbff;
-  --hover: #e8e2f3;
-  --hover-col: #efebf7;
-  --line: #cdc3e0;
-  --line-2: #a093be;
-  --text: #1b1430;
-  --text-2: #443a60;
-  --text-3: #635882;
-  --accent: #6a3fd0;
-  --accent-soft: rgba(106, 63, 208, 0.1);
-  --accent-ink: #ffffff;
-  --up: #11784f;
-  --down: #c42d45;
-  --live: #11784f;
-  --warn: #8a5600;
-  --preview: #0a7379;
-  --preview-soft: rgba(10, 115, 121, 0.08);
-  --today: #eee7fb;
-  --today-head: #e2d6f8;
-  --shadow: 0 22px 54px rgba(76, 40, 160, 0.18), 0 2px 6px rgba(76, 40, 160, 0.08), 0 0 0 1px rgba(106, 63, 208, 0.16);
-  --overlay: rgba(27, 20, 48, 0.3);
-  --series-1: #6a3fd0;
-  --series-2: #eb6834;
-  --series-3: #12968a;
-  --series-4: #eda100;
-  --glow: 0 0 10px rgba(106, 63, 208, 0.28);
-  --bar-bg: linear-gradient(100deg, #ebe2fb 0%, #f5e6f2 55%, #fde8dc 100%);
-  --round: 2.2;
-  --btn-bg: linear-gradient(180deg, #ffffff, #f1ecf9);
-  --btn-shadow: 0 1px 2px rgba(64, 32, 128, 0.1), inset 0 1px 0 #ffffff;
-  --primary-bg: linear-gradient(135deg, #7446dc, #a43dba);
-  --primary-hover: linear-gradient(135deg, #8154e6, #b04ac6);
-  --primary-line: transparent;
-  --primary-shadow: 0 4px 14px rgba(106, 63, 208, 0.32);
-  --pill-shadow: 0 1px 3px rgba(64, 32, 128, 0.16), 0 0 0 1px rgba(106, 63, 208, 0.2);
-  --raised-bg: rgba(252, 251, 255, 0.84);
-  --raised-filter: blur(18px) saturate(160%);
-  --bar-rule: linear-gradient(90deg, #c6b4ef, #ecbdd0 55%, #f3cdb4) 1;
-  --status-bg: linear-gradient(100deg, #ebe6f4, #f4eaf1);
-  --today-head-image: linear-gradient(180deg, rgba(164, 61, 186, 0.08), rgba(106, 63, 208, 0));
-  --desk-sans: var(--face-round);
-  --tape-bg: linear-gradient(100deg, #f1eafb 0%, #f8ecf4 55%, #fdefe6 100%);
-  --slot-bg: #ffffff;
-  --slot-ink: #6a3fd0;
-  --slot-line: rgba(106, 63, 208, 0.35);
-  --strip-w: 4px;
-  --today-edge-l: linear-gradient(90deg, rgba(106, 63, 208, 0.22), rgba(106, 63, 208, 0) 18px);
-  --today-edge-r: linear-gradient(270deg, rgba(164, 61, 186, 0.22), rgba(164, 61, 186, 0) 18px);
-}
-
-.tokens[data-theme="dusk"] {
-  --bg: #151122;
-  --surface: #1d182f;
-  --surface-2: #272040;
-  --raised: #241d3a;
-  --pill: linear-gradient(180deg, #45386d, #342a55);
-  --hover: #221c37;
-  --hover-col: #19142a;
-  --line: #382f52;
-  --line-2: #514673;
-  --text: #f0ebfa;
-  --text-2: #bdb3d7;
-  --text-3: #978bb6;
-  --accent: #aa86ff;
-  --accent-soft: rgba(170, 134, 255, 0.16);
-  --accent-ink: #160d2b;
-  --up: #4fd8a2;
-  --down: #ff7b8c;
-  --live: #4fd8a2;
-  --warn: #ffc766;
-  --preview: #5fe0d0;
-  --preview-soft: rgba(95, 224, 208, 0.1);
-  --today: #1d1633;
-  --today-head: #281e47;
-  --shadow: 0 0 0 1px rgba(170, 134, 255, 0.3), 0 24px 60px rgba(4, 2, 12, 0.65), 0 0 48px rgba(170, 134, 255, 0.12);
-  --overlay: rgba(8, 5, 16, 0.64);
-  --series-1: #9d7cf2;
-  --series-2: #d55181;
-  --series-3: #c98500;
-  --series-4: #2fb3a3;
-  --glow: 0 0 14px rgba(170, 134, 255, 0.45);
-  --bar-bg: radial-gradient(55% 180% at 10% 0%, rgba(170, 134, 255, 0.5), transparent 70%), radial-gradient(45% 180% at 85% 0%, rgba(95, 224, 208, 0.3), transparent 70%), #1d182f;
-  --round: 1.6;
-  --btn-bg: linear-gradient(180deg, #2b2348, #211b38);
-  --btn-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.4);
-  --primary-bg: linear-gradient(135deg, #c3a6ff, #8a5cff);
-  --primary-hover: linear-gradient(135deg, #cfb6ff, #9a70ff);
-  --primary-line: transparent;
-  --primary-shadow: 0 0 18px rgba(170, 134, 255, 0.5);
-  --pill-shadow: 0 0 0 1px rgba(170, 134, 255, 0.5), 0 0 14px rgba(170, 134, 255, 0.28);
-  --raised-bg: rgba(36, 29, 58, 0.8);
-  --raised-filter: blur(20px) saturate(150%);
-  --bar-rule: linear-gradient(90deg, rgba(170, 134, 255, 0.15), rgba(170, 134, 255, 0.75) 30%, rgba(95, 224, 208, 0.65) 70%, rgba(95, 224, 208, 0.15)) 1;
-  --status-bg: linear-gradient(0deg, #1d182f, #18132a);
-  --today-head-image: linear-gradient(180deg, rgba(170, 134, 255, 0.24), rgba(170, 134, 255, 0.02));
-  --desk-sans: var(--face-round);
-  --tape-bg: radial-gradient(45% 200% at 10% 0%, rgba(170, 134, 255, 0.22), transparent 70%), radial-gradient(40% 200% at 85% 0%, rgba(95, 224, 208, 0.12), transparent 70%), #1d182f;
-  --slot-bg: rgba(170, 134, 255, 0.12);
-  --slot-ink: #cdb8ff;
-  --slot-line: rgba(170, 134, 255, 0.4);
-  --strip-w: 4px;
-  --strip-blur: 6px;
-  --today-edge-l: linear-gradient(90deg, rgba(170, 134, 255, 0.4), rgba(170, 134, 255, 0) 22px);
-  --today-edge-r: linear-gradient(270deg, rgba(95, 224, 208, 0.3), rgba(95, 224, 208, 0) 22px);
   color-scheme: dark;
 }
 
@@ -1084,8 +969,7 @@
   display: flex;
   flex-direction: column;
   border-radius: calc(9px * var(--round, 1));
-  background: var(--raised-bg);
-  backdrop-filter: var(--raised-filter);
+  background: var(--raised);
   box-shadow: var(--shadow);
   color: var(--text);
   font-size: 12.5px;
@@ -1402,8 +1286,7 @@ button.menuItem:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   border-radius: calc(12px * var(--round, 1));
-  background: var(--raised-bg);
-  backdrop-filter: var(--raised-filter);
+  background: var(--raised);
   box-shadow: var(--shadow);
   color: var(--text);
   outline: none;
@@ -1714,8 +1597,7 @@ button.menuItem:hover:not(:disabled) {
   width: 356px;
   padding: 11px 14px;
   border-radius: calc(9px * var(--round, 1));
-  background: var(--raised-bg);
-  backdrop-filter: var(--raised-filter);
+  background: var(--raised);
   box-shadow: var(--shadow);
   color: var(--text);
   font-family: var(--desk-sans), ui-sans-serif, system-ui, sans-serif;
