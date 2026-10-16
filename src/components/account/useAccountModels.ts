@@ -205,7 +205,12 @@ export function useLiveAccount(): AccountModel {
     },
     // The update route reads the league in the new season, finds the team by
     // its name or the account's SWID, and syncs that season's settings.
-    rollOver: (team, year) => updateTeam(team, { year }),
+    rollOver: async (team, year) => {
+      await updateTeam(team, { year });
+      // The team keeps its id, so every cache keyed by it (matchup, insights,
+      // lineups, lanes, league rankings) holds last season's answer
+      void queryClient.invalidateQueries();
+    },
     removeTeam: async (teamId) => {
       const res = await removeAsync(teamId);
       if (res.status !== "success") throw new Error(res.message || "The team was not removed");
