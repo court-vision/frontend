@@ -555,14 +555,14 @@
   position: absolute;
   top: 8px;
   right: 8px;
+  /* Over the code block, which comes after it and is positioned too */
+  z-index: 1;
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
 }
 
 .codeLang {
-  position: absolute;
-  top: 10px;
-  right: 46px;
   font-family: var(--desk-mono), ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 0.08em;
