@@ -9,7 +9,7 @@
   display: flex;
   align-items: stretch;
   border-bottom: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--tape-bg, var(--surface));
   flex-shrink: 0;
   overflow-x: auto;
 }
@@ -31,6 +31,7 @@
   font-family: var(--desk-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   font-size: 19px;
+  font-weight: var(--figure-weight, 400);
   letter-spacing: -0.02em;
   color: var(--text);
 }
@@ -49,7 +50,7 @@
   position: relative;
   width: 140px;
   height: 6px;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--round, 1));
   background: color-mix(in srgb, var(--down) 55%, var(--surface));
   overflow: hidden;
 }
@@ -223,7 +224,7 @@
 
 .inj {
   padding: 0 4px;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--round, 1));
   font-size: 10px;
   letter-spacing: 0.04em;
   color: var(--down);
@@ -319,7 +320,7 @@
   position: absolute;
   inset: 4px;
   border: 1px dashed color-mix(in srgb, var(--warn) 80%, transparent);
-  border-radius: 4px;
+  border-radius: calc(4px * var(--round, 1));
   pointer-events: none;
 }
 
@@ -429,7 +430,7 @@ button.headCell:hover {
 }
 
 .headCell[data-today="true"] {
-  background: var(--today-head);
+  background: var(--today-head-image, none), var(--today-head);
 }
 
 .headCell[data-view="true"] {
@@ -513,13 +514,13 @@ button.headCell:hover {
   align-items: center;
   justify-content: center;
   height: 20px;
-  border-radius: 4px;
-  border: 1px solid var(--line-2);
-  background: var(--surface-2);
+  border-radius: calc(4px * var(--round, 1));
+  border: 1px solid var(--slot-line, var(--line-2));
+  background: var(--slot-bg, var(--surface-2));
   font-family: var(--desk-mono), ui-monospace, monospace;
   font-size: 10.5px;
   letter-spacing: 0.04em;
-  color: var(--text);
+  color: var(--slot-ink, var(--text));
 }
 
 .slotChip[data-group="bench"] {
@@ -645,7 +646,7 @@ button.headCell:hover {
   gap: 10px;
   width: 300px;
   padding: 8px 12px 8px 8px;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--round, 1));
   background: var(--surface);
   box-shadow: var(--shadow), 0 0 0 1.5px var(--accent);
   color: var(--text);
@@ -673,7 +674,7 @@ button.headCell:hover {
 .gameTick {
   width: 6px;
   height: 10px;
-  border-radius: 1.5px;
+  border-radius: calc(1.5px * var(--round, 1));
   background: var(--line-2);
 }
 
@@ -687,7 +688,7 @@ button.headCell:hover {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--round, 1));
 }
 
 .change {
@@ -743,7 +744,7 @@ button.headCell:hover {
 }
 
 .dayHead[data-today="true"] {
-  background: var(--today-head);
+  background: var(--today-head-image, none), var(--today-head);
   border-top-color: var(--accent);
   color: var(--text);
 }
@@ -904,7 +905,7 @@ button.dayHead:hover {
 
 .dayHead[data-focus="true"] {
   grid-column: span 1;
-  background: var(--today-head);
+  background: var(--today-head-image, none), var(--today-head);
   color: var(--text);
 }
 
@@ -916,7 +917,7 @@ button.dayHead:hover {
   display: flex;
   align-items: flex-end;
   padding: 0 8px 9px;
-  background: var(--today-head);
+  background: var(--today-head-image, none), var(--today-head);
 }
 
 .statRow {
@@ -941,7 +942,7 @@ button.dayHead:hover {
   display: flex;
   align-items: center;
   padding: 0 8px;
-  background: var(--today);
+  background: var(--today-edge-r, none), var(--today);
   min-width: 0;
 }
 
@@ -960,7 +961,7 @@ button.dayHead:hover {
   inset: 5px 6px 5px auto;
   width: 40px;
   border: 1px dashed color-mix(in srgb, var(--warn) 80%, transparent);
-  border-radius: 4px;
+  border-radius: calc(4px * var(--round, 1));
   pointer-events: none;
 }
 
@@ -1012,7 +1013,7 @@ button.dayHead:hover {
 }
 
 .seatName[data-focus="true"] {
-  background: var(--today);
+  background: var(--today-edge-l, none), var(--today);
 }
 
 .seatWho {
@@ -1049,9 +1050,10 @@ button.dayHead:hover {
   left: 0;
   top: 6px;
   bottom: 6px;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
+  width: var(--strip-w, 3px);
+  border-radius: 0 calc(2px * var(--round, 1)) calc(2px * var(--round, 1)) 0;
   background: var(--strip);
+  box-shadow: 0 0 var(--strip-blur, 0px) var(--strip);
 }
 
 .seatName[data-health="ok"],
@@ -1239,14 +1241,14 @@ button.dayHead:hover {
   top: 9px;
   bottom: 9px;
   width: 3px;
-  border-radius: 0 2px 2px 0;
+  border-radius: 0 calc(2px * var(--round, 1)) calc(2px * var(--round, 1)) 0;
   background: var(--strip, transparent);
 }
 
 .muName[data-mirror="true"][data-health]::before {
   left: auto;
   right: 0;
-  border-radius: 2px 0 0 2px;
+  border-radius: calc(2px * var(--round, 1)) 0 0 calc(2px * var(--round, 1));
 }
 
 .muName[data-health="dtd"] {
@@ -1465,7 +1467,7 @@ button.dayHead:hover {
 .muSwatchOpp {
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--round, 1));
   background: var(--accent);
 }
 
@@ -1517,13 +1519,13 @@ button.dayHead:hover {
   position: relative;
   display: flex;
   height: 8px;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--round, 1));
   overflow: hidden;
 }
 
 .muBar[data-headline="true"] .muTrack {
   height: 14px;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--round, 1));
 }
 
 .muFillYou {
@@ -1664,7 +1666,7 @@ button.dayHead:hover {
   width: 100%;
   height: 30px;
   padding: 0 10px 0 28px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--round, 1));
   border: 1px solid var(--line-2);
   background: var(--surface-2);
   color: var(--text);
@@ -1774,7 +1776,7 @@ button.marketRow:hover {
   align-items: center;
   height: 14px;
   padding: 0 4px;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--round, 1));
   border: 1px solid var(--line-2);
   font-size: 9px;
   letter-spacing: 0.05em;
@@ -1823,7 +1825,7 @@ button.marketRow:hover {
 
 .stripCell {
   height: 12px;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--round, 1));
   background: var(--surface-2);
   box-shadow: inset 0 0 0 1px var(--line);
 }
@@ -1894,7 +1896,7 @@ button.marketRow:hover {
   height: 30px;
   padding: 0 10px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--round, 1));
   background: transparent;
   color: inherit;
   font: inherit;
@@ -2170,7 +2172,7 @@ button.marketRow:hover {
   height: 20px;
   margin-left: auto;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--round, 1));
   background: transparent;
   color: var(--text-3);
   cursor: pointer;
@@ -2194,7 +2196,7 @@ button.marketRow:hover {
   height: 20px;
   padding: 0 6px;
   border: 0;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--round, 1));
   background: transparent;
   color: var(--text-2);
   font-family: var(--desk-mono), ui-monospace, monospace;
@@ -2286,7 +2288,7 @@ button.marketRow:hover {
   height: 26px;
   padding: 0 8px 0 6px;
   border: 0;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--round, 1));
   background: transparent;
   color: var(--text-2);
   font: inherit;
@@ -2322,7 +2324,7 @@ button.marketRow:hover {
   flex-direction: column;
   flex: 0 0 212px;
   border: 1px solid var(--line-2);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--round, 1));
   background: var(--bg);
   transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 }
@@ -2363,7 +2365,7 @@ button.marketRow:hover {
   height: 24px;
   padding: 0 6px 0 2px;
   border: 0;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--round, 1));
   background: transparent;
   color: var(--text);
   text-align: left;
@@ -2391,7 +2393,7 @@ button.marketRow:hover {
   width: 16px;
   height: 16px;
   border: 1.5px solid var(--line-2);
-  border-radius: 4px;
+  border-radius: calc(4px * var(--round, 1));
   color: var(--accent-ink);
   transition: background 120ms ease, border-color 120ms ease;
 }
@@ -2496,7 +2498,7 @@ button.marketRow:hover {
   width: 20px;
   height: 20px;
   border: 0;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--round, 1));
   background: transparent;
   color: var(--text-3);
   cursor: pointer;
@@ -2540,7 +2542,7 @@ button.marketRow:hover {
   position: relative;
   height: 36px;
   min-width: 360px;
-  border-radius: 18px;
+  border-radius: calc(18px * var(--round, 1));
   background: var(--surface-2);
   box-shadow: inset 0 0 0 1px var(--line-2);
   overflow: hidden;
@@ -2553,7 +2555,7 @@ button.marketRow:hover {
   bottom: 0;
   left: 0;
   width: var(--fill);
-  border-radius: 18px;
+  border-radius: calc(18px * var(--round, 1));
   background: color-mix(in srgb, var(--accent) 24%, transparent);
   transition: width 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -2599,7 +2601,7 @@ button.marketRow:hover {
   width: 36px;
   height: 36px;
   border: 0;
-  border-radius: 18px;
+  border-radius: calc(18px * var(--round, 1));
   background: var(--accent);
   color: var(--accent-ink);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
@@ -2669,7 +2671,7 @@ button.marketRow:hover {
   height: 22px;
   padding: 0 8px;
   border: 1px solid var(--line-2);
-  border-radius: 4px;
+  border-radius: calc(4px * var(--round, 1));
   background: transparent;
   color: var(--text-2);
   font-size: 11px;
@@ -2822,7 +2824,7 @@ button.marketRow:hover {
   flex-direction: column;
   margin-top: 6px;
   border: 1px solid var(--line-2);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--round, 1));
   overflow: hidden;
 }
 
@@ -3063,7 +3065,7 @@ button.marketRow:hover {
   display: flex;
   flex-direction: column;
   max-height: min(70vh, 560px);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--round, 1));
   background: var(--raised);
   box-shadow: var(--shadow);
   overflow: hidden;

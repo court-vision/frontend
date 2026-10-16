@@ -189,7 +189,7 @@
 
 .topLink {
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--round, 1));
   color: var(--text-2);
   font-size: 14px;
   font-weight: 500;
@@ -248,7 +248,7 @@
   align-items: center;
   height: 46px;
   padding: 0 20px;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--round, 1));
   font-size: 15px;
   font-weight: 500;
   text-decoration: none;
@@ -364,7 +364,7 @@
   right: 16px;
   bottom: -1px;
   height: 2px;
-  border-radius: 2px 2px 0 0;
+  border-radius: calc(2px * var(--round, 1)) calc(2px * var(--round, 1)) 0 0;
   background: var(--accent);
   box-shadow: var(--glow);
 }
@@ -377,7 +377,7 @@
 
 .shot {
   margin: 0;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--round, 1));
   overflow: hidden;
   background: var(--surface);
   box-shadow: 0 0 0 1px var(--line-2), 0 40px 80px -40px rgba(0, 0, 0, 0.45);

@@ -3,7 +3,9 @@
  * names a token block in desk.module.css (Paper is the base `.tokens` block)
  * and is what storage remembers, so never rename one. `scheme` picks the
  * team-logo variant and the toast theme. The menu lays them out light beside
- * dark, a pair to a row, so keep each light theme just before its pair.
+ * dark, a pair to a row, so keep each light theme just before its pair. A
+ * theme can change more than its colors (corners, outlines, glass, its face):
+ * see the character tokens in desk.module.css.
  */
 export type DeskScheme = "light" | "dark";
 
@@ -22,10 +24,10 @@ export const DESK_THEMES = [
   { id: "midnight", label: "Midnight", scheme: "dark", pair: "noon", note: "Deep navy, sky accent, a soft glow" },
   { id: "paper", label: "Paper", scheme: "light", pair: "ember", note: "Warm newsprint, ink and court orange" },
   { id: "ember", label: "Ember", scheme: "dark", pair: "paper", note: "Warm charcoal and amber" },
-  { id: "dawn", label: "Dawn", scheme: "light", pair: "dusk", note: "Lavender haze, plum ink, a violet accent" },
-  { id: "dusk", label: "Dusk", scheme: "dark", pair: "dawn", note: "Deep aubergine, violet glow, aqua previews" },
-  { id: "chalk", label: "Chalk", scheme: "light", pair: "blacktop", note: "Bare white, black ink, a lime accent" },
-  { id: "blacktop", label: "Blacktop", scheme: "dark", pair: "chalk", note: "Asphalt black and volt" },
+  { id: "dawn", label: "Dawn", scheme: "light", pair: "dusk", note: "Lavender sky, soft pills and frosted glass" },
+  { id: "dusk", label: "Dusk", scheme: "dark", pair: "dawn", note: "Aubergine and aurora, glowing glass" },
+  { id: "chalk", label: "Chalk", scheme: "light", pair: "blacktop", note: "Black ink, hard shadows, a volt highlighter" },
+  { id: "blacktop", label: "Blacktop", scheme: "dark", pair: "chalk", note: "Asphalt grain, square corners and volt" },
 ] as const satisfies readonly DeskThemeInfo[];
 
 export type DeskThemeId = (typeof DESK_THEMES)[number]["id"];
