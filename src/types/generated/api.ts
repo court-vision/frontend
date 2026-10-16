@@ -5202,6 +5202,8 @@ export interface components {
             league_name: string | null;
             /** League Size */
             league_size: number | null;
+            /** Previous Season Team Id */
+            previous_season_team_id: number | null;
             /** Scoring Type */
             scoring_type: string | null;
             /** Season */
@@ -9925,6 +9927,8 @@ export interface components {
             error_code: string | null;
             /** Message */
             message: string;
+            /** Moved From Season */
+            moved_from_season: number | null;
             status: components["schemas"]["ApiStatus"];
             /** Team Id */
             team_id: number | null;

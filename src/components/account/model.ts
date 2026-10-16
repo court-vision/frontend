@@ -73,6 +73,8 @@ export interface AccountModel extends AddTeamModel {
   setPreview: (team: TeamResponseData, preview: ScoringPreview | null) => Promise<void>;
   /** Point a team at a connected account's credentials. */
   linkTeam: (team: TeamResponseData, connectionId: number) => Promise<void>;
+  /** Move a team saved for an earlier ESPN season to `year` (the league's renewal). Throws with the refusal. */
+  rollOver: (team: TeamResponseData, year: number) => Promise<void>;
   removeTeam: (teamId: number) => Promise<void>;
 
   // ---- connections

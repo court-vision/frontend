@@ -71,6 +71,8 @@ export function useAddTeamMutation(opts: { silent?: boolean } = {}) {
           // The caller says what happened.
         } else if (response.already_exists) {
           toast.info("Team already exists in your account.");
+        } else if (response.moved_from_season != null) {
+          toast.success("Team rolled over to this season.");
         } else {
           toast.success(
             format
@@ -85,6 +87,9 @@ export function useAddTeamMutation(opts: { silent?: boolean } = {}) {
         queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
         // The team joins a connection's team list (and leaves the "to add" picker)
         queryClient.invalidateQueries({ queryKey: connectionKeys.all });
+        // A team that moved season keeps its id, so everything cached under it
+        // (matchup, insights, lineups, lanes, league rankings) is last season's
+        if (response.moved_from_season != null) queryClient.invalidateQueries();
       } else if (!opts.silent) {
         toast.error(response.message || "Failed to add team.");
       }

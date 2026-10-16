@@ -32,7 +32,7 @@ interface OverviewProps {
 /** The overview: the account in numbers, what needs doing, and every team in one table. */
 export function Overview({ model, alertsOn, onOpen, onAdd, onTarget }: OverviewProps) {
   const { teams, connections } = model;
-  const list = issues(teams, connections);
+  const list = issues(teams, connections, model.seasonKey);
   const connected = connections.filter((c) => c.status === "ok").length;
   const writers = teams.filter((t) => t.capabilities?.lineup_write).length;
 

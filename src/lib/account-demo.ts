@@ -169,11 +169,11 @@ export const DEMO_CONNECTIONS: ProviderConnection[] = [
 
 /** What ESPN lists on the connected account: the two tracked teams, a renewal and an old season. */
 export const DEMO_ACCOUNT_TEAMS: EspnAccountTeam[] = [
-  { espn_team_id: 4, league_id: 993431466, league_name: "Lvl. 3 Goblins", league_size: 12, scoring_type: "H2H_POINTS", season: 2027, team_abbrev: "PB", team_name: "Paint Beasts", tracked_team_id: 1 },
-  { espn_team_id: 7, league_id: 1180204011, league_name: "Hardwood Nine", league_size: 10, scoring_type: "H2H_CATEGORY", season: 2027, team_abbrev: "C3", team_name: "Corner Three Co.", tracked_team_id: 2 },
-  { espn_team_id: 2, league_id: 2048811, league_name: "Sunday Dynasty", league_size: 14, scoring_type: "H2H_CATEGORY", season: 2027, team_abbrev: "SD", team_name: "Sixth Man Syndicate", tracked_team_id: null },
-  { espn_team_id: 9, league_id: 77120, league_name: "Public Lobby 77120", league_size: 10, scoring_type: "H2H_POINTS", season: 2027, team_abbrev: "FB", team_name: "Free Throw Line", tracked_team_id: null },
-  { espn_team_id: 4, league_id: 993431466, league_name: "Lvl. 3 Goblins", league_size: 12, scoring_type: "H2H_POINTS", season: 2026, team_abbrev: "PB", team_name: "Paint Beasts", tracked_team_id: null },
+  { espn_team_id: 4, league_id: 993431466, league_name: "Lvl. 3 Goblins", league_size: 12, scoring_type: "H2H_POINTS", season: 2027, team_abbrev: "PB", team_name: "Paint Beasts", tracked_team_id: 1, previous_season_team_id: null },
+  { espn_team_id: 7, league_id: 1180204011, league_name: "Hardwood Nine", league_size: 10, scoring_type: "H2H_CATEGORY", season: 2027, team_abbrev: "C3", team_name: "Corner Three Co.", tracked_team_id: 2, previous_season_team_id: null },
+  { espn_team_id: 2, league_id: 2048811, league_name: "Sunday Dynasty", league_size: 14, scoring_type: "H2H_CATEGORY", season: 2027, team_abbrev: "SD", team_name: "Sixth Man Syndicate", tracked_team_id: null, previous_season_team_id: null },
+  { espn_team_id: 9, league_id: 77120, league_name: "Public Lobby 77120", league_size: 10, scoring_type: "H2H_POINTS", season: 2027, team_abbrev: "FB", team_name: "Free Throw Line", tracked_team_id: null, previous_season_team_id: null },
+  { espn_team_id: 4, league_id: 993431466, league_name: "Lvl. 3 Goblins", league_size: 12, scoring_type: "H2H_POINTS", season: 2026, team_abbrev: "PB", team_name: "Paint Beasts", tracked_team_id: null, previous_season_team_id: null },
 ];
 
 export const DEMO_YAHOO_LEAGUES: YahooLeague[] = [

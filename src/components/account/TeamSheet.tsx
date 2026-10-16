@@ -13,6 +13,7 @@ import {
   connectionTitle,
   formatLabel,
   providerLabel,
+  rolloverSeason,
   seasonLabel,
   teamCredentials,
   teamLine,
@@ -56,6 +57,7 @@ export function TeamSheet({ model, team, alerts, onOpen, onRemoved }: TeamSheetP
   const accounts = usableConnections(model.connections, info.provider);
   const selected = team.team_id === model.selectedTeamId;
   const preview = (info.scoring_preview ?? "") as ScoringPreview | "";
+  const rollTo = rolloverSeason(team, model.seasonKey);
 
   const run = async (key: string, fn: () => Promise<void>) => {
     setBusy(key);
@@ -94,6 +96,7 @@ export function TeamSheet({ model, team, alerts, onOpen, onRemoved }: TeamSheetP
             <span className={`${dk.chip} ${team.league?.settings_synced ? dk.pv : dk.flat}`}>{formatLabel(team.league)}</span>
             <span className={`${dk.chip} ${team.capabilities?.lineup_write ? dk.up : dk.flat}`}>{writeSummary(team.capabilities)}</span>
             {creds.kind === "connection" && creds.connection.status === "expired" ? <span className={`${dk.chip} ${dk.warnChip}`}>account expired</span> : null}
+            {rollTo != null ? <span className={`${dk.chip} ${dk.warnChip}`}>{seasonLabel(info.provider, info.year)} season</span> : null}
             {selected ? <span className={`${dk.chip} ${dk.flat}`}>on the Week desk</span> : null}
           </span>
         </div>
@@ -126,6 +129,21 @@ export function TeamSheet({ model, team, alerts, onOpen, onRemoved }: TeamSheetP
         <div className={s.block}>
           <div className={s.formError}>{error}</div>
         </div>
+      ) : null}
+
+      {rollTo != null ? (
+        <Block title="Season" note={`${seasonLabel(info.provider, info.year)}, not ${seasonLabel(info.provider, rollTo)}`}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className={s.formNote} data-tone="warn">
+              This team is still saved for {providerLabel(info.provider)}&apos;s {seasonLabel(info.provider, info.year)} season, so its roster, matchups and settings are last season&apos;s. Rolling it over moves it to the league&apos;s {seasonLabel(info.provider, rollTo)} season and keeps everything set up for it here. A new team name on {providerLabel(info.provider)} comes along with it.
+            </div>
+            <div className={s.row2}>
+              <button type="button" className={`${dk.btn} ${dk.btnPrimary}`} disabled={busy === "rollover"} onClick={() => void run("rollover", () => model.rollOver(team, rollTo))}>
+                {busy === "rollover" ? <Loader2 size={13} className={dk.spin} /> : <RefreshCw size={13} />} Roll over to {seasonLabel(info.provider, rollTo)}
+              </button>
+            </div>
+          </div>
+        </Block>
       ) : null}
 
       <Block

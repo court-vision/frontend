@@ -7317,6 +7317,17 @@
             ],
             "title": "League Size"
           },
+          "previous_season_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Season Team Id"
+          },
           "scoring_type": {
             "anyOf": [
               {
@@ -7368,7 +7379,8 @@
           "league_name",
           "league_size",
           "scoring_type",
-          "tracked_team_id"
+          "tracked_team_id",
+          "previous_season_team_id"
         ],
         "title": "EspnAccountTeam",
         "type": "object"
@@ -20668,6 +20680,17 @@
             "title": "Message",
             "type": "string"
           },
+          "moved_from_season": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moved From Season"
+          },
           "status": {
             "$ref": "#/components/schemas/ApiStatus"
           },
@@ -20701,7 +20724,8 @@
           "error_code",
           "timestamp",
           "team_id",
-          "already_exists"
+          "already_exists",
+          "moved_from_season"
         ],
         "title": "TeamAddResp",
         "type": "object"
