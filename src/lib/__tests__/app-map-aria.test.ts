@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { controlsOf, fingerprint, fresh, parseSnapshot, parts, prune, render, structure, within, type AriaNode } from "@/lib/app-map/aria";
+import { controlsOf, fingerprint, fresh, parseSnapshot, parts, prune, render, searchable, structure, within, type AriaNode } from "@/lib/app-map/aria";
 import { screenId } from "@/lib/app-map/map";
 
 // What Playwright 1.56's `ariaSnapshot()` writes for a small page, quoting included
@@ -66,10 +66,10 @@ describe("parseSnapshot", () => {
 describe("prune", () => {
   const isChrome = chrome(["add", "drop", "market", "p"]);
   const slate: AriaNode[] = parseSnapshot(`- list:
-  - listitem: A
-  - listitem: B
-  - listitem: C
-  - listitem: D
+  - listitem: Tyrese Maxey
+  - listitem: Jalen Brunson
+  - listitem: Trae Young
+  - listitem: Nikola Jokic
 - button "Tyrese Maxey"
 - button "Jalen Brunson"
 - button "Trae Young"
@@ -83,9 +83,18 @@ describe("prune", () => {
 
   test("keeps two of a list's items and counts the rest", () => {
     const [list] = prune(slate, isChrome);
-    expect(list.children.map((n) => n.value)).toEqual(["A", "B"]);
+    expect(list.children.map((n) => n.value)).toEqual(["Tyrese Maxey", "Jalen Brunson"]);
     expect(list.children[1].more).toBe(2);
-    expect(render([list])).toEqual(["- list", "  - listitem: A", "  - listitem: B", "  - (… 2 more like the above)"]);
+    expect(render([list])).toEqual(["- list", "  - listitem: Tyrese Maxey", "  - listitem: Jalen Brunson", "  - (… 2 more like the above)"]);
+  });
+
+  test("keeps every item named in the app's own words: those are choices", () => {
+    const market = parseSnapshot(`- listbox "Market":
+  - option "Adds"
+  - option "Drops"
+  - option "Draft market"
+  - option "Tyrese Maxey"`);
+    expect(prune(market, chrome(["adds", "drops", "draft", "market"]))[0].children.map((n) => n.name)).toEqual(["Adds", "Drops", "Draft market", "Tyrese Maxey"]);
   });
 
   test("collapses controls named by data, not the app's own controls or choices", () => {
@@ -132,6 +141,16 @@ describe("controlsOf", () => {
       { role: "button", name: "Row", nth: 1, disabled: false, example: false },
       { role: "option", name: "Boston Celtics", nth: 0, disabled: false, example: true, within: "Teams" },
     ]);
+  });
+});
+
+describe("searchable", () => {
+  test("is a search box, or a box whose name says it searches", () => {
+    expect(searchable({ role: "searchbox", name: "Players" })).toBe(true);
+    expect(searchable({ role: "combobox", name: "Find a player, a team, or a night" })).toBe(true);
+    expect(searchable({ role: "textbox", name: "Filter the pool" })).toBe(true);
+    expect(searchable({ role: "textbox", name: "Room name" })).toBe(false);
+    expect(searchable({ role: "combobox", name: "Draft type" })).toBe(false);
   });
 });
 

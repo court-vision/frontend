@@ -14,6 +14,8 @@ export interface MapStep {
   example?: true;
   /** The region, list or dialog the control sits in. */
   within?: string;
+  /** What was typed into it: a name from the page, to show what a search opens. */
+  typed?: string;
 }
 
 /** A desk, as its front screen and the app's own words describe it. */
@@ -93,5 +95,5 @@ export function screenId(desk: string, trail: MapStep[]): string {
       .replace(/[^a-z]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 40) || "x";
-  return [desk, ...trail.map((t) => slug(t.example ? `${t.within ?? ""} ${t.role}` : t.name))].join("/");
+  return [desk, ...trail.map((t) => slug(t.example ? `${t.within ?? ""} ${t.role}` : t.typed ? `${t.name} results` : t.name))].join("/");
 }

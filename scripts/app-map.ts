@@ -22,7 +22,7 @@ import { join, relative } from "node:path";
 import { chromium, type Browser, type BrowserContext, type Cookie, type Page, type Request } from "playwright";
 import { ALL_DESKS } from "@/components/desk/routes";
 import {
-  controlsOf, fingerprint, fresh, INPUTS, parseSnapshot, parts, prune, render, structure, within,
+  controlsOf, fingerprint, fresh, INPUTS, parseSnapshot, parts, prune, render, searchable, structure, within,
   type AriaNode, type Control,
 } from "@/lib/app-map/aria";
 import { APP_MAP_VERSION, deskOfFile, screenId, type AppMap, type MapCopy, type MapDesk, type MapScreen, type MapStep } from "@/lib/app-map/map";
@@ -216,12 +216,37 @@ const work = { clicks: 0, loads: 0 };
 /** Every state of every part of a page recorded so far, by desk and route. */
 const seenParts = new Set<string>();
 
-const step = (c: Control): MapStep => ({
+/** A control to act on; `fill` is the name typed into a search. */
+type Act = Control & { fill?: string };
+
+const step = (c: Act): MapStep => ({
   role: c.role,
   name: c.name,
   ...(c.example ? { example: true as const } : {}),
   ...(c.within ? { within: c.within } : {}),
+  ...(c.fill !== undefined ? { typed: c.fill } : {}),
 });
+
+const stepTitle = (c: Act) => (c.fill !== undefined ? `${c.name} “${c.fill}”` : c.name);
+
+/**
+ * One step, as a user takes it: types the name into a search, slides a slider
+ * to its end (End, as from the keyboard: the Week tray's slide to send), or clicks.
+ */
+async function act(page: Page, c: Act, timeout: number) {
+  const el = locate(page, c);
+  if (c.fill !== undefined) await el.fill(c.fill, { timeout });
+  else if (c.role === "slider") {
+    await el.focus({ timeout });
+    await page.keyboard.press("End");
+  } else await el.click({ timeout });
+}
+
+/** A name to search for, from the page itself: the longest word of the first control named by data ("Jokić"). */
+function probeOf(controls: Control[]): string | null {
+  const name = controls.find((c) => c.example && /\p{L}{4}/u.test(c.name))?.name;
+  return name ? name.split(/\s+/).filter((w) => /^\p{L}+$/u.test(w)).sort((a, b) => b.length - a.length)[0] ?? null : null;
+}
 
 function fingerprintOf(url: string, tree: AriaNode[]): string {
   const u = new URL(url);
@@ -244,10 +269,10 @@ function varying(a: string, b: string): string[] {
  * page already shows `fp` does it there; any other replays `trail` first.
  */
 interface Job {
-  trail: Control[];
+  trail: Act[];
   fp: string;
   tree: AriaNode[];
-  action: Control | "front" | "palette";
+  action: Act | "front" | "palette";
 }
 
 /**
@@ -263,17 +288,23 @@ async function explore(browser: Browser, seed: Seed) {
   let found = 0;
   let busy = 0;
   let stop: string | null = null;
+  let probe: string | null = null;
 
-  const enqueue = (trail: Control[], fp: string, tree: AriaNode[], added: Set<AriaNode> | null) => {
+  const enqueue = (trail: Act[], fp: string, tree: AriaNode[], added: Set<AriaNode> | null) => {
     if (seed.frontOnly || trail.length >= MAX_DEPTH) return;
-    for (const c of controlsOf(tree, isChrome, added ?? undefined)) {
-      if (c.role === "link" || INPUTS.has(c.role) || c.disabled || isDemoChrome(c.name)) continue;
+    const controls = controlsOf(tree, isChrome, added ?? undefined);
+    probe ??= probeOf(controls);
+    for (const c of controls) {
+      if (c.role === "link" || c.disabled || isDemoChrome(c.name)) continue;
+      // A search gets a name typed in (a combobox is also clicked open); other text inputs are only recorded
+      if (searchable(c) && probe) jobs.push({ trail, fp, tree, action: { ...c, fill: probe } });
+      if (c.role !== "combobox" && c.role !== "slider" && (INPUTS.has(c.role) || searchable(c))) continue;
       jobs.push({ trail, fp, tree, action: c });
     }
   };
 
   /** A screen not seen before; false when it is the same thing as one recorded already. */
-  const record = (trail: Control[], url: string, tree: AriaNode[], fp: string, parent: AriaNode[] | null, palette = false) => {
+  const record = (trail: Act[], url: string, tree: AriaNode[], fp: string, parent: AriaNode[] | null, palette = false) => {
     // New only when some part of the page shows something no screen has
     const route = `${seed.desk}|${routeOf(new URL(url).pathname)}`;
     const its = parts(tree, isChrome).map((p) => `${route}|${p}`);
@@ -287,7 +318,7 @@ async function explore(browser: Browser, seed: Seed) {
     const screen: MapScreen = {
       id: palette ? `${seed.desk}/palette` : screenId(seed.desk, steps),
       desk: seed.desk,
-      title: palette ? "Command palette (⌘K or Ctrl+K)" : trail.length ? trail.map((t) => t.name).join(" › ") : desks.get(seed.desk)?.label ?? seed.desk,
+      title: palette ? "Command palette (⌘K or Ctrl+K)" : trail.length ? trail.map(stepTitle).join(" › ") : desks.get(seed.desk)?.label ?? seed.desk,
       trail: steps,
       url: undemo(url),
       link: trail.length === 0 && !palette ? undemo(url) : null,
@@ -313,12 +344,12 @@ async function explore(browser: Browser, seed: Seed) {
       at = fingerprintOf(page.url(), tree);
       return { tree, fp: at };
     };
-    const open = async (trail: Control[]) => {
+    const open = async (trail: Act[]) => {
       work.loads++;
       await page.goto(BASE + seed.url, { waitUntil: "load", timeout: 60_000 });
       await settle();
       for (const c of trail) {
-        await locate(page, c).click({ timeout: 4000 });
+        await act(page, c, 4000);
         await settle();
       }
       return look();
@@ -342,7 +373,7 @@ async function explore(browser: Browser, seed: Seed) {
           continue;
         }
         busy++;
-        const path = (c?: Control) => [...job.trail, ...(c ? [c] : [])].map((t) => t.name).join(" › ") || seed.url;
+        const path = (c?: Act) => [...job.trail, ...(c ? [c] : [])].map(stepTitle).join(" › ") || seed.url;
         try {
           if (job.action === "front") {
             const { tree, fp } = await open([]);
@@ -380,7 +411,7 @@ async function explore(browser: Browser, seed: Seed) {
             continue;
           }
           work.clicks++;
-          await locate(page, c).click({ timeout: 3000 });
+          await act(page, c, 3000);
           await settle();
           const { tree, fp } = await look();
           const seen = byFingerprint.get(fp);

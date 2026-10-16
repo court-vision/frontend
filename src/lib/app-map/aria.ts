@@ -108,9 +108,9 @@ export const CLICKABLE = new Set([
   "button", "link", "tab", "radio", "checkbox", "switch", "menuitem", "menuitemradio",
   "menuitemcheckbox", "option", "combobox", "treeitem",
 ]);
-/** Recorded as controls, never clicked: typing and dragging aren't explored. */
+/** Typed into, not clicked: the crawler types in the ones that search (`searchable`) and records the rest. */
 export const INPUTS = new Set(["textbox", "searchbox", "slider", "spinbutton"]);
-/** Items of a list: past the first two, one more stands for nothing new. */
+/** Items of a list: past the first two named by data, one more stands for nothing new. */
 const ITEM_ROLES = new Set(["row", "option", "listitem", "article", "treeitem"]);
 /** Choices that are the UI itself, however alike they look: never collapsed. */
 const CHOICE_ROLES = new Set(["radio", "tab", "menuitem", "menuitemradio", "menuitemcheckbox"]);
@@ -121,10 +121,11 @@ export type IsChrome = (s: string) => boolean;
 
 /**
  * Children with repeated items left out: the first two of each list role
- * (rows, options, list items), of each role of control whose names are data
- * (player and team buttons in a slate), and of each run of identical leaves
- * ("away", "home" under every game). Each kept child comes with the count of
- * like items left out after it. The input is not changed.
+ * (rows, options, list items) and of each role of control whose names are
+ * data (players, teams, games), and of each run of identical leaves ("away",
+ * "home" under every game). Items named in the app's own words ("Adds",
+ * "Drops", "Draft market") are choices, each kept. Each kept child comes with
+ * the count of like items left out after it. The input is not changed.
  */
 function collapse(children: AriaNode[], isChrome: IsChrome): { node: AriaNode; more: number }[] {
   const seen = new Map<string, number>();
@@ -132,7 +133,8 @@ function collapse(children: AriaNode[], isChrome: IsChrome): { node: AriaNode; m
   const out: { node: AriaNode; more: number }[] = [];
   for (const c of children) {
     let group: string | null = null;
-    if (ITEM_ROLES.has(c.role)) group = `item:${c.role}`;
+    const label = c.name ?? c.value;
+    if (ITEM_ROLES.has(c.role) && !(label && isChrome(label))) group = `item:${c.role}`;
     else if (!CHOICE_ROLES.has(c.role) && (CLICKABLE.has(c.role) || c.role === "group") && c.name && !isChrome(c.name)) group = `data:${c.role}`;
     else if (c.children.length === 0) group = `same:${normalize(nodeLine(c))}`;
     const entry = { node: c, more: 0 };
@@ -206,6 +208,10 @@ export interface Control {
   /** The name of the region, list or dialog it sits in, or the landmark's role ("main"). */
   within?: string;
 }
+
+/** An input the crawler types a name into, to see what a search opens. */
+export const searchable = (c: Pick<Control, "role" | "name">) =>
+  c.role === "searchbox" || ((c.role === "combobox" || c.role === "textbox") && /\b(search|find|filter|look up)\b/i.test(c.name));
 
 /**
  * The controls on a page, in order, from the pruned tree, so a list's third
