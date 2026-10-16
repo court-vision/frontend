@@ -68,7 +68,7 @@
   align-items: center;
   height: 44px;
   padding: 0 18px;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--round, 1));
   border: 1px solid var(--line-2);
   background: transparent;
   color: var(--text);

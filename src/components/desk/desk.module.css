@@ -33,7 +33,23 @@
  * the first desk palettes, at 1.2:1 and 1.4:1, lost every edge.
  *
  * Effects are tokens too: --glow lights the accent marks and --bar-bg paints
- * the bar (Noon and Midnight use both).
+ * the bar (Noon, Midnight and Blacktop use both).
+ * The base block sets both to their plain values, so a swatch never inherits
+ * the frame's.
+ *
+ * Character is tokens too, so a theme can change more than its colors.
+ * --round scales every corner in every desk (0 is square, 2 is near a pill).
+ * --ctl-w and --ctl-line outline buttons and inputs, --rail-line the rails;
+ * --btn-*, --primary-* and --pill-* finish buttons and the chosen segment.
+ * The bar's bottom edge is --bar-rule (a border-image) at --bar-rule-w, and
+ * --bar-edge an inset shadow on it; --status-bg paints the status line,
+ * --mark-h sets the accent marks under tabs, --label-track and --label-weight
+ * the mono labels. The Week desk reads a few more: --tape-bg and
+ * --figure-weight for the tape, --slot-* for the slot chips, --strip-w and
+ * --strip-blur for the health strips, --today-head-image over the today
+ * column's head and --today-edge-l and --today-edge-r down the focused day's
+ * sides. A theme can also set --desk-sans to one of the faces in fonts.ts.
+ * What tokens cannot carry follows the theme blocks as scoped rules.
  *
  * Chart series (the AI desk's blocks) are --series-1 to --series-4, in the
  * same fixed order in every theme: series 1 is the theme's accent hue at a
@@ -72,6 +88,38 @@
   --series-3: #eda100;
   --series-4: #6250d6;
   --glow: none;
+  --bar-bg: var(--surface);
+  --round: 1;
+  --ctl-w: 1px;
+  --ctl-line: var(--line-2);
+  --rail-line: var(--line);
+  --btn-bg: var(--surface);
+  --btn-shadow: none;
+  --btn-press: none;
+  --primary-bg: var(--accent);
+  --primary-hover: color-mix(in srgb, var(--accent) 88%, #ffffff);
+  --primary-ink: var(--accent-ink);
+  --primary-line: var(--accent);
+  --primary-shadow: var(--glow);
+  --pill-ink: var(--text);
+  --pill-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --bar-rule: none;
+  --bar-rule-w: 1px;
+  --bar-edge: none;
+  --status-bg: var(--surface);
+  --mark-h: 2px;
+  --label-track: 0.08em;
+  --label-weight: 400;
+  --today-head-image: none;
+  --tape-bg: var(--surface);
+  --figure-weight: 400;
+  --slot-bg: var(--surface-2);
+  --slot-ink: var(--text);
+  --slot-line: var(--line-2);
+  --strip-w: 3px;
+  --strip-blur: 0px;
+  --today-edge-l: none;
+  --today-edge-r: none;
   color-scheme: light;
 }
 
@@ -177,6 +225,134 @@
   color-scheme: dark;
 }
 
+.tokens[data-theme="chalk"] {
+  --bg: #f7f7f5;
+  --surface: #ededea;
+  --surface-2: #e3e3df;
+  --raised: #ffffff;
+  --pill: #d4f53c;
+  --hover: #ebebe7;
+  --hover-col: #f1f1ee;
+  --line: #cdcdc7;
+  --line-2: #a6a69f;
+  --text: #121211;
+  --text-2: #3e3e3a;
+  --text-3: #61615b;
+  --accent: #4b7300;
+  --accent-soft: rgba(75, 115, 0, 0.1);
+  --accent-ink: #ffffff;
+  --up: #0a7752;
+  --down: #c62f2a;
+  --live: #0a7752;
+  --warn: #965400;
+  --preview: #6a45c2;
+  --preview-soft: rgba(106, 69, 194, 0.08);
+  --today: #f2f6e1;
+  --today-head: #e6eec7;
+  --shadow: 0 0 0 1.5px #121211, 5px 5px 0 #121211;
+  --overlay: rgba(18, 18, 17, 0.3);
+  --series-1: #4b7300;
+  --series-2: #2a78d6;
+  --series-3: #c98500;
+  --series-4: #c2417a;
+  --round: 0;
+  --ctl-w: 1.5px;
+  --ctl-line: #121211;
+  --rail-line: #121211;
+  --btn-bg: #ffffff;
+  --btn-shadow: 2px 2px 0 #121211;
+  --btn-press: translate(1px, 1px);
+  --primary-bg: #d4f53c;
+  --primary-hover: #def86a;
+  --primary-ink: #121211;
+  --primary-line: #121211;
+  --primary-shadow: 2px 2px 0 #121211;
+  --pill-shadow: 0 0 0 1.5px #121211;
+  --bar-bg: #ffffff;
+  --bar-rule: linear-gradient(#121211, #121211) 1;
+  --bar-rule-w: 2px;
+  --mark-h: 4px;
+  --label-weight: 600;
+  --today-head-image: repeating-linear-gradient(-45deg, rgba(18, 18, 17, 0.07) 0 4px, transparent 4px 9px);
+  --desk-sans: var(--face-grotesk);
+  --tape-bg: #ffffff;
+  --figure-weight: 500;
+  --slot-bg: #121211;
+  --slot-ink: #f7f7f5;
+  --slot-line: #121211;
+  --strip-w: 4px;
+  --today-edge-l: linear-gradient(90deg, #121211 0 2px, transparent 2px);
+  --today-edge-r: linear-gradient(270deg, #121211 0 2px, transparent 2px);
+}
+
+.tokens[data-theme="blacktop"] {
+  --bg: #0d0e0e;
+  --surface: #161717;
+  --surface-2: #1f2121;
+  --raised: #1c1e1e;
+  --pill: #22260f;
+  --hover: #1a1c1c;
+  --hover-col: #121313;
+  --line: #2f3232;
+  --line-2: #474b4b;
+  --text: #f3f4f0;
+  --text-2: #b8bbb4;
+  --text-3: #8d918a;
+  --accent: #d4f53c;
+  --accent-soft: rgba(212, 245, 60, 0.14);
+  --accent-ink: #141c00;
+  --up: #3ddc9b;
+  --down: #ff6262;
+  --live: #3ddc9b;
+  --warn: #ffb04a;
+  --preview: #c4a8ff;
+  --preview-soft: rgba(196, 168, 255, 0.11);
+  --today: #14170e;
+  --today-head: #1d2312;
+  --shadow: inset 0 2px 0 #d4f53c, 0 0 0 1px var(--line-2), 0 24px 60px rgba(0, 0, 0, 0.7);
+  --overlay: rgba(0, 0, 0, 0.66);
+  --series-1: #a8c41a;
+  --series-2: #d95926;
+  --series-3: #8a6cf0;
+  --series-4: #2fb3a3;
+  --glow: 0 0 12px rgba(212, 245, 60, 0.35);
+  --round: 0;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+  --bar-bg: var(--grain), #161717;
+  --bar-edge: inset 0 2px 0 #d4f53c;
+  --status-bg: var(--grain), #161717;
+  --mark-h: 3px;
+  --label-track: 0.14em;
+  --label-weight: 600;
+  --btn-bg: #1a1c1c;
+  --btn-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.45);
+  --primary-shadow: 0 0 14px rgba(212, 245, 60, 0.45);
+  --pill-ink: #d4f53c;
+  --pill-shadow: 0 0 0 1px #d4f53c, 0 0 10px rgba(212, 245, 60, 0.3);
+  --today-head-image: repeating-linear-gradient(-45deg, rgba(212, 245, 60, 0.1) 0 4px, transparent 4px 10px);
+  --desk-sans: var(--face-condensed);
+  --tape-bg: var(--grain), #161717;
+  --figure-weight: 600;
+  --slot-bg: #f3f4f0;
+  --slot-ink: #0d0e0e;
+  --slot-line: #f3f4f0;
+  --strip-w: 4px;
+  --strip-blur: 6px;
+  --today-edge-l: linear-gradient(90deg, rgba(212, 245, 60, 0.7) 0 1px, rgba(212, 245, 60, 0.1) 1px, rgba(212, 245, 60, 0) 16px);
+  --today-edge-r: linear-gradient(270deg, rgba(212, 245, 60, 0.7) 0 1px, rgba(212, 245, 60, 0.1) 1px, rgba(212, 245, 60, 0) 16px);
+  color-scheme: dark;
+}
+
+/* Chalk prints its status line in reverse, light ink on black. */
+.tokens[data-theme="chalk"] .status {
+  --text: #f7f7f5;
+  --text-2: #d6d6d0;
+  --text-3: #ababa4;
+  --line-2: #5e5e58;
+  border-top-color: #121211;
+  background: #121211;
+}
+
 /* A desk's own column: everything between the bar and the status line. */
 .desk {
   flex: 1;
@@ -193,7 +369,8 @@
 .label {
   font-family: var(--desk-mono), ui-monospace, monospace;
   font-size: 10.5px;
-  letter-spacing: 0.08em;
+  font-weight: var(--label-weight);
+  letter-spacing: var(--label-track);
   text-transform: uppercase;
   color: var(--text-3);
 }
@@ -247,8 +424,10 @@
   gap: 14px;
   height: 46px;
   padding: 0 16px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--bar-rule-w) solid var(--line);
+  border-image: var(--bar-rule);
   background: var(--bar-bg, var(--surface));
+  box-shadow: var(--bar-edge);
   flex-shrink: 0;
 }
 
@@ -334,7 +513,8 @@
   color: var(--text-3);
   font-family: var(--desk-mono), ui-monospace, monospace;
   font-size: 11px;
-  letter-spacing: 0.08em;
+  font-weight: var(--label-weight);
+  letter-spacing: var(--label-track);
   text-transform: uppercase;
   text-decoration: none;
 }
@@ -352,9 +532,9 @@
   position: absolute;
   left: 10px;
   right: 10px;
-  bottom: -1px;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
+  bottom: calc(-1 * var(--bar-rule-w));
+  height: var(--mark-h);
+  border-radius: calc(2px * var(--round, 1)) calc(2px * var(--round, 1)) 0 0;
   background: var(--accent);
   box-shadow: var(--glow);
 }
@@ -365,7 +545,7 @@
   gap: 8px;
   height: 30px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--round, 1));
   border: 1px solid transparent;
   background: transparent;
   color: var(--text);
@@ -391,7 +571,7 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--round, 1));
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-2);
@@ -477,7 +657,7 @@
   gap: 6px;
   height: 22px;
   padding: 0 8px;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--round, 1));
   border: 1px solid var(--line-2);
   color: var(--text-2);
   font-family: var(--desk-mono), ui-monospace, monospace;
@@ -514,7 +694,7 @@
   align-items: center;
   height: 18px;
   padding: 0 6px;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--round, 1));
   font-family: var(--desk-mono), ui-monospace, monospace;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
@@ -554,9 +734,9 @@
   align-items: center;
   gap: 2px;
   padding: 2px;
-  border-radius: 7px;
+  border-radius: calc(7px * var(--round, 1));
   background: var(--surface-2);
-  border: 1px solid var(--line);
+  border: var(--ctl-w) solid var(--rail-line);
 }
 
 .seg {
@@ -567,7 +747,7 @@
   height: 28px;
   padding: 0 10px;
   border: 0;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--round, 1));
   background: transparent;
   color: var(--text-2);
   font-family: var(--desk-mono), ui-monospace, monospace;
@@ -588,7 +768,7 @@
 }
 
 .segOn {
-  color: var(--text);
+  color: var(--pill-ink);
 }
 
 .segPill,
@@ -596,9 +776,9 @@
 .segRail:not([data-pill]) > .segOn::before {
   position: absolute;
   inset: 0;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--round, 1));
   background: var(--pill);
-  box-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--pill-shadow);
   z-index: 0;
 }
 
@@ -638,9 +818,10 @@
   gap: 7px;
   height: 30px;
   padding: 0 12px;
-  border-radius: 6px;
-  border: 1px solid var(--line-2);
-  background: var(--surface);
+  border-radius: calc(6px * var(--round, 1));
+  border: var(--ctl-w) solid var(--ctl-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   color: var(--text);
   font: inherit;
   font-size: 12.5px;
@@ -654,20 +835,24 @@
   background: var(--hover);
 }
 
+.btn:active:not(:disabled) {
+  transform: var(--btn-press);
+}
+
 .btn:disabled {
   color: var(--text-3);
   cursor: default;
 }
 
 .btnPrimary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
-  box-shadow: var(--glow);
+  border-color: var(--primary-line);
+  background: var(--primary-bg);
+  color: var(--primary-ink);
+  box-shadow: var(--primary-shadow);
 }
 
 .btnPrimary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 88%, #ffffff);
+  background: var(--primary-hover);
 }
 
 .btnPrimary:disabled {
@@ -699,7 +884,7 @@
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--round, 1));
   border: 1px solid var(--line-2);
   color: var(--text-3);
   font-family: var(--desk-mono), ui-monospace, monospace;
@@ -727,8 +912,8 @@
 .input {
   height: 32px;
   padding: 0 10px;
-  border-radius: 6px;
-  border: 1px solid var(--line-2);
+  border-radius: calc(6px * var(--round, 1));
+  border: var(--ctl-w) solid var(--ctl-line);
   background: var(--surface-2);
   color: var(--text);
   font: inherit;
@@ -754,7 +939,7 @@
   height: 28px;
   padding: 0 16px;
   border-top: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--status-bg);
   font-family: var(--desk-mono), ui-monospace, monospace;
   font-size: 10.5px;
   color: var(--text-3);
@@ -783,7 +968,7 @@
   max-height: min(460px, var(--radix-popover-content-available-height));
   display: flex;
   flex-direction: column;
-  border-radius: 9px;
+  border-radius: calc(9px * var(--round, 1));
   background: var(--raised);
   box-shadow: var(--shadow);
   color: var(--text);
@@ -846,7 +1031,7 @@
   min-height: 36px;
   padding: 6px 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--round, 1));
   background: transparent;
   color: inherit;
   font: inherit;
@@ -913,7 +1098,7 @@ button.menuItem:hover:not(:disabled) {
   flex-direction: column;
   gap: 2px;
   padding: 6px 6px 8px;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--round, 1));
   border: 1px solid var(--line);
   background: transparent;
   color: var(--text);
@@ -961,7 +1146,7 @@ button.menuItem:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   height: 68px;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--round, 1));
   overflow: hidden;
   background: var(--bg);
   box-shadow: 0 0 0 1px var(--line-2);
@@ -975,6 +1160,7 @@ button.menuItem:hover:not(:disabled) {
   padding: 0 6px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--line);
+  border-image: var(--bar-rule);
   background: var(--bar-bg, var(--surface));
 }
 
@@ -997,7 +1183,7 @@ button.menuItem:hover:not(:disabled) {
 .swatchTab {
   width: 16px;
   height: 2px;
-  border-radius: 1px;
+  border-radius: calc(1px * var(--round, 1));
   background: var(--text-2);
 }
 
@@ -1033,14 +1219,14 @@ button.menuItem:hover:not(:disabled) {
 .swatchText {
   height: 3px;
   margin-left: 6px;
-  border-radius: 1px;
+  border-radius: calc(1px * var(--round, 1));
   background: var(--text-3);
 }
 
 .swatchValue {
   width: 11px;
   height: 3px;
-  border-radius: 1px;
+  border-radius: calc(1px * var(--round, 1));
   background: var(--up);
 }
 
@@ -1060,18 +1246,18 @@ button.menuItem:hover:not(:disabled) {
 .swatchChip {
   width: 22px;
   height: 7px;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--round, 1));
   background: var(--surface-2);
-  box-shadow: 0 0 0 1px var(--line-2);
+  box-shadow: 0 0 0 1px var(--ctl-line);
 }
 
 .swatchButton {
   margin-left: auto;
   width: 18px;
   height: 7px;
-  border-radius: 2px;
-  background: var(--accent);
-  box-shadow: var(--glow);
+  border-radius: calc(2px * var(--round, 1));
+  background: var(--primary-bg);
+  box-shadow: 0 0 0 1px var(--primary-line), var(--primary-shadow);
 }
 
 /* ---------------------------------------------------------------- dialogs */
@@ -1099,7 +1285,7 @@ button.menuItem:hover:not(:disabled) {
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border-radius: calc(12px * var(--round, 1));
   background: var(--raised);
   box-shadow: var(--shadow);
   color: var(--text);
@@ -1183,9 +1369,9 @@ button.menuItem:hover:not(:disabled) {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -1px;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
+  bottom: calc(-1 * var(--bar-rule-w));
+  height: var(--mark-h);
+  border-radius: calc(2px * var(--round, 1)) calc(2px * var(--round, 1)) 0 0;
   background: var(--accent);
   box-shadow: var(--glow);
 }
@@ -1341,7 +1527,7 @@ button.menuItem:hover:not(:disabled) {
 
 .skel {
   height: 10px;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--round, 1));
   background: linear-gradient(90deg, var(--surface-2), var(--hover), var(--surface-2));
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
@@ -1410,7 +1596,7 @@ button.menuItem:hover:not(:disabled) {
   gap: 10px;
   width: 356px;
   padding: 11px 14px;
-  border-radius: 9px;
+  border-radius: calc(9px * var(--round, 1));
   background: var(--raised);
   box-shadow: var(--shadow);
   color: var(--text);
@@ -1452,7 +1638,7 @@ button.menuItem:hover:not(:disabled) {
   flex-shrink: 0;
   height: 24px;
   padding: 0 9px;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--round, 1));
   border: 1px solid var(--line-2);
   background: var(--surface-2);
   color: var(--text);

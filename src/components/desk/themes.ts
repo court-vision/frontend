@@ -3,7 +3,9 @@
  * names a token block in desk.module.css (Paper is the base `.tokens` block)
  * and is what storage remembers, so never rename one. `scheme` picks the
  * team-logo variant and the toast theme. The menu lays them out light beside
- * dark, a pair to a row, so keep each light theme just before its pair.
+ * dark, a pair to a row, so keep each light theme just before its pair. A
+ * theme can change more than its colors (corners, outlines, glass, its face):
+ * see the character tokens in desk.module.css.
  */
 export type DeskScheme = "light" | "dark";
 
@@ -22,6 +24,8 @@ export const DESK_THEMES = [
   { id: "midnight", label: "Midnight", scheme: "dark", pair: "noon", note: "Deep navy, sky accent, a soft glow" },
   { id: "paper", label: "Paper", scheme: "light", pair: "ember", note: "Warm newsprint, ink and court orange" },
   { id: "ember", label: "Ember", scheme: "dark", pair: "paper", note: "Warm charcoal and amber" },
+  { id: "chalk", label: "Chalk", scheme: "light", pair: "blacktop", note: "Black ink, hard shadows, a volt highlighter" },
+  { id: "blacktop", label: "Blacktop", scheme: "dark", pair: "chalk", note: "Asphalt grain, square corners and volt" },
 ] as const satisfies readonly DeskThemeInfo[];
 
 export type DeskThemeId = (typeof DESK_THEMES)[number]["id"];

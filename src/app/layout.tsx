@@ -6,7 +6,7 @@ import { Outfit } from "next/font/google";
 import { preconnect } from "react-dom";
 
 import { DeskFrame } from "@/components/desk/DeskFrame";
-import { deskMono, deskSans } from "@/components/desk/fonts";
+import { deskFontVariables } from "@/components/desk/fonts";
 import { API_BASE } from "@/endpoints";
 import { QueryProvider } from "@/providers/QueryProvider";
 import "./globals.css";
@@ -120,7 +120,7 @@ export default function RootLayout({
         />
       </head>
 
-      <body className={`${outfit.variable} ${deskSans.variable} ${deskMono.variable}`}>
+      <body className={`${outfit.variable} ${deskFontVariables}`}>
         <QueryProvider>
           {/* Every page is a desk-framed page: the desks, the landing, sign-in, errors.
               Clerk wraps only the pages that use it: (desk)/layout.tsx. */}
