@@ -108,6 +108,16 @@ describe("prune", () => {
     expect(render(prune(games, isChrome))).toEqual(["- text: away", "- text: home", "- text: away", "- (… 1 more like the above)", "- text: home", "- (… 1 more like the above)"]);
   });
 
+  test("collapses lines of text that are rows in all but role", () => {
+    const board = parseSnapshot(["131 Jrue Holiday POR · PG 14.0 149 142", "132 Toumani Camara POR · PF 18.2 93 106", "133 Ja Morant POR · PG 12.9 176 156", "On the clock"].map((t) => `- text: ${t}`).join("\n"));
+    expect(render(prune(board, isChrome))).toEqual([
+      "- text: 131 Jrue Holiday POR · PG 14.0 149 142",
+      "- text: 132 Toumani Camara POR · PF 18.2 93 106",
+      "- (… 1 more like the above)",
+      "- text: On the clock",
+    ]);
+  });
+
   test("leaves its input alone", () => {
     const before = JSON.stringify(slate);
     prune(slate, isChrome);

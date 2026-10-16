@@ -215,6 +215,8 @@ const desks = new Map<string, MapDesk>();
 const work = { clicks: 0, loads: 0 };
 /** Every state of every part of a page recorded so far, by desk and route. */
 const seenParts = new Set<string>();
+/** Each screen's parts, to match a link's page to the screen clicks reached. */
+const partsOf = new Map<MapScreen, string>();
 
 /** A control to act on; `fill` is the name typed into a search. */
 type Act = Control & { fill?: string };
@@ -246,6 +248,12 @@ async function act(page: Page, c: Act, timeout: number) {
 function probeOf(controls: Control[]): string | null {
   const name = controls.find((c) => c.example && /\p{L}{4}/u.test(c.name))?.name;
   return name ? name.split(/\s+/).filter((w) => /^\p{L}+$/u.test(w)).sort((a, b) => b.length - a.length)[0] ?? null : null;
+}
+
+/** A page's parts (`parts`), keyed by desk and route. */
+function partsKeys(desk: string, url: string, tree: AriaNode[]): string[] {
+  const route = `${desk}|${routeOf(new URL(url).pathname)}`;
+  return parts(tree, isChrome).map((p) => `${route}|${p}`);
 }
 
 function fingerprintOf(url: string, tree: AriaNode[]): string {
@@ -304,21 +312,42 @@ async function explore(browser: Browser, seed: Seed) {
   };
 
   /** A screen not seen before; false when it is the same thing as one recorded already. */
-  const record = (trail: Act[], url: string, tree: AriaNode[], fp: string, parent: AriaNode[] | null, palette = false) => {
+  // A seed off the desk's own path (a draft room, a recap) names its screens by its route: "draft/room/recap"
+  const href = desks.get(seed.desk)?.href ?? "";
+  const seedPath = new URL(seed.url, BASE).pathname;
+  const rest = seedPath === href ? "" : routeOf(seedPath).slice(href.length).replace(/\[id\]/g, "room");
+  const base = rest ? screenId(seed.desk, [{ role: "link", name: rest.replace(/\//g, " ") }]) : seed.desk;
+  const label = `${desks.get(seed.desk)?.label ?? seed.desk}${rest ? ` ${rest.replace(/\//g, " ").trim()}` : ""}`;
+
+  /** Screens opened from one screen by clicks that pick a subject through the URL, by the URL's shape. */
+  const fanned = new Map<string, MapScreen[]>();
+
+  const record = (trail: Act[], url: string, tree: AriaNode[], fp: string, parent: { tree: AriaNode[]; url: string; fp: string } | null, palette = false) => {
     // New only when some part of the page shows something no screen has
-    const route = `${seed.desk}|${routeOf(new URL(url).pathname)}`;
-    const its = parts(tree, isChrome).map((p) => `${route}|${p}`);
+    const its = partsKeys(seed.desk, url, tree);
     if (parent && its.every((p) => seenParts.has(p))) return false;
     for (const p of its) seenParts.add(p);
-    const added = parent ? fresh(parent, tree) : null;
+    // Clicks that pick a subject in the URL (a route's `?op=`, a team's `?t=`): two stand for the rest
+    const u = new URL(undemo(url), BASE);
+    let siblings: MapScreen[] | undefined;
+    if (parent && u.search !== new URL(parent.url, BASE).search) {
+      const shape = `${parent.fp}|${u.pathname}?${[...u.searchParams.keys()].sort().join("&")}`;
+      siblings = fanned.get(shape) ?? [];
+      fanned.set(shape, siblings);
+      if (siblings.length >= 2) {
+        for (const k of varying(siblings[0].url, u.pathname + u.search)) if (!siblings[0].linkVaries.includes(k)) siblings[0].linkVaries.push(k);
+        return false;
+      }
+    }
+    const added = parent ? fresh(parent.tree, tree) : null;
     const shown = render(prune(added ? within(tree, added) : tree, isChrome)).join("\n");
     // The same thing opened from another desk (the theme picker): one screen
     if (added && screens.some((s) => s.trail.length > 0 && s.tree === shown)) return false;
     const steps = palette ? [{ role: "key", name: "⌘K" }] : trail.map(step);
     const screen: MapScreen = {
-      id: palette ? `${seed.desk}/palette` : screenId(seed.desk, steps),
+      id: palette ? `${base}/palette` : screenId(base, steps),
       desk: seed.desk,
-      title: palette ? "Command palette (⌘K or Ctrl+K)" : trail.length ? trail.map(stepTitle).join(" › ") : desks.get(seed.desk)?.label ?? seed.desk,
+      title: palette ? "Command palette (⌘K or Ctrl+K)" : trail.length ? trail.map(stepTitle).join(" › ") : seed.frontOnly ? `${label} (${undemo(url)})` : label,
       trail: steps,
       url: undemo(url),
       link: trail.length === 0 && !palette ? undemo(url) : null,
@@ -329,6 +358,8 @@ async function explore(browser: Browser, seed: Seed) {
     if (screens.some((s) => s.id === screen.id)) screen.id += `~${fp.slice(0, 4)}`;
     screens.push(screen);
     byFingerprint.set(fp, screen);
+    partsOf.set(screen, its.join("\n"));
+    siblings?.push(screen);
     if (++found >= MAX_SCREENS && !stop) stop = "screen limit reached";
     if (!palette) enqueue(trail, fp, tree, added);
     return true;
@@ -383,7 +414,17 @@ async function explore(browser: Browser, seed: Seed) {
               if (seed.frontOnly && !known.link) known.link = undemo(page.url());
               continue;
             }
-            if (seed.frontOnly) finding("link opens a screen no click reached", seed.desk, undemo(page.url()));
+            if (seed.frontOnly) {
+              // The same parts as a screen clicks reached (Week's `?view=matchup` and its MATCHUP rail): that screen's link
+              const its = partsKeys(seed.desk, page.url(), tree);
+              const same = screens.find((s) => s.desk === seed.desk && partsOf.get(s) === its.join("\n"));
+              if (same) {
+                same.link ??= undemo(page.url());
+                continue;
+              }
+              if (its.every((p) => seenParts.has(p))) continue;
+              finding("link opens a screen no click reached", seed.desk, undemo(page.url()));
+            }
             record([], page.url(), tree, fp, null);
             await audit(page, seed.desk);
             noteDesk(seed.desk, tree);
@@ -400,7 +441,7 @@ async function explore(browser: Browser, seed: Seed) {
             await page.keyboard.press("Control+k");
             await settle();
             const { tree, fp } = await look();
-            if (fp !== job.fp && !byFingerprint.has(fp)) record([], page.url(), tree, fp, job.tree, true);
+            if (fp !== job.fp && !byFingerprint.has(fp)) record([], page.url(), tree, fp, { tree: job.tree, url: from.url, fp: job.fp }, true);
             await back(job.fp);
             continue;
           }
@@ -420,7 +461,7 @@ async function explore(browser: Browser, seed: Seed) {
             for (const k of varying(seen.url, undemo(page.url()))) if (!seen.linkVaries.includes(k)) seen.linkVaries.push(k);
           } else if (fp !== job.fp && !queued.has(fp)) {
             queued.add(fp);
-            if (record([...job.trail, c], page.url(), tree, fp, job.tree)) await audit(page, seed.desk);
+            if (record([...job.trail, c], page.url(), tree, fp, { tree: job.tree, url: from.url, fp: job.fp })) await audit(page, seed.desk);
           }
           // A URL the click wrote is a link to try for that screen
           if (undemo(page.url()) !== from.url) linkTries.push({ url: page.url().replace(BASE, ""), fp });

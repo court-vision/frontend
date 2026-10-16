@@ -136,7 +136,7 @@ function collapse(children: AriaNode[], isChrome: IsChrome): { node: AriaNode; m
     const label = c.name ?? c.value;
     if (ITEM_ROLES.has(c.role) && !(label && isChrome(label))) group = `item:${c.role}`;
     else if (!CHOICE_ROLES.has(c.role) && (CLICKABLE.has(c.role) || c.role === "group") && c.name && !isChrome(c.name)) group = `data:${c.role}`;
-    else if (c.children.length === 0) group = `same:${normalize(nodeLine(c))}`;
+    else if (c.children.length === 0) group = rowLike(c) ?? `same:${normalize(nodeLine(c))}`;
     const entry = { node: c, more: 0 };
     if (group) {
       const n = (seen.get(group) ?? 0) + 1;
@@ -150,6 +150,17 @@ function collapse(children: AriaNode[], isChrome: IsChrome): { node: AriaNode; m
     out.push(entry);
   }
   return out;
+}
+
+/**
+ * A line of text that is a table row in all but role (the draft board's
+ * players: `131 Jrue Holiday POR · PG 14.0 149 142 …`): four numbers or more,
+ * grouped by how many, so a board of them is one list.
+ */
+function rowLike(n: AriaNode): string | null {
+  const text = n.value ?? n.name ?? "";
+  const numbers = text.match(/[-+−]?\d+(?:[.,:/]\d+)*%?/g)?.length ?? 0;
+  return numbers >= 4 ? `row-like:${n.role}:${numbers}` : null;
 }
 
 /** The tree with repeated items collapsed, all the way down, as new nodes. */
@@ -215,7 +226,8 @@ export const searchable = (c: Pick<Control, "role" | "name">) =>
 
 /**
  * The controls on a page, in order, from the pruned tree, so a list's third
- * row and on are never clicked; with `only`, just those among those nodes
+ * row and on are never clicked, nor a third control of one role and name;
+ * with `only`, just those among those nodes
  * (what a click revealed). `nth` counts among the whole page's controls of
  * that role and name, the way `getByRole(role, { name, exact }).nth()` does,
  * so the crawler can find each one again.
@@ -230,7 +242,8 @@ export function controlsOf(nodes: AriaNode[], isChrome: IsChrome, only?: Set<Ari
         const key = `${n.role}|${n.name}`;
         const nth = counts.get(key) ?? 0;
         counts.set(key, nth + 1);
-        if (keep.has(n) && (!only || only.has(n))) {
+        // The same control a third time is the same action on another item ("Add to the canvas" per table)
+        if (keep.has(n) && nth < KEEP && (!only || only.has(n))) {
           const c: Control = { role: n.role, name: n.name, nth, disabled: n.attrs.disabled === true, example: !isChrome(n.name) };
           if (n.props.url !== undefined) c.href = n.props.url;
           if (within) c.within = within;
