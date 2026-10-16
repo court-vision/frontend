@@ -258,8 +258,10 @@ export interface GridRow {
   total: number;
   /** Moved by the staging (today) — the slot label shows it. */
   staged: boolean;
-  /** Being replaced in the preview. */
+  /** Leaving the roster: replaced in the preview, or staged to drop. */
   outgoing: boolean;
+  /** Staged to drop (not a previewed add's drop). */
+  dropped?: boolean;
 }
 
 export interface DayTotal {
@@ -270,7 +272,7 @@ export interface DayTotal {
   starts: number;
 }
 
-/** Lineup groups; "drop" holds a previewed add's outgoing player, below everything else. */
+/** Lineup groups; "drop" holds the players leaving the roster (a previewed add's, staged drops), below everything else. */
 export type SeatGroup = "active" | "bench" | "ir" | "drop";
 
 /** One lineup spot: a slot instance (UT has three), a bench spot or an IR spot. */
@@ -290,8 +292,10 @@ export interface Seat {
   incoming: boolean;
   /** Moved to another spot so a previewed free agent fits where he helps most. */
   shifted?: boolean;
-  /** The player a previewed add drops. */
+  /** Leaving the roster: the player a previewed add drops, or one staged to drop. */
   outgoing?: boolean;
+  /** Staged to drop (not a previewed add's drop). */
+  dropped?: boolean;
 }
 
 /**
@@ -341,6 +345,13 @@ export interface GridInput {
    */
   dayBoards?: ReadonlyArray<DayBoard | null | undefined>;
   incoming: IncomingPreview | null;
+  /**
+   * Players staged to drop, each gone from `from` (a day index) on: his games
+   * there stop counting, and he moves to the drop group as a previewed add's
+   * dropped player does. `board` and `dayBoards` are the lineups as they stand
+   * once he has gone (`withoutDropped` in `drops.ts`).
+   */
+  dropping?: ReadonlyArray<{ id: number; from: number }>;
   /** The day the roster column describes. */
   viewDay: number;
   /** Default "espn". */
@@ -361,6 +372,7 @@ export function buildWeekGrid({
   staged,
   dayBoards: dayBoardsIn,
   incoming,
+  dropping,
   viewDay,
   mode = "espn",
 }: GridInput): WeekGrid {
@@ -369,6 +381,21 @@ export function buildWeekGrid({
   const slots = activeSlots(board, source.activeSlotCount);
   const boardById = new Map((board?.players ?? []).map((p) => [p.player_id, p]));
   const todayAssign = board ? boardAssignment(board, staged) : null;
+
+  const roster = source.mine;
+  const stretches: readonly Incoming[] = incoming == null ? [] : Array.isArray(incoming) ? incoming : [incoming as Incoming];
+  const replaced = stretches[0]?.replaces ?? null;
+  // Staged drops on the roster (a previewed add's own drop is his), and the day each is gone from.
+  const leaves = new Map(
+    (dropping ?? []).filter((x) => x.id !== replaced && roster.some((p) => p.id === x.id)).map((x) => [x.id, x.from])
+  );
+  const droppedOn = (id: number, day: number) => {
+    const from = leaves.get(id);
+    return from != null && day >= from;
+  };
+  /** A day's lineup without the players dropped by then (a day's board already leaves them out). */
+  const lessDropped = (m: Map<number, number>, day: number) =>
+    leaves.size ? new Map([...m].filter(([id]) => !droppedOn(id, day))) : new Map(m);
 
   // Each day's ESPN lineup: the ones read for it, else `board` on the day it names.
   const boardDayIndex = board?.nba_date ? days.findIndex((d) => d.date === board.nba_date) : -1;
@@ -399,16 +426,16 @@ export function buildWeekGrid({
         const raw = boardAssignment(db.board, {});
         const ownStaging = Object.keys(normalize(db.board, db.staged)).length > 0;
         const eff: Map<number, number> =
-          !ownStaging && prevRaw && prevEff && sameAssignment(raw, prevRaw)
-            ? new Map(prevEff)
+          !ownStaging && prevRaw && prevEff && sameAssignment(raw, lessDropped(prevRaw, d.index))
+            ? lessDropped(prevEff, d.index)
             : boardAssignment(db.board, db.staged);
         prevRaw = raw;
         prevEff = eff;
         asSetByDay.push(eff);
         rawByDay.push(raw);
       } else {
-        asSetByDay.push(prevEff ? new Map(prevEff) : todayAssign ? new Map(todayAssign) : null);
-        rawByDay.push(prevRaw ? new Map(prevRaw) : board ? boardAssignment(board, {}) : null);
+        asSetByDay.push(prevEff ? lessDropped(prevEff, d.index) : todayAssign ? lessDropped(todayAssign, d.index) : null);
+        rawByDay.push(prevRaw ? lessDropped(prevRaw, d.index) : board ? lessDropped(boardAssignment(board, {}), d.index) : null);
       }
     }
   }
@@ -430,12 +457,10 @@ export function buildWeekGrid({
     return b ? b.eligible_slot_ids.filter(isActiveSlot) : p.eligible;
   };
 
-  const roster = source.mine;
-  const stretches: readonly Incoming[] = incoming == null ? [] : Array.isArray(incoming) ? incoming : [incoming as Incoming];
-  const replaced = stretches[0]?.replaces ?? null;
   const incomers = [...new Map(stretches.map((x) => [x.player.id, x.player])).values()];
   const pool: SourcePlayer[] = [...roster, ...incomers];
   const inIds = new Set(incomers.map((p) => p.id));
+  const rosterOn = (day: number): SourcePlayer[] => (leaves.size ? roster.filter((p) => !droppedOn(p.id, day)) : roster);
   // The stretch in force on a day: a scheduled pickup changes the roster from its
   // day on (before it the roster stands); a lane's stretch also ends.
   const inOn = (day: number): Incoming | null =>
@@ -443,9 +468,16 @@ export function buildWeekGrid({
   const swapsOn = (day: number) => inOn(day) != null;
   const poolOn = (day: number): SourcePlayer[] => {
     const x = inOn(day);
-    return x ? [...roster, x.player] : roster;
+    return x ? [...rosterOn(day), x.player] : rosterOn(day);
   };
   const replacedOn = (day: number) => (swapsOn(day) ? replaced : null);
+  /** Gone from the roster on `day`: staged to drop, or replaced by the previewed add. */
+  const leftOn = (id: number, day: number) => droppedOn(id, day) || id === replacedOn(day);
+  // Everyone leaving, in the order their drop rows show: the previewed add's, then the staged drops.
+  const outgoing = [replaced, ...leaves.keys()]
+    .map((id) => (id != null ? roster.find((p) => p.id === id) ?? null : null))
+    .filter((p): p is SourcePlayer => p !== null);
+  const outIds = new Set(outgoing.map((p) => p.id));
   /** A previewed free agent on a day he isn't on the roster (outside his stretch). */
   const offRoster = (p: SourcePlayer, day: number) => inIds.has(p.id) && inOn(day)?.player.id !== p.id;
   // Today, a player whose game has started can't be moved.
@@ -470,7 +502,7 @@ export function buildWeekGrid({
         shiftedByDay[d.index] = seatIncomingBest({
           assign: m,
           incoming: here,
-          roster,
+          roster: rosterOn(d.index),
           day: d.index,
           eligibleOf,
           slots,
@@ -521,7 +553,7 @@ export function buildWeekGrid({
         ? { ...base, state: "final", value: g.fpts, counts: true, tag: null }
         : { ...base, state: "dnp", value: null, counts: false, tag: null };
     }
-    if (p.id === replaced && swapsOn(d.index)) {
+    if (leftOn(p.id, d.index)) {
       return { ...base, state: g.status === "scheduled" ? "upcoming" : g.status, value: g.fpts ?? p.avg, counts: false, tag: "DROP" };
     }
     const slot = dayAssign[d.index]?.get(p.id);
@@ -544,11 +576,8 @@ export function buildWeekGrid({
 
   const rowFor = (p: SourcePlayer, kind: RowKind, slotId: number | null, slot: string): GridRow => {
     const cells = days.map((d) => cellFor(p, d));
-    // A player being replaced shows what he would have added (struck through in the UI).
-    const total =
-      p.id === replaced
-        ? days.reduce((sum, d, i) => sum + (cells[i].tag === "DROP" ? cells[i].value ?? 0 : expected(cells[i], p, d)), 0)
-        : days.reduce((sum, d, i) => sum + expected(cells[i], p, d), 0);
+    // A player leaving shows what he would have added (struck through in the UI).
+    const total = days.reduce((sum, d, i) => sum + (cells[i].tag === "DROP" ? cells[i].value ?? 0 : expected(cells[i], p, d)), 0);
     const b = boardById.get(p.id);
     const isStaged = !!b && boardRows && pendingOn(viewDay, p.id);
     return {
@@ -560,7 +589,8 @@ export function buildWeekGrid({
       cells,
       total: round1(total),
       staged: isStaged,
-      outgoing: p.id === replaced,
+      outgoing: outIds.has(p.id),
+      dropped: leaves.has(p.id) || undefined,
     };
   };
 
@@ -600,7 +630,8 @@ export function buildWeekGrid({
   }
 
   // A previewed free agent sits in the spot the selected day gives him (an open
-  // one of that slot when there is one); the player he replaces goes to the bottom.
+  // one of that slot when there is one); the player he replaces goes to the bottom,
+  // with the players staged to drop.
   // A lane's free agents each get a row, on the bench on days they aren't in.
   for (const fa of incomers) {
     if (rows.some((r) => r.kind === "incoming" && r.player?.id === fa.id)) continue;
@@ -619,8 +650,8 @@ export function buildWeekGrid({
       rows.splice(at < -1 ? rows.length : at + 1, 0, row);
     }
   }
-  if (replaced != null) {
-    const at = rows.findIndex((r) => r.player?.id === replaced && r.kind !== "incoming");
+  for (const p of outgoing) {
+    const at = rows.findIndex((r) => r.player?.id === p.id && r.kind !== "incoming");
     if (at >= 0) rows.push({ ...rows.splice(at, 1)[0], slot: "DROP" });
   }
 
@@ -739,17 +770,17 @@ export function buildWeekGrid({
   for (let k = 0; k < spotCount(IR_SLOT_ID, capacityOf(IR_SLOT_ID)); k++) {
     slotDefs.push({ key: `${IR_SLOT_ID}-${k}`, slotId: IR_SLOT_ID, slot: "IR", group: "ir" });
   }
-  const outgoing = replaced != null ? roster.find((p) => p.id === replaced) ?? null : null;
-  if (outgoing) slotDefs.push({ key: "drop-0", slotId: DROP_ROW_ID, slot: "DROP", group: "drop" });
+  outgoing.forEach((_, k) => slotDefs.push({ key: `drop-${k}`, slotId: DROP_ROW_ID, slot: "DROP", group: "drop" }));
 
   const ordinalOf = (def: SlotRowDef) => Number(def.key.split("-")[1]);
   const seats = days.map((d, i) =>
     slotDefs.map((def): Seat | null => {
-      // The outgoing player: in his own spot on days already played (and before a
+      // A player leaving: in his own spot on days already played (and before a
       // scheduled pickup's day), here from today (or that day) on.
       if (def.group === "drop") {
-        return outgoing && d.kind !== "past" && swapsOn(d.index)
-          ? { player: outgoing, cell: cellFor(outgoing, d), staged: false, incoming: false, outgoing: true }
+        const out = outgoing[ordinalOf(def)];
+        return out && d.kind !== "past" && leftOn(out.id, d.index)
+          ? { player: out, cell: cellFor(out, d), staged: false, incoming: false, outgoing: true, dropped: leaves.has(out.id) || undefined }
           : null;
       }
       const p = byDay[i].get(def.slotId)?.[ordinalOf(def)];
@@ -823,7 +854,7 @@ function openRow(slotId: number, ordinal: number, dayCount: number): GridRow {
   };
 }
 
-/** The daily lineups' row id for a previewed add's outgoing player. */
+/** The daily lineups' row id for a player leaving the roster. */
 export const DROP_ROW_ID = -1;
 
 // Tie-breaks, far below any real projection: keep a player where he sits, keep

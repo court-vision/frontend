@@ -182,6 +182,9 @@ describe("rows and staging", () => {
     expect(isAddStaged(ADD, { faId: 98, replaces: NO_DROP, from: null }, NO_DROP)).toBe(true);
     expect(isAddStaged(ADD, null, NO_DROP)).toBe(false);
     expect(isAddStaged(START, { faId: 11, replaces: NO_DROP, from: null }, NO_DROP)).toBe(false);
+    // After today's first tip the add is staged as tomorrow's pickup: that one matches, made now doesn't.
+    expect(isAddStaged(ADD_DROP, { faId: 99, replaces: 12, from: 3 }, NO_DROP, 3)).toBe(true);
+    expect(isAddStaged(ADD_DROP, { faId: 99, replaces: 12, from: null }, NO_DROP, 3)).toBe(false);
   });
 
   test("the button: Stage, Staged (unstages), or Blocked with the reason", () => {

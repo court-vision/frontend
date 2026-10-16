@@ -91,6 +91,13 @@ export interface TodayActions {
   refetch: () => void;
 }
 
+/**
+ * How an add and/or drop went: made; refused, with the server's (or ESPN's)
+ * sentence; or stale, the board it was pinned to having moved on ESPN (the
+ * fresh one is cached, and nothing was made).
+ */
+export type TransactOutcome = { status: "ok" } | { status: "stale" } | { status: "refused"; message: string };
+
 /** Everything the terminal needs from outside: data, each day's lineup, and the writes. */
 export interface TerminalData {
   demo: boolean;
@@ -127,8 +134,8 @@ export interface TerminalData {
   /** Opponents for a previewed free agent's games. */
   schedule: ScheduleGame[] | null;
   setScheduleTeam: (team: string | null) => void;
-  /** Add and/or drop on the provider. Resolves "ok", or "refused" with `transactError` set. */
-  transact: (add: number | null, drop: number | null, board: LineupState) => Promise<"ok" | "refused">;
+  /** Add and/or drop on the provider, pinned to `board`. */
+  transact: (add: number | null, drop: number | null, board: LineupState) => Promise<TransactOutcome>;
   transacting: boolean;
   transactError: string | null;
   clearTransactError: () => void;
@@ -177,6 +184,9 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const [roster, setRoster] = useState(DEMO_ROSTER);
+  // The roster as the last transaction left it: a send reads its days again (and writes
+  // them) right after a drop, before the render that would hand it the new roster.
+  const latest = useRef(DEMO_ROSTER);
   // Each day's own edit (where everyone sits), ESPN's carry-forward applied on read.
   const edits = useRef<Record<number, Record<number, number>>>({});
   const [version, setVersion] = useState(1);
@@ -212,9 +222,9 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
       // Functional: several days can be written in one send, each must re-render.
       setVersion((v) => v + 1);
       setApplying(false);
-      return { lineup: boardFor(roster, day, Date.now()), verified: true };
+      return { lineup: boardFor(latest.current, day, Date.now()), verified: true };
     },
-    [roster, boardFor]
+    [boardFor]
   );
 
   const lineup: DayLineups = {
@@ -225,7 +235,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     apply,
     // The demo's boards are built from its own edits on every render: nothing to read again.
     settle: () => {},
-    refresh: async (day) => (day >= DEMO_TODAY ? boardFor(roster, day, Date.now()) : null),
+    refresh: async (day) => (day >= DEMO_TODAY ? boardFor(latest.current, day, Date.now()) : null),
     planToday: async () => demoPlan(boards[DEMO_TODAY]!),
     applying,
   };
@@ -233,10 +243,11 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const transact = useCallback(async (add: number | null, drop: number | null) => {
     setTransacting(true);
     await wait(450);
-    setRoster((r) => demoTransact(r, add, drop));
+    latest.current = demoTransact(latest.current, add, drop);
+    setRoster(latest.current);
     setVersion((v) => v + 10);
     setTransacting(false);
-    return "ok" as const;
+    return { status: "ok" } as const;
   }, []);
 
   const schedulePickup = useCallback(
@@ -491,7 +502,9 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const queryClient = useQueryClient();
   const transact = useCallback(
     async (add: number | null, drop: number | null, board: LineupState) => {
-      if (board.scoring_period_id == null || teamId == null) return "refused" as const;
+      if (board.scoring_period_id == null || teamId == null) {
+        return { status: "refused", message: "This day can't be edited" } as const;
+      }
       // The later days' lineups hold the roster too; the shared mutation only refreshes today's.
       const rereadLaterDays = () => void queryClient.invalidateQueries({ queryKey: lineupKeys.days(teamId) });
       try {
@@ -502,12 +515,12 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
           roster_version: board.roster_version,
         });
         rereadLaterDays();
-        return "ok" as const;
+        return { status: "ok" } as const;
       } catch (err) {
+        if (!staleLineup(err)) return { status: "refused", message: userMessage(err) } as const;
         // A stale board was swapped in by the mutation; the preview no longer applies.
-        if (!staleLineup(err)) return "refused" as const;
         rereadLaterDays();
-        return "ok" as const;
+        return { status: "stale" } as const;
       }
     },
     [mutateAsync, queryClient, teamId]

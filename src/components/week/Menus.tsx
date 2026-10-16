@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Command } from "cmdk";
-import { Radio, Repeat2 } from "lucide-react";
+import { Radio, Repeat2, Undo2, UserMinus } from "lucide-react";
 import { slotName } from "@/lib/lineup-editor";
 import type { SourcePlayer, WeekDay } from "@/lib/week-grid";
 import type { StreamerPlayer } from "@/types/streamer";
@@ -66,6 +66,22 @@ interface MoveMenuProps extends Anchored {
   streamThrough?: string | null;
   /** Why the spot can't be streamed (another lane is open, ...); shown in place of the item. */
   streamNote?: string | null;
+  /** Dropping him now: the item, or why it can't be offered; omitted where drops aren't. */
+  drop?: MoveMenuDrop | null;
+}
+
+/** The move menu's drop: made now, staged in the tray's today column. */
+export interface MoveMenuDrop {
+  /** "K. Murray" */
+  name: string;
+  /** Change to your week. */
+  delta: number;
+  /** Why he can't be dropped; shown in place of the item. */
+  note: string | null;
+  /** Already staged to drop: the menu offers to take it back instead of his moves. */
+  staged: boolean;
+  /** Stage the drop, or take it back. */
+  onToggle: () => void;
 }
 
 export function MoveMenu({
@@ -79,8 +95,10 @@ export function MoveMenu({
   onStream,
   streamThrough = null,
   streamNote = null,
+  drop = null,
   ...shell
 }: MoveMenuProps) {
+  const staged = !!drop?.staged;
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
@@ -96,7 +114,15 @@ export function MoveMenu({
           </span>
         </div>
         <Command.List className={dk.menuList}>
-          {blocked ? null : (
+          {staged ? (
+            <Command.Group heading={<span className={`${dk.label} ${dk.menuGroupLabel}`}>Staged to drop · leaves the roster when you send</span>}>
+              <Command.Item value="undrop" className={dk.menuItem} onSelect={drop!.onToggle}>
+                <Undo2 size={14} style={{ color: "var(--text-2)" }} />
+                <span className={dk.grow}>Keep {drop!.name}</span>
+                <span className={dk.kbd}>X</span>
+              </Command.Item>
+            </Command.Group>
+          ) : blocked ? null : (
             <Command.Group heading={<span className={`${dk.label} ${dk.menuGroupLabel}`}>Move to · change to your week</span>}>
               {targets.length === 0 ? <div className={dk.menuEmpty}>No open or swappable slot fits him.</div> : null}
               {targets.map((t) => (
@@ -124,6 +150,20 @@ export function MoveMenu({
             </span>
             <span className={dk.kbd}>R</span>
           </Command.Item>
+          {drop && !staged ? (
+            drop.note ? (
+              <div className={dk.menuEmpty}>{drop.note}</div>
+            ) : (
+              <Command.Item value="drop" className={dk.menuItem} onSelect={drop.onToggle}>
+                <UserMinus size={14} style={{ color: "var(--down)" }} />
+                <span className={dk.grow}>Drop {drop.name}</span>
+                <span className={`${dk.chip} ${drop.delta > 0.05 ? dk.up : drop.delta < -0.05 ? dk.down : dk.flat}`}>
+                  {signed(drop.delta)}
+                </span>
+                <span className={dk.kbd}>X</span>
+              </Command.Item>
+            )
+          ) : null}
           {onStream ? (
             <Command.Item value="stream" className={dk.menuItem} onSelect={onStream}>
               <Radio size={14} style={{ color: "var(--accent)" }} />
@@ -134,7 +174,7 @@ export function MoveMenu({
             <div className={dk.menuEmpty}>{streamNote}</div>
           ) : null}
         </Command.List>
-        {blocked ? <div className={dk.menuFoot}>{blocked}</div> : null}
+        {blocked && !staged ? <div className={dk.menuFoot}>{blocked}</div> : null}
       </Command>
     </Shell>
   );

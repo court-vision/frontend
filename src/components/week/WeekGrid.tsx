@@ -73,7 +73,7 @@ function slotGroup(slotId: number | null): Group {
   return "active";
 }
 
-/** Each row's group: by its slot on the selected day; a previewed add's outgoing player has his own, last. */
+/** Each row's group: by its slot on the selected day; players leaving (a previewed add's drop, staged drops) have their own, last. */
 function rowGroups(rows: GridRow[]): Group[] {
   return rows.map((r) => (r.outgoing ? "drop" : slotGroup(r.slotId)));
 }
@@ -257,7 +257,7 @@ export function WeekGrid({
           </LayoutGroup>
 
           <div className={s.foot}>
-            {/* A previewed add's outgoing player stays in view, pinned above the totals. */}
+            {/* Players leaving the roster stay in view, pinned above the totals. */}
             {grid.rows.map((row, i) => (groups[i] === "drop" ? renderRow(row, i) : null))}
             <FootRow label={youName} sub="you" totals={grid.you} todayIndex={todayIndex} week={grid.projected.you} />
             <FootRow label={oppName} sub="opponent" totals={grid.opp} todayIndex={todayIndex} week={grid.projected.opp} />
@@ -322,7 +322,7 @@ function GroupRow({ group, count, onBoard }: { group: Group; count: number; onBo
         ? "games here don't count"
         : "no game, or no room that day"
       : group === "drop"
-        ? "leaves the roster for the free agent"
+        ? "leaves the roster"
         : "doesn't score";
   return (
     <motion.div layout="position" transition={ROW_SPRING} className={s.groupRow} role="presentation">
@@ -610,7 +610,7 @@ const CELL_TITLES: Record<string, string | undefined> = {
   BENCH: "On the bench: this game doesn't count",
   SITS: "No room in the best lineup that day",
   IR: "On IR",
-  DROP: "Being replaced in the preview",
+  DROP: "Leaves the roster: this game doesn't count",
   out: "Out for this game",
   dnp: "Didn't play",
 };

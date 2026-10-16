@@ -32,4 +32,6 @@ export type TransactionInvalidReason =
   | "add_not_found"
   | "add_on_waivers"
   | "add_not_available"
-  | "add_locked";
+  | "add_locked"
+  | "drop_is_lane_holder"
+  | "drop_is_scheduled";

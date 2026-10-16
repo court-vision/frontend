@@ -75,9 +75,11 @@ export function Bar({ teams, teamId, onTeam, onAdd, notice, period, days, oppNam
 
 interface TapeProps {
   grid: WeekGrid;
-  /** Projected change from the staged lineup moves. */
+  /** Projected change from the staged lineup moves and drops. */
   stagedDelta: number;
   stagedCount: number;
+  /** Players staged to drop. */
+  dropCount?: number;
   /** Projected change from the previewed free agent. */
   previewDelta: number | null;
   tonight: { live: number; toTip: number; nextTip: string | null };
@@ -92,7 +94,13 @@ function Diff({ value, className }: { value: number; className?: string }) {
   return <span className={`${dk.chip} ${cls}`}>{signed(value)}</span>;
 }
 
-export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight, today, edge }: TapeProps) {
+export function Tape({ grid, stagedDelta, stagedCount, dropCount = 0, previewDelta, tonight, today, edge }: TapeProps) {
+  const pending = [
+    stagedCount > 0 ? `${stagedCount} move${stagedCount === 1 ? "" : "s"}` : "",
+    dropCount > 0 ? `${dropCount} drop${dropCount === 1 ? "" : "s"}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const nowDiff = grid.now.you - grid.now.opp;
   const projDiff = grid.projected.you - grid.projected.opp;
   const share = grid.projected.you + grid.projected.opp > 0 ? grid.projected.you / (grid.projected.you + grid.projected.opp) : 0.5;
@@ -149,13 +157,13 @@ export function Tape({ grid, stagedDelta, stagedCount, previewDelta, tonight, to
         </span>
       </div>
       {today}
-      {stagedCount > 0 || previewDelta != null ? (
+      {pending || previewDelta != null ? (
         <div className={s.tick}>
           <span className={dk.label}>Pending</span>
           <span className={s.tickValue} style={{ fontSize: 15 }}>
-            {stagedCount > 0 ? (
+            {pending ? (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <span className={s.tickSub}>{stagedCount} move{stagedCount === 1 ? "" : "s"}</span>
+                <span className={s.tickSub}>{pending}</span>
                 <Diff value={stagedDelta} />
               </span>
             ) : null}

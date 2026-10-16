@@ -35,8 +35,12 @@ export interface SwapTiming {
 /** The add / drop staged in a day's column: made now (today's column) or scheduled for that day. */
 export interface TraySwap {
   add: { id: number; name: string; team: string; games: string };
-  /** Who is dropped; null for an add into an open roster spot. */
-  drop: { id: number; name: string } | null;
+  /**
+   * Who is dropped; null for an add into an open roster spot. `staged`: a drop
+   * staged on its own that the add rides on (it fills the spot he frees), which
+   * its × takes back.
+   */
+  drop: { id: number; name: string; staged?: boolean } | null;
   /** The day it is scheduled for; null: made now. */
   from: number | null;
   /** When it could be made: now, or before one of his later game days, with what each does to the week. */
@@ -53,6 +57,8 @@ export interface TrayDay {
   /** "11/12" */
   date: string;
   moves: TrayMove[];
+  /** Players dropped on their own, made now (today's column). */
+  drops: Array<{ id: number; name: string }>;
   swap: TraySwap | null;
   /** What this day's moves add to the week. */
   delta: number;
@@ -69,6 +75,8 @@ interface TrayProps {
   /** The day being written right now. */
   sendingDay: number | null;
   onUnstage: (day: number, playerId: number) => void;
+  /** Take a staged drop back. */
+  onUndrop: (playerId: number) => void;
   onDiscardDay: (day: number) => void;
   onDiscardAll: () => void;
   /** Move the add / drop to another day (null: make it now). */
@@ -82,17 +90,17 @@ interface TrayProps {
 
 /** A confirmation is of a day's moves as they stand: change them and it lapses. */
 const keyOf = (d: TrayDay) =>
-  `${d.day}:${d.moves.map((m) => `${m.playerId}>${m.to}`).join(",")}|${d.swap ? `${d.swap.add.id}>${d.swap.drop?.id ?? 0}@${d.swap.from}` : ""}`;
+  `${d.day}:${d.moves.map((m) => `${m.playerId}>${m.to}`).join(",")}|${d.drops.map((x) => x.id).join(",")}|${d.swap ? `${d.swap.add.id}>${d.swap.drop?.id ?? 0}@${d.swap.from}` : ""}`;
 
 /**
  * Everything staged for ESPN before it goes: one column per day, in day order,
- * with that day's lineup moves and the add / drop made that day (now, in
- * today's column; or scheduled for it). A day is confirmed by ticking its
+ * with that day's lineup moves, the drops made now (today's column) and the
+ * add / drop made that day (now, in today's column; or scheduled for it). A day is confirmed by ticking its
  * column, or by the slider passing under it; Send (or the slider reaching its
  * end) writes the confirmed days, earliest first, since each day's edit carries
  * into the days after it.
  */
-export function Tray({ days, blocked, sendingDay, onUnstage, onDiscardDay, onDiscardAll, onTiming, onCancelSwap, onSend, onHeight }: TrayProps) {
+export function Tray({ days, blocked, sendingDay, onUnstage, onUndrop, onDiscardDay, onDiscardAll, onTiming, onCancelSwap, onSend, onHeight }: TrayProps) {
   const rootRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const el = rootRef.current;
@@ -146,9 +154,11 @@ export function Tray({ days, blocked, sendingDay, onUnstage, onDiscardDay, onDis
   // Folded away to see the grid; everything staged (and ticked) stays.
   const [collapsed, setCollapsed] = useState(false);
   const moveCount = days.reduce((n, d) => n + d.moves.length, 0);
+  const dropCount = days.reduce((n, d) => n + d.drops.length, 0);
   const swap = days.find((d) => d.swap)?.swap ?? null;
   const what = [
     moveCount ? `${moveCount} move${moveCount === 1 ? "" : "s"}` : "",
+    dropCount ? `${dropCount} drop${dropCount === 1 ? "" : "s"}` : "",
     swap ? (swap.from != null ? "1 pickup" : swap.drop ? "1 add / drop" : "1 add") : "",
     `${days.length} day${days.length === 1 ? "" : "s"}`,
   ]
@@ -239,6 +249,24 @@ export function Tray({ days, blocked, sendingDay, onUnstage, onDiscardDay, onDis
                     </button>
                   </li>
                 ))}
+                {d.drops.map((x) => (
+                  <li key={`drop-${x.id}`} className={s.trayMove} data-role="drop">
+                    <span className={s.trayMoveName} title={x.name}>
+                      <b className={s.traySign}>−</b> {shortName(x.name)}
+                    </span>
+                    <span className={s.trayMoveSlots}>drop</span>
+                    <button
+                      type="button"
+                      className={s.trayX}
+                      onClick={() => onUndrop(x.id)}
+                      disabled={sending}
+                      aria-label={`Keep ${x.name}`}
+                      title="Keep him: take the drop back"
+                    >
+                      <X size={11} />
+                    </button>
+                  </li>
+                ))}
                 {sw ? (
                   <>
                     <li className={s.trayMove} data-role="add">
@@ -268,7 +296,20 @@ export function Tray({ days, blocked, sendingDay, onUnstage, onDiscardDay, onDis
                         <span className={`${s.trayMoveName} ${dk.sub}`}>Into an open roster spot</span>
                       )}
                       <span className={s.trayMoveSlots}>{sw.drop ? "drop" : ""}</span>
-                      <span />
+                      {sw.drop?.staged ? (
+                        <button
+                          type="button"
+                          className={s.trayX}
+                          onClick={() => onUndrop(sw.drop!.id)}
+                          disabled={sending}
+                          aria-label={`Keep ${sw.drop.name}`}
+                          title="Keep him: take the drop back (the add then needs another spot)"
+                        >
+                          <X size={11} />
+                        </button>
+                      ) : (
+                        <span />
+                      )}
                     </li>
                   </>
                 ) : null}
@@ -305,6 +346,10 @@ export function Tray({ days, blocked, sendingDay, onUnstage, onDiscardDay, onDis
               ) : sw?.timing ? (
                 <div className={s.trayColNote} data-tone="hint" title={sw.timing}>
                   {sw.timing}
+                </div>
+              ) : d.drops.length || sw?.drop?.staged ? (
+                <div className={s.trayColNote} data-tone="hint">
+                  Dropped players go to waivers on ESPN
                 </div>
               ) : null}
             </div>
