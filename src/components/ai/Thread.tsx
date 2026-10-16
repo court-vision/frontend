@@ -4,8 +4,9 @@ import { memo, useState } from "react";
 import { MessageSquarePlus, ThumbsDown, ThumbsUp } from "lucide-react";
 import { prose } from "@/lib/ai-prose";
 import type { LivePart, LiveTurn } from "@/hooks/useAi";
-import type { AiFeedback, AiPart, AiTable, AiTurn } from "@/types/ai";
+import type { AiFeedback, AiPart, AiTurn } from "@/types/ai";
 import dk from "@/components/desk/desk.module.css";
+import { ChartBlock, TableBlock } from "./Blocks";
 import s from "./ai.module.css";
 
 /** What a failed turn's code means to the user, where the server's own message isn't enough. */
@@ -171,6 +172,8 @@ function Parts({ parts, caret = false }: { parts: Array<AiPart | LivePart>; care
       {parts.map((p, i) =>
         p.kind === "text" ? (
           <Prose key={i} text={p.text} caret={caret && i === parts.length - 1} />
+        ) : p.block.type === "chart" ? (
+          <ChartBlock key={`${p.block.id}-${i}`} chart={p.block} />
         ) : (
           <TableBlock key={`${p.block.id}-${i}`} table={p.block} />
         )
@@ -208,70 +211,6 @@ function Prose({ text, caret }: { text: string; caret: boolean }) {
       {!blocks.length && caret ? <span className={s.caret} aria-hidden /> : null}
     </div>
   );
-}
-
-/** Where a lookup's table came from, in words. */
-const SOURCES: Record<string, string> = {
-  get_free_agents: "free agents",
-  get_matchup: "your matchup",
-  get_game_log: "box scores",
-  get_player_stats: "player stats",
-  get_scheduled_pickups: "scheduled pickups",
-  get_projections: "projections",
-  get_draft_market: "the draft market",
-  get_market_movement: "draft market moves",
-  get_schedule: "the schedule",
-  get_draft_room: "your draft room",
-  get_draft_rooms: "your draft rooms",
-  search_players: "player search",
-};
-
-function TableBlock({ table }: { table: AiTable }) {
-  // A column is numeric when every value in it is a number (or empty)
-  const numeric = table.columns.map((_, c) => table.rows.some((r) => typeof r[c] === "number") && table.rows.every((r) => r[c] == null || typeof r[c] === "number"));
-  const from = table.tools.map((t) => SOURCES[t] ?? t).join(", ");
-  const cut = table.total_rows > table.rows.length ? ` · ${table.rows.length} of ${table.total_rows}` : "";
-  return (
-    <figure className={s.tableBox} style={{ margin: 0 }}>
-      <figcaption className={s.tableTitle}>
-        <span>{table.title}</span>
-        <span className={dk.sub} style={{ fontWeight: 400 }}>
-          from {from}
-          {cut}
-        </span>
-      </figcaption>
-      <div className={s.tableScroll}>
-        <table className={s.table}>
-          <thead>
-            <tr>
-              {table.columns.map((c, i) => (
-                <th key={c.key} className={numeric[i] ? s.num : undefined} scope="col">
-                  {c.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {table.rows.map((row, r) => (
-              <tr key={r}>
-                {row.map((cell, i) => (
-                  <td key={i} className={numeric[i] ? s.num : undefined}>
-                    {cell == null || cell === "" ? <span className={s.nil}>—</span> : formatCell(cell)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </figure>
-  );
-}
-
-function formatCell(cell: unknown): string {
-  if (typeof cell === "boolean") return cell ? "Yes" : "No";
-  if (typeof cell === "number") return Number.isInteger(cell) ? String(cell) : String(Math.round(cell * 100) / 100);
-  return String(cell);
 }
 
 function formatCost(usd: number): string {

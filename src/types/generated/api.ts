@@ -186,7 +186,7 @@ export interface paths {
          *
          *     - `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note, `step` for the start of each step after the first, when whatever the last status said is done);
          *     - `text` `{delta}`: the answer's prose, as it is written;
-         *     - `block` (an `AiTable`): a table the server built from the agent's lookups;
+         *     - `block` (an `AiTable` or `AiChart`): a table or chart the server built from the agent's lookups;
          *     - `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);
          *     - `done` `{turn_id, outcome, cost_usd, model_calls, duration_ms, spend}`: always last.
          *
@@ -2562,12 +2562,79 @@ export interface components {
         };
         /** AiBlockPart */
         AiBlockPart: {
-            block: components["schemas"]["AiTable"];
+            /** Block */
+            block: components["schemas"]["AiTable"] | components["schemas"]["AiChart"];
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
             kind: "block";
+        };
+        /**
+         * AiChart
+         * @description A bar or line chart the server built from the agent's tool results; the model never types its values.
+         */
+        AiChart: {
+            /**
+             * Categories
+             * @description The x values, in drawing order
+             */
+            categories: string[];
+            /**
+             * Id
+             * @description Unique within its turn, e.g. 'c1'
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "bar" | "line";
+            /**
+             * Result Ids
+             * @description The tool results the values were copied from
+             */
+            result_ids: string[];
+            /** Series */
+            series: components["schemas"]["AiChartSeries"][];
+            /** Title */
+            title: string;
+            /**
+             * Tools
+             * @description The lookups behind those results
+             */
+            tools: string[];
+            /**
+             * Total Rows
+             * @description X values before the chart's limit
+             */
+            total_rows: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "chart";
+            /** @description The column along the x axis */
+            x: components["schemas"]["AiChartAxis"];
+        };
+        /** AiChartAxis */
+        AiChartAxis: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /** AiChartSeries */
+        AiChartSeries: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Values
+             * @description One value per category, in order; null is a gap
+             */
+            values: (number | null)[];
         };
         /**
          * AiContext
@@ -2767,9 +2834,8 @@ export interface components {
              */
             total_rows: number;
             /**
-             * Type
-             * @default table
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             type: "table";
         };
