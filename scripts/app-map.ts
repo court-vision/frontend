@@ -302,8 +302,11 @@ async function explore(browser: Browser, seed: Seed) {
     if (seed.frontOnly || trail.length >= MAX_DEPTH) return;
     const controls = controlsOf(tree, isChrome, added ?? undefined);
     probe ??= probeOf(controls);
+    const last = trail.at(-1);
     for (const c of controls) {
       if (c.role === "link" || c.disabled || isDemoChrome(c.name)) continue;
+      // The control that opened this screen changed with it ([expanded]); clicking it again only closes it
+      if (last && c.role === last.role && c.name === last.name) continue;
       // A search gets a name typed in (a combobox is also clicked open); other text inputs are only recorded
       if (searchable(c) && probe) jobs.push({ trail, fp, tree, action: { ...c, fill: probe } });
       if (c.role !== "combobox" && c.role !== "slider" && (INPUTS.has(c.role) || searchable(c))) continue;
@@ -467,7 +470,7 @@ async function explore(browser: Browser, seed: Seed) {
           if (undemo(page.url()) !== from.url) linkTries.push({ url: page.url().replace(BASE, ""), fp });
           await back(job.fp);
         } catch (e) {
-          finding(job.action === "palette" ? "palette failed" : "click failed", seed.desk, `${path(typeof job.action === "object" ? job.action : undefined)}: ${firstLine(e)}`);
+          finding(job.action === "palette" ? "palette failed" : "click failed", seed.desk, `${path(typeof job.action === "object" ? job.action : undefined)}: ${whyFailed(e)}`);
           at = null;
         } finally {
           busy--;
@@ -483,6 +486,23 @@ async function explore(browser: Browser, seed: Seed) {
 }
 
 const firstLine = (e: unknown) => String(e).split("\n")[0].slice(0, 100);
+
+/**
+ * Why a step gave up, from Playwright's call log: covered by another element
+ * (a row's actions that only its selected row shows), not visible, not found.
+ */
+function whyFailed(e: unknown): string {
+  const log = String(e).replace(/\x1b\[\d+m/g, "").split("\n");
+  if (!/Timeout/.test(log[0])) return firstLine(e);
+  const cover = log.map((l) => l.match(/<(\w+)([^>]*)>.*intercepts pointer events/)).filter(Boolean).at(-1);
+  if (cover) {
+    const label = cover[2].match(/\b(?:aria-label|title)="([^"]*)"/)?.[1];
+    return `covered by ${cover[1]}${label ? ` “${label}”` : ""}`;
+  }
+  const state = log.map((l) => l.match(/element is (not \w+|outside of the viewport)/)).filter(Boolean).at(-1);
+  if (state) return `element is ${state[1]}`;
+  return log.some((l) => l.includes("locator resolved to")) ? firstLine(e) : "not on the page";
+}
 
 /** URLs clicks wrote, checked at the end: one that opens its screen on its own is that screen's link. */
 const linkTries: { url: string; fp: string }[] = [];
