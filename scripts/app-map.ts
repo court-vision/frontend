@@ -155,9 +155,10 @@ async function snapshot(page: Page): Promise<AriaNode[]> {
   return stripDemo(parseSnapshot(await page.locator("body").ariaSnapshot({ timeout: 15_000 })));
 }
 
-/** `?demo` out of a URL or an href, keeping the rest of its query. */
+/** `?demo` out of a URL or an href, keeping the rest of its query. A link off the app keeps its whole URL. */
 function undemo(url: string): string {
   const u = new URL(url, BASE);
+  if (u.origin !== new URL(BASE).origin) return u.href;
   u.searchParams.delete("demo");
   const q = u.searchParams.toString();
   return `${u.pathname}${q ? `?${q}` : ""}`;
