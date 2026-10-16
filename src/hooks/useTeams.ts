@@ -71,6 +71,8 @@ export function useAddTeamMutation(opts: { silent?: boolean } = {}) {
           // The caller says what happened.
         } else if (response.already_exists) {
           toast.info("Team already exists in your account.");
+        } else if (response.moved_from_season != null) {
+          toast.success("Team rolled over to this season.");
         } else {
           toast.success(
             format

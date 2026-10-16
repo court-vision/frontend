@@ -257,7 +257,7 @@ export interface Issue {
   level: "warn" | "note";
 }
 
-export function issues(teams: readonly TeamResponseData[], connections: readonly ProviderConnection[]): Issue[] {
+export function issues(teams: readonly TeamResponseData[], connections: readonly ProviderConnection[], seasonKey?: string): Issue[] {
   const out: Issue[] = [];
   for (const c of connections) {
     if (c.status === "expired") {
@@ -267,6 +267,19 @@ export function issues(teams: readonly TeamResponseData[], connections: readonly
         text: `${providerLabel(c.provider)} rejected the ${connectionTitle(c)}'s ${c.provider === "yahoo" ? "login" : "cookies"}${n ? `; ${n} ${n === 1 ? "team reads" : "teams read"} through it` : ""}.`,
         action: c.provider === "yahoo" ? "Reconnect" : "Update cookies",
         target: { kind: "connection", id: c.id },
+        level: "warn",
+      });
+    }
+  }
+  for (const team of teams) {
+    const name = teamName(team);
+    const rollTo = seasonKey ? rolloverSeason(team, seasonKey) : null;
+    if (rollTo != null) {
+      out.push({
+        id: `team-last-season-${team.team_id}`,
+        text: `${name} is still on ESPN's ${seasonLabel("espn", team.league_info.year)} season, so it shows last season's league. Roll it over to ${seasonLabel("espn", rollTo)}.`,
+        action: "Roll over",
+        target: { kind: "team", id: team.team_id },
         level: "warn",
       });
     }
@@ -347,6 +360,27 @@ export function teamNamesFromMessage(message: string | null | undefined): string
 export function espnSeasonId(seasonKey: string): number {
   const start = parseInt(seasonKey.slice(0, 4), 10);
   return Number.isNaN(start) ? new Date().getFullYear() : start + 1;
+}
+
+/**
+ * The ESPN season a team can roll over to: the one under way, when the team
+ * is an ESPN team still saved for an earlier one (it reads last season's
+ * league until it moves). Null when there is nothing to roll over.
+ */
+export function rolloverSeason(team: TeamResponseData, seasonKey: string): number | null {
+  const info = team.league_info;
+  if (info?.provider !== "espn" || info.year == null) return null;
+  const current = espnSeasonId(seasonKey);
+  return info.year < current ? current : null;
+}
+
+/**
+ * What a row in ESPN's list of the account's teams does: open the team that
+ * tracks it, move last season's team to its season, or add it.
+ */
+export function accountTeamAction(t: EspnAccountTeam): "tracked" | "rollover" | "add" {
+  if (t.tracked_team_id != null) return "tracked";
+  return t.previous_season_team_id != null ? "rollover" : "add";
 }
 
 /** ESPN's format name ("H2H_POINTS", "H2H_CATEGORY", "ROTO") as the desk labels it. */

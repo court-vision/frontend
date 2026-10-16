@@ -14,7 +14,9 @@ import {
   issues,
   leagueName,
   providerEnabled,
+  accountTeamAction,
   returnPath,
+  rolloverSeason,
   sameFocus,
   seasonLabel,
   sortAccountTeams,
@@ -215,9 +217,49 @@ describe("issues", () => {
     expect(issues([], []).map((i) => i.id)).toEqual(["no-teams"]);
   });
 
+  test("an ESPN team still on last season says to roll it over, before the notes", () => {
+    const t = team({ info: { year: 2026 }, league: league({ settings_synced: false }) });
+    const out = issues([t], [connection()], "2026-27");
+    expect(out[0]).toMatchObject({ id: "team-last-season-22", level: "warn", action: "Roll over", target: { kind: "team", id: 22 } });
+    expect(out[0].text).toContain("2025–26");
+    expect(out[0].text).toContain("2026–27");
+    expect(issues([team()], [connection()], "2026-27").map((i) => i.id)).not.toContain("team-last-season-22");
+    expect(issues([t], [connection()]).map((i) => i.id)).not.toContain("team-last-season-22");
+  });
+
   test("a Yahoo team without inline tokens is not a cookie problem", () => {
     const t = team({ info: { provider: "yahoo", has_espn_credentials: false } });
     expect(issues([t], []).map((i) => i.action)).toEqual([]);
+  });
+});
+
+describe("rolling a team over to the season under way", () => {
+  test("an ESPN team saved for an earlier season rolls over to the current one", () => {
+    expect(rolloverSeason(team({ info: { year: 2026 } }), "2026-27")).toBe(2027);
+    expect(rolloverSeason(team({ info: { year: 2027 } }), "2026-27")).toBeNull();
+    expect(rolloverSeason(team({ info: { year: 2028 } }), "2026-27")).toBeNull();
+  });
+
+  test("Yahoo names its seasons differently and is left alone", () => {
+    expect(rolloverSeason(team({ info: { provider: "yahoo", year: 2025 } }), "2026-27")).toBeNull();
+  });
+
+  test("a renewal of last season's team rolls it over; a tracked one opens; the rest add", () => {
+    const base: EspnAccountTeam = {
+      espn_team_id: 3,
+      league_id: 1,
+      league_name: "Goblins",
+      league_size: 12,
+      scoring_type: "H2H_POINTS",
+      season: 2027,
+      team_abbrev: "A",
+      team_name: "Alpha",
+      tracked_team_id: null,
+      previous_season_team_id: null,
+    };
+    expect(accountTeamAction({ ...base, tracked_team_id: 7 })).toBe("tracked");
+    expect(accountTeamAction({ ...base, previous_season_team_id: 7 })).toBe("rollover");
+    expect(accountTeamAction(base)).toBe("add");
   });
 });
 
@@ -258,6 +300,7 @@ describe("adding a team", () => {
       team_abbrev: "GS",
       team_name: "Soap",
       tracked_team_id: null,
+      previous_season_team_id: null,
       ...over,
     });
     expect(accountTeamLine(row({}))).toBe("Goblins · 12 teams · H2H points · 2026–27");

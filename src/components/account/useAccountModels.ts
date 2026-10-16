@@ -19,6 +19,7 @@ import { useYahooLeagues, useYahooTeams } from "@/hooks/useYahoo";
 import { apiClient } from "@/lib/api";
 import { userMessage } from "@/lib/api-error";
 import { scoringLabel } from "@/lib/category-format";
+import { seasonLabel } from "@/lib/account";
 import {
   DEMO_ACCOUNT_TEAMS,
   DEMO_CONNECTIONS,
@@ -87,6 +88,7 @@ export function useLiveAddTeam(): AddTeamModel {
       await queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
       const league = res.data?.league ?? null;
       if (res.already_exists) toast.info(`${body.team_name} is already here.`);
+      else if (res.moved_from_season != null) toast.success(`${body.team_name} rolled over to ${seasonLabel("espn", body.year)}.`);
       else toast.success(league?.settings_synced ? `${body.team_name} added: ${scoringLabel(league)}.` : `${body.team_name} added.`);
       return { teamId, alreadyExists: !!res.already_exists, team: res.data ?? null };
     },
@@ -201,6 +203,9 @@ export function useLiveAccount(): AccountModel {
       await updateTeam(team, team.league_info.provider === "yahoo" ? { yahoo_connection_id: connectionId } : { espn_connection_id: connectionId });
       void queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
     },
+    // The update route reads the league in the new season, finds the team by
+    // its name or the account's SWID, and syncs that season's settings.
+    rollOver: (team, year) => updateTeam(team, { year }),
     removeTeam: async (teamId) => {
       const res = await removeAsync(teamId);
       if (res.status !== "success") throw new Error(res.message || "The team was not removed");
@@ -431,6 +436,16 @@ export function useDemoAccount(): AccountModel {
         teams: s.teams.map((t) => (t.team_id === team.team_id ? { ...t, league_info: { ...t.league_info, has_espn_credentials: true } } : t)),
       }));
       toast.success("Team linked to the account (demo)");
+    },
+    rollOver: async (team, year) => {
+      await wait(600);
+      set((s) => ({
+        teams: s.teams.map((t) =>
+          t.team_id === team.team_id ? { ...t, league_info: { ...t.league_info, year }, league: t.league ? { ...t.league, season: year } : t.league } : t
+        ),
+        connections: s.connections.map((c) => ({ ...c, teams: c.teams.map((x) => (x.team_id === team.team_id ? { ...x, year } : x)) })),
+      }));
+      toast.success(`${team.league_info.team_name} rolled over to ${seasonLabel("espn", year)} (demo)`);
     },
     removeTeam: async (teamId) => {
       await wait(400);

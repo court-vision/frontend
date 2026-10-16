@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Loader2 } from "lucide-react";
-import { accountTeamLine, sortAccountTeams } from "@/lib/account";
+import { accountTeamAction, accountTeamLine, seasonLabel, sortAccountTeams } from "@/lib/account";
 import type { EspnAccountTeam } from "@/types/connections";
 import dk from "@/components/desk/desk.module.css";
 import s from "./account.module.css";
@@ -16,7 +16,11 @@ export function Rows({ n }: { n: number }) {
   );
 }
 
-/** The teams ESPN lists on a connected account: one click adds; the tracked ones open instead. */
+/**
+ * The teams ESPN lists on a connected account: one click adds; the tracked ones
+ * open instead; a league's renewal of a team saved last season rolls that team
+ * over to it.
+ */
 export function AccountTeamList({
   loading,
   error,
@@ -42,13 +46,15 @@ export function AccountTeamList({
     <div className={s.list}>
       {rows.map((t) => {
         const key = `espn:${t.league_id}:${t.espn_team_id}`;
-        const tracked = t.tracked_team_id != null;
+        const action = accountTeamAction(t);
+        const tracked = action === "tracked";
         return (
           <button
             key={`${t.league_id}:${t.espn_team_id}:${t.season}`}
             type="button"
             className={s.item}
             disabled={busy != null || (tracked && !onTracked)}
+            title={action === "rollover" ? `Moves the team you saved for an earlier season to ${seasonLabel("espn", t.season)}` : undefined}
             onClick={() => (tracked ? onTracked?.(t.tracked_team_id!) : onAdd(t))}
           >
             <span className={s.itemBody}>
@@ -66,7 +72,7 @@ export function AccountTeamList({
                   <Check size={11} /> tracked
                 </span>
               ) : (
-                <span className={`${dk.btn} ${dk.btnSmall}`}>Add</span>
+                <span className={`${dk.btn} ${dk.btnSmall}`}>{action === "rollover" ? "Roll over" : "Add"}</span>
               )}
             </span>
           </button>
