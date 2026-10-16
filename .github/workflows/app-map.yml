@@ -26,6 +26,9 @@ jobs:
   crawl:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # It checks out, builds, crawls and uploads; nothing it does writes to the repo
+    permissions:
+      contents: read
 
     env:
       # Production's public settings, so the build is the site users get.
