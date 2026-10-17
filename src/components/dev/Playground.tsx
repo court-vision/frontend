@@ -234,7 +234,7 @@ export function PlaygroundSheet({ doc, op, base, today, replayed }: { doc: OpenA
 
       {op.body ? (
         <Block title="Body" note={typeLabel(doc, op.body)} right={bodyError ? <span className={dk.error}>{bodyError}</span> : null}>
-          <textarea className={s.textarea} value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} rows={8} />
+          <textarea className={s.textarea} aria-label="Body" value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} rows={8} />
         </Block>
       ) : null}
 

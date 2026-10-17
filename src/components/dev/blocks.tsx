@@ -56,8 +56,8 @@ export function CopyBtn({ text, label = "Copy" }: { text: string; label?: string
 export function Code({ text, lang, json = false, maxHeight }: { text: string; lang?: string; json?: boolean; maxHeight?: number }) {
   return (
     <div className={s.codeWrap}>
-      {lang ? <span className={s.codeLang}>{lang}</span> : null}
       <div className={s.codeTools}>
+        {lang ? <span className={s.codeLang}>{lang}</span> : null}
         <CopyBtn text={text} label="Copy" />
       </div>
       <pre className={s.code} style={maxHeight ? { maxHeight, overflow: "auto" } : undefined}>

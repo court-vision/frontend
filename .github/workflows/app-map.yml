@@ -1,0 +1,90 @@
+name: App Map
+
+# CV AI's map of the website (docs/APP_MAP_PLAN.md in court-vision/docs): a
+# production build of each commit on main, crawled signed out through the
+# desks' demos and the public desks, plus a sweep of the source's copy. The
+# map is the job's artifact and its summary; nobody writes it by hand.
+#
+# It runs on pull requests that change the crawler too, so a change to it
+# shows its map before it merges.
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    paths:
+      - "scripts/app-map.ts"
+      - "src/lib/app-map/**"
+      - ".github/workflows/app-map.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: app-map-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # It checks out, builds, crawls and uploads; nothing it does writes to the repo
+    permissions:
+      contents: read
+
+    env:
+      # Production's public settings, so the build is the site users get.
+      # The crawl only reads the API (every other request is aborted), and
+      # the API's CORS allows http://localhost:3000.
+      NEXT_PUBLIC_API_BASE: "https://api.courtvision.dev"
+      # The Draft Tap extension's id, pinned by its manifest key (.env.example).
+      NEXT_PUBLIC_DRAFT_TAP_EXTENSION_ID: "emchocgopfngbgklfflaoagohjceofpd"
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: "/sign-in"
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: "/sign-up"
+      # Clerk's test instance: production's key only works on courtvision.dev.
+      # pk_test publishable keys are public by design — repo variable, not a secret.
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_PUBLISHABLE_KEY_TEST }}
+      # The middleware wants a secret key's shape; signed out, with the visitor
+      # cookie the crawler makes first, it never uses it.
+      CLERK_SECRET_KEY: "sk_test_app_map_signed_out"
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.3"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: Build
+        run: bun run build
+
+      - name: Start
+        run: |
+          bun run start -p 3000 > next.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3000/scout && exit 0
+            sleep 1
+          done
+          cat next.log
+          exit 1
+
+      - name: Crawl
+        run: bun scripts/app-map.ts --base http://localhost:3000 --out app-map.json --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the map
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-map-${{ github.sha }}
+          path: app-map.json
+          retention-days: 30
+
+      - name: Server log
+        if: failure()
+        run: tail -100 next.log

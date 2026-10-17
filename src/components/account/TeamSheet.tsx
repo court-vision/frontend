@@ -224,7 +224,7 @@ export function TeamSheet({ model, team, alerts, onOpen, onRemoved }: TeamSheetP
             </div>
             {accounts.length ? (
               <div className={s.row2}>
-                <select className={s.select} value={linkTo} onChange={(e) => setLinkTo(e.target.value ? Number(e.target.value) : "")}>
+                <select className={s.select} aria-label="Connected account" value={linkTo} onChange={(e) => setLinkTo(e.target.value ? Number(e.target.value) : "")}>
                   <option value="">Choose an account…</option>
                   {accounts.map((c) => (
                     <option key={c.id} value={c.id}>

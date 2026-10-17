@@ -320,7 +320,7 @@ export function QuerySheet({ model, canvas, setCanvas }: { model: QueryModel; ca
                     <span className={s.clauseName}>
                       {shortTable(o.table)}.{o.attribute}
                     </span>
-                    <select className={`${s.select} ${s.inputSmall}`} value={o.sort} onChange={(e) => setCanvas(updateOrder(canvas, o.id, { sort: e.target.value as Sort }))}>
+                    <select className={`${s.select} ${s.inputSmall}`} aria-label={`Sort ${o.attribute}`} value={o.sort} onChange={(e) => setCanvas(updateOrder(canvas, o.id, { sort: e.target.value as Sort }))}>
                       {SORTS.map((x) => (
                         <option key={x} value={x}>
                           {x === "ASC" ? "ascending" : "descending"}
