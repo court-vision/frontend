@@ -1,12 +1,18 @@
 name: App Map
 
 # CV AI's map of the website (docs/APP_MAP_PLAN.md in court-vision/docs): a
-# production build of each commit on main, crawled signed out through the
-# desks' demos and the public desks, plus a sweep of the source's copy. The
-# map is the job's artifact and its summary; nobody writes it by hand.
+# production build of each commit on main, crawled signed in as the app map's
+# own account and signed out through the desks' demos and the public desks,
+# plus a sweep of the source's copy. The map is the job's artifact and its
+# summary; nobody writes it by hand.
+#
+# The crawl serves the build as www.courtvision.dev to its own browser only
+# (--serve, the stand-in in scripts/app-map.ts), since production's Clerk key
+# works nowhere else. Nothing reaches production's frontend.
 #
 # It runs on pull requests that change the crawler too, so a change to it
-# shows its map before it merges.
+# shows its map before it merges; those crawls are signed out. And once a
+# night during games, for the screens that only exist while games are on.
 
 on:
   push:
@@ -16,6 +22,8 @@ on:
       - "scripts/app-map.ts"
       - "src/lib/app-map/**"
       - ".github/workflows/app-map.yml"
+  schedule:
+    - cron: "30 1 * 10-12,1-6 *" # 20:30 ET in winter (21:30 in summer time), mid-slate, October to June
   workflow_dispatch:
 
 concurrency:
@@ -25,26 +33,31 @@ concurrency:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     # It checks out, builds, crawls and uploads; nothing it does writes to the repo
     permissions:
       contents: read
+    # APP_MAP_TOKEN, the account pass's one secret, lives in the app-map
+    # environment, which only main may use. Elsewhere the job has no
+    # environment and crawls signed out.
+    environment: ${{ github.ref == 'refs/heads/main' && 'app-map' || '' }}
 
     env:
       # Production's public settings, so the build is the site users get.
       # The crawl only reads the API (every other request is aborted), and
-      # the API's CORS allows http://localhost:3000.
+      # to the API and Clerk the page is www.courtvision.dev.
       NEXT_PUBLIC_API_BASE: "https://api.courtvision.dev"
       # The Draft Tap extension's id, pinned by its manifest key (.env.example).
       NEXT_PUBLIC_DRAFT_TAP_EXTENSION_ID: "emchocgopfngbgklfflaoagohjceofpd"
       NEXT_PUBLIC_CLERK_SIGN_IN_URL: "/sign-in"
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: "/sign-up"
-      # Clerk's test instance: production's key only works on courtvision.dev.
-      # pk_test publishable keys are public by design — repo variable, not a secret.
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_PUBLISHABLE_KEY_TEST }}
-      # The middleware wants a secret key's shape; signed out, with the visitor
-      # cookie the crawler makes first, it never uses it.
-      CLERK_SECRET_KEY: "sk_test_app_map_signed_out"
+      # Production's Clerk. A publishable key is public by design (every page
+      # of courtvision.dev carries this one).
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_Y2xlcmsuY291cnR2aXNpb24uZGV2JA"
+      # The middleware wants a secret key's shape and never uses it: signed out
+      # it has nothing to check, and signed in it checks the session with
+      # CLERK_JWT_KEY (Start).
+      CLERK_SECRET_KEY: "sk_live_app_map_placeholder"
       NEXT_TELEMETRY_DISABLED: "1"
 
     steps:
@@ -67,6 +80,9 @@ jobs:
 
       - name: Start
         run: |
+          # Clerk's public signing key, from production's key set, so the
+          # middleware checks a session's token without calling Clerk
+          export CLERK_JWT_KEY="$(curl -fsS https://clerk.courtvision.dev/.well-known/jwks.json | bun -e 'const { keys } = await Bun.stdin.json(); process.stdout.write(require("node:crypto").createPublicKey({ key: keys[0], format: "jwk" }).export({ type: "spki", format: "pem" }))')"
           bun run start -p 3000 > next.log 2>&1 &
           for i in $(seq 1 60); do
             curl -sf -o /dev/null http://localhost:3000/scout && exit 0
@@ -76,7 +92,11 @@ jobs:
           exit 1
 
       - name: Crawl
-        run: bun scripts/app-map.ts --base http://localhost:3000 --out app-map.json --summary "$GITHUB_STEP_SUMMARY"
+        env:
+          # Gets the crawl a one-time sign-in as the app map's account from the
+          # backend. Empty outside the app-map environment: signed out only.
+          APP_MAP_TOKEN: ${{ secrets.APP_MAP_TOKEN }}
+        run: bun scripts/app-map.ts --base https://www.courtvision.dev --serve http://localhost:3000 --out app-map.json --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the map
         uses: actions/upload-artifact@v4

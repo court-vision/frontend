@@ -50,6 +50,8 @@ export interface MapScreen {
   tree: string;
   /** Structure hash: equal for two screens that are the same screen with other data. */
   fingerprint: string;
+  /** Seen signed in as the app map's account; false for a demo or a public desk signed out. */
+  signedIn: boolean;
 }
 
 /** Copy from one source file, split by whether any crawled screen showed it. */

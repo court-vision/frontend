@@ -1610,6 +1610,78 @@
         "title": "ApiStatus",
         "type": "string"
       },
+      "AppMapSignInData": {
+        "description": "A one-time Clerk sign-in ticket for the app map's account.",
+        "properties": {
+          "expires_in_seconds": {
+            "title": "Expires In Seconds",
+            "type": "integer"
+          },
+          "ticket": {
+            "title": "Ticket",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket",
+          "expires_in_seconds"
+        ],
+        "title": "AppMapSignInData",
+        "type": "object"
+      },
+      "AppMapSignInResp": {
+        "description": "POST /v1/internal/app-map/sign-in-token",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppMapSignInData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AppMapSignInResp",
+        "type": "object"
+      },
       "ApplyLineupMovesData": {
         "properties": {
           "applied_moves": {
@@ -23189,6 +23261,33 @@
         "summary": "Revoke Api Key",
         "tags": [
           "API Keys"
+        ]
+      }
+    },
+    "/v1/internal/app-map/sign-in-token": {
+      "post": {
+        "description": "A one-time sign-in as the app map's account, for the crawl's browser.",
+        "operationId": "create_app_map_sign_in_token_v1_internal_app_map_sign_in_token_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppMapSignInResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create App Map Sign In Token",
+        "tags": [
+          "app map"
         ]
       }
     },
