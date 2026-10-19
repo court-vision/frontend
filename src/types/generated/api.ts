@@ -343,6 +343,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/app-map/sign-in-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create App Map Sign In Token
+         * @description A one-time sign-in as the app map's account, for the crawl's browser.
+         */
+        post: operations["create_app_map_sign_in_token_v1_internal_app_map_sign_in_token_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/connections/": {
         parameters: {
             query?: never;
@@ -3075,6 +3095,30 @@ export interface components {
          * @enum {string}
          */
         ApiStatus: "success" | "error" | "skipped" | "bad_request" | "validation_error" | "authentication_error" | "authorization_error" | "not_found" | "conflict" | "rate_limited" | "server_error";
+        /**
+         * AppMapSignInData
+         * @description A one-time Clerk sign-in ticket for the app map's account.
+         */
+        AppMapSignInData: {
+            /** Expires In Seconds */
+            expires_in_seconds: number;
+            /** Ticket */
+            ticket: string;
+        };
+        /**
+         * AppMapSignInResp
+         * @description POST /v1/internal/app-map/sign-in-token
+         */
+        AppMapSignInResp: {
+            data: components["schemas"]["AppMapSignInData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /** ApplyLineupMovesData */
         ApplyLineupMovesData: {
             /** Applied Moves */
@@ -11328,6 +11372,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_app_map_sign_in_token_v1_internal_app_map_sign_in_token_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppMapSignInResp"];
                 };
             };
         };
