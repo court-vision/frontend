@@ -122,7 +122,13 @@ function startStandIn(): StandIn {
       const headers = new Headers(req.headers);
       headers.set("x-forwarded-host", host);
       headers.set("x-forwarded-proto", "https");
-      const res = await fetch(SERVE + u.pathname + u.search, { method: req.method, headers, redirect: "manual" });
+      let res: Response;
+      try {
+        res = await fetch(SERVE + u.pathname + u.search, { method: req.method, headers, redirect: "manual" });
+      } catch (e) {
+        // Marked, so a build that is down reads as a failed load, not as the real site
+        return new Response(`the stand-in couldn't reach ${SERVE}: ${firstLine(e)}`, { status: 502, headers: { [STAND_IN_MARK]: mark } });
+      }
       // fetch hands the body back decoded: its encoding and length no longer describe it
       const out = new Headers(res.headers);
       out.delete("content-encoding");
@@ -707,7 +713,13 @@ async function signIn(browser: Browser): Promise<boolean> {
   }
   let ticket: unknown;
   try {
-    const res = await fetch(`${API}/v1/internal/app-map/sign-in-token`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+    // The token goes to the API and nowhere else: a redirect is a refusal, and a stall gives up
+    const res = await fetch(`${API}/v1/internal/app-map/sign-in-token`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      redirect: "manual",
+      signal: AbortSignal.timeout(15_000),
+    });
     if (!res.ok) throw new Error(`the sign-in token request was refused (HTTP ${res.status})`);
     ticket = ((await res.json()) as { data?: { ticket?: unknown } }).data?.ticket;
     if (typeof ticket !== "string" || !ticket) throw new Error("the sign-in token response had no ticket");
@@ -771,7 +783,7 @@ async function signOut() {
   } catch (e) {
     finding("sign-out failed", "all", firstLine(e));
   }
-  await account.ctx.close();
+  await account.ctx.close().catch(() => {});
   account = null;
 }
 
@@ -798,45 +810,49 @@ async function main() {
   }
 
   // Signed in first: what a user has is the map, and the demos add only what it didn't show
-  const passes = (await signIn(browser)) ? [true, false] : [false];
-  for (const signedIn of passes) {
-    /** A desk's URL as this pass opens it: as it is signed in, its demo signed out. */
-    const at = (path: string, query = "") => (signedIn ? `${path}${query ? `?${query}` : ""}` : `${path}?demo=1${query ? `&${query}` : ""}`);
+  // However the passes end, the account's session ends with the run and the stand-in stops
+  try {
+    const passes = (await signIn(browser)) ? [true, false] : [false];
+    for (const signedIn of passes) {
+      /** A desk's URL as this pass opens it: as it is signed in, its demo signed out. */
+      const at = (path: string, query = "") => (signedIn ? `${path}${query ? `?${query}` : ""}` : `${path}?demo=1${query ? `&${query}` : ""}`);
 
-    // The desks' fronts first, then the routes their links lead to (draft rooms, recaps)
-    const seeds: Seed[] = chosen.map((d) => ({ desk: d.id, url: at(d.href), signedIn }));
-    await pool(seeds, SEEDS_AT_ONCE, (s) => explore(browser, s));
+      // The desks' fronts first, then the routes their links lead to (draft rooms, recaps)
+      const seeds: Seed[] = chosen.map((d) => ({ desk: d.id, url: at(d.href), signedIn }));
+      await pool(seeds, SEEDS_AT_ONCE, (s) => explore(browser, s));
 
-    const linked = new Map<string, string>();
-    for (const s of screens.filter((x) => x.signedIn === signedIn)) {
-      for (const m of s.tree.matchAll(/\/url: (\/[^\s]*)/g)) {
-        const path = new URL(m[1], BASE).pathname;
-        const desk = chosen.find((d) => path.startsWith(`${d.href}/`));
-        if (desk && !seeds.some((x) => new URL(x.url, BASE).pathname === path)) {
-          const key = routeOf(path);
-          const list = [...linked.entries()].filter(([, k]) => k === key);
-          if (list.length < 3) linked.set(path, key);
+      const linked = new Map<string, string>();
+      for (const s of screens.filter((x) => x.signedIn === signedIn)) {
+        for (const m of s.tree.matchAll(/\/url: (\/[^\s]*)/g)) {
+          const path = new URL(m[1], BASE).pathname;
+          const desk = chosen.find((d) => path.startsWith(`${d.href}/`));
+          if (desk && !seeds.some((x) => new URL(x.url, BASE).pathname === path)) {
+            const key = routeOf(path);
+            const list = [...linked.entries()].filter(([, k]) => k === key);
+            if (list.length < 3) linked.set(path, key);
+          }
         }
       }
-    }
-    const more: Seed[] = [...linked.keys()].map((path) => ({ desk: chosen.find((d) => path.startsWith(`${d.href}/`))!.id, url: at(path), signedIn }));
-    await pool(more, SEEDS_AT_ONCE, (s) => explore(browser, s));
+      const more: Seed[] = [...linked.keys()].map((path) => ({ desk: chosen.find((d) => path.startsWith(`${d.href}/`))!.id, url: at(path), signedIn }));
+      await pool(more, SEEDS_AT_ONCE, (s) => explore(browser, s));
 
-    // Links a page reads but never writes (Week's ?view=, ?market=; Account's ?add): try each value
-    const tries: Seed[] = [];
-    for (const d of chosen) {
-      const page = files.find((f) => f === `src/app/(desk)${d.href}/page.tsx`);
-      if (!page) continue;
-      for (const [k, values] of Object.entries(pageParams(readFileSync(page, "utf8")))) {
-        for (const v of values) tries.push({ desk: d.id, url: at(d.href, `${k}=${encodeURIComponent(v)}`), frontOnly: true, signedIn });
+      // Links a page reads but never writes (Week's ?view=, ?market=; Account's ?add): try each value
+      const tries: Seed[] = [];
+      for (const d of chosen) {
+        const page = files.find((f) => f === `src/app/(desk)${d.href}/page.tsx`);
+        if (!page) continue;
+        for (const [k, values] of Object.entries(pageParams(readFileSync(page, "utf8")))) {
+          for (const v of values) tries.push({ desk: d.id, url: at(d.href, `${k}=${encodeURIComponent(v)}`), frontOnly: true, signedIn });
+        }
       }
+      await pool(tries, SEEDS_AT_ONCE, (s) => explore(browser, s));
+      await checkLinks(browser, signedIn);
     }
-    await pool(tries, SEEDS_AT_ONCE, (s) => explore(browser, s));
-    await checkLinks(browser, signedIn);
+  } finally {
+    await signOut();
+    await browser.close().catch(() => {});
+    standIn?.stop();
   }
-  await signOut();
-  await browser.close();
-  standIn?.stop();
 
   // Coverage: copy no screen showed is what the map knows only from the source
   const corpus = screens.map((s) => s.tree).join("\n");

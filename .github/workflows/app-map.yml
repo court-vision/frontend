@@ -81,8 +81,11 @@ jobs:
       - name: Start
         run: |
           # Clerk's public signing key, from production's key set, so the
-          # middleware checks a session's token without calling Clerk
-          export CLERK_JWT_KEY="$(curl -fsS https://clerk.courtvision.dev/.well-known/jwks.json | bun -e 'const { keys } = await Bun.stdin.json(); process.stdout.write(require("node:crypto").createPublicKey({ key: keys[0], format: "jwk" }).export({ type: "spki", format: "pem" }))')"
+          # middleware checks a session's token without calling Clerk (assigned
+          # first: `export` would hide a failed fetch and leave the key empty)
+          key="$(curl -fsS https://clerk.courtvision.dev/.well-known/jwks.json | bun -e 'const { keys } = await Bun.stdin.json(); process.stdout.write(require("node:crypto").createPublicKey({ key: keys[0], format: "jwk" }).export({ type: "spki", format: "pem" }))')"
+          test -n "$key"
+          export CLERK_JWT_KEY="$key"
           bun run start -p 3000 > next.log 2>&1 &
           for i in $(seq 1 60); do
             curl -sf -o /dev/null http://localhost:3000/scout && exit 0
