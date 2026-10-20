@@ -1212,6 +1212,11 @@ export function WeekTerminal({
     });
   }, [openLanes, source, laneCellsById, data.laneBusy, root, requestPool, updateLane]);
   const stoppingLane = confirm ? openLanes.find((l) => l.id === confirm.stopLane) ?? null : null;
+  // A poll can end the lane under its dialog, which closes without onOpenChange: let go of the
+  // confirmation so the desk keys work again.
+  useEffect(() => {
+    if (confirm && !stoppingLane) setConfirm(null);
+  }, [confirm, stoppingLane]);
   const closeLaneSheet = useCallback(() => {
     setLaneFor(null);
     clearLaneError();
