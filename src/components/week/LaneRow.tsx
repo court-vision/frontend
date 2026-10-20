@@ -11,7 +11,7 @@ import { pts, shortName } from "./format";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 
-/** What the daily view needs to draw the open lane and act on it. */
+/** What the daily view needs to draw an open lane and act on it. */
 export interface LaneRowModel {
   lane: StreamLane;
   /** Per day of the week (null outside the lane's days). */
@@ -39,15 +39,18 @@ const TAG: Record<LaneCell["state"], string> = {
   projected: "",
 };
 
-export function LaneGroupRow({ model }: { model: LaneRowModel }) {
+/** A lane's head: its spot, its summary and its controls. The first lane's carries the group's label. */
+export function LaneGroupRow({ model, first = true }: { model: LaneRowModel; first?: boolean }) {
   const { lane, busy } = model;
   const active = lane.status === "active";
   return (
-    <div className={s.groupRow} role="presentation" data-group="lane">
+    <div className={s.groupRow} role="presentation" data-group="lane" data-first={first}>
       <div className={s.groupLabel}>
-        <span className={dk.label} style={{ color: "var(--accent)" }}>
-          Stream
-        </span>
+        {first ? (
+          <span className={dk.label} style={{ color: "var(--accent)" }}>
+            Stream
+          </span>
+        ) : null}
       </div>
       <div className={`${s.groupFill} ${s.laneHead}`}>
         <span className={`${dk.sub} ${s.laneSummary}`}>

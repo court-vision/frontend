@@ -64,8 +64,8 @@ export interface DropBlockedInput {
   player: { id: number; name: string };
   /** Today's board as ESPN holds it (no staged drops applied); null when there is none. */
   board: LineupState | null | undefined;
-  /** The player an active stream lane holds its spot with, if one is active. */
-  laneHolder: number | null;
+  /** The players the team's active stream lanes hold their spots with. */
+  laneHolders: ReadonlySet<number>;
   /** A pending scheduled pickup that already drops him: its add's name and its day's. */
   scheduled: { add: string; day: string } | null;
   /** The add / drop staged in the tray already drops him. */
@@ -80,7 +80,7 @@ export interface DropBlockedInput {
  * a locked player (`drop_locked`), a lane holder (`drop_is_lane_holder`) and a
  * player a scheduled pickup drops (`drop_is_scheduled`).
  */
-export function dropBlockedReason({ player, board, laneHolder, scheduled, pinnedDrops, demo }: DropBlockedInput): string | null {
+export function dropBlockedReason({ player, board, laneHolders, scheduled, pinnedDrops, demo }: DropBlockedInput): string | null {
   if (!board) return "Dropping from here needs an ESPN team.";
   if (!demo && !board.can_write) return writeBlockedCopy(board.write_blocked_reason);
   const onBoard = board.players.find((p) => p.player_id === player.id);
@@ -90,7 +90,7 @@ export function dropBlockedReason({ player, board, laneHolder, scheduled, pinned
       ? `${player.name} is locked until tomorrow: his game has started.`
       : `${player.name} is locked on ESPN today.`;
   }
-  if (laneHolder === player.id) return "A stream lane is streaming his spot: stop it to drop him.";
+  if (laneHolders.has(player.id)) return "A stream lane is streaming his spot: stop it to drop him.";
   if (scheduled) {
     return `${player.name} is already being dropped for ${scheduled.add} on ${scheduled.day}: cancel that pickup to drop him now.`;
   }

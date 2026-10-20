@@ -2633,12 +2633,16 @@ button.marketRow:hover {
 /* ---------------------------------------------------------------- stream lane */
 
 /*
- * The open lane leads the sticky band: who holds its spot each day. Decided
- * days are solid; the projection ahead is dashed, since it can change. Its
- * colour is the theme's accent, apart from the preview's violet.
+ * The open lanes lead the sticky band, oldest first: who holds each spot each
+ * day. Decided days are solid; the projection ahead is dashed, since it can
+ * change. Their colour is the theme's accent, apart from the preview's violet.
  */
 .groupRow[data-group="lane"] {
   border-top: 0;
+}
+
+.groupRow[data-group="lane"][data-first="false"] {
+  border-top: 1px solid var(--line-2);
 }
 
 .laneHead {
@@ -2877,6 +2881,27 @@ button.marketRow:hover {
   align-items: center;
   gap: 10px;
   margin-top: 12px;
+}
+
+/* The team's other lanes the new one is planned with, and their projections then. */
+.laneSheetOthers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.laneSheetOther {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.laneSheetOther > :first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 .laneNotify {

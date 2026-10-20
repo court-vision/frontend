@@ -31,18 +31,20 @@ describe("pickupViews", () => {
 
   test("a stream lane's pickups leave the list only while that lane's row shows them", () => {
     const list = {
-      pending: [{ ...pending, id: 11, lane_id: 3 }],
+      pending: [{ ...pending, id: 11, lane_id: 3 }, { ...pending, id: 14, lane_id: 4 }],
       recent: [settled({ id: 12, status: "executed", lane_id: 3 }), settled({ id: 13, status: "failed", lane_id: 2 })],
     };
-    // Lane 3 is open and drawn: its pickups are in its row. Lane 2 has ended: its pickup stays here.
-    expect(pickupViews(list, DEMO_DAYS, 3).map((v) => [v.id, v.lane])).toEqual([[13, true]]);
+    // Lanes 3 and 4 are open and drawn: their pickups are in their rows. Lane 2 has ended: its pickup stays here.
+    expect(pickupViews(list, DEMO_DAYS, [3, 4]).map((v) => [v.id, v.lane])).toEqual([[13, true]]);
+    expect(pickupViews(list, DEMO_DAYS, [3]).map((v) => v.id)).toEqual([14, 13]);
     // No lane row (none open, or the lanes didn't load): every pickup shows, marked as a lane's.
-    expect(pickupViews(list, DEMO_DAYS, null).map((v) => [v.id, v.status, v.lane])).toEqual([
+    expect(pickupViews(list, DEMO_DAYS, []).map((v) => [v.id, v.status, v.lane])).toEqual([
       [11, "pending", true],
+      [14, "pending", true],
       [12, "executed", true],
       [13, "failed", true],
     ]);
-    expect(pickupViews({ pending: [pending], recent: [] }, DEMO_DAYS, 3)[0].lane).toBe(false);
+    expect(pickupViews({ pending: [pending], recent: [] }, DEMO_DAYS, [3])[0].lane).toBe(false);
   });
 
   test("a pending pickup for another week keeps its date and no day", () => {

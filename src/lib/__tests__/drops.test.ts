@@ -59,7 +59,7 @@ describe("unstageEverywhere", () => {
 
 describe("dropBlockedReason", () => {
   const player = { id: murray, name: "Keegan Murray" };
-  const base = { player, board, laneHolder: null, scheduled: null, pinnedDrops: false, demo: false };
+  const base = { player, board, laneHolders: new Set<number>(), scheduled: null, pinnedDrops: false, demo: false };
   const lockedBoard = (gameStarted: boolean): LineupState => ({
     ...board,
     players: board.players.map((p) => (p.player_id === murray ? { ...p, locked: true, game_started: gameStarted } : p)),
@@ -75,7 +75,7 @@ describe("dropBlockedReason", () => {
       "Keegan Murray is locked until tomorrow: his game has started."
     );
     expect(dropBlockedReason({ ...base, board: lockedBoard(false) })).toBe("Keegan Murray is locked on ESPN today.");
-    expect(dropBlockedReason({ ...base, laneHolder: murray })).toBe("A stream lane is streaming his spot: stop it to drop him.");
+    expect(dropBlockedReason({ ...base, laneHolders: new Set([7, murray]) })).toBe("A stream lane is streaming his spot: stop it to drop him.");
     expect(dropBlockedReason({ ...base, scheduled: { add: "Toumani Camara", day: "Thu" } })).toBe(
       "Keegan Murray is already being dropped for Toumani Camara on Thu: cancel that pickup to drop him now."
     );

@@ -30,17 +30,17 @@ export interface PickupView {
 
 /**
  * Pending pickups (soonest first), then the ones settled for a day of this week.
- * Cancelled ones are left out, and so are those of the lane whose own row shows
- * them (`shownLane`); any other lane's (one that ended, or all of them when the
+ * Cancelled ones are left out, and so are those of the lanes whose own rows show
+ * them (`shownLanes`); any other lane's (one that ended, or all of them when the
  * lanes didn't load) stay, marked as a lane's.
  */
 export function pickupViews(
   list: ScheduledPickupList,
   days: ReadonlyArray<WeekDay>,
-  shownLane: number | null = null
+  shownLanes: ReadonlyArray<number> = []
 ): PickupView[] {
   const dayOf = (date: string) => days.find((d) => d.date === date)?.index ?? null;
-  const inLaneRow = (p: ScheduledPickup) => p.lane_id != null && p.lane_id === shownLane;
+  const inLaneRow = (p: ScheduledPickup) => p.lane_id != null && shownLanes.includes(p.lane_id);
   const settled = list.recent.filter((p) => p.status !== "cancelled" && dayOf(p.nba_date) != null && !inLaneRow(p));
   return [...list.pending.filter((p) => !inLaneRow(p)), ...settled].map((p) => ({
     id: p.id,

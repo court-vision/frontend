@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
-import { STREAM_LANE_EXISTS, STREAM_LANE_INVALID, toApiError, userMessage } from "@/lib/api-error";
+import { STREAM_LANE_EXISTS, STREAM_LANE_INVALID, STREAM_LANE_LIMIT, toApiError, userMessage } from "@/lib/api-error";
 import { invalidateRoster, pickupKeys } from "@/hooks/useScheduledPickups";
 import { laneMarks, laneMovedRoster, type LaneMarks } from "@/lib/lanes";
 import type { StreamLane, StreamLaneList, StreamLaneStartRequest, StreamLaneUpdateRequest } from "@/types/stream-lane";
@@ -16,10 +16,11 @@ export const laneKeys = {
 const EMPTY: StreamLaneList = { open: [], recent: [] };
 
 /**
- * A team's stream lanes. While one is active the list re-polls every minute:
- * the server decides before each day's games, and a decision that switches
- * schedules a pickup, so a new decision re-reads the pickups too. A pickup a
- * lane made refreshes everything that shows the roster.
+ * A team's stream lanes (up to four open, oldest first). While one is active
+ * the list re-polls every minute: the server decides before each day's games,
+ * and a decision that switches schedules a pickup, so a new decision re-reads
+ * the pickups too. A pickup a lane made refreshes everything that shows the
+ * roster.
  */
 export function useStreamLanesQuery(teamId: number | null): { data: StreamLaneList } {
   const { getToken, isSignedIn } = useAuth();
@@ -53,16 +54,22 @@ export function useStreamLanesQuery(teamId: number | null): { data: StreamLaneLi
   return { data: data ?? EMPTY };
 }
 
+/** The list with this lane's latest: an open lane keeps its place (a new one goes last, as the server orders them). */
 function putLane(prev: StreamLaneList | undefined, lane: StreamLane): StreamLaneList {
   const others = (list: StreamLane[] | undefined) => (list ?? []).filter((l) => l.id !== lane.id);
-  return lane.status === "ended"
-    ? { open: others(prev?.open), recent: [lane, ...others(prev?.recent)] }
-    : { open: [lane, ...others(prev?.open)], recent: others(prev?.recent) };
+  if (lane.status === "ended") return { open: others(prev?.open), recent: [lane, ...others(prev?.recent)] };
+  const open = prev?.open ?? [];
+  return {
+    open: open.some((l) => l.id === lane.id) ? open.map((l) => (l.id === lane.id ? lane : l)) : [...open, lane],
+    recent: others(prev?.recent),
+  };
 }
 
 /**
  * Start a lane. A refusal it can explain (422 STREAM_LANE_INVALID, 409
- * STREAM_LANE_EXISTS) stays on the mutation for the sheet; anything else is a toast.
+ * STREAM_LANE_EXISTS or STREAM_LANE_LIMIT) stays on the mutation for the sheet;
+ * anything else is a toast. The lanes it was planned with have new projections,
+ * so the list is read again.
  */
 export function useStartStreamLaneMutation(teamId: number) {
   const queryClient = useQueryClient();
@@ -73,12 +80,13 @@ export function useStartStreamLaneMutation(teamId: number) {
     meta: { toast: false },
     onSuccess: ({ lane, message }) => {
       queryClient.setQueryData<StreamLaneList>(laneKeys.team(teamId), (prev) => putLane(prev, lane));
+      queryClient.invalidateQueries({ queryKey: laneKeys.team(teamId) });
       toast.success(message);
     },
     onError: (error) => {
       queryClient.invalidateQueries({ queryKey: laneKeys.team(teamId) });
       const err = toApiError(error);
-      if (err.code === STREAM_LANE_INVALID || err.code === STREAM_LANE_EXISTS) return;
+      if (err.code === STREAM_LANE_INVALID || err.code === STREAM_LANE_EXISTS || err.code === STREAM_LANE_LIMIT) return;
       toast.error(userMessage(err));
     },
   });

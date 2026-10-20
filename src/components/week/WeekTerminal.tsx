@@ -40,8 +40,8 @@ import {
 } from "@/lib/week-grid";
 import { sourceFromStreamer } from "@/lib/week-source";
 import { pickupTiming, pickupViews } from "@/lib/pickups";
-import { eventLine, laneCells, laneReason, laneStretches, passedDates, projectedSource } from "@/lib/lanes";
-import type { LanePlayer, StreamLane } from "@/types/stream-lane";
+import { eventLine, laneCells, laneReason, laneRoomRefusal, laneStretches, passedDates, projectedSource } from "@/lib/lanes";
+import type { LaneNotify, LanePlayer } from "@/types/stream-lane";
 import { LaneSheet } from "./LaneSheet";
 import type { LaneRowModel } from "./LaneRow";
 import {
@@ -236,27 +236,30 @@ export function WeekTerminal({
   const { setScheduleTeam } = data;
   useEffect(() => setScheduleTeam(previewFa?.team ?? null), [previewFa?.team, setScheduleTeam]);
 
-  // ---- the stream lane: one open per team; hovering its row previews the projection ----
-  const openLane: StreamLane | null = data.lanes.open[0] ?? null;
-  const [laneHover, setLaneHover] = useState(false);
-  const laneSourceOf = useCallback(
-    (player: LanePlayer, from: number) => {
-      const fa = faById.get(player.player_id);
-      if (fa && source) return sourceFromStreamer(fa, source.days, null, from);
-      return projectedSource(player, openLane!.projection!, source?.days ?? []);
-    },
-    [faById, source, openLane]
+  // ---- the stream lanes: up to four open, one per spot; hovering a lane's row previews its projection ----
+  const openLanes = data.lanes.open;
+  const [laneHover, setLaneHover] = useState<number | null>(null);
+  const hoveredLane = laneHover != null ? openLanes.find((l) => l.id === laneHover) ?? null : null;
+  const laneCellsById = useMemo(
+    () => new Map(source ? openLanes.map((l) => [l.id, laneCells(l, source.days)] as const) : []),
+    [openLanes, source]
   );
-  const openLaneCells = useMemo(() => (openLane && source ? laneCells(openLane, source.days) : null), [openLane, source]);
   const laneIncoming: Incoming[] | null = useMemo(() => {
-    if (!laneHover || !source || !openLane || !openLaneCells || openLane.status !== "active" || !openLane.projection) return null;
+    const lane = hoveredLane;
+    const cells = lane ? laneCellsById.get(lane.id) : undefined;
+    if (!source || !lane || !cells || lane.status !== "active" || !lane.projection) return null;
     // The lane replaces its holder, who must be on the roster the grid knows.
-    if (!source.mine.some((p) => p.id === openLane.holder.player_id)) return null;
+    if (!source.mine.some((p) => p.id === lane.holder.player_id)) return null;
+    const projection = lane.projection;
+    const sourceOf = (player: LanePlayer, from: number) => {
+      const fa = faById.get(player.player_id);
+      return fa ? sourceFromStreamer(fa, source.days, null, from) : projectedSource(player, projection, source.days);
+    };
     // A day it already passed on (a pickup that failed, say) keeps him, whatever the projection said.
-    const passed = passedDates(openLaneCells, source.days);
-    const stretches = laneStretches(openLane.projection, openLane.holder.player_id, source.days, laneSourceOf, passed);
+    const passed = passedDates(cells, source.days);
+    const stretches = laneStretches(projection, lane.holder.player_id, source.days, sourceOf, passed);
     return stretches.length ? stretches : null;
-  }, [laneHover, source, openLane, openLaneCells, laneSourceOf]);
+  }, [source, hoveredLane, laneCellsById, faById]);
 
   const incoming: IncomingPreview | null = useMemo(
     () =>
@@ -359,11 +362,11 @@ export function WeekTerminal({
     () => new Map(pendingPickups.map((p) => [p.add.player_id, pickupDayLabel(p.nba_date)])),
     [pendingPickups, pickupDayLabel]
   );
-  // The open lane's pickups show in its own row, not here (with a source, its row is drawn).
-  const shownLane = openLane?.id ?? null;
+  // The open lanes' pickups show in their own rows, not here (with a source, their rows are drawn).
+  const shownLanes = useMemo(() => openLanes.map((l) => l.id), [openLanes]);
   const pickupRows = useMemo(
-    () => (source ? pickupViews(data.pickups, source.days, shownLane) : []),
-    [data.pickups, source, shownLane]
+    () => (source ? pickupViews(data.pickups, source.days, shownLanes) : []),
+    [data.pickups, source, shownLanes]
   );
 
   // ---- the market: free agents ranked by what they add to this week ----
@@ -554,7 +557,8 @@ export function WeekTerminal({
   // ---- cursor and menus ----
   const [cursor, setCursor] = useState<Cursor | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
-  const [confirm, setConfirm] = useState<"stop-lane" | null>(null);
+  // The lane whose stop is being confirmed.
+  const [confirm, setConfirm] = useState<{ stopLane: number } | null>(null);
   // The spot a stream lane is being set up on.
   const [laneFor, setLaneFor] = useState<{ id: number; name: string } | null>(null);
 
@@ -807,7 +811,10 @@ export function WeekTerminal({
   }, [pinned, swapFa, source, canSchedule, swapGain, nowFrom]);
 
   // ---- drops: staged on their own, made now ----
-  const laneHolder = openLane?.status === "active" ? openLane.holder.player_id : null;
+  const laneHolders = useMemo(
+    () => new Set(openLanes.filter((l) => l.status === "active").map((l) => l.holder.player_id)),
+    [openLanes]
+  );
   /** Why this player can't be dropped now, or null when he can. */
   const dropReason = useCallback(
     (id: number) => {
@@ -815,13 +822,13 @@ export function WeekTerminal({
       return dropBlockedReason({
         player: { id, name: nameOf(id) },
         board: rawToday,
-        laneHolder,
+        laneHolders,
         scheduled: pickup ? { add: pickup.add.name, day: pickupDayLabel(pickup.nba_date) } : null,
         pinnedDrops: pinned?.replaces === id,
         demo: data.demo,
       });
     },
-    [pendingPickups, nameOf, rawToday, laneHolder, pickupDayLabel, pinned, data.demo]
+    [pendingPickups, nameOf, rawToday, laneHolders, pickupDayLabel, pinned, data.demo]
   );
   // Why a staged drop's last send failed, by player.
   const [dropErrors, setDropErrors] = useState<Record<number, string>>({});
@@ -879,7 +886,7 @@ export function WeekTerminal({
     if (!rawToday) blocked = swapFrom != null ? "Scheduling a pickup needs an ESPN team." : "Add and drop from here need an ESPN team.";
     else if (dup) blocked = `${swapFa.name} is already scheduled for ${pickupDayLabel(dup.nba_date)}.`;
     else if (already && out) blocked = `${out.name} is already being dropped for ${already.add.name} on ${pickupDayLabel(already.nba_date)}.`;
-    else if (out && out.id === laneHolder) blocked = "A stream lane is streaming his spot: stop it to drop him.";
+    else if (out && laneHolders.has(out.id)) blocked = "A stream lane is streaming his spot: stop it to drop him.";
     else if (swapFrom == null && out && rawToday.players.find((p) => p.player_id === out.id)?.locked) {
       blocked = `${out.name} is locked until his game ends.`;
     } else if (swapFrom == null && swapFa.acquisition_status === "waivers") blocked = `${swapFa.name} is on waivers.`;
@@ -906,7 +913,7 @@ export function WeekTerminal({
       // Made now, it sits in today's column (or one of its own when today isn't on the board).
       day: swapFrom ?? todayDay ?? NOW_DAY,
     };
-  }, [pinned, swapFa, source, swapOut, paired, nameOf, swapFrom, pendingPickups, rawToday, laneHolder, data.demo, pickupDayLabel, timings, todayIndex, addFrom, pinnedDelta, todayDay]);
+  }, [pinned, swapFa, source, swapOut, paired, nameOf, swapFrom, pendingPickups, rawToday, laneHolders, data.demo, pickupDayLabel, timings, todayIndex, addFrom, pinnedDelta, todayDay]);
 
   const [swapError, setSwapError] = useState<string | null>(null);
   /**
@@ -1152,52 +1159,59 @@ export function WeekTerminal({
     [pendingPickups, pickupDay, requestPool, faById]
   );
 
-  // ---- stream lanes: set one up on a spot, run the open one from its row ----
+  // ---- stream lanes: set one up on a spot, run each open one from its row ----
   const lastDow = source ? source.days[source.days.length - 1]?.dow ?? null : null;
   /** Why this player's spot can't be streamed, or null when it can. */
   const streamable = useCallback(
     (playerId: number): string | null => {
       if (!data.demo && !rawToday) return "Stream lanes need an ESPN team.";
       if (drops.includes(playerId)) return "He's staged to drop.";
-      if (openLane) {
-        return openLane.holder.player_id === playerId
-          ? "A stream lane is streaming this spot."
-          : `A stream lane is streaming ${shortName(openLane.holder.name)}'s spot: one per team.`;
-      }
+      const room = laneRoomRefusal(openLanes, playerId);
+      if (room) return room;
       if (boardById.get(playerId)?.lineup_slot_id === IR_SLOT_ID) return "A player on IR holds no spot to stream.";
       return null;
     },
-    [data.demo, rawToday, drops, openLane, boardById]
+    [data.demo, rawToday, drops, openLanes, boardById]
   );
   const { updateLane, clearLaneError } = data;
-  const laneModel: LaneRowModel | null = useMemo(() => {
-    if (!openLane || !source || !openLaneCells) return null;
-    const proj = openLane.projection;
+  const laneModels: LaneRowModel[] = useMemo(() => {
+    if (!source) return [];
     const label = (date: string) => source.days.find((d) => d.date === date)?.dow ?? monthDay(date);
-    let summary: string;
-    if (openLane.status === "paused") summary = `paused: ${laneReason(openLane.reason) ?? "paused"}`;
-    else if (proj) {
-      const adds = `${proj.adds} add${proj.adds === 1 ? "" : "s"} planned${proj.adds_left != null ? ` of ${proj.adds_left} left` : ""}`;
-      const next = openLane.next_decision_at ? ` · next decision ${whenTime(openLane.next_decision_at)}` : "";
-      summary = `${signed(proj.gain)} projected · ${adds} · as of ${whenTime(proj.as_of)}${next} · re-planned before each day`;
-    } else summary = "waiting for its first decision";
-    return {
-      lane: openLane,
-      cells: openLaneCells,
-      summary,
-      history: [...openLane.events].sort((a, b) => b.id - a.id).map((e) => eventLine(e, label)),
-      busy: data.laneBusy,
-      container: root,
-      onPreview: (on) => {
-        if (on) requestPool();
-        setLaneHover(on);
-      },
-      onPause: () => updateLane(openLane.id, { status: "paused" }),
-      onResume: () => updateLane(openLane.id, { status: "active" }),
-      onNotify: (mode) => updateLane(openLane.id, { notify: mode }),
-      onStop: () => setConfirm("stop-lane"),
-    };
-  }, [openLane, source, openLaneCells, data.laneBusy, root, requestPool, updateLane]);
+    return openLanes.flatMap((lane) => {
+      const cells = laneCellsById.get(lane.id);
+      if (!cells) return [];
+      const proj = lane.projection;
+      let summary: string;
+      if (lane.status === "paused") summary = `paused: ${laneReason(lane.reason) ?? "paused"}`;
+      else if (proj) {
+        // Lanes planned together share the adds left.
+        const others = (proj.lanes ?? 1) - 1;
+        const shared = others > 0 ? `, shared with ${others} other lane${others === 1 ? "" : "s"}` : "";
+        const adds = `${proj.adds} add${proj.adds === 1 ? "" : "s"} planned${proj.adds_left != null ? ` of ${proj.adds_left} left${shared}` : ""}`;
+        const next = lane.next_decision_at ? ` · next decision ${whenTime(lane.next_decision_at)}` : "";
+        summary = `${signed(proj.gain)} projected · ${adds} · as of ${whenTime(proj.as_of)}${next} · re-planned before each day`;
+      } else summary = "waiting for its first decision";
+      return [
+        {
+          lane,
+          cells,
+          summary,
+          history: [...lane.events].sort((a, b) => b.id - a.id).map((e) => eventLine(e, label)),
+          busy: data.laneBusy,
+          container: root,
+          onPreview: (on: boolean) => {
+            if (on) requestPool();
+            setLaneHover((cur) => (on ? lane.id : cur === lane.id ? null : cur));
+          },
+          onPause: () => updateLane(lane.id, { status: "paused" }),
+          onResume: () => updateLane(lane.id, { status: "active" }),
+          onNotify: (mode: LaneNotify) => updateLane(lane.id, { notify: mode }),
+          onStop: () => setConfirm({ stopLane: lane.id }),
+        },
+      ];
+    });
+  }, [openLanes, source, laneCellsById, data.laneBusy, root, requestPool, updateLane]);
+  const stoppingLane = confirm ? openLanes.find((l) => l.id === confirm.stopLane) ?? null : null;
   const closeLaneSheet = useCallback(() => {
     setLaneFor(null);
     clearLaneError();
@@ -1567,7 +1581,7 @@ export function WeekTerminal({
             onPreviewPickup={previewPickup}
             onCancelPickup={data.cancelPickup}
             cancelling={data.cancelling}
-            lane={laneModel}
+            lanes={laneModels}
           />
         ) : (
           <WeekGrid
@@ -1762,26 +1776,26 @@ export function WeekTerminal({
         error={data.laneError}
       />
       <ConfirmDialog
-        open={confirm === "stop-lane" && !!openLane}
+        open={!!stoppingLane}
         onOpenChange={(open) => !open && setConfirm(null)}
         container={root}
-        title={openLane ? `Stop streaming ${shortName(openLane.holder.name)}'s spot?` : ""}
+        title={stoppingLane ? `Stop streaming ${shortName(stoppingLane.holder.name)}'s spot?` : ""}
         body={
           data.demo
             ? "Demo: the lane stops here only."
             : "The lane stops deciding. The player holding the spot stays on your roster, and a pickup the lane scheduled that hasn't run yet is cancelled."
         }
         lines={
-          openLane?.projection
-            ? [{ key: "gain", left: <span className={dk.sub}>Its projection for the rest of the matchup</span>, right: <span className={`${dk.chip} ${dk.pv}`}>{signed(openLane.projection.gain)}</span> }]
+          stoppingLane?.projection
+            ? [{ key: "gain", left: <span className={dk.sub}>Its projection for the rest of the matchup</span>, right: <span className={`${dk.chip} ${dk.pv}`}>{signed(stoppingLane.projection.gain)}</span> }]
             : []
         }
         confirmLabel="Stop the lane"
         busy={data.laneBusy}
         error={null}
         onConfirm={() => {
-          if (!openLane) return;
-          void data.stopLane(openLane.id).then((outcome) => outcome === "ok" && setConfirm(null));
+          if (!stoppingLane) return;
+          void data.stopLane(stoppingLane.id).then((outcome) => outcome === "ok" && setConfirm(null));
         }}
       />
     </div>

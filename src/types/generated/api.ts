@@ -1718,8 +1718,8 @@ export interface paths {
         };
         /**
          * List Stream Lanes
-         * @description The open lane (active or paused) and lanes that ended in the last week, each with its
-         *     latest projection and its events (newest first).
+         * @description The open lanes (active or paused, oldest first) and lanes that ended in the last week,
+         *     each with its latest projection and its events (newest first).
          */
         get: operations["list_stream_lanes_v1_internal_teams__team_id__stream_lanes_get"];
         put?: never;
@@ -1729,9 +1729,8 @@ export interface paths {
          *     is made when a pickup for the first open day can first be made (possibly at once).
          *     `notify: desk` keeps the lane from emailing.
          *
-         *     Besides the plan route's errors: 403 ROSTER_WRITE_DISABLED, 409 STREAM_LANE_EXISTS
-         *     (one open lane per team), 422 STREAM_LANE_INVALID `scheduled_out` (a pickup already
-         *     scheduled drops that player).
+         *     Besides the plan route's errors: 403 ROSTER_WRITE_DISABLED, 422 STREAM_LANE_INVALID
+         *     `scheduled_out` (a pickup already scheduled drops that player).
          */
         post: operations["start_stream_lane_v1_internal_teams__team_id__stream_lanes_post"];
         delete?: never;
@@ -1753,11 +1752,14 @@ export interface paths {
          * Plan Stream Lane
          * @description What a lane started now on `player_id`'s spot would do: who would hold the spot each
          *     remaining day of the matchup, what each adds to that day's lineup, the gain over
-         *     keeping the spot's player, and the adds it would use. A projection only — the lane
-         *     re-plans before each day with the players available then. Nothing is stored.
+         *     keeping the spot's player, and the adds it would use. It is planned with the team's
+         *     open lanes that decide its first day too (they share the adds); `others` is their
+         *     projections then. A projection only — the lanes re-plan before each day with the
+         *     players available then. Nothing is stored.
          *
          *     422 STREAM_LANE_INVALID with `data.reason` (not_on_roster, on_ir, no_matchup_end,
-         *     matchup_over, waiver_period_unsupported); 409 ROSTER_WRITE_BLOCKED for a league
+         *     matchup_over); 409 STREAM_LANE_EXISTS (a lane already streams that spot),
+         *     STREAM_LANE_LIMIT (the team has four open lanes), ROSTER_WRITE_BLOCKED for a league
          *     whose rosters can't be changed from here.
          */
         post: operations["plan_stream_lane_v1_internal_teams__team_id__stream_lanes_plan_post"];
@@ -5673,6 +5675,11 @@ export interface components {
             gain: number;
             /** Hold Value */
             hold_value: number;
+            /**
+             * Lanes
+             * @default 1
+             */
+            lanes: number;
             /** Rehold After */
             rehold_after: number;
             /** Value */
@@ -9722,9 +9729,24 @@ export interface components {
              */
             first_decision_at: string;
             holder: components["schemas"]["LanePlayer"];
+            /**
+             * Others
+             * @default []
+             */
+            others: components["schemas"]["StreamLanePlanOther"][];
             projection: components["schemas"]["LaneProjection"];
             /** Start Period */
             start_period: number;
+        };
+        /**
+         * StreamLanePlanOther
+         * @description An open lane the new one would be planned with, and its projection then.
+         */
+        StreamLanePlanOther: {
+            holder: components["schemas"]["LanePlayer"];
+            /** Lane Id */
+            lane_id: number;
+            projection: components["schemas"]["LaneProjection"];
         };
         /** StreamLanePlanReq */
         StreamLanePlanReq: {

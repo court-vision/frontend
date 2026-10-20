@@ -149,7 +149,7 @@ export interface TerminalData {
   cancelPickup: (id: number) => void;
   /** The pickup being cancelled, while that request is out. */
   cancelling: number | null;
-  /** Stream lanes (ESPN teams): the open one (a team has at most one) and those ended this week. */
+  /** Stream lanes (ESPN teams): the open ones (up to four, one per spot, oldest first) and those ended this week. */
   lanes: StreamLaneList;
   /** What a lane on this player's spot would do (a dry run); `firstDay` is the demo's first open day. */
   planLane: (playerId: number, firstDay: number) => Promise<StreamLanePlan>;
@@ -199,6 +199,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const nextPickupId = useRef(1);
   const [lanes, setLanes] = useState<StreamLaneList>({ open: [], recent: [] });
+  const nextLaneId = useRef(1);
 
   const boardFor = useCallback(
     (r: typeof roster, day: number, v: number) =>
@@ -278,17 +279,23 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const planLane = useCallback(
     async (playerId: number, firstDay: number) => {
       await wait(450);
-      const plan = demoLanePlan(source, playerId, pool, firstDay, 3, demoPeriod, new Date(`${DEMO_DAYS[DEMO_TODAY].date}T19:00:00Z`));
+      // The open lanes keep their free agents and their adds: a new demo lane plans around them.
+      const active = lanes.open.filter((l) => l.status === "active");
+      const taken = new Set(active.flatMap((l) => (l.projection?.days ?? []).map((d) => d.player.player_id)));
+      const adds = Math.max(0, 3 - active.reduce((n, l) => n + (l.projection?.adds ?? 0), 0));
+      const free = pool.filter((p) => !taken.has(p.player_id));
+      const plan = demoLanePlan(source, playerId, free, firstDay, adds, demoPeriod, new Date(`${DEMO_DAYS[DEMO_TODAY].date}T19:00:00Z`));
       if (!plan) throw new Error("The matchup has no day left a pickup could count for");
       return plan;
     },
-    [source, pool]
+    [source, pool, lanes.open]
   );
   const startLane = useCallback(async (playerId: number, notify: LaneNotify, plan: StreamLanePlan) => {
     await wait(350);
     const now = new Date(`${DEMO_DAYS[DEMO_TODAY].date}T19:05:00Z`).toISOString();
+    const id = nextLaneId.current++;
     const lane: StreamLane = {
-      id: 1,
+      id,
       team_id: 1,
       status: "active",
       notify,
@@ -303,14 +310,14 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
       detail: null,
       projection: plan.projection,
       events: [{
-        id: 1, action: "started", nba_date: plan.projection.days[0]?.nba_date ?? null,
+        id: id * 100, action: "started", nba_date: plan.projection.days[0]?.nba_date ?? null,
         scoring_period_id: plan.start_period, add: null, drop: null, projected: null, reason: null, detail: null,
         pickup_id: null, pickup_status: null, created_at: now,
       }],
       created_at: now,
       ended_at: null,
     };
-    setLanes({ open: [lane], recent: [] });
+    setLanes((prev) => ({ open: [...prev.open, lane], recent: prev.recent }));
     toast.success(`Streaming ${plan.holder.name}'s spot (demo: nothing runs)`);
     void playerId;
     return "ok" as const;
