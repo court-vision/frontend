@@ -23408,6 +23408,7 @@
           "content": {
             "application/json": {
               "schema": {
+                "additionalProperties": true,
                 "description": "The crawler's map for this build (frontend src/lib/app-map/map.ts)",
                 "type": "object"
               }
