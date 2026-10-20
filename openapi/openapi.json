@@ -1682,6 +1682,130 @@
         "title": "AppMapSignInResp",
         "type": "object"
       },
+      "AppMapStats": {
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "desks": {
+            "title": "Desks",
+            "type": "integer"
+          },
+          "findings": {
+            "title": "Findings",
+            "type": "integer"
+          },
+          "screens": {
+            "title": "Screens",
+            "type": "integer"
+          },
+          "signed_in_screens": {
+            "title": "Signed In Screens",
+            "type": "integer"
+          },
+          "unseen_copy": {
+            "title": "Unseen Copy",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "screens",
+          "signed_in_screens",
+          "desks",
+          "unseen_copy",
+          "findings",
+          "bytes"
+        ],
+        "title": "AppMapStats",
+        "type": "object"
+      },
+      "AppMapUploadData": {
+        "properties": {
+          "build": {
+            "title": "Build",
+            "type": "string"
+          },
+          "crawled_at": {
+            "format": "date-time",
+            "title": "Crawled At",
+            "type": "string"
+          },
+          "pruned": {
+            "title": "Pruned",
+            "type": "integer"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/AppMapStats"
+          },
+          "stored": {
+            "title": "Stored",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "build",
+          "crawled_at",
+          "stored",
+          "stats",
+          "pruned"
+        ],
+        "title": "AppMapUploadData",
+        "type": "object"
+      },
+      "AppMapUploadResp": {
+        "description": "PUT /v1/internal/app-map/maps/{build}",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppMapUploadData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AppMapUploadResp",
+        "type": "object"
+      },
       "ApplyLineupMovesData": {
         "properties": {
           "applied_moves": {
@@ -23261,6 +23385,66 @@
         "summary": "Revoke Api Key",
         "tags": [
           "API Keys"
+        ]
+      }
+    },
+    "/v1/internal/app-map/maps/{build}": {
+      "put": {
+        "description": "Store the map the App Map workflow crawled for one commit.",
+        "operationId": "upload_app_map_v1_internal_app_map_maps__build__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "build",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{7,40}$",
+              "title": "Build",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "The crawler's map for this build (frontend src/lib/app-map/map.ts)",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppMapUploadResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload App Map",
+        "tags": [
+          "app map"
         ]
       }
     },

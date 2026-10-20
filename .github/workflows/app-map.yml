@@ -4,7 +4,8 @@ name: App Map
 # production build of each commit on main, crawled signed in as the app map's
 # own account and signed out through the desks' demos and the public desks,
 # plus a sweep of the source's copy. The map is the job's artifact and its
-# summary; nobody writes it by hand.
+# summary, and on main it is stored in the backend, where CV AI reads it;
+# nobody writes it by hand.
 #
 # The crawl serves the build as www.courtvision.dev to its own browser only
 # (--serve, the stand-in in scripts/app-map.ts), since production's Clerk key
@@ -108,6 +109,27 @@ jobs:
           name: app-map-${{ github.sha }}
           path: app-map.json
           retention-days: 30
+
+      - name: Store the map for CV AI
+        # Main only: this is the map CV AI reads for this commit's build.
+        # APP_MAP_UPLOAD_TOKEN can replace that map, so only this step holds it,
+        # never the crawl. Until it is set, the step says so and passes.
+        if: github.ref == 'refs/heads/main'
+        env:
+          APP_MAP_UPLOAD_TOKEN: ${{ secrets.APP_MAP_UPLOAD_TOKEN }}
+        run: |
+          if [ -z "$APP_MAP_UPLOAD_TOKEN" ]; then
+            echo "::notice::APP_MAP_UPLOAD_TOKEN is not set, so CV AI still reads the last map stored"
+            exit 0
+          fi
+          if ! curl --fail-with-body -sS --retry 3 --max-time 60 -X PUT \
+              -H "Authorization: Bearer $APP_MAP_UPLOAD_TOKEN" -H "Content-Type: application/json" \
+              --data-binary @app-map.json -o stored.json \
+              "$NEXT_PUBLIC_API_BASE/v1/internal/app-map/maps/$GITHUB_SHA"; then
+            cat stored.json
+            exit 1
+          fi
+          jq -r '"\(.message): \(.data.stats.screens) screens, \(.data.stats.signed_in_screens) signed in; \(.data.pruned) old maps pruned"' stored.json | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Server log
         if: failure()
