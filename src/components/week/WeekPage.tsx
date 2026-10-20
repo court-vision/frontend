@@ -279,10 +279,11 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const planLane = useCallback(
     async (playerId: number, firstDay: number) => {
       await wait(450);
-      // The open lanes keep their free agents and their adds: a new demo lane plans around them.
-      const active = lanes.open.filter((l) => l.status === "active");
-      const taken = new Set(active.flatMap((l) => (l.projection?.days ?? []).map((d) => d.player.player_id)));
-      const adds = Math.max(0, 3 - active.reduce((n, l) => n + (l.projection?.adds ?? 0), 0));
+      // The open lanes keep their free agents and their adds, a paused one's too (the demo never
+      // re-plans, so a resumed lane picks up its old plan): a new demo lane plans around them.
+      const open = lanes.open;
+      const taken = new Set(open.flatMap((l) => (l.projection?.days ?? []).map((d) => d.player.player_id)));
+      const adds = Math.max(0, 3 - open.reduce((n, l) => n + (l.projection?.adds ?? 0), 0));
       const free = pool.filter((p) => !taken.has(p.player_id));
       const plan = demoLanePlan(source, playerId, free, firstDay, adds, demoPeriod, new Date(`${DEMO_DAYS[DEMO_TODAY].date}T19:00:00Z`));
       if (!plan) throw new Error("The matchup has no day left a pickup could count for");
