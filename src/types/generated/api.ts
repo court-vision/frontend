@@ -206,7 +206,7 @@ export interface paths {
          *
          *     - `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note, `step` for the start of each step after the first, when whatever the last status said is done);
          *     - `text` `{delta}`: the answer's prose, as it is written;
-         *     - `block` (an `AiTable` or `AiChart`): a table or chart the server built from the agent's lookups;
+         *     - `block` (an `AiTable`, `AiChart`, `AiProposal` or `AiPlace`): a table, chart, proposed move or place in the app the server built from the agent's lookups;
          *     - `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);
          *     - `done` `{turn_id, outcome, cost_usd, model_calls, duration_ms, spend}`: always last.
          *
@@ -2670,7 +2670,7 @@ export interface components {
         /** AiBlockPart */
         AiBlockPart: {
             /** Block */
-            block: components["schemas"]["AiTable"] | components["schemas"]["AiChart"] | components["schemas"]["AiProposal"];
+            block: components["schemas"]["AiTable"] | components["schemas"]["AiChart"] | components["schemas"]["AiProposal"] | components["schemas"]["AiPlace"];
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -2905,6 +2905,52 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /**
+         * AiPlace
+         * @description A place in the app, from the app map: the server builds its steps and link, the model never types them.
+         */
+        AiPlace: {
+            /**
+             * Desk
+             * @description The desk's name, e.g. 'Week'
+             */
+            desk: string;
+            /**
+             * Direct
+             * @description href opens the screen itself; otherwise the steps lead there from href
+             */
+            direct: boolean;
+            /**
+             * Href
+             * @description A path in the app: the screen's own link, or its desk's when it has none
+             */
+            href: string;
+            /**
+             * Id
+             * @description Unique within its turn, e.g. 'pl1' (a proposal's are p1, p2, ...)
+             */
+            id: string;
+            /**
+             * Matches Build
+             * @description The map is of the build the user has open
+             */
+            matches_build: boolean;
+            /**
+             * Screen Id
+             * @description The app map's id of the screen
+             */
+            screen_id: string;
+            /**
+             * Steps
+             * @description The clicks from the desk's front, e.g. 'Week › Market P › ONE DAY'
+             */
+            steps: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "place";
         };
         /**
          * AiProposal
@@ -3314,6 +3360,11 @@ export interface components {
          * @description Body for POST /v1/internal/ai/conversations/{conversation_id}/turns.
          */
         AiTurnReq: {
+            /**
+             * Build
+             * @description The frontend build the user has open, its commit SHA: CV AI reads that build's app map, or the newest when it has none yet
+             */
+            build?: string | null;
             /** Message */
             message: string;
         };

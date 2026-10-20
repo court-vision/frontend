@@ -6,7 +6,7 @@ import { prose } from "@/lib/ai-prose";
 import type { LivePart, LiveTurn } from "@/hooks/useAi";
 import type { AiFeedback, AiPart, AiTurn } from "@/types/ai";
 import dk from "@/components/desk/desk.module.css";
-import { ChartBlock, TableBlock } from "./Blocks";
+import { ChartBlock, PlaceBlock, TableBlock } from "./Blocks";
 import { ProposalChip, type ChipActions } from "./Chips";
 import s from "./ai.module.css";
 
@@ -182,6 +182,8 @@ function Parts({ parts, chips, caret = false }: { parts: Array<AiPart | LivePart
           <ProposalChip key={`${p.block.id}-${i}`} chip={p.block} actions={chips} />
         ) : p.block.type === "chart" ? (
           <ChartBlock key={`${p.block.id}-${i}`} chart={p.block} />
+        ) : p.block.type === "place" ? (
+          <PlaceBlock key={`${p.block.id}-${i}`} place={p.block} />
         ) : (
           <TableBlock key={`${p.block.id}-${i}`} table={p.block} />
         )

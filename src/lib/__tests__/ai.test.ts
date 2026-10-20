@@ -56,6 +56,32 @@ describe("streamTurn", () => {
     expect(seen.map((e) => e.event)).toEqual(["text", "done"]);
   });
 
+  test("sends the build the user has open, when the build has one", async () => {
+    const bodies: unknown[] = [];
+    const sent = () => {
+      const done = 'event: done\ndata: {"turn_id":3,"outcome":"ok"}\n\n';
+      globalThis.fetch = (async (_url: string, init: RequestInit) => {
+        bodies.push(JSON.parse(String(init.body)));
+        return new Response(done, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+      }) as unknown as typeof fetch;
+    };
+    const before = process.env.NEXT_PUBLIC_BUILD_SHA;
+    try {
+      sent();
+      process.env.NEXT_PUBLIC_BUILD_SHA = "dbe2069a0de03c0c306abcfb556e81b06ed3abf3";
+      await streamTurn(async () => "tok", "https://api/x", "where are free agents?", () => {});
+      process.env.NEXT_PUBLIC_BUILD_SHA = "";
+      await streamTurn(async () => "tok", "https://api/x", "hello", () => {});
+    } finally {
+      if (before === undefined) delete process.env.NEXT_PUBLIC_BUILD_SHA;
+      else process.env.NEXT_PUBLIC_BUILD_SHA = before;
+    }
+    expect(bodies).toEqual([
+      { message: "where are free agents?", build: "dbe2069a0de03c0c306abcfb556e81b06ed3abf3" },
+      { message: "hello" },
+    ]);
+  });
+
   test("a stream that ends without done is an error, not a finished turn", async () => {
     serve('event: text\ndata: {"delta":"Hi"}\n\n');
     await expect(streamTurn(async () => "tok", "https://api/x", "hello", () => {})).rejects.toThrow();

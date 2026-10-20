@@ -9,6 +9,9 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_CLERK_JS_VERSION: CLERK_JS_VERSION,
     NEXT_PUBLIC_CLERK_UI_VERSION: CLERK_UI_VERSION,
+    // The commit this build is of (Vercel's on deploys, GitHub's in CI): CV AI
+    // reads the app map crawled from the same commit
+    NEXT_PUBLIC_BUILD_SHA: process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "",
   },
   async headers() {
     return [
