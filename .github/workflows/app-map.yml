@@ -111,4 +111,4 @@ jobs:
 
       - name: Server log
         if: failure()
-        run: tail -100 next.log 2>/dev/null || echo "No server log: the job failed before Start"
+        run: tail -100 next.log 2>/dev/null || echo "No server log, the job failed before Start"
