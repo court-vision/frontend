@@ -122,8 +122,10 @@ jobs:
             echo "::notice::APP_MAP_UPLOAD_TOKEN is not set, so CV AI still reads the last map stored"
             exit 0
           fi
-          if ! curl --fail-with-body -sS --retry 3 --max-time 60 -X PUT \
-              -H "Authorization: Bearer $APP_MAP_UPLOAD_TOKEN" -H "Content-Type: application/json" \
+          # The header comes in on stdin (printf is a shell builtin), so the token is
+          # never in curl's arguments, where a process listing would show it
+          if ! printf 'Authorization: Bearer %s\n' "$APP_MAP_UPLOAD_TOKEN" | curl --fail-with-body -sS --retry 3 --max-time 60 -X PUT \
+              -H @- -H "Content-Type: application/json" \
               --data-binary @app-map.json -o stored.json \
               "$NEXT_PUBLIC_API_BASE/v1/internal/app-map/maps/$GITHUB_SHA"; then
             cat stored.json
