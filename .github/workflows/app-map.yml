@@ -32,7 +32,8 @@ concurrency:
 
 jobs:
   crawl:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright 1.56 has no Chromium for ubuntu-latest's 26.04 image
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     # It checks out, builds, crawls and uploads; nothing it does writes to the repo
     permissions:
@@ -110,4 +111,4 @@ jobs:
 
       - name: Server log
         if: failure()
-        run: tail -100 next.log
+        run: tail -100 next.log 2>/dev/null || echo "No server log, the job failed before Start"
