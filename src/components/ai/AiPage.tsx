@@ -22,12 +22,14 @@ import {
   useCreateAiConversation,
   useDeleteAiConversation,
 } from "@/hooks/useAi";
+import { useChipTray } from "@/hooks/useAiProposals";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { draftKey } from "@/lib/ai-drafts";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { teamName, teamTag } from "@/lib/account";
 import { useUIStore } from "@/stores/useUIStore";
 import type { AiConversationSummary, AiFeedback } from "@/types/ai";
+import { ChipTray, type ChipActions } from "./Chips";
 import { Composer, type ComposerHandle } from "./Composer";
 import { Thread } from "./Thread";
 import dk from "@/components/desk/desk.module.css";
@@ -45,6 +47,7 @@ const EXAMPLES = [
   "How's my matchup looking, category by category?",
   "Which of my players have the fewest games left this week?",
   "Pull the last 5 box scores for my top two free-agent options.",
+  "Find me a pickup for tonight and set it up.",
 ];
 
 export function AiPage({ initialConversation }: { initialConversation: number | null }) {
@@ -132,6 +135,19 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
   const comment = useAiComment(current);
   const { userId } = useAuth();
   const { live, running, send, clear } = useAiTurn();
+  // The chips staged in this conversation: the Week desk's tray under the thread sends them
+  const tray = useChipTray(current);
+  const chipActions = useMemo<ChipActions>(
+    () => ({
+      stagedIds: tray.stagedIds,
+      patches: tray.patches,
+      busy: tray.busy,
+      onStage: tray.stage,
+      onUnstage: tray.unstage,
+      onDismiss: tray.dismiss,
+    }),
+    [tray.stagedIds, tray.patches, tray.busy, tray.stage, tray.unstage, tray.dismiss]
+  );
 
   const selected = useSelectedTeam();
   const setSelectedTeam = useUIStore((st) => st.setSelectedTeam);
@@ -300,7 +316,7 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
         <span style={{ fontWeight: 600, maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
         {pinnedTeam ? <span className={dk.sub}>{teamName(pinnedTeam)}</span> : null}
         {current != null ? (
-          <button type="button" className={dk.iconBtn} aria-label="Delete this conversation" title="Delete this conversation" disabled={running} onClick={() => setConfirmDelete(true)}>
+          <button type="button" className={dk.iconBtn} aria-label="Delete this conversation" title="Delete this conversation" disabled={running || tray.busy} onClick={() => setConfirmDelete(true)}>
             <Trash2 size={14} />
           </button>
         ) : null}
@@ -328,10 +344,20 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
               ) : turns.length === 0 && !showLive ? (
                 <Empty onPick={(q) => void onSend(q)} disabled={running} />
               ) : (
-                <Thread turns={turns} live={showLive} onVote={onVote} onComment={onComment} />
+                <Thread turns={turns} live={showLive} chips={chipActions} onVote={onVote} onComment={onComment} />
               )}
             </div>
           </div>
+          <ChipTray
+            days={tray.days}
+            blocked={tray.blocked}
+            sendingDay={tray.sendingDay}
+            onCancelSwap={tray.cancelSwap}
+            onUndrop={tray.undrop}
+            onDiscardDay={tray.discardDay}
+            onDiscardAll={tray.discardAll}
+            onSend={tray.sendDays}
+          />
           <Composer
             ref={composer}
             disabled={full}

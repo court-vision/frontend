@@ -833,3 +833,93 @@
     animation: none;
   }
 }
+
+/* ---- chips: the moves the agent proposed, and the Week desk's tray under the thread ---- */
+
+.chip {
+  display: grid;
+  gap: 8px;
+  max-width: 560px;
+  padding: 10px 12px 9px;
+  border: 1px solid var(--line);
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--raised);
+  transition: border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+.chip[data-staged="true"] {
+  border-color: color-mix(in srgb, var(--accent) 75%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.chip[data-state="sent"] {
+  border-color: color-mix(in srgb, var(--up) 45%, var(--line));
+}
+.chip[data-state="dismissed"],
+.chip[data-state="expired"] {
+  opacity: 0.65;
+}
+.chipHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.chipMove {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.chipSign {
+  margin-right: 5px;
+  color: var(--text-3);
+  font-weight: 700;
+}
+.chipTeam {
+  margin-left: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+.chipReason {
+  padding-left: 10px;
+  border-left: 2px solid var(--line-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.chipFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.chipState {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.chipState[data-state="sent"] {
+  color: var(--up);
+}
+
+/* The Week desk's tray sits in flow here, above the composer, instead of floating over a grid. */
+.trayHost {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.trayHost > [data-tray] {
+  position: static;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  box-shadow: none;
+  backdrop-filter: none;
+}
