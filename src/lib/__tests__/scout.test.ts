@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { GameDetailData } from "@/types/games";
 import type { GameLog } from "@/types/player";
 import type { RankingsPlayer, RankingsScoring } from "@/types/rankings";
 import type { CategoryDef } from "@/types/scoring";
@@ -18,6 +19,7 @@ import {
   fmtPctDot,
   focusFromSearch,
   focusToSearch,
+  gameDetailPollMs,
   gameStatusText,
   hasPosition,
   isDate,
@@ -482,5 +484,36 @@ describe("the pool's league score", () => {
     expect(scoringWarning(scoring({ settings_synced: false }))?.short).toBe("settings unread · standard scoring");
     expect(scoringWarning(scoring({ unsupported: ["dd", "td"] }))?.short).toBe("DD, TD left out");
     expect(scoringWarning(scoring({ unsupported: ["dd"] }))?.long).toContain("leaves it out");
+  });
+});
+
+describe("gameDetailPollMs", () => {
+  const detail = (over: Partial<GameDetailData> = {}, status = "final"): GameDetailData => ({
+    game: {
+      game_id: "0022600001", game_date: "2026-10-20", home_team: "DET", away_team: "BOS", home_score: 121, away_score: 113,
+      status, period: 4, game_clock: null, start_time_et: "19:00", arena: null,
+    },
+    home_periods: [24, 21, 32, 44],
+    away_periods: [23, 35, 23, 32],
+    score_history: [],
+    lines: [],
+    lines_source: "settled",
+    ...over,
+  });
+
+  test("a whole final game is never read again", () => {
+    expect(gameDetailPollMs(detail())).toBe(false);
+  });
+
+  test("an open sheet asks again every five minutes until the game is whole", () => {
+    expect(gameDetailPollMs(detail({ lines_source: "live" }))).toBe(300_000); // the game log has yet to land
+    expect(gameDetailPollMs(detail({ lines_source: null }))).toBe(300_000);
+    expect(gameDetailPollMs(detail({ away_periods: [] }))).toBe(300_000); // the league feed gave one side
+    expect(gameDetailPollMs(detail({}, "scheduled"))).toBe(300_000);
+  });
+
+  test("nothing to poll before the first read or for a missing game", () => {
+    expect(gameDetailPollMs(undefined)).toBe(false);
+    expect(gameDetailPollMs(null)).toBe(false);
   });
 });

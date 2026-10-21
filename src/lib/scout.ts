@@ -4,6 +4,7 @@
  * splits from a game log, the compare table, the finder's matching, the
  * calendar. Pure: no React, no fetching.
  */
+import type { GameDetailData } from "@/types/games";
 import type { AvgStats, GameLog } from "@/types/player";
 import type { RankingsPlayer, RankingsScope, RankingsScoring } from "@/types/rankings";
 import type { ProjectionStats } from "@/types/scout";
@@ -618,6 +619,19 @@ export function gameState(status: string | number | null | undefined): GameState
   if (s === "final" || s === "finished" || s === "complete") return "final";
   if (s === "in_progress" || s === "live" || s === "in progress") return "live";
   return "scheduled";
+}
+
+/**
+ * How often an open finished-game sheet reads its game again: every five
+ * minutes until the game is whole (final, its live lines replaced by the game
+ * log, and both sides' period lines in), then never, as a settled game does
+ * not change. Nothing while unread or not found.
+ */
+export function gameDetailPollMs(data: GameDetailData | null | undefined): number | false {
+  if (!data) return false;
+  const whole =
+    gameState(data.game.status) === "final" && data.lines_source === "settled" && data.home_periods.length > 0 && data.away_periods.length > 0;
+  return whole ? false : 5 * 60 * 1000;
 }
 
 /** What to print beside a game: the tip, the period and clock, or Final. */

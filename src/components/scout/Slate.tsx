@@ -425,6 +425,8 @@ export function GameSheet({ date, gameId, today, open, live }: { date: string; g
   const awayLead = game.away_score != null && game.home_score != null ? game.away_score > game.home_score : null;
   const periods = view.periods ? Math.max(view.periods.away.length, view.periods.home.length, 4) : 0;
   const lineCount = view.lines.away.length + view.lines.home.length + view.lines.other.length;
+  // A past game still listed as not played (postponed, or its night never recorded) has nothing to freeze.
+  const unplayed = frozen && state === "scheduled" && !box.isLoading && !box.error && lineCount === 0;
 
   return (
     <div className={s.sheetInner}>
@@ -507,7 +509,7 @@ export function GameSheet({ date, gameId, today, open, live }: { date: string; g
         </div>
       ) : null}
 
-      {frozen ? (
+      {frozen && !unplayed ? (
         <Block title="On the floor" note={lineCount ? `${lineCount} players · as the game ended · by fantasy points` : undefined}>
           {box.isLoading ? (
             <Skeleton rows={5} className={s.ledgerSkel} />
@@ -519,7 +521,7 @@ export function GameSheet({ date, gameId, today, open, live }: { date: string; g
             <Floor game={game} lines={view.lines} open={open} unplaced="team not on record" />
           )}
         </Block>
-      ) : isToday ? (
+      ) : isToday && !frozen ? (
         <Block title="On the floor" note={lineCount ? `${lineCount} players · by fantasy points` : state === "scheduled" ? "lines appear once the game tips" : "no lines on record"}>
           {live.leadersLoading ? (
             <Skeleton rows={5} className={s.ledgerSkel} />
@@ -530,8 +532,8 @@ export function GameSheet({ date, gameId, today, open, live }: { date: string; g
           )}
         </Block>
       ) : (
-        <Block title="Box score" note="not yet played">
-          <div className={s.blockEmpty}>Tips {status}. Lines appear here while it runs.</div>
+        <Block title="Box score" note={unplayed ? "not played" : "not yet played"}>
+          <div className={s.blockEmpty}>{unplayed ? "This game is still listed as not played, and no lines are on record." : `Tips ${status}. Lines appear here while it runs.`}</div>
         </Block>
       )}
 
