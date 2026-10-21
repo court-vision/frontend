@@ -402,7 +402,10 @@ class ApiClient {
     return unwrap(env);
   }
 
-  /** Start a lane: 409 STREAM_LANE_EXISTS (one per team), 422 STREAM_LANE_INVALID. */
+  /**
+   * Start a lane: 409 STREAM_LANE_EXISTS (that spot is streamed already) or
+   * STREAM_LANE_LIMIT (the team has four open), 422 STREAM_LANE_INVALID.
+   */
   async startStreamLane(
     getToken: GetTokenFn,
     teamId: number,

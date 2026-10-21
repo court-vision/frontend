@@ -3,14 +3,25 @@
  * day of the week (what it did, what it projects), the projection as a chain of
  * previewed free agents for the grid, its history in words, and a demo planner.
  *
- * The server decides each day afresh, before that day's games, and stores its
- * latest projection (from the day it last decided on). Days before that are
- * told by the lane's events: a switch (with its pickup's outcome), a keep, a day
- * it couldn't act on.
+ * A team streams up to `MAX_LANES` spots, one lane each. The server decides each
+ * day afresh, before that day's games, planning the lanes that decide it together
+ * (they share the adds), and stores each lane's latest projection (from the day
+ * it last decided on). Days before that are told by the lane's events: a switch
+ * (with its pickup's outcome), a keep, a day it couldn't act on.
  */
 import type { LanePlayer, LaneProjection, StreamLane, StreamLaneEvent, StreamLaneList, StreamLanePlan } from "@/types/stream-lane";
 import type { StreamerPlayer } from "@/types/streamer";
 import type { DayGame, Incoming, SourcePlayer, WeekDay, WeekSource } from "./week-grid";
+
+/** A team streams up to this many spots at once, one lane each (the server refuses a fifth). */
+export const MAX_LANES = 4;
+
+/** Why the team's open lanes leave no room for a lane on this player's spot, or null when they do. */
+export function laneRoomRefusal(open: ReadonlyArray<StreamLane>, playerId: number): string | null {
+  if (open.some((l) => l.holder.player_id === playerId)) return "A stream lane is streaming this spot.";
+  if (open.length >= MAX_LANES) return `You're streaming ${MAX_LANES} spots already: stop a lane to stream this one.`;
+  return null;
+}
 
 /** One day of the lane in the week. */
 export interface LaneCell {
@@ -210,7 +221,6 @@ const LANE_REASONS: Record<string, string> = {
   holder_gone: "the spot's player left the roster",
   auth_expired: "your ESPN connection expired",
   provider_not_supported: "this league's rosters can't be changed from here",
-  waiver_period_unsupported: "this league's waiver period is too long for lanes",
   paused_by_user: "you paused it",
   stopped: "you stopped it",
   matchup_over: "the matchup ended",
@@ -264,7 +274,8 @@ export function eventLine(e: StreamLaneEvent, dayLabel: (date: string) => string
  * A demo lane's projection: each open day, the free agent worth most that day
  * takes the spot when he beats whoever holds it, while adds last (a player
  * dropped yesterday can't come straight back). Cruder than the server's plan,
- * which weighs every day of the week at once; the demo says so.
+ * which weighs every day of the week, and every lane, at once; the demo says so.
+ * The caller leaves other lanes' players out of `pool` and their adds out of `adds`.
  */
 export function demoLanePlan(
   source: WeekSource,
@@ -334,6 +345,8 @@ export function demoLanePlan(
       adds: used,
       adds_left: adds,
       rehold_after: 2,
+      lanes: 1,
     },
+    others: [],
   };
 }

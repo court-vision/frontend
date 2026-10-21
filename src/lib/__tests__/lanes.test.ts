@@ -1,5 +1,17 @@
 import { describe, expect, test } from "bun:test";
-import { demoLanePlan, eventLine, laneCells, laneMarks, laneMovedRoster, laneReason, laneStretches, passedDates, projectedSource } from "../lanes";
+import {
+  demoLanePlan,
+  eventLine,
+  laneCells,
+  laneMarks,
+  laneMovedRoster,
+  laneReason,
+  laneRoomRefusal,
+  laneStretches,
+  MAX_LANES,
+  passedDates,
+  projectedSource,
+} from "../lanes";
 import type { LanePlayer, LaneProjection, StreamLane, StreamLaneEvent } from "@/types/stream-lane";
 import type { SourcePlayer, WeekDay } from "../week-grid";
 import { DEMO_STREAMERS, demoSource } from "../week-demo";
@@ -26,6 +38,7 @@ function projection(from: number, players: LanePlayer[]): LaneProjection {
     adds: 2,
     adds_left: 3,
     rehold_after: 2,
+    lanes: 1,
     days: players.map((player, i) => {
       const day = { scoring_period_id: 28 + from + i, nba_date: DATES[from + i], player, value: 20, switch: player.player_id !== prev };
       prev = player.player_id;
@@ -74,6 +87,19 @@ function lane(events: StreamLaneEvent[], proj: LaneProjection | null): StreamLan
     ended_at: null,
   };
 }
+
+describe("laneRoomRefusal", () => {
+  const on = (id: number, holder: LanePlayer): StreamLane => ({ ...lane([], null), id, holder, original: holder });
+
+  test("one lane per spot, up to four spots", () => {
+    expect(laneRoomRefusal([], HOLDER.player_id)).toBeNull();
+    expect(laneRoomRefusal([on(7, A)], HOLDER.player_id)).toBeNull();
+    expect(laneRoomRefusal([on(7, A), on(8, HOLDER)], HOLDER.player_id)).toBe("A stream lane is streaming this spot.");
+    const full = Array.from({ length: MAX_LANES }, (_, i) => on(10 + i, P(10 + i, `Spot ${i}`)));
+    expect(laneRoomRefusal(full, HOLDER.player_id)).toBe("You're streaming 4 spots already: stop a lane to stream this one.");
+    expect(laneRoomRefusal(full, 10)).toBe("A stream lane is streaming this spot.");
+  });
+});
 
 describe("laneCells", () => {
   test("decided days from the events, the rest from the projection", () => {

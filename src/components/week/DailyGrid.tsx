@@ -65,8 +65,8 @@ interface DailyGridProps {
   /** Hovering a pending pickup previews it in the grid. */
   onPreviewPickup?: (id: number | null) => void;
   onCancelPickup?: (id: number) => void;
-  /** The open stream lane: a row above the scheduled pickups, the spot's holder each day. */
-  lane?: LaneRowModel | null;
+  /** The open stream lanes, oldest first: a row each above the scheduled pickups, the spot's holder each day. */
+  lanes?: ReadonlyArray<LaneRowModel>;
   /** The pickup being cancelled, while that request is out. */
   cancelling?: number | null;
 }
@@ -84,6 +84,7 @@ const STATS: Array<{ key: string; label: string; get: (l: StatLine) => string }>
   { key: "3pm", label: "3PM", get: (l) => String(l.fg3m) },
   { key: "tov", label: "TO", get: (l) => String(l.tov) },
 ];
+const NO_LANES: ReadonlyArray<LaneRowModel> = [];
 // Eleven equal cells, the ten stats and FPTS, so the spacing is even.
 const STAT_CELL = 34;
 const STAT_TRACKS = `repeat(${STATS.length + 1}, minmax(0, 1fr))`;
@@ -117,7 +118,7 @@ export function DailyGrid({
   onPreviewPickup,
   onCancelPickup,
   cancelling = null,
-  lane = null,
+  lanes = NO_LANES,
 }: DailyGridProps) {
   const { slots, seats } = grid.lineups;
   const days = grid.days;
@@ -315,15 +316,15 @@ export function DailyGrid({
             })}
           </div>
 
-          {/* The stream lane and scheduled pickups lead, like a calendar's all-day lane: a preview below never moves them. */}
-          {pickups.length || lane ? (
+          {/* The stream lanes and scheduled pickups lead, like a calendar's all-day lane: a preview below never moves them. */}
+          {pickups.length || lanes.length ? (
             <div className={s.pickupLane}>
-              {lane ? (
-                <>
-                  <LaneGroupRow model={lane} />
+              {lanes.map((lane, i) => (
+                <Fragment key={lane.lane.id}>
+                  <LaneGroupRow model={lane} first={i === 0} />
                   <LaneRow model={lane} days={days} focusDay={focusDay} todayIndex={todayIndex} />
-                </>
-              ) : null}
+                </Fragment>
+              ))}
               {pickups.length ? (
               <>
               <div className={s.groupRow} role="presentation">

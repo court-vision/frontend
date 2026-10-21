@@ -25,6 +25,8 @@ interface LaneSheetProps {
 /**
  * Setting up a stream lane: what the lane would do with the spot if nobody else
  * touched the market, said plainly to be a projection, and how it tells you.
+ * When the team's other lanes decide the same days, it is planned with them
+ * (they share the adds), and their projections then are shown too.
  */
 export function LaneSheet({ player, container, demo, onClose, load, onStart, starting, error }: LaneSheetProps) {
   const open = player != null;
@@ -56,6 +58,8 @@ export function LaneSheet({ player, container, demo, onClose, load, onStart, sta
   const addsLine = proj
     ? `${proj.adds} add${proj.adds === 1 ? "" : "s"}${proj.adds_left != null ? ` of ${proj.adds_left} left` : ""}`
     : "";
+  // Older servers don't send `others`.
+  const others = plan?.others ?? [];
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
@@ -104,6 +108,23 @@ export function LaneSheet({ player, container, demo, onClose, load, onStart, sta
                     {demo ? " · demo: planned in the browser, cruder than the real one" : ""}
                   </span>
                 </div>
+                {others.length ? (
+                  <div className={s.laneSheetOthers}>
+                    <span className={dk.sub}>
+                      Planned with your {others.length === 1 ? "lane" : "lanes"} deciding the same days, which share
+                      the adds left. With this one, {others.length === 1 ? "its projection becomes" : "theirs become"}:
+                    </span>
+                    {others.map((o) => (
+                      <div key={o.lane_id} className={s.laneSheetOther}>
+                        <span className={s.name}>{shortName(o.holder.name)}&apos;s spot</span>
+                        <span className={dk.sub}>
+                          {o.projection.adds} add{o.projection.adds === 1 ? "" : "s"}
+                        </span>
+                        <span className={`${dk.chip} ${o.projection.gain > 0.05 ? dk.up : dk.flat}`}>{signed(o.projection.gain)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <fieldset className={s.laneNotify}>
                   <legend className={dk.label}>Tell me</legend>
                   <label>

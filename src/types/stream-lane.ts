@@ -3,9 +3,10 @@
  * schemas (`bun run generate:api`).
  *
  * A lane is a standing order to keep one roster spot streaming for the rest of
- * the matchup. Before each day the server re-plans the spot with the players
- * available then and, when the plan switches, makes the pickup. What the desk
- * shows is a projection as of one moment; it can change.
+ * the matchup; a team can stream up to four spots, one lane each. Before each
+ * day the server re-plans the team's lanes together (they share the adds) with
+ * the players available then and, for each spot the plan switches, makes the
+ * pickup. What the desk shows is a projection as of one moment; it can change.
  */
 import type { components } from "./generated/api";
 
@@ -15,6 +16,7 @@ export type StreamLane = S["StreamLane"];
 export type StreamLaneEvent = S["StreamLaneEvent"];
 export type StreamLaneList = S["StreamLaneListData"];
 export type StreamLanePlan = S["StreamLanePlan"];
+export type StreamLanePlanOther = S["StreamLanePlanOther"];
 export type LanePlayer = S["LanePlayer"];
 export type LaneProjection = S["LaneProjection"];
 export type LaneProjectionDay = S["LaneProjectionDay"];
@@ -36,6 +38,5 @@ export type LaneInvalidReason =
   | "scheduled_out"
   | "no_matchup_end"
   | "matchup_over"
-  | "waiver_period_unsupported"
   | "no_scoring_period"
   | "holder_gone";

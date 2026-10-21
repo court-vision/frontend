@@ -8363,6 +8363,11 @@
             "title": "Hold Value",
             "type": "number"
           },
+          "lanes": {
+            "default": 1,
+            "title": "Lanes",
+            "type": "integer"
+          },
           "rehold_after": {
             "title": "Rehold After",
             "type": "integer"
@@ -8380,7 +8385,8 @@
           "gain",
           "adds",
           "adds_left",
-          "rehold_after"
+          "rehold_after",
+          "lanes"
         ],
         "title": "LaneProjection",
         "type": "object"
@@ -20094,6 +20100,14 @@
           "holder": {
             "$ref": "#/components/schemas/LanePlayer"
           },
+          "others": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/StreamLanePlanOther"
+            },
+            "title": "Others",
+            "type": "array"
+          },
           "projection": {
             "$ref": "#/components/schemas/LaneProjection"
           },
@@ -20108,9 +20122,32 @@
           "end_period",
           "end_date",
           "first_decision_at",
-          "projection"
+          "projection",
+          "others"
         ],
         "title": "StreamLanePlan",
+        "type": "object"
+      },
+      "StreamLanePlanOther": {
+        "description": "An open lane the new one would be planned with, and its projection then.",
+        "properties": {
+          "holder": {
+            "$ref": "#/components/schemas/LanePlayer"
+          },
+          "lane_id": {
+            "title": "Lane Id",
+            "type": "integer"
+          },
+          "projection": {
+            "$ref": "#/components/schemas/LaneProjection"
+          }
+        },
+        "required": [
+          "lane_id",
+          "holder",
+          "projection"
+        ],
+        "title": "StreamLanePlanOther",
         "type": "object"
       },
       "StreamLanePlanReq": {
@@ -26786,7 +26823,7 @@
     },
     "/v1/internal/teams/{team_id}/stream-lanes": {
       "get": {
-        "description": "The open lane (active or paused) and lanes that ended in the last week, each with its\nlatest projection and its events (newest first).",
+        "description": "The open lanes (active or paused, oldest first) and lanes that ended in the last week,\neach with its latest projection and its events (newest first).",
         "operationId": "list_stream_lanes_v1_internal_teams__team_id__stream_lanes_get",
         "parameters": [
           {
@@ -26832,7 +26869,7 @@
         ]
       },
       "post": {
-        "description": "Start streaming `player_id`'s spot through the matchup's last day. The first decision\nis made when a pickup for the first open day can first be made (possibly at once).\n`notify: desk` keeps the lane from emailing.\n\nBesides the plan route's errors: 403 ROSTER_WRITE_DISABLED, 409 STREAM_LANE_EXISTS\n(one open lane per team), 422 STREAM_LANE_INVALID `scheduled_out` (a pickup already\nscheduled drops that player).",
+        "description": "Start streaming `player_id`'s spot through the matchup's last day. The first decision\nis made when a pickup for the first open day can first be made (possibly at once).\n`notify: desk` keeps the lane from emailing.\n\nBesides the plan route's errors: 403 ROSTER_WRITE_DISABLED, 422 STREAM_LANE_INVALID\n`scheduled_out` (a pickup already scheduled drops that player).",
         "operationId": "start_stream_lane_v1_internal_teams__team_id__stream_lanes_post",
         "parameters": [
           {
@@ -26890,7 +26927,7 @@
     },
     "/v1/internal/teams/{team_id}/stream-lanes/plan": {
       "post": {
-        "description": "What a lane started now on `player_id`'s spot would do: who would hold the spot each\nremaining day of the matchup, what each adds to that day's lineup, the gain over\nkeeping the spot's player, and the adds it would use. A projection only \u2014 the lane\nre-plans before each day with the players available then. Nothing is stored.\n\n422 STREAM_LANE_INVALID with `data.reason` (not_on_roster, on_ir, no_matchup_end,\nmatchup_over, waiver_period_unsupported); 409 ROSTER_WRITE_BLOCKED for a league\nwhose rosters can't be changed from here.",
+        "description": "What a lane started now on `player_id`'s spot would do: who would hold the spot each\nremaining day of the matchup, what each adds to that day's lineup, the gain over\nkeeping the spot's player, and the adds it would use. It is planned with the team's\nopen lanes that decide its first day too (they share the adds); `others` is their\nprojections then. A projection only \u2014 the lanes re-plan before each day with the\nplayers available then. Nothing is stored.\n\n422 STREAM_LANE_INVALID with `data.reason` (not_on_roster, on_ir, no_matchup_end,\nmatchup_over); 409 STREAM_LANE_EXISTS (a lane already streams that spot),\nSTREAM_LANE_LIMIT (the team has four open lanes), ROSTER_WRITE_BLOCKED for a league\nwhose rosters can't be changed from here.",
         "operationId": "plan_stream_lane_v1_internal_teams__team_id__stream_lanes_plan_post",
         "parameters": [
           {
