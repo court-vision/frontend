@@ -78,11 +78,13 @@ export function useChipTray(conversationId: number | null): ChipTray {
   const [staged, setStaged] = useState<StagedChip[]>([]);
   const [patches, setPatches] = useState<ReadonlyMap<number, ChipPatch>>(() => new Map());
   const [sendingDay, setSendingDay] = useState<number | null>(null);
-  // Chips expire with the clock: the columns are re-read every minute while any is staged
-  const [, setTick] = useState(0);
+  // Chips expire with the clock: the columns are read against it when staging starts and every
+  // minute after, so a chip that expires in the tray holds its column back as the thread shows it
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!staged.length) return;
-    const id = window.setInterval(() => setTick((n) => n + 1), 60_000);
+    setNow(Date.now());
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(id);
   }, [staged.length]);
 
@@ -187,6 +189,9 @@ export function useChipTray(conversationId: number | null): ChipTray {
       const fail = (proposalId: number, message: string) =>
         setStaged((s) => s.map((x) => (x.chip.proposal_id === proposalId ? { ...x, error: message } : x)));
       try {
+        // Today's writes go one after another, each pinned to the board the one before handed back:
+        // the mutation writes that board into the cache, but a ref only catches up on a render
+        let board = boardRef.current;
         for (const day of days) {
           setSendingDay(day);
           for (const item of sendOrder(staged, day)) {
@@ -202,18 +207,18 @@ export function useChipTray(conversationId: number | null): ChipTray {
                   proposal_id: id,
                 });
               } else {
-                const b = boardRef.current;
-                if (!b || b.scoring_period_id == null) {
+                if (!board || board.scoring_period_id == null) {
                   fail(id, "Your roster couldn't be read; try again in a moment");
                   return;
                 }
-                await transactAsync({
+                const made = await transactAsync({
                   add_player_id: c.add?.espn_id ?? null,
                   drop_player_id: c.drop?.espn_id ?? null,
-                  expected_scoring_period_id: b.scoring_period_id,
-                  roster_version: b.roster_version,
+                  expected_scoring_period_id: board.scoring_period_id,
+                  roster_version: board.roster_version,
                   proposal_id: id,
                 });
+                board = made.lineup;
                 // The later days' lineups hold the roster too; the shared mutation only refreshes today's
                 void queryClient.invalidateQueries({ queryKey: lineupKeys.days(teamId) });
               }
@@ -247,7 +252,7 @@ export function useChipTray(conversationId: number | null): ChipTray {
     [teamId, staged, scheduleAsync, transactAsync, queryClient, patch, unstage, reread]
   );
 
-  const days = useMemo(() => trayDaysOf(staged), [staged]);
+  const days = useMemo(() => trayDaysOf(staged, now), [staged, now]);
   const stagedIds = useMemo(() => new Set(staged.map((x) => x.chip.proposal_id)), [staged]);
   const b = board.data;
   const blocked =

@@ -70,21 +70,34 @@ describe("stageProblem", () => {
   });
 });
 
+const JOKIC = { espn_id: 3112335, nba_player_id: 203999, name: "Nikola Jokic", team: "DEN" };
+const SOMEONE = { espn_id: 1, nba_player_id: null, name: "Someone", team: null };
+
 describe("withStaged / withoutStaged", () => {
-  test("stages a chip awaiting its check, replacing the day's other add but not its drops", () => {
-    const dropOnly = chip({ proposal_id: 30, add: null });
+  test("stages a chip awaiting its check, replacing the day's other add and any chip moving the same player the same way", () => {
+    const dropOnly = chip({ proposal_id: 30, add: null, drop: JOKIC });
     let list = withStaged([staged(dropOnly)], chip());
     expect(list.map((x) => x.chip.proposal_id)).toEqual([30, 31]);
     expect(list[1]).toMatchObject({ checking: true, problems: [], error: null });
-    list = withStaged(list, chip({ proposal_id: 32, add: { espn_id: 1, nba_player_id: null, name: "Someone", team: null } }));
+    // Another add for the same day takes the column
+    list = withStaged(list, chip({ proposal_id: 32, add: SOMEONE }));
     expect(list.map((x) => x.chip.proposal_id)).toEqual([30, 32]);
-    list = withStaged(list, chip({ proposal_id: 33, day: 3, kind: "scheduled", date: "2026-10-22", dow: "Thu" }));
-    expect(list.map((x) => x.chip.proposal_id)).toEqual([30, 32, 33]);
+    // A lone drop of the player that add drops replaces it: he can only be dropped once
+    list = withStaged(list, chip({ proposal_id: 34, add: null }));
+    expect(list.map((x) => x.chip.proposal_id)).toEqual([30, 34]);
+    // A later day's add is its own column, but adding the same player twice is one move
+    list = withStaged(list, chip({ proposal_id: 33, day: 3, kind: "scheduled", date: "2026-10-22", dow: "Thu", drop: null }));
+    expect(list.map((x) => x.chip.proposal_id)).toEqual([30, 34, 33]);
+    list = withStaged(list, chip({ proposal_id: 35, day: 4, kind: "scheduled", date: "2026-10-23", dow: "Fri", drop: null }));
+    expect(list.map((x) => x.chip.proposal_id)).toEqual([30, 34, 35]);
+    // Adding him one day and dropping him a later one is a stream, kept
+    list = withStaged(list, chip({ proposal_id: 36, day: 5, kind: "scheduled", date: "2026-10-24", dow: "Sat", add: SOMEONE, drop: chip().add }));
+    expect(list.map((x) => x.chip.proposal_id)).toEqual([30, 34, 35, 36]);
     // Re-staging the same chip starts its check again
-    list = withStaged(list.map((x) => ({ ...x, checking: false, error: "nope" })), chip({ proposal_id: 33, day: 3 }));
-    expect(list.map((x) => x.chip.proposal_id)).toEqual([30, 32, 33]);
-    expect(list[2]).toMatchObject({ checking: true, error: null });
-    expect(withoutStaged(list, 32).map((x) => x.chip.proposal_id)).toEqual([30, 33]);
+    list = withStaged(list.map((x) => ({ ...x, checking: false, error: "nope" })), chip({ proposal_id: 35, day: 4, drop: null }));
+    expect(list.map((x) => x.chip.proposal_id)).toEqual([30, 34, 36, 35]);
+    expect(list[3]).toMatchObject({ checking: true, error: null });
+    expect(withoutStaged(list, 34).map((x) => x.chip.proposal_id)).toEqual([30, 36, 35]);
   });
 });
 
@@ -105,7 +118,7 @@ describe("words", () => {
 describe("trayDaysOf", () => {
   test("one column per day: the add / drop as the swap, lone drops in drops, problems and errors carried", () => {
     const today = chip();
-    const lone = chip({ proposal_id: 30, add: null, change: -0.5 });
+    const lone = chip({ proposal_id: 30, add: null, drop: JOKIC, change: -0.5 });
     const later = chip({ proposal_id: 33, day: 3, kind: "scheduled", date: "2026-10-22", dow: "Thu", scoring_period_id: 3, drop: null, change: null,
                          expires_at: "2026-10-23T04:00:00Z" });
     const days = trayDaysOf([staged(later, { checking: true }), staged(today, { problems: ["Kawhi Leonard is on waivers"] }), staged(lone, { error: "ESPN said no" })], NOW);
@@ -120,7 +133,7 @@ describe("trayDaysOf", () => {
       timings: [],
       timing: null,
     });
-    expect(wed.drops).toEqual([{ id: 4594268, name: "Anthony Edwards" }]);
+    expect(wed.drops).toEqual([{ id: 3112335, name: "Nikola Jokic" }]);
     expect(wed.problems).toEqual(["Kawhi Leonard is on waivers"]);
     expect(thu.swap).toMatchObject({ add: { id: 6450 }, drop: null, from: 3, timing: "Made for you before Thursday's games" });
     expect(thu.problems).toEqual([CHECKING]);

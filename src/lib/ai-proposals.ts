@@ -8,8 +8,10 @@
  *
  * The tray shows one add / drop per day column (`TrayDay.swap`), as in the Week
  * desk, plus any drops made on their own (`TrayDay.drops`, today's column only:
- * a drop alone can't be scheduled). Staging a second add for a day replaces the
- * first; the replaced chip stays proposed in the thread.
+ * a drop alone can't be scheduled). A chip replaces what it can't be sent
+ * beside: the day's other add, and any chip dropping (or adding) a player it
+ * drops (or adds), since the first write would make the second impossible. The
+ * replaced chip stays proposed in the thread.
  */
 import type { TrayDay } from "@/components/week/Tray";
 import { monthDay, signed } from "@/components/week/format";
@@ -61,13 +63,25 @@ export function stageProblem(chip: AiProposalChip, staged: readonly StagedChip[]
 
 /**
  * `staged` with `chip` in it, awaiting its check. A chip already there is
- * re-staged; an add replaces the day's other add (one add / drop per column).
+ * re-staged; a chip the new one can't be sent beside (`conflicts`) leaves.
  */
 export function withStaged(staged: readonly StagedChip[], chip: AiProposalChip): StagedChip[] {
-  const kept = staged.filter(
-    (x) => x.chip.proposal_id !== chip.proposal_id && !(chip.add && x.chip.add && x.chip.day === chip.day)
-  );
+  const kept = staged.filter((x) => x.chip.proposal_id !== chip.proposal_id && !conflicts(x.chip, chip));
   return [...kept, { chip, problems: [], error: null, checking: true }];
+}
+
+/**
+ * Two chips that can't both be sent: two adds in one column (one add / drop per
+ * day), or one player dropped by both or added by both — whichever write went
+ * first would make the other fail. Adding a player one day and dropping him on
+ * a later one is a stream, not a conflict.
+ */
+function conflicts(a: AiProposalChip, b: AiProposalChip): boolean {
+  return (
+    (a.add != null && b.add != null && a.day === b.day) ||
+    (a.drop != null && a.drop.espn_id === b.drop?.espn_id) ||
+    (a.add != null && a.add.espn_id === b.add?.espn_id)
+  );
 }
 
 export function withoutStaged(staged: readonly StagedChip[], proposalId: number): StagedChip[] {
