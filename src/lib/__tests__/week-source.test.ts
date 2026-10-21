@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ApiError } from "../api-error";
-import { currentFallback, racePeriod, sourceFromApi, sourceFromStreamer } from "../week-source";
+import { currentFallback, racePeriod, sourceFromApi, sourceFromStreamer, weekBehindBoard } from "../week-source";
 import type { LiveMatchupData, MatchupData, WeeklyMatchupData } from "../../types/matchup";
 import type { StreamerPlayer } from "../../types/streamer";
 import * as F from "./week-api-fixtures";
@@ -213,5 +213,83 @@ describe("currentFallback", () => {
   test("loading, or answered: never", () => {
     expect(currentFallback({ isError: false, data: undefined, error: null })).toBe(false);
     expect(currentFallback({ isError: false, data: F.live(F.current()), error: null })).toBe(false);
+  });
+});
+
+describe("a finished day on record", () => {
+  // Yesterday (day 1) as it stood: Haliburton at PG, a since-dropped guard at UT,
+  // Banchero on the bench; nobody else was on it.
+  const cut: F.Spec = { ...F.MINE[1], id: 9001, nbaId: 9001, name: "Cut Guard", slot: "UT", slotId: 11 };
+  const stood = (spec: F.Spec, slotId: number) => ({
+    player_id: spec.id, nba_player_id: spec.nbaId, name: spec.name, team: spec.team, position: spec.position,
+    had_game: true, lineup_slot: null, lineup_slot_id: slotId, injury_status: null,
+    fpts: 20, pts: 10, reb: 5, ast: 2, stl: 1, blk: 0, tov: 1, min: 30, fgm: 4, fga: 9, fg3m: 1, fg3a: 3, ftm: 1, fta: 2,
+  });
+  const week = F.weekOf();
+  const yesterday = week.days[1];
+  const dated = {
+    ...week,
+    days: week.days.map((d, i) =>
+      i !== 1
+        ? d
+        : {
+            ...yesterday,
+            your_team: {
+              ...yesterday.your_team,
+              roster_source: "snapshot" as const,
+              total_fpts: 40,
+              roster: [stood(F.MINE[1], 0), stood(cut, 11), stood(F.MINE[3], 12)],
+            },
+          }
+    ),
+  } as WeeklyMatchupData;
+  const src = sourceFromApi({ week: dated, live: F.live(F.current()), matchup: undefined, board: F.espnBoard() });
+
+  test("carries each player's slot that day; a day with no record carries none", () => {
+    expect([...src.pastLineups!.you[1]!]).toEqual([[F.MINE[1].id, 0], [cut.id, 11], [F.MINE[3].id, 12]]);
+    expect(src.pastLineups!.you[0]).toBeNull();
+    expect(src.pastLineups!.opp[1]).toBeNull();
+    expect(src.pastLineups!.you[F.TODAY]).toBeNull();
+    expect(src.pastTotals.you[1]).toBe(40);
+  });
+
+  test("a player dropped since is gone, off the roster, and plays only that day; one added since has no game there", () => {
+    expect(src.gone!.mine.map((p) => p.id)).toEqual([cut.id]);
+    expect(src.mine.some((p) => p.id === cut.id)).toBe(false);
+    const gone = src.gone!.mine[0];
+    expect(gone.games[1]).toMatchObject({ status: "final", fpts: 20 });
+    expect(gone.games.filter(Boolean)).toHaveLength(1);
+    expect(src.gone!.opp).toEqual([]);
+    // Sengun's team played that day, but he wasn't on the roster.
+    expect(F.MINE[5].tips[1]).not.toBeNull();
+    expect(src.mine.find((p) => p.id === F.MINE[5].id)!.games[1]).toBeNull();
+  });
+});
+
+describe("the board on another day than the week's today", () => {
+  test("ESPN rolled past the week's today: its games don't paint that day", () => {
+    const week = F.weekOf();
+    const jokic = F.MINE[0];          // plays today (19:00), not tomorrow
+    const rolled = sourceFromApi({ week, live: undefined, matchup: F.current(), board: F.espnBoard(F.TODAY + 1) });
+    expect(rolled.mine.find((p) => p.id === jokic.id)!.games[F.TODAY]).toMatchObject({ status: "scheduled" });
+    const banchero = F.MINE[3];       // plays tomorrow, not today
+    expect(rolled.mine.find((p) => p.id === banchero.id)!.games[F.TODAY]).toBeNull();
+    const same = sourceFromApi({ week, live: undefined, matchup: F.current(), board: F.espnBoard(F.TODAY) });
+    expect(same.mine.find((p) => p.id === jokic.id)!.games[F.TODAY]).toMatchObject({ status: "scheduled", time: "19:00" });
+  });
+
+  test("weekBehindBoard: the week calls an earlier day today than the board is on", () => {
+    const week = F.weekOf();
+    expect(weekBehindBoard(week, F.DATES[F.TODAY + 1])).toBe(true);
+    expect(weekBehindBoard(week, F.DATES[F.TODAY])).toBe(false);
+    expect(weekBehindBoard(week, F.DATES[F.TODAY - 1])).toBe(false);
+    expect(weekBehindBoard(week, null)).toBe(false);
+    expect(weekBehindBoard(undefined, F.DATES[0])).toBe(false);
+    // The period is over on the week's read and ESPN has moved into the next one.
+    const over = F.weekOf({ today: 7 });
+    expect(weekBehindBoard(over, "2026-11-02")).toBe(true);
+    expect(weekBehindBoard(over, F.DATES[6])).toBe(false);
+    // Before the season every day is ahead, and the board names opening night.
+    expect(weekBehindBoard(F.weekOf({ today: -1 }), F.DATES[0])).toBe(false);
   });
 });

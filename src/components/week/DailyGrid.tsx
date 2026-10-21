@@ -120,7 +120,7 @@ export function DailyGrid({
   cancelling = null,
   lanes = NO_LANES,
 }: DailyGridProps) {
-  const { slots, seats } = grid.lineups;
+  const { slots, seats, asItStood } = grid.lineups;
   const days = grid.days;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [hotDay, setHotDay] = useState<number | null>(null);
@@ -289,7 +289,9 @@ export function DailyGrid({
                     onClick={() => onFocusDay(i)}
                     title={
                       stats.past
-                        ? "ESPN lineups for past days aren't recorded, so the spots show today's lineup"
+                        ? asItStood[i]
+                          ? "The lineup as it stood that day: only its active spots counted"
+                          : "No lineup is on record for this day, so the spots show today's lineup"
                         : drag?.editable[i]
                           ? "Drag players to change this day's ESPN lineup; it carries into later days until one has its own edit"
                           : undefined

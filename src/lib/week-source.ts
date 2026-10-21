@@ -11,9 +11,11 @@
  *                                read only when live fails, as its stand-in;
  *   GET /teams/{team}/lineup   — today's ESPN board (names, eligibility, games).
  *
- * The week's rosters are today's rosters: the API keeps no lineup or roster
- * snapshots, so a player dropped mid-week loses his past rows and an added one
- * shows games from before he arrived.
+ * A finished day carries each side's lineup as it stood when the API has it
+ * on record (`roster_source` snapshot or provider_history): only the players on
+ * that day's roster, each in that day's slot, so a player dropped since keeps
+ * his rows there (`gone`) and one added since has none. A finished day with
+ * no record lists today's roster instead.
  */
 import type { LineupState } from "@/types/lineup-editor";
 import type {
@@ -52,6 +54,17 @@ function isPast(p: DayEntry): p is DailyMatchupPlayerStats {
 /** One side's roster for a day (past days carry box scores, future days the schedule). */
 function rosterOf(day: WeeklyMatchupData["days"][number], side: "your_team" | "opponent_team"): DayEntry[] {
   return day[side].roster as DayEntry[];
+}
+
+/** A finished day's lineup as it stood (player id → slot id), or null when the day's roster is today's standing in. */
+function stoodLineup(day: WeeklyMatchupData["days"][number], side: "your_team" | "opponent_team"): Map<number, number> | null {
+  const from = day[side].roster_source;
+  if (!from || from === "current") return null;
+  const slots = new Map<number, number>();
+  for (const p of rosterOf(day, side)) {
+    if (isPast(p) && p.lineup_slot_id != null) slots.set(p.player_id, p.lineup_slot_id);
+  }
+  return slots;
 }
 
 /** A past day's box score, when the player has one. */
@@ -139,6 +152,20 @@ export function racePeriod(week: WeeklyMatchupData | null | undefined): number |
   return week.matchup_period;
 }
 
+/**
+ * The week was read before ESPN's day reached the one the board is on: ESPN
+ * rolled at ~2 AM ET since, or a new matchup period started. The day the week
+ * calls today (the day after its last played one, when none) is before the
+ * board's. Never before the season, when the board names opening night.
+ */
+export function weekBehindBoard(week: WeeklyMatchupData | null | undefined, boardDate: string | null | undefined): boolean {
+  if (!week || !boardDate || week.days.length === 0) return false;
+  const today = week.days.find((d) => d.day_type === "today")?.date;
+  if (today) return boardDate > today;
+  const played = week.days.filter((d) => d.day_type === "past").map((d) => d.date).sort();
+  return played.length === week.days.length && boardDate > played[played.length - 1];
+}
+
 /** The period's days, in order. */
 export function weekDaysFromApi(week: WeeklyMatchupData): WeekDay[] {
   return [...week.days]
@@ -167,6 +194,11 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
   const matchMine = new Map<number, MatchupPlayer>((rows?.your_team.roster ?? []).map((p) => [p.player_id, p]));
   const matchOpp = new Map<number, MatchupPlayer>((rows?.opponent_team.roster ?? []).map((p) => [p.player_id, p]));
 
+  // The board is the lineup for the day it names. ESPN rolls its day at ~2 AM
+  // ET; a week read on the other side of that rollover calls another day today,
+  // and the board's games must not stand in for that day's.
+  const boardOnToday = !board?.nba_date || todayIndex == null || days[todayIndex].date === board.nba_date;
+
   // Today's schedule for a player, from the board or (opponents) the week's own today row.
   const todayGame = (
     id: number,
@@ -174,7 +206,7 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
     liveRow: LiveMatchupPlayer | undefined,
     injury: string | null
   ): DayGame | null => {
-    const b = boardById.get(id);
+    const b = boardOnToday ? boardById.get(id) : undefined;
     // My players' games come off the board; the opponent's off the week's own today row.
     const ahead = entry && !isPast(entry) ? entry : null;
     const opp = b?.opponent ?? ahead?.opponent ?? null;
@@ -227,6 +259,23 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
         out: isOutStatus(entry.injury_status),
       };
     });
+
+  // A finished day on record lists that day's roster, so it can name a player
+  // dropped since. Who is on a roster now: the board, the matchup's rows, and
+  // the week's own today and later days.
+  const pastLineups = {
+    you: sortedDays.map((d, i) => (days[i].kind === "past" ? stoodLineup(d, "your_team") : null)),
+    opp: sortedDays.map((d, i) => (days[i].kind === "past" ? stoodLineup(d, "opponent_team") : null)),
+  };
+  const rosteredNow = (side: "your_team" | "opponent_team", extra: Iterable<number>) => {
+    const ids = new Set<number>(extra);
+    rows?.[side].roster.forEach((p) => ids.add(p.player_id));
+    sortedDays.forEach((d, i) => days[i].kind !== "past" && rosterOf(d, side).forEach((p) => ids.add(p.player_id)));
+    // Nothing to tell by (a week of past days with no roster read): nobody is called gone.
+    return (id: number) => ids.size === 0 || ids.has(id);
+  };
+  const mineNow = rosteredNow("your_team", (board?.players ?? []).map((p) => p.player_id));
+  const oppNow = rosteredNow("opponent_team", []);
 
   // ---- your roster: the board first, then anyone the matchup or week lists ----
   const mineIds: number[] = [];
@@ -300,12 +349,14 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
         live?.opponent_team.team_name ?? matchup?.opponent_team.team_name ?? sortedDays[0]?.opponent_team.team_name ?? "Opponent",
       current: live?.opponent_team.current_score ?? matchup?.opponent_team.current_score ?? null,
     },
-    mine,
-    opponents,
+    mine: mine.filter((p) => mineNow(p.id)),
+    opponents: opponents.filter((o) => oppNow(o.id)),
     pastTotals: {
       you: sortedDays.map((d, i) => (days[i].kind === "past" ? d.your_team.total_fpts ?? null : null)),
       opp: sortedDays.map((d, i) => (days[i].kind === "past" ? d.opponent_team.total_fpts ?? null : null)),
     },
+    pastLineups,
+    gone: { mine: mine.filter((p) => !mineNow(p.id)), opp: opponents.filter((o) => !oppNow(o.id)) },
     activeSlotCount: n > 0 ? activeSlotCount : 10,
     format: (live?.scoring_format ?? matchup?.scoring_format) === "categories" ? "categories" : "points",
     categories: (comparison?.items ?? []).map((c) => ({
