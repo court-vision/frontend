@@ -7536,6 +7536,125 @@
         "title": "FantasyProvider",
         "type": "string"
       },
+      "GameDetailData": {
+        "description": "One game as it stood at its last read: the final buzzer, for a game that is over.",
+        "properties": {
+          "away_periods": {
+            "description": "Away points per period (Q1-Q4, then each OT)",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Away Periods",
+            "type": "array"
+          },
+          "game": {
+            "$ref": "#/components/schemas/GameInfo"
+          },
+          "home_periods": {
+            "description": "Home points per period (Q1-Q4, then each OT); empty when the league feed could not be read",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Home Periods",
+            "type": "array"
+          },
+          "lines": {
+            "description": "Every player who took the floor, by fantasy points",
+            "items": {
+              "$ref": "#/components/schemas/GameLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "lines_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "settled",
+                  "live"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "settled: the game log the post-game run wrote; live: the live box score's last read, until the game log lands; null: no lines on record",
+            "title": "Lines Source"
+          },
+          "score_history": {
+            "description": "The score through the game, oldest first, from tip to final; empty when no snapshots were kept",
+            "items": {
+              "$ref": "#/components/schemas/GameScoreSnapshot"
+            },
+            "title": "Score History",
+            "type": "array"
+          }
+        },
+        "required": [
+          "game",
+          "home_periods",
+          "away_periods",
+          "score_history",
+          "lines",
+          "lines_source"
+        ],
+        "title": "GameDetailData",
+        "type": "object"
+      },
+      "GameDetailResp": {
+        "description": "Response for GET /v1/games/{date}/{game_id}.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameDetailData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "GameDetailResp",
+        "type": "object"
+      },
       "GameInfo": {
         "description": "Individual game information.",
         "properties": {
@@ -7658,6 +7777,136 @@
           "start_time_et"
         ],
         "title": "GameInfo",
+        "type": "object"
+      },
+      "GameLine": {
+        "description": "One player's line in one game.",
+        "properties": {
+          "ast": {
+            "title": "Ast",
+            "type": "integer"
+          },
+          "blk": {
+            "title": "Blk",
+            "type": "integer"
+          },
+          "espn_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN player ID, when mapped",
+            "title": "Espn Id"
+          },
+          "fg3a": {
+            "title": "Fg3A",
+            "type": "integer"
+          },
+          "fg3m": {
+            "title": "Fg3M",
+            "type": "integer"
+          },
+          "fga": {
+            "title": "Fga",
+            "type": "integer"
+          },
+          "fgm": {
+            "title": "Fgm",
+            "type": "integer"
+          },
+          "fpts": {
+            "title": "Fpts",
+            "type": "integer"
+          },
+          "fta": {
+            "title": "Fta",
+            "type": "integer"
+          },
+          "ftm": {
+            "title": "Ftm",
+            "type": "integer"
+          },
+          "min": {
+            "description": "Whole minutes played (a cameo under a minute is 0)",
+            "title": "Min",
+            "type": "integer"
+          },
+          "player_id": {
+            "description": "NBA player ID",
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "player_name": {
+            "title": "Player Name",
+            "type": "string"
+          },
+          "plus_minus": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Plus-minus; null on live lines and older settled rows",
+            "title": "Plus Minus"
+          },
+          "pts": {
+            "title": "Pts",
+            "type": "integer"
+          },
+          "reb": {
+            "title": "Reb",
+            "type": "integer"
+          },
+          "stl": {
+            "title": "Stl",
+            "type": "integer"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Abbreviation of the team the player played for; null when it cannot be told",
+            "title": "Team"
+          },
+          "tov": {
+            "title": "Tov",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "espn_id",
+          "player_name",
+          "team",
+          "min",
+          "fpts",
+          "pts",
+          "reb",
+          "ast",
+          "stl",
+          "blk",
+          "tov",
+          "fgm",
+          "fga",
+          "fg3m",
+          "fg3a",
+          "ftm",
+          "fta",
+          "plus_minus"
+        ],
+        "title": "GameLine",
         "type": "object"
       },
       "GameLog": {
@@ -22575,6 +22824,70 @@
           }
         },
         "summary": "Get games on a date",
+        "tags": [
+          "Games"
+        ]
+      }
+    },
+    "/v1/games/{game_date}/{game_id}": {
+      "get": {
+        "description": "One game of a night: its score, the score by period, the score through the game, and every player's line. A finished game comes back as it stood at the final buzzer: the lines are the settled game log once the post-game run has written it, the live box score's last read before.",
+        "operationId": "get_game_v1_games__game_date___game_id__get",
+        "parameters": [
+          {
+            "description": "Date in YYYY-MM-DD format",
+            "in": "path",
+            "name": "game_date",
+            "required": true,
+            "schema": {
+              "description": "Date in YYYY-MM-DD format",
+              "format": "date",
+              "title": "Game Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "NBA game ID (e.g. 0022600001)",
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "description": "NBA game ID (e.g. 0022600001)",
+              "pattern": "^\\d{10}$",
+              "title": "Game Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameDetailResp"
+                }
+              }
+            },
+            "description": "Game retrieved successfully"
+          },
+          "404": {
+            "description": "No such game on this date"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "Get one game",
         "tags": [
           "Games"
         ]

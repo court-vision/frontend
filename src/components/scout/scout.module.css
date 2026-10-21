@@ -1736,8 +1736,37 @@
   color: var(--text-2);
 }
 
-.sideTable {
-  padding: 0 12px 0 0;
+/* A game's two sides, a table each (On the floor, Top performers): side by
+   side while both tables fit whole, stacked when they do not, and a side
+   narrower than its table (a phone) scrolls it. They were equal grid columns
+   that never shrank below 340px: in a 1180-1280px window each team's line
+   table (about 470px) ran 30-80px under the other's. */
+.sides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 28px;
+}
+
+.side {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.sideWide {
+  flex-basis: 100%;
+}
+
+/* A short table that keeps its columns together rather than spreading them
+   across a wide side (a finished game's Top performers span the sheet). */
+.tableCompact {
+  width: auto;
+  min-width: min(100%, 300px);
+}
+
+.tableCompact td:first-child {
+  padding-right: 20px;
 }
 
 /* the nights ahead */
