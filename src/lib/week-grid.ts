@@ -603,6 +603,8 @@ export function buildWeekGrid({
     }
     return plan;
   });
+  // Today's spots for a day with nothing of its own: an unplayed day's lineup, never another finished day's record.
+  const unplayedAssign = dayAssign.find((m, i) => m && days[i].kind !== "past") ?? null;
 
   const cellFor = (p: SourcePlayer, d: WeekDay): GridCell => {
     const g = p.games[d.index];
@@ -699,7 +701,7 @@ export function buildWeekGrid({
       if (!rows.some((r) => r.player?.id === p.id)) rows.push(rowFor(p, "player", BENCH_SLOT_ID, "BE"));
     }
   } else {
-    const assign = dayAssign[viewDay] ?? dayAssign.find((m) => m) ?? new Map<number, number>();
+    const assign = dayAssign[viewDay] ?? unplayedAssign ?? new Map<number, number>();
     for (const s of slots) {
       const here = poolOn(viewDay)
         .filter((p) => p.id !== replacedOn(viewDay) && assign.get(p.id) === s.slotId)
@@ -819,7 +821,7 @@ export function buildWeekGrid({
     if (here && replaced != null && order.has(replaced)) order.set(here.player.id, order.get(replaced)!);
     return order;
   };
-  const fallbackAssign = todayAssign ?? dayAssign.find((m) => m) ?? new Map<number, number>();
+  const fallbackAssign = todayAssign ?? unplayedAssign ?? new Map<number, number>();
   const byDay = days.map((d) => {
     const assign = dayAssign[d.index] ?? fallbackAssign;
     // Lineups as set keep ESPN's order inside a slot; planned days go by projection.

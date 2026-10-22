@@ -478,6 +478,23 @@ describe("a day already played", () => {
     expect(grid.you[MON].actual).toBe(309.5);
   });
 
+  test("before the board loads, a finished day with no record sits in today's spots, not another day's record", () => {
+    // Tuesday is played too, with nothing on record; Wednesday is today.
+    const later = {
+      ...source,
+      todayIndex: 2,
+      days: source.days.map((d) => (d.index === 1 ? { ...d, kind: "past" as const } : d.index === 2 ? { ...d, kind: "today" as const } : d)),
+    };
+    const grid = buildWeekGrid({ source: later, board: null, staged: {}, incoming: null, viewDay: 1 });
+    expect(grid.lineups.asItStood.slice(0, 3)).toEqual([true, false, false]);
+    const slotOf = (day: number) =>
+      new Map(seatsOn(grid, day).filter(([, who]) => who).map(([slot, who]) => [who!, slot]));
+    const tuesday = slotOf(1);
+    const wednesday = slotOf(2);
+    expect(tuesday.get("Tyrese Maxey")).toBe(wednesday.get("Tyrese Maxey"));
+    for (const [who, slot] of tuesday) if (wednesday.has(who)) expect(`${who} ${slot}`).toBe(`${who} ${wednesday.get(who)}`);
+  });
+
   test("a spot left empty on every day on record still holds a starter on the days ahead", () => {
     const ausar = source.gone!.mine.find((p) => p.name === "Ausar Thompson")!.id;
     const benched = new Map(source.pastLineups!.you[MON]!).set(ausar, 12);
