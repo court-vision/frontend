@@ -81,7 +81,8 @@ interface TrayProps {
   onDiscardAll: () => void;
   /** Move the add / drop to another day (null: make it now). */
   onTiming: (day: number | null) => void;
-  onCancelSwap: () => void;
+  /** Take the add / drop in `day`'s column back (the Week desk has one; the AI desk's tray can hold one per day). */
+  onCancelSwap: (day: number) => void;
   /** Send these days, in day order; resolves when done (or stopped at a refusal). */
   onSend: (days: number[]) => Promise<void>;
   /** The tray floats over the view: its height, so the view can scroll its last rows clear of it. */
@@ -279,7 +280,7 @@ export function Tray({ days, blocked, sendingDay, onUnstage, onUndrop, onDiscard
                       <button
                         type="button"
                         className={s.trayX}
-                        onClick={onCancelSwap}
+                        onClick={() => onCancelSwap(d.day)}
                         disabled={sending}
                         aria-label={`Take back the pickup of ${sw.add.name}`}
                         title="Take the pickup back"

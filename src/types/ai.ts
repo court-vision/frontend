@@ -3,8 +3,12 @@
  * generated OpenAPI schemas (`bun run generate:api`).
  *
  * A conversation is a list of turns; each turn's answer is `parts`: prose,
- * tables and charts in the order the user saw them. Tables and charts are
- * built by the server from the agent's lookups, never typed by the model.
+ * tables, charts and chips in the order the user saw them. Tables and charts
+ * are built by the server from the agent's lookups, never typed by the model.
+ * A chip is a roster move the agent proposed (`propose_move`) and the server
+ * checked; it is staged into the Week desk's tray, rendered in the AI desk,
+ * and sent by its slider through the roster transaction / scheduled pickup
+ * with `proposal_id` on the request. Nothing is executed from the AI desk.
  */
 import type { components } from "./generated/api";
 
@@ -20,8 +24,18 @@ export type AiTurn = S["AiTurnView"];
 export type AiTable = S["AiTable"];
 export type AiChart = S["AiChart"];
 export type AiChartSeries = S["AiChartSeries"];
-/** What a block part carries: a table or a chart. */
-export type AiBlock = AiTable | AiChart;
+/** A proposed move as a block in a turn's parts (the chip, with its block id). */
+export type AiProposal = S["AiProposal"];
+/** The chip without its block id: what the proposal routes return. */
+export type AiProposalChip = S["AiProposalChip"];
+export type AiProposalPlayer = S["AiProposalPlayer"];
+export type AiProposalState = AiProposalChip["state"];
+/** The chip as it stands plus why it can't be staged now (`problems` empty when it can). */
+export type AiProposalCheck = S["AiProposalCheckData"];
+export type AiProposalResponse = S["AiProposalResp"];
+export type AiProposalDismissResponse = S["AiProposalDismissResp"];
+/** What a block part carries: a table, a chart or a chip. */
+export type AiBlock = AiTable | AiChart | AiProposal;
 export type AiPart = S["AiTextPart"] | S["AiBlockPart"];
 export type AiTurnFeedbackResponse = S["AiTurnFeedbackResp"];
 export type AiTurnCommentResponse = S["AiTurnCommentResp"];

@@ -199,6 +199,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One of the agent's proposed moves, checked again
+         * @description The chip as it stands and a fresh check against the board and the player pool: what the desk reads before it stages the chip into the tray. `problems` says why it can't be staged.
+         */
+        get: operations["get_proposal_v1_internal_ai_proposals__proposal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/proposals/{proposal_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Let one of the agent's proposed moves go
+         * @description The chip leaves the tray for good; a move that was already sent can't be dismissed (409 AI_PROPOSAL_SENT). Sending a chip is the Week desk's roster transaction / scheduled pickup with `proposal_id` on the request, never a route here.
+         */
+        post: operations["dismiss_proposal_v1_internal_ai_proposals__proposal_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/ai/questions/{question_id}/feedback": {
         parameters: {
             query?: never;
@@ -2585,7 +2625,7 @@ export interface components {
         /** AiBlockPart */
         AiBlockPart: {
             /** Block */
-            block: components["schemas"]["AiTable"] | components["schemas"]["AiChart"];
+            block: components["schemas"]["AiTable"] | components["schemas"]["AiChart"] | components["schemas"]["AiProposal"];
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -2813,6 +2853,220 @@ export interface components {
          */
         AiFeedbackResp: {
             data: components["schemas"]["AiFeedbackData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiProposal
+         * @description The chip as a block in a turn's parts.
+         */
+        AiProposal: {
+            add: components["schemas"]["AiProposalPlayer"] | null;
+            /**
+             * Change
+             * @description Projected change for the matchup (points, or category wins)
+             */
+            change: number | null;
+            /**
+             * Date
+             * Format: date
+             * @description The NBA date the move is for
+             */
+            date: string;
+            /**
+             * Day
+             * @description Matchup day index, 0 = the matchup's first day
+             */
+            day: number;
+            /**
+             * Dow
+             * @description Mon, Tue, ...
+             */
+            dow: string;
+            drop: components["schemas"]["AiProposalPlayer"] | null;
+            /**
+             * Expires At
+             * Format: date-time
+             * @description When the chip stops being stageable (the day's first tip, or its rollover)
+             */
+            expires_at: string;
+            /**
+             * Id
+             * @description Unique within its turn, e.g. 'p1'
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "transaction" | "scheduled";
+            /** Proposal Id */
+            proposal_id: number;
+            /**
+             * Reason
+             * @description The agent's reason, as it wrote it
+             */
+            reason: string;
+            /**
+             * Scoring
+             * @description The league's scoring format the change is in
+             */
+            scoring: string | null;
+            /**
+             * Scoring Period Id
+             * @description ESPN's day for the move (the scheduled pickup's day)
+             */
+            scoring_period_id: number;
+            /** Sent At */
+            sent_at: string | null;
+            /**
+             * State
+             * @description proposed (can be staged), sent, dismissed, or expired
+             * @enum {string}
+             */
+            state: "proposed" | "sent" | "dismissed" | "expired";
+            /**
+             * Summary
+             * @description One sentence: the move, its day, and what sending does
+             */
+            summary: string;
+            /** Team Id */
+            team_id: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "proposal";
+        };
+        /** AiProposalCheckData */
+        AiProposalCheckData: {
+            chip: components["schemas"]["AiProposalChip"];
+            /**
+             * Problems
+             * @description Why the chip can't be staged now; empty when it can
+             */
+            problems: string[];
+        };
+        /**
+         * AiProposalChip
+         * @description A roster move the agent proposed and the server checked: the chip the AI desk shows. Staged,
+         *     it goes into the Week desk's tray (rendered in the AI desk) and is sent by its slider through
+         *     the roster transaction (`kind` transaction, today) or the scheduled pickup (`kind` scheduled, a
+         *     later day) with `proposal_id` on the request; the route marks it sent. Never executed from here.
+         */
+        AiProposalChip: {
+            add: components["schemas"]["AiProposalPlayer"] | null;
+            /**
+             * Change
+             * @description Projected change for the matchup (points, or category wins)
+             */
+            change: number | null;
+            /**
+             * Date
+             * Format: date
+             * @description The NBA date the move is for
+             */
+            date: string;
+            /**
+             * Day
+             * @description Matchup day index, 0 = the matchup's first day
+             */
+            day: number;
+            /**
+             * Dow
+             * @description Mon, Tue, ...
+             */
+            dow: string;
+            drop: components["schemas"]["AiProposalPlayer"] | null;
+            /**
+             * Expires At
+             * Format: date-time
+             * @description When the chip stops being stageable (the day's first tip, or its rollover)
+             */
+            expires_at: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "transaction" | "scheduled";
+            /** Proposal Id */
+            proposal_id: number;
+            /**
+             * Reason
+             * @description The agent's reason, as it wrote it
+             */
+            reason: string;
+            /**
+             * Scoring
+             * @description The league's scoring format the change is in
+             */
+            scoring: string | null;
+            /**
+             * Scoring Period Id
+             * @description ESPN's day for the move (the scheduled pickup's day)
+             */
+            scoring_period_id: number;
+            /** Sent At */
+            sent_at: string | null;
+            /**
+             * State
+             * @description proposed (can be staged), sent, dismissed, or expired
+             * @enum {string}
+             */
+            state: "proposed" | "sent" | "dismissed" | "expired";
+            /**
+             * Summary
+             * @description One sentence: the move, its day, and what sending does
+             */
+            summary: string;
+            /** Team Id */
+            team_id: number;
+        };
+        /**
+         * AiProposalDismissResp
+         * @description Response for POST /v1/internal/ai/proposals/{proposal_id}/dismiss.
+         */
+        AiProposalDismissResp: {
+            data: components["schemas"]["AiProposalChip"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** AiProposalPlayer */
+        AiProposalPlayer: {
+            /**
+             * Espn Id
+             * @description ESPN player id: what the roster transaction / scheduled pickup takes
+             */
+            espn_id: number;
+            /** Name */
+            name: string;
+            /**
+             * Nba Player Id
+             * @description nba.players.id when known (Scout, headshot)
+             */
+            nba_player_id: number | null;
+            /**
+             * Team
+             * @description NBA tricode
+             */
+            team: string | null;
+        };
+        /**
+         * AiProposalResp
+         * @description Response for GET /v1/internal/ai/proposals/{proposal_id}.
+         */
+        AiProposalResp: {
+            data: components["schemas"]["AiProposalCheckData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -9054,6 +9308,8 @@ export interface components {
             drop_player_id?: number | null;
             /** Expected Scoring Period Id */
             expected_scoring_period_id: number;
+            /** Proposal Id */
+            proposal_id?: number | null;
             /** Roster Version */
             roster_version: string;
         };
@@ -9241,6 +9497,8 @@ export interface components {
             add_player_id: number;
             /** Drop Player Id */
             drop_player_id?: number | null;
+            /** Proposal Id */
+            proposal_id?: number | null;
             /** Scoring Period Id */
             scoring_period_id: number;
         };
@@ -11064,6 +11322,117 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_proposal_v1_internal_ai_proposals__proposal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiProposalResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such proposal for this caller (AI_PROPOSAL_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    dismiss_proposal_v1_internal_ai_proposals__proposal_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiProposalDismissResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such proposal for this caller (AI_PROPOSAL_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already sent (AI_PROPOSAL_SENT) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
             /** @description Turned off (AI_DISABLED) */
             503: {

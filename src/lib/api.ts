@@ -60,6 +60,10 @@ import type {
   AiConversationResponse,
   AiConversationSummary,
   AiFeedback,
+  AiProposalCheck,
+  AiProposalChip,
+  AiProposalDismissResponse,
+  AiProposalResponse,
   AiTurnCommentResponse,
   AiTurnFeedbackResponse,
   AiUsage,
@@ -1135,6 +1139,22 @@ class ApiClient {
 
   async deleteAiConversation(getToken: GetTokenFn, id: number): Promise<void> {
     await fetchJson(`${AI_API}/conversations/${id}`, { getToken, method: "DELETE" });
+  }
+
+  /**
+   * One of the agent's proposed moves as it stands, checked again against the
+   * board and the player pool: what the desk reads before staging the chip.
+   * `problems` says why it can't be staged (empty when it can).
+   */
+  async getAiProposal(getToken: GetTokenFn, proposalId: number, opts?: RequestOptions): Promise<AiProposalCheck> {
+    return unwrap(await fetchJson<AiProposalResponse>(`${AI_API}/proposals/${proposalId}`, { ...opts, getToken }));
+  }
+
+  /** Let a proposed move go; 409 AI_PROPOSAL_SENT once it was sent. Returns the chip as it stands. */
+  async dismissAiProposal(getToken: GetTokenFn, proposalId: number): Promise<AiProposalChip> {
+    return unwrap(
+      await fetchJson<AiProposalDismissResponse>(`${AI_API}/proposals/${proposalId}/dismiss`, { getToken, method: "POST" })
+    );
   }
 
   /** Thumbs up or down on one answer; null clears it. */

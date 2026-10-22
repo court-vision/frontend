@@ -7,6 +7,7 @@ import type { LivePart, LiveTurn } from "@/hooks/useAi";
 import type { AiFeedback, AiPart, AiTurn } from "@/types/ai";
 import dk from "@/components/desk/desk.module.css";
 import { ChartBlock, TableBlock } from "./Blocks";
+import { ProposalChip, type ChipActions } from "./Chips";
 import s from "./ai.module.css";
 
 /** What a failed turn's code means to the user, where the server's own message isn't enough. */
@@ -23,31 +24,36 @@ type OnComment = (turnId: number, text: string | null) => Promise<boolean>;
 export function Thread({
   turns,
   live,
+  chips,
   onVote,
   onComment,
 }: {
   turns: AiTurn[];
   /** The turn streaming now (or just finished), until the stored copy replaces it. */
   live: LiveTurn | null;
+  /** The chips' staging and dismissal (the tray under the thread sends them). */
+  chips: ChipActions;
   onVote: (turnId: number, feedback: AiFeedback | null) => void;
   onComment: OnComment;
 }) {
   return (
     <>
       {turns.map((t) => (
-        <StoredTurn key={t.id} turn={t} onVote={onVote} onComment={onComment} />
+        <StoredTurn key={t.id} turn={t} chips={chips} onVote={onVote} onComment={onComment} />
       ))}
-      {live ? <Live turn={live} /> : null}
+      {live ? <Live turn={live} chips={chips} /> : null}
     </>
   );
 }
 
 const StoredTurn = memo(function StoredTurn({
   turn,
+  chips,
   onVote,
   onComment,
 }: {
   turn: AiTurn;
+  chips: ChipActions;
   onVote: (turnId: number, f: AiFeedback | null) => void;
   onComment: OnComment;
 }) {
@@ -57,7 +63,7 @@ const StoredTurn = memo(function StoredTurn({
     <section className={s.turn} aria-label="Question and answer">
       <div className={s.ask}>{turn.message}</div>
       <div className={s.answer}>
-        <Parts parts={turn.parts} />
+        <Parts parts={turn.parts} chips={chips} />
         {!ok ? <div className={s.failed}>{OUTCOME_COPY[turn.outcome] ?? "This answer didn't finish."}</div> : null}
         <div className={s.foot}>
           {ok ? <Vote turn={turn} onVote={onVote} /> : null}
@@ -141,14 +147,14 @@ function NoteEditor({ initial, onSave, onCancel }: { initial: string; onSave: (t
   );
 }
 
-function Live({ turn }: { turn: LiveTurn }) {
+function Live({ turn, chips }: { turn: LiveTurn; chips: ChipActions }) {
   const writing = turn.phase === "sending" || turn.phase === "streaming";
   const lastText = turn.parts[turn.parts.length - 1]?.kind === "text";
   return (
     <section className={s.turn} aria-label="Question and answer" aria-busy={writing}>
       <div className={s.ask}>{turn.message}</div>
       <div className={s.answer} aria-live="polite">
-        <Parts parts={turn.parts} caret={writing && lastText && !turn.status} />
+        <Parts parts={turn.parts} chips={chips} caret={writing && lastText && !turn.status} />
         {writing && turn.status ? (
           <div className={s.status}>
             <span className={s.statusDot} aria-hidden />
@@ -166,12 +172,14 @@ function Live({ turn }: { turn: LiveTurn }) {
   );
 }
 
-function Parts({ parts, caret = false }: { parts: Array<AiPart | LivePart>; caret?: boolean }) {
+function Parts({ parts, chips, caret = false }: { parts: Array<AiPart | LivePart>; chips: ChipActions; caret?: boolean }) {
   return (
     <>
       {parts.map((p, i) =>
         p.kind === "text" ? (
           <Prose key={i} text={p.text} caret={caret && i === parts.length - 1} />
+        ) : p.block.type === "proposal" ? (
+          <ProposalChip key={`${p.block.id}-${i}`} chip={p.block} actions={chips} />
         ) : p.block.type === "chart" ? (
           <ChartBlock key={`${p.block.id}-${i}`} chart={p.block} />
         ) : (
