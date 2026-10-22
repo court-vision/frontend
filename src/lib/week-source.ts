@@ -160,7 +160,7 @@ export function racePeriod(week: WeeklyMatchupData | null | undefined): number |
 
 /**
  * The week was read before ESPN's day reached the one the board is on: ESPN
- * rolled at ~2 AM ET since, or a new matchup period started. The day the week
+ * rolled at 3 AM ET since, or a new matchup period started. The day the week
  * calls today (the day after its last played one, when none) is before the
  * board's. Never before the season, when the board names opening night.
  */
@@ -200,7 +200,7 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
   const matchMine = new Map<number, MatchupPlayer>((rows?.your_team.roster ?? []).map((p) => [p.player_id, p]));
   const matchOpp = new Map<number, MatchupPlayer>((rows?.opponent_team.roster ?? []).map((p) => [p.player_id, p]));
 
-  // The board is the lineup for the day it names. ESPN rolls its day at ~2 AM
+  // The board is the lineup for the day it names. ESPN rolls its day at 3 AM
   // ET; a week read on the other side of that rollover calls another day today,
   // and the board's games must not stand in for that day's.
   const boardOnToday = !board?.nba_date || todayIndex == null || days[todayIndex].date === board.nba_date;

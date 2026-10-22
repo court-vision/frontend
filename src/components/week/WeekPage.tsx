@@ -452,7 +452,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const weekDays = useMemo(() => (week.data ? weekDaysFromApi(week.data) : null), [week.data]);
   const lineup = useDayBoards(teamId, selected.provider, weekDays);
   const todayBoard = lineup.todayDay != null ? lineup.boards[lineup.todayDay] ?? null : null;
-  // ESPN rolls its day at ~2 AM ET and the board's poll follows it; the week,
+  // ESPN rolls its day at 3 AM ET and the board's poll follows it; the week,
   // read only on arrival and focus, would go on calling the day just played
   // today. Read it again when the board's day passes the week's, and a few
   // times more, further apart, while a read fails or still comes back behind.
