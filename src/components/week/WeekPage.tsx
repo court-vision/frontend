@@ -406,6 +406,9 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
 // ---------------------------------------------------------------------------
 
 const START_PROVIDER: AddStart = { step: "provider" };
+/** Re-reads of a week still behind the board: at once, then 30 s, 60 s and 90 s after each answer. */
+const REREADS = 4;
+const REREAD_STEP_MS = 30_000;
 // Stable stand-ins for lists not loaded yet: a fresh [] each render would re-rank the market.
 const NO_STREAMERS: StreamerPlayer[] = [];
 const NO_BREAKOUTS: BreakoutCandidateResp[] = [];
@@ -451,19 +454,26 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const todayBoard = lineup.todayDay != null ? lineup.boards[lineup.todayDay] ?? null : null;
   // ESPN rolls its day at ~2 AM ET and the board's poll follows it; the week,
   // read only on arrival and focus, would go on calling the day just played
-  // today. Read it again once each time the board's day passes the week's.
+  // today. Read it again when the board's day passes the week's, and a few
+  // times more, further apart, while a read fails or still comes back behind.
   const queryClient = useQueryClient();
   const weekBehind = weekBehindBoard(week.data, lineup.boardDate);
-  const reread = useRef<string | null>(null);
+  const reread = useRef({ key: "", tries: 0 });
   const refetchWeek = week.refetch;
+  const weekSettled = Math.max(week.dataUpdatedAt, week.errorUpdatedAt);
   useEffect(() => {
     if (!weekBehind || teamId == null || lineup.boardDate == null) return;
     const key = `${teamId}:${lineup.boardDate}`;
-    if (reread.current === key) return;
-    reread.current = key;
-    void refetchWeek();
-    void queryClient.invalidateQueries({ queryKey: matchupKeys.live(teamId) });
-  }, [weekBehind, teamId, lineup.boardDate, refetchWeek, queryClient]);
+    if (reread.current.key !== key) reread.current = { key, tries: 0 };
+    const { tries } = reread.current;
+    if (tries >= REREADS) return;
+    const timer = setTimeout(() => {
+      reread.current.tries = tries + 1;
+      void refetchWeek();
+      void queryClient.invalidateQueries({ queryKey: matchupKeys.live(teamId) });
+    }, tries * REREAD_STEP_MS);
+    return () => clearTimeout(timer);
+  }, [weekBehind, teamId, lineup.boardDate, weekSettled, refetchWeek, queryClient]);
   // Your games tonight, from today's board: the live poll runs fast around them
   // (and while any rostered player's box score is live).
   const span = useMemo(() => liveSpan(todayBoard), [todayBoard]);

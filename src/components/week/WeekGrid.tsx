@@ -106,7 +106,8 @@ export function WeekGrid({
   const groups = rowGroups(grid.rows);
   const isToday = grid.viewDay === todayIndex;
   const viewing = grid.days[grid.viewDay];
-  const played = viewing?.kind === "past";
+  // A played day sits as it stood when it's on record; without one it shows today's spots, every game counted.
+  const played: Played = viewing?.kind !== "past" ? null : grid.lineups.asItStood[grid.viewDay] ? "stood" : "unrecorded";
   // Rows follow the ESPN board in the as-set view, and on today in either view.
   const onBoard = mode === "espn" || isToday;
 
@@ -322,22 +323,26 @@ export function WeekGrid({
 // Rows
 // ---------------------------------------------------------------------------
 
-function GroupRow({ group, count, onBoard, played }: { group: Group; count: number; onBoard: boolean; played: boolean }) {
+type Played = "stood" | "unrecorded" | null;
+
+function GroupRow({ group, count, onBoard, played }: { group: Group; count: number; onBoard: boolean; played: Played }) {
   const label = group === "bench" ? "Bench" : group === "drop" ? "Dropping" : group === "later" ? "Added since" : "Injured reserve";
   const note =
-    group === "bench"
-      ? played
-        ? "games here didn't count"
-        : onBoard
-          ? "games here don't count"
-          : "no game, or no room that day"
-      : group === "drop"
-        ? "leaves the roster"
-        : group === "later"
-          ? "not on the roster that day"
-          : played
-            ? "didn't score"
-            : "doesn't score";
+    played === "unrecorded" && (group === "bench" || group === "ir")
+      ? "today's spot; every game that day counted"
+      : group === "bench"
+        ? played
+          ? "games here didn't count"
+          : onBoard
+            ? "games here don't count"
+            : "no game, or no room that day"
+        : group === "drop"
+          ? "leaves the roster"
+          : group === "later"
+            ? "not on the roster that day"
+            : played
+              ? "didn't score"
+              : "doesn't score";
   return (
     <motion.div layout="position" transition={ROW_SPRING} className={s.groupRow} role="presentation">
       <div className={s.groupLabel}>
