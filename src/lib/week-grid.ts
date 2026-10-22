@@ -241,14 +241,21 @@ export function activeSlots(state: LineupState | null | undefined, count: number
     .map((s) => ({ slotId: s.slot_id, count: s.count }));
 }
 
-/** The active spots finished days' records name (each as often as one day filled it), for when no board says. */
-export function recordedSlots(lineups: ReadonlyArray<ReadonlyMap<number, number> | null>): PlanSlot[] {
+/**
+ * The active spots finished days' records name (each as often as one day filled
+ * it), for when no board says. A spot left empty on every day on record still
+ * exists, so UT spots make up any shortfall from `count`.
+ */
+export function recordedSlots(lineups: ReadonlyArray<ReadonlyMap<number, number> | null>, count: number): PlanSlot[] {
   const most = new Map<number, number>();
   for (const lineup of lineups) {
     const held = new Map<number, number>();
     for (const slot of lineup?.values() ?? []) if (isActiveSlot(slot)) held.set(slot, (held.get(slot) ?? 0) + 1);
     for (const [slot, n] of held) most.set(slot, Math.max(most.get(slot) ?? 0, n));
   }
+  if (most.size === 0) return [];
+  const short = count - [...most.values()].reduce((a, b) => a + b, 0);
+  if (short > 0) most.set(UTIL_SLOT_ID, (most.get(UTIL_SLOT_ID) ?? 0) + short);
   return SLOT_ORDER.filter((id) => most.has(id)).map((slotId) => ({ slotId, count: most.get(slotId)! }));
 }
 
@@ -420,7 +427,7 @@ export function buildWeekGrid({
     days[day]?.kind === "past" ? source.pastLineups?.you[day] ?? null : null;
   // Until the board loads (or when it can't), a day on record still names the
   // league's spots, and its starters sit in them rather than vanish.
-  const recorded = board ? [] : recordedSlots(days.map((d) => stoodOn(d.index)));
+  const recorded = board ? [] : recordedSlots(days.map((d) => stoodOn(d.index)), source.activeSlotCount);
   const slots = recorded.length ? recorded : activeSlots(board, source.activeSlotCount);
   const boardById = new Map((board?.players ?? []).map((p) => [p.player_id, p]));
   const todayAssign = board ? boardAssignment(board, staged) : null;

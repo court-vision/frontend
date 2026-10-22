@@ -6,6 +6,7 @@ import {
   healthOf,
   liveClock,
   planDay,
+  recordedSlots,
   slotsFromPositions,
   viewableDays,
   type DayGame,
@@ -475,6 +476,19 @@ describe("a day already played", () => {
     expect(viewed).toHaveLength(10);
     expect(viewed).toContain("Tyrese Maxey");
     expect(grid.you[MON].actual).toBe(309.5);
+  });
+
+  test("a spot left empty on every day on record still holds a starter on the days ahead", () => {
+    const ausar = source.gone!.mine.find((p) => p.name === "Ausar Thompson")!.id;
+    const benched = new Map(source.pastLineups!.you[MON]!).set(ausar, 12);
+    const emptyUt = { ...source, pastLineups: { ...source.pastLineups!, you: source.pastLineups!.you.map((l, d) => (d === MON ? benched : l)) } };
+    const grid = buildWeekGrid({ source: emptyUt, board: null, staged: {}, incoming: null, viewDay: today });
+    const ut = (day: number) => seatsOn(grid, day).filter(([slot]) => slot === "UT").map(([, who]) => who);
+    expect(ut(MON)).toEqual(["Alperen Şengün", "Trey Murphy III", null]);
+    // Every day plans with the league's 10 active spots, not the 9 Monday filled.
+    expect(grid.lineups.slots.filter((s) => isActiveSlot(s.slotId))).toHaveLength(source.activeSlotCount);
+    expect(recordedSlots([benched], 10)).toContainEqual({ slotId: 11, count: 3 });
+    expect(recordedSlots([null, null], 10)).toEqual([]);
   });
 
   test("a player dropped since is on that day only: not in today's rows or any later day", () => {
