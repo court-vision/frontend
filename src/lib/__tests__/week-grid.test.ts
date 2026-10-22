@@ -12,6 +12,7 @@ import {
   type SourcePlayer,
   type WeekSource,
 } from "../week-grid";
+import { isActiveSlot } from "../lineup-editor";
 import { sourceFromStreamer } from "../week-source";
 import { DEMO_DAYS, DEMO_STREAMERS, demoBoard, demoSchedule, demoSource } from "../week-demo";
 
@@ -462,6 +463,18 @@ describe("a day already played", () => {
     expect(monday.filter(([slot]) => slot === "UT").map(([, who]) => who)).toEqual(["Alperen Şengün", "Trey Murphy III", "Ausar Thompson"]);
     expect(monday.filter(([slot]) => slot === "BE").map(([, who]) => who)).toContain("Josh Hart");
     expect(monday.map(([, who]) => who)).not.toContain("Keegan Murray");
+  });
+
+  test("before the board loads, its starters sit in the spots on record", () => {
+    const grid = buildWeekGrid({ source, board: null, staged: {}, incoming: null, viewDay: MON });
+    const monday = seatsOn(grid, MON);
+    expect(monday.filter(([slot]) => slot === "UT").map(([, who]) => who)).toEqual(["Alperen Şengün", "Trey Murphy III", "Ausar Thompson"]);
+    expect(monday.find(([slot]) => slot === "PG")?.[1]).toBe("Tyrese Maxey");
+    expect(monday.filter(([slot]) => slot === "BE").map(([, who]) => who)).toContain("Josh Hart");
+    const viewed = grid.rows.filter((r) => r.player && r.slotId != null && isActiveSlot(r.slotId)).map((r) => r.player!.name);
+    expect(viewed).toHaveLength(10);
+    expect(viewed).toContain("Tyrese Maxey");
+    expect(grid.you[MON].actual).toBe(309.5);
   });
 
   test("a player dropped since is on that day only: not in today's rows or any later day", () => {

@@ -25,6 +25,7 @@ import {
   BENCH_SLOT_ID,
   IR_SLOT_ID,
   assignment as boardAssignment,
+  SLOT_ORDER,
   isActiveSlot,
   normalize,
   slotName,
@@ -240,6 +241,17 @@ export function activeSlots(state: LineupState | null | undefined, count: number
     .map((s) => ({ slotId: s.slot_id, count: s.count }));
 }
 
+/** The active spots finished days' records name (each as often as one day filled it), for when no board says. */
+export function recordedSlots(lineups: ReadonlyArray<ReadonlyMap<number, number> | null>): PlanSlot[] {
+  const most = new Map<number, number>();
+  for (const lineup of lineups) {
+    const held = new Map<number, number>();
+    for (const slot of lineup?.values() ?? []) if (isActiveSlot(slot)) held.set(slot, (held.get(slot) ?? 0) + 1);
+    for (const [slot, n] of held) most.set(slot, Math.max(most.get(slot) ?? 0, n));
+  }
+  return SLOT_ORDER.filter((id) => most.has(id)).map((slotId) => ({ slotId, count: most.get(slotId)! }));
+}
+
 // ---------------------------------------------------------------------------
 // Grid
 // ---------------------------------------------------------------------------
@@ -403,7 +415,13 @@ export function buildWeekGrid({
 }: GridInput): WeekGrid {
   const { days, todayIndex } = source;
   const asSet = mode === "espn" && board != null;
-  const slots = activeSlots(board, source.activeSlotCount);
+  /** A finished day's lineup as it stood (player id → slot), when the API has it on record. */
+  const stoodOn = (day: number): ReadonlyMap<number, number> | null =>
+    days[day]?.kind === "past" ? source.pastLineups?.you[day] ?? null : null;
+  // Until the board loads (or when it can't), a day on record still names the
+  // league's spots, and its starters sit in them rather than vanish.
+  const recorded = board ? [] : recordedSlots(days.map((d) => stoodOn(d.index)));
+  const slots = recorded.length ? recorded : activeSlots(board, source.activeSlotCount);
   const boardById = new Map((board?.players ?? []).map((p) => [p.player_id, p]));
   const todayAssign = board ? boardAssignment(board, staged) : null;
 
@@ -411,9 +429,6 @@ export function buildWeekGrid({
   // Players dropped since a finished day are on that day's lineup, and nowhere else.
   const goneIds = new Set((source.gone?.mine ?? []).map((p) => p.id));
   const roster = goneIds.size ? [...current, ...source.gone!.mine] : current;
-  /** A finished day's lineup as it stood (player id → slot), when the API has it on record. */
-  const stoodOn = (day: number): ReadonlyMap<number, number> | null =>
-    days[day]?.kind === "past" ? source.pastLineups?.you[day] ?? null : null;
   const stretches: readonly Incoming[] = incoming == null ? [] : Array.isArray(incoming) ? incoming : [incoming as Incoming];
   const replaced = stretches[0]?.replaces ?? null;
   // Staged drops on the roster (a previewed add's own drop is his), and the day each is gone from.
