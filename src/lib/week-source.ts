@@ -41,7 +41,7 @@ import {
   type WeekSource,
 } from "./week-grid";
 import { isEmptyResult } from "./api-error";
-import { isActiveSlot } from "./lineup-editor";
+import { BENCH_SLOT_ID, IR_SLOT_ID, isActiveSlot } from "./lineup-editor";
 
 const INACTIVE_SLOT_NAMES = new Set(["BE", "BN", "IR", "IL", "IL+"]);
 
@@ -56,13 +56,19 @@ function rosterOf(day: WeeklyMatchupData["days"][number], side: "your_team" | "o
   return day[side].roster as DayEntry[];
 }
 
-/** A finished day's lineup as it stood (player id → slot id), or null when the day's roster is today's standing in. */
+/**
+ * A finished day's lineup as it stood (player id → slot id), or null when the
+ * day's roster is today's standing in. ESPN's slots past IR (14/15) count no
+ * more than the bench does, and sit there.
+ */
 function stoodLineup(day: WeeklyMatchupData["days"][number], side: "your_team" | "opponent_team"): Map<number, number> | null {
   const from = day[side].roster_source;
   if (!from || from === "current") return null;
   const slots = new Map<number, number>();
   for (const p of rosterOf(day, side)) {
-    if (isPast(p) && p.lineup_slot_id != null) slots.set(p.player_id, p.lineup_slot_id);
+    if (!isPast(p) || p.lineup_slot_id == null) continue;
+    const slot = p.lineup_slot_id;
+    slots.set(p.player_id, isActiveSlot(slot) || slot === IR_SLOT_ID ? slot : BENCH_SLOT_ID);
   }
   return slots;
 }
@@ -198,6 +204,9 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
   // ET; a week read on the other side of that rollover calls another day today,
   // and the board's games must not stand in for that day's.
   const boardOnToday = !board?.nba_date || todayIndex == null || days[todayIndex].date === board.nba_date;
+  // Live's box scores are one day's (`game_date`): from the rollover until the
+  // post-game run that is still last night, which the week already has as played.
+  const liveOnToday = !live?.game_date || todayIndex == null || days[todayIndex].date === live.game_date;
 
   // Today's schedule for a player, from the board or (opponents) the week's own today row.
   const todayGame = (
@@ -212,7 +221,7 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
     const opp = b?.opponent ?? ahead?.opponent ?? null;
     const time = b?.game_time_et ?? ahead?.game_time_et ?? null;
     const out = isOutStatus(injury);
-    const fromLive = liveGame(liveRow, opp, time, out);
+    const fromLive = liveOnToday ? liveGame(liveRow, opp, time, out) : null;
     if (fromLive) return fromLive;
     const hasGame = b ? b.has_game_today : entry ? (isPast(entry) ? entry.had_game : entry.has_game) : false;
     if (!hasGame) return null;

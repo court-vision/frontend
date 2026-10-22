@@ -253,6 +253,17 @@ describe("a finished day on record", () => {
     expect(src.pastTotals.you[1]).toBe(40);
   });
 
+  test("ESPN's slots past IR (14/15) sit with the bench", () => {
+    const odd = {
+      ...dated,
+      days: dated.days.map((d, i) =>
+        i !== 1 ? d : { ...d, your_team: { ...d.your_team, roster: [stood(F.MINE[1], 0), stood(F.MINE[3], 14), stood(F.MINE[2], 13)] } }
+      ),
+    } as WeeklyMatchupData;
+    const s = sourceFromApi({ week: odd, live: F.live(F.current()), matchup: undefined, board: F.espnBoard() });
+    expect([...s.pastLineups!.you[1]!]).toEqual([[F.MINE[1].id, 0], [F.MINE[3].id, 12], [F.MINE[2].id, 13]]);
+  });
+
   test("a player dropped since is gone, off the roster, and plays only that day; one added since has no game there", () => {
     expect(src.gone!.mine.map((p) => p.id)).toEqual([cut.id]);
     expect(src.mine.some((p) => p.id === cut.id)).toBe(false);
@@ -276,6 +287,17 @@ describe("the board on another day than the week's today", () => {
     expect(rolled.mine.find((p) => p.id === banchero.id)!.games[F.TODAY]).toBeNull();
     const same = sourceFromApi({ week, live: undefined, matchup: F.current(), board: F.espnBoard(F.TODAY) });
     expect(same.mine.find((p) => p.id === jokic.id)!.games[F.TODAY]).toMatchObject({ status: "scheduled", time: "19:00" });
+  });
+
+  test("live rows for another day (last night's, until the post-game run) don't paint today", () => {
+    const week = F.weekOf();
+    const jokic = F.MINE[0];
+    const box = { [jokic.id]: F.liveStats(jokic.nbaId!, 3, 31.5) };
+    const lastNight = { ...F.live(F.current(), box), game_date: F.DATES[F.TODAY - 1] };
+    const stale = sourceFromApi({ week, live: lastNight, matchup: undefined, board: F.espnBoard(F.TODAY) });
+    expect(stale.mine.find((p) => p.id === jokic.id)!.games[F.TODAY]).toMatchObject({ status: "scheduled", fpts: null });
+    const tonight = sourceFromApi({ week, live: F.live(F.current(), box), matchup: undefined, board: F.espnBoard(F.TODAY) });
+    expect(tonight.mine.find((p) => p.id === jokic.id)!.games[F.TODAY]).toMatchObject({ status: "final", fpts: 31.5 });
   });
 
   test("weekBehindBoard: the week calls an earlier day today than the board is on", () => {
