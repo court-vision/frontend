@@ -116,7 +116,18 @@ export function WeekTerminal({
   const todayDay = lineup.todayDay;
   // Today's lineup as ESPN holds it: what an add / drop is pinned to.
   const rawToday = todayDay != null ? rawBoards[todayDay] ?? null : null;
+  const rawBoard: LineupState | null = rawToday ?? rawBoards.find((b) => !!b) ?? null;
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
+
+  // ---- the week ----
+  const { makeSource } = data;
+  // The week reads the roster as ESPN holds it: a player staged to drop is still on it, leaving.
+  // Each day's board says who is on it that day (an add after a first tip joins the next day).
+  const source = useMemo(() => makeSource(rawBoard, rawBoards), [makeSource, rawBoard, rawBoards]);
+  // After today's first tip an add made now counts from tomorrow: ESPN puts it (and the drop it
+  // rides with) on tomorrow's roster, so the player dropped plays out today. Previews, the market
+  // and the tray all start it there.
+  const addFrom = useMemo(() => (source ? addsCountFrom(source, rawBoard) : null), [source, rawBoard]);
 
   // ---- drops made now: players staged to leave the roster, and the boards as they'll stand after ----
   const [drops, setDrops] = useState<number[]>([]);
@@ -130,8 +141,9 @@ export function WeekTerminal({
     const onBoard = (id: number) => rawToday.players.find((p) => p.player_id === id);
     return drops.find((id) => !!onBoard(id) && onBoard(id)!.lineup_slot_id !== IR_SLOT_ID) ?? null;
   }, [pinned, rawToday, drops]);
-  // Drops made now leave from today; one a scheduled pickup carries leaves on the pickup's day.
-  const pairedFrom = paired != null ? pinned?.from ?? null : null;
+  // Drops made now leave from today; one an add carries leaves when the add lands: the pickup's
+  // day, or tomorrow for one made now after today's first tip.
+  const pairedFrom = paired != null ? pinned?.from ?? addFrom : null;
   const leaves = useMemo<DropLeave[]>(
     () => (todayDay == null ? [] : drops.map((id) => ({ id, from: id === paired && pairedFrom != null ? pairedFrom : todayDay }))),
     [drops, paired, pairedFrom, todayDay]
@@ -140,7 +152,6 @@ export function WeekTerminal({
   const boards = useMemo(() => withoutDropped(rawBoards, leaves), [rawBoards, leaves]);
   // Today's lineup anchors eligibility, slots and the add/drop; any day's will do before it loads.
   const board: LineupState | null = (todayDay != null ? boards[todayDay] : undefined) ?? boards.find((b) => !!b) ?? null;
-  const rawBoard: LineupState | null = rawToday ?? rawBoards.find((b) => !!b) ?? null;
 
   // ---- view switches ----
   const toggleTheme = useDeskTheme((st) => st.toggle);
@@ -169,10 +180,6 @@ export function WeekTerminal({
   const staged = todayDay != null ? staging[todayDay] : NO_STAGING;
   const anyStaging = staging.some((st) => Object.keys(st).length > 0) || drops.length > 0;
 
-  // ---- the week ----
-  const { makeSource } = data;
-  // The week reads the roster as ESPN holds it: a player staged to drop is still on it, leaving.
-  const source = useMemo(() => makeSource(rawBoard), [makeSource, rawBoard]);
   const viewableList = useMemo(() => (source ? viewableDays(source) : []), [source]);
   const viewable = useMemo(() => new Set(viewableList), [viewableList]);
   const [viewDayPick, setViewDay] = useState<number | null>(null);
@@ -221,8 +228,6 @@ export function WeekTerminal({
   const hoverLive =
     hover && (hover.pickup == null || data.pickups.pending.some((p) => p.id === hover.pickup)) ? hover : null;
   const preview = hoverLive ?? pinned;
-  // After today's first tip an add counts from tomorrow; the previews and the market both obey.
-  const addFrom = useMemo(() => (source ? addsCountFrom(source, rawBoard) : null), [source, rawBoard]);
   // Free agents the desk has loaded: today's moves' pickups, the one-day search, and
   // the rest-of-week pool (later wins: the pool knows his whole week).
   const actionsData = data.actions?.data ?? null;
@@ -266,7 +271,7 @@ export function WeekTerminal({
   const incoming: IncomingPreview | null = useMemo(
     () =>
       source && preview && previewFa
-        ? incomingFor(sourceFromStreamer(previewFa, source.days, data.schedule, preview.from ?? addFrom), preview.replaces, preview.from)
+        ? incomingFor(sourceFromStreamer(previewFa, source.days, data.schedule, preview.from ?? addFrom), preview.replaces, preview.from ?? addFrom)
         : laneIncoming,
     [source, preview, previewFa, data.schedule, addFrom, laneIncoming]
   );
@@ -319,7 +324,7 @@ export function WeekTerminal({
     (fa: StreamerPlayer, replaces: number, from: number | null = null) => {
       if (!source || !gridNoPreview) return 0;
       const g = build(source, {
-        incoming: incomingFor(sourceFromStreamer(fa, source.days, null, from ?? addFrom), replaces, from),
+        incoming: incomingFor(sourceFromStreamer(fa, source.days, null, from ?? addFrom), replaces, from ?? addFrom),
       });
       return g.projected.you - gridNoPreview.projected.you;
     },
@@ -339,14 +344,16 @@ export function WeekTerminal({
     (day: number) => !!source && source.days[day]?.kind === "future" && periodOf(day) != null,
     [source, periodOf]
   );
-  // After today's first tip an add made now would count from tomorrow, so it is made as a
-  // pickup scheduled for tomorrow instead. On the matchup's last day tomorrow isn't on the
-  // board to schedule for, and the add stays one made now (ESPN puts it on tomorrow).
-  const nowFrom = addFrom != null && canSchedule(addFrom) ? addFrom : null;
+  /**
+   * A day a pickup is scheduled for, rather than made now: after today, and not the day an
+   * add made now already lands on (tomorrow, once today's first tip has passed: made now,
+   * ESPN puts it there at once).
+   */
+  const schedulable = useCallback((day: number) => canSchedule(day) && day !== addFrom, [canSchedule, addFrom]);
   /** The day a replace from `day`'s spot is scheduled for: that day in the daily view when it can be, else now. */
   const replaceFrom = useCallback(
-    (day: number | null | undefined) => (view === "daily" && day != null && canSchedule(day) ? day : nowFrom),
-    [view, canSchedule, nowFrom]
+    (day: number | null | undefined) => (view === "daily" && day != null && schedulable(day) ? day : null),
+    [view, schedulable]
   );
   const pendingPickups = data.pickups.pending;
   const pickupDay = useCallback(
@@ -395,7 +402,7 @@ export function WeekTerminal({
     (fa: StreamerPlayer, dropIds: number[], from: number | null = null) => {
       if (!source || !marketBase) return [];
       const player = sourceFromStreamer(fa, source.days, null, from ?? addFrom);
-      return dropIds.map((id) => gainOf(marketBase, gainBuild(source, { incoming: incomingFor(player, id, from) }), id));
+      return dropIds.map((id) => gainOf(marketBase, gainBuild(source, { incoming: incomingFor(player, id, from ?? addFrom) }), id));
     },
     [source, marketBase, gainBuild, addFrom]
   );
@@ -499,12 +506,12 @@ export function WeekTerminal({
         ? "Your lineup changed since these were worked out: reading them again"
         : null;
     return sortActions(actionsData?.actions ?? []).map((a) => {
-      const staged = isTransactionAction(a) ? isAddStaged(a, pinned, NO_DROP, nowFrom) : isRowStaged(todayStaging, a);
+      const staged = isTransactionAction(a) ? isAddStaged(a, pinned, NO_DROP) : isRowStaged(todayStaging, a);
       const drop = a.transaction?.drop_player_id ?? null;
       const gone = drop != null && !source?.mine.some((p) => p.id === drop) ? "The player to drop is no longer on your roster" : null;
       return { action: a, button: rowButton(a, { staged, cannot: cannot ?? gone }) };
     });
-  }, [actionsData, todayBoardNow, actionsStale, pinned, nowFrom, todayStaging, source]);
+  }, [actionsData, todayBoardNow, actionsStale, pinned, todayStaging, source]);
   const onTodayButton = useCallback(
     (row: TodayRow) => {
       const a = row.action;
@@ -514,7 +521,7 @@ export function WeekTerminal({
         if (row.button.intent === "unstage") pin(null);
         else {
           setHover(null);
-          pin({ faId: a.transaction.pickup.player_id, replaces: a.transaction.drop_player_id ?? NO_DROP, from: nowFrom });
+          pin({ faId: a.transaction.pickup.player_id, replaces: a.transaction.drop_player_id ?? NO_DROP, from: null });
         }
         return;
       }
@@ -524,7 +531,7 @@ export function WeekTerminal({
       if (row.button.intent === "unstage") setDay(todayDay, unstageRow(b, staging[todayDay], a, actionsData?.actions ?? []));
       else setDay(todayDay, stageRow(b, staging[todayDay], a));
     },
-    [todayDay, boards, staging, setDay, actionsData, pin, nowFrom]
+    [todayDay, boards, staging, setDay, actionsData, pin]
   );
   // Stage all takes the rows that fit together; one that would overfill a slot keeps its own button.
   const stageAll = useMemo(
@@ -792,25 +799,25 @@ export function WeekTerminal({
     (fa: StreamerPlayer, replaces: number, from: number | null) => {
       if (paired == null || !source || todayDay == null) return faGain(fa, replaces, from);
       const base = weekFor(leaves.filter((x) => x.id !== paired), stagedByDay);
-      const moved = leaves.map((x) => (x.id === paired ? { id: x.id, from: from ?? todayDay } : x));
+      const moved = leaves.map((x) => (x.id === paired ? { id: x.id, from: from ?? addFrom ?? todayDay } : x));
       const player = sourceFromStreamer(fa, source.days, null, from ?? addFrom);
-      return weekFor(moved, stagedByDay, incomingFor(player, replaces, from)) - base;
+      return weekFor(moved, stagedByDay, incomingFor(player, replaces, from ?? addFrom)) - base;
     },
     [paired, source, todayDay, faGain, weekFor, leaves, stagedByDay, addFrom]
   );
   const pinnedDelta = pinned && swapFa ? swapGain(swapFa, pinned.replaces, swapFrom) : 0;
   // When to make it: now, or before any later day he plays (the day picked stays on offer).
-  // After today's first tip an add made now is tomorrow's pickup, so Now isn't on offer.
+  // After today's first tip, Now is tomorrow's add already, so tomorrow isn't offered as well.
   const timings = useMemo<SwapTiming[]>(() => {
     if (!pinned || !swapFa || !source) return [];
-    const days = source.days.filter((d) => canSchedule(d.index) && swapFa.game_days.includes(d.index)).map((d) => d.index);
+    const days = source.days.filter((d) => schedulable(d.index) && swapFa.game_days.includes(d.index)).map((d) => d.index);
     if (pinned.from != null && !days.includes(pinned.from)) days.push(pinned.from);
     days.sort((a, b) => a - b);
     return [
-      ...(nowFrom == null ? [{ day: null, label: "Now", delta: swapGain(swapFa, pinned.replaces, null) }] : []),
+      { day: null, label: "Now", delta: swapGain(swapFa, pinned.replaces, null) },
       ...days.map((d) => ({ day: d, label: source.days[d].dow, delta: swapGain(swapFa, pinned.replaces, d) })),
     ];
-  }, [pinned, swapFa, source, canSchedule, swapGain, nowFrom]);
+  }, [pinned, swapFa, source, schedulable, swapGain]);
 
   // ---- drops: staged on their own, made now ----
   const laneHolders = useMemo(
@@ -889,12 +896,15 @@ export function WeekTerminal({
     else if (dup) blocked = `${swapFa.name} is already scheduled for ${pickupDayLabel(dup.nba_date)}.`;
     else if (already && out) blocked = `${out.name} is already being dropped for ${already.add.name} on ${pickupDayLabel(already.nba_date)}.`;
     else if (out && laneHolders.has(out.id)) blocked = "A stream lane is streaming his spot: stop it to drop him.";
-    else if (swapFrom == null && out && rawToday.players.find((p) => p.player_id === out.id)?.locked) {
+    else if (swapFrom == null && addFrom == null && out && rawToday.players.find((p) => p.player_id === out.id)?.locked) {
+      // After today's first tip he leaves tomorrow, so his game tonight doesn't hold the add.
       blocked = `${out.name} is locked until his game ends.`;
     } else if (swapFrom == null && swapFa.acquisition_status === "waivers") blocked = `${swapFa.name} is on waivers.`;
     else if (!data.demo && !rawToday.can_write) blocked = writeBlockedCopy(rawToday.write_blocked_reason);
     else if (!out && rosterRoom(rawToday) === 0) blocked = "Your roster is full: pick someone to drop.";
-    const fromDow = swapFrom != null ? source.days[swapFrom]?.dow ?? "" : "";
+    // The day it lands on: the day it's scheduled for, or (made now after today's first tip) tomorrow.
+    const lands = swapFrom ?? addFrom;
+    const landsDow = lands != null ? source.days[lands]?.dow ?? null : null;
     const leaving = swapOut ?? (rides ? source.mine.find((p) => p.id === rides.id) ?? null : null);
     return {
       add: {
@@ -902,14 +912,21 @@ export function WeekTerminal({
         name: swapFa.name,
         team: swapFa.team,
         games:
-          swapFrom != null
-            ? `${swapFa.game_days.filter((d) => d >= swapFrom).length} games from ${fromDow}`
-            : `${swapFa.games_remaining} games left`,
+          lands == null
+            ? `${swapFa.games_remaining} games left`
+            : landsDow
+              ? `${swapFa.game_days.filter((d) => d >= lands).length} games from ${landsDow}`
+              : "no games left this week",
       },
       drop: out ? { ...out, staged: rides != null || undefined } : null,
       from: swapFrom,
       timings,
-      timing: swapFrom != null ? pickupTiming(source.days, swapFrom, leaving, todayIndex, addFrom) : null,
+      timing:
+        swapFrom != null
+          ? pickupTiming(source.days, swapFrom, leaving, todayIndex, addFrom)
+          : addFrom != null
+            ? `Made now, counts from ${landsDow ?? "next week"}: today's games have started`
+            : null,
       blocked,
       delta: pinnedDelta,
       // Made now, it sits in today's column (or one of its own when today isn't on the board).
@@ -1067,16 +1084,19 @@ export function WeekTerminal({
           const outcome = await sendSwap(today);
           if (outcome === "refused") return;
           if (first.from == null) rosterChanged = true;
-          // Only an add / drop made now frees the spot. Scheduled, the drop rides on the pickup and
-          // he stays on ESPN's roster until its day, so a lineup that needs his spot still waits.
-          if (outcome === "ok" && first.from == null && paired != null) waiting = waiting.filter((id) => id !== paired);
+          // Only an add / drop that counts today frees the spot today. Scheduled (or made after
+          // today's first tip) the drop lands with the add on its day, and he stays on today's
+          // roster until then, so a day whose moves need his spot before then still waits.
+          if (outcome === "ok" && first.from == null && addFrom == null && paired != null) {
+            waiting = waiting.filter((id) => id !== paired);
+          }
         }
         await sendDays(chosen, rosterChanged, waiting);
       } finally {
         setSendingDay(null);
       }
     },
-    [rawToday, todayDay, lineup, drops, nowColumn, loneDrops, data, swap, sendSwap, paired, sendDays]
+    [rawToday, todayDay, lineup, drops, nowColumn, loneDrops, data, swap, sendSwap, paired, addFrom, sendDays]
   );
   const trayDays = useMemo<TrayDay[]>(() => {
     const columns = new Map<number, TrayDay>();
@@ -1670,10 +1690,10 @@ export function WeekTerminal({
             pinnedBlocked={swap?.blocked ?? null}
             scheduled={scheduledFa}
             // A pick keeps its day while it stays on the same free agent; a new one is made now.
-            onHover={(pick: MarketPick | null) => setHover(pick ? { ...pick, from: pinned?.faId === pick.faId ? pinned.from : nowFrom } : null)}
+            onHover={(pick: MarketPick | null) => setHover(pick ? { ...pick, from: pinned?.faId === pick.faId ? pinned.from : null } : null)}
             onPin={(pick: MarketPick | null) => {
               setHover(null);
-              pin(pick ? { ...pick, from: pinned?.faId === pick.faId ? pinned.from : nowFrom } : null);
+              pin(pick ? { ...pick, from: pinned?.faId === pick.faId ? pinned.from : null } : null);
             }}
             onClose={closeMarket}
           />

@@ -326,7 +326,9 @@ export function WeekGrid({
 type Played = "stood" | "unrecorded" | null;
 
 function GroupRow({ group, count, onBoard, played }: { group: Group; count: number; onBoard: boolean; played: Played }) {
-  const label = group === "bench" ? "Bench" : group === "drop" ? "Dropping" : group === "later" ? "Added since" : "Injured reserve";
+  // Off the roster that day: added since a day played, or (an unplayed day) joining after it or gone by then.
+  const later = played ? "Added since" : "Off the roster";
+  const label = group === "bench" ? "Bench" : group === "drop" ? "Dropping" : group === "later" ? later : "Injured reserve";
   const note =
     played === "unrecorded" && (group === "bench" || group === "ir")
       ? "today's spot; every game that day counted"

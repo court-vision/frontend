@@ -10,7 +10,7 @@ const pending = demoScheduledPickup(1, camara, null, 5);
 const settled = (over: Partial<ScheduledPickup>): ScheduledPickup => ({ ...demoScheduledPickup(9, daniels, null, 4), ...over });
 
 describe("pickupViews", () => {
-  test("pending first, then those settled for a day of this week; cancelled ones left out", () => {
+  test("pending first, then those that didn't go through for a day of this week; made and cancelled ones left out", () => {
     const views = pickupViews(
       {
         pending: [pending],
@@ -18,15 +18,17 @@ describe("pickupViews", () => {
           settled({ id: 2, status: "executed", seated_slot: "PG" }),
           settled({ id: 3, status: "cancelled" }),
           settled({ id: 4, status: "skipped", reason: "unavailable", nba_date: "2026-11-02" }),
+          settled({ id: 5, status: "expired", reason: "deadline" }),
         ],
       },
       DEMO_DAYS
     );
+    // The one made is on the roster from his day (that day's board has him), not in this list.
     expect(views.map((v) => [v.id, v.status, v.day])).toEqual([
       [1, "pending", 5],
-      [2, "executed", 4],
+      [5, "expired", 4],
     ]);
-    expect(views[1].note).toBe("Added, starting at PG");
+    expect(views[1].note).toBe("Expired: that day's games started first");
   });
 
   test("a stream lane's pickups leave the list only while that lane's row shows them", () => {
@@ -37,11 +39,10 @@ describe("pickupViews", () => {
     // Lanes 3 and 4 are open and drawn: their pickups are in their rows. Lane 2 has ended: its pickup stays here.
     expect(pickupViews(list, DEMO_DAYS, [3, 4]).map((v) => [v.id, v.lane])).toEqual([[13, true]]);
     expect(pickupViews(list, DEMO_DAYS, [3]).map((v) => v.id)).toEqual([14, 13]);
-    // No lane row (none open, or the lanes didn't load): every pickup shows, marked as a lane's.
+    // No lane row (none open, or the lanes didn't load): every pickup not yet made shows, marked as a lane's.
     expect(pickupViews(list, DEMO_DAYS, []).map((v) => [v.id, v.status, v.lane])).toEqual([
       [11, "pending", true],
       [14, "pending", true],
-      [12, "executed", true],
       [13, "failed", true],
     ]);
     expect(pickupViews({ pending: [pending], recent: [] }, DEMO_DAYS, [3])[0].lane).toBe(false);

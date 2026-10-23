@@ -227,6 +227,17 @@ describe("transactionOutcomeCopy", () => {
     });
   });
 
+  test("made after today's first tip, it says the day it counts from", () => {
+    const today = { nba_date: "2026-10-22" };
+    expect(transactionOutcomeCopy({ added: cam, dropped: monk, verified: true, counts_from: "2026-10-23", lineup: today })).toEqual({
+      tone: "success",
+      message: "Added Cam Thomas · dropped Malik Monk on ESPN, counts from Fri, Oct 23",
+    });
+    expect(transactionOutcomeCopy({ added: cam, dropped: null, verified: true, counts_from: "2026-10-22", lineup: today }).message).toBe(
+      "Added Cam Thomas on ESPN"
+    );
+  });
+
   test("an unconfirmed write is a warning", () => {
     expect(transactionOutcomeCopy({ added: cam, dropped: monk, verified: false })).toEqual({
       tone: "warning",

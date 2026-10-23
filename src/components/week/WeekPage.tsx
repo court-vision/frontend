@@ -109,8 +109,8 @@ export interface TerminalData {
   /** Opens the add-team flow on this desk; null in the demo. */
   addTeam: (() => void) | null;
   notice: BarNotice | null;
-  /** The week, given today's ESPN lineup. */
-  makeSource: (board: LineupState | null) => WeekSource | null;
+  /** The week, given today's ESPN lineup and each day's (who is on the roster that day). */
+  makeSource: (board: LineupState | null, boards?: ReadonlyArray<LineupState | undefined>) => WeekSource | null;
   /** Each day's ESPN lineup and the lineup writes (ESPN teams). */
   lineup: DayLineups;
   /**
@@ -515,8 +515,8 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const liveData = live.data;
   const matchupData = matchup.data;
   const makeSource = useCallback(
-    (board: LineupState | null) =>
-      weekData ? sourceFromApi({ week: weekData, live: liveData, matchup: matchupData, board }) : null,
+    (board: LineupState | null, boards?: ReadonlyArray<LineupState | undefined>) =>
+      weekData ? sourceFromApi({ week: weekData, live: liveData, matchup: matchupData, board, boards }) : null,
     [weekData, liveData, matchupData]
   );
 

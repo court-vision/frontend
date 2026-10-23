@@ -29,10 +29,12 @@ export interface PickupView {
 }
 
 /**
- * Pending pickups (soonest first), then the ones settled for a day of this week.
- * Cancelled ones are left out, and so are those of the lanes whose own rows show
- * them (`shownLanes`); any other lane's (one that ended, or all of them when the
- * lanes didn't load) stay, marked as a lane's.
+ * Pending pickups (soonest first), then the ones that didn't go through for a
+ * day of this week (skipped, failed, expired), with why. One that ran has left
+ * the list: its player is on the roster from his day, as that day's ESPN board
+ * shows him. Cancelled ones are left out, and so are those of the lanes whose
+ * own rows show them (`shownLanes`); any other lane's (one that ended, or all
+ * of them when the lanes didn't load) stay, marked as a lane's.
  */
 export function pickupViews(
   list: ScheduledPickupList,
@@ -41,7 +43,9 @@ export function pickupViews(
 ): PickupView[] {
   const dayOf = (date: string) => days.find((d) => d.date === date)?.index ?? null;
   const inLaneRow = (p: ScheduledPickup) => p.lane_id != null && shownLanes.includes(p.lane_id);
-  const settled = list.recent.filter((p) => p.status !== "cancelled" && dayOf(p.nba_date) != null && !inLaneRow(p));
+  const settled = list.recent.filter(
+    (p) => p.status !== "cancelled" && p.status !== "executed" && dayOf(p.nba_date) != null && !inLaneRow(p)
+  );
   return [...list.pending.filter((p) => !inLaneRow(p)), ...settled].map((p) => ({
     id: p.id,
     status: p.status,

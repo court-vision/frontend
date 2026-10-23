@@ -445,6 +445,56 @@ describe("each day's own ESPN lineup", () => {
   });
 });
 
+describe("a move ESPN made for a later day (after a first tip, or a scheduled pickup already made)", () => {
+  // Missi was picked up for Barnes after Tuesday's first tip: ESPN has the swap on Wednesday's
+  // roster, not Tuesday's. Barnes plays out Tuesday; Missi is on from Wednesday.
+  const base = demoSource();
+  const today = base.todayIndex!;
+  const board = demoBoard();
+  const barnes = board.players.find((p) => p.name === "Scottie Barnes")!;
+  const fa = DEMO_STREAMERS.find((s) => s.name === "Toumani Camara")!;
+  const wed = today + 1;
+  const wednesday = demoBoard(undefined, "demo-1-2", wed);
+  const swapped = {
+    ...wednesday,
+    players: wednesday.players.map((p) => (p.player_id === barnes.player_id ? { ...p, player_id: fa.player_id, name: fa.name } : p)),
+  };
+  const ids = (b: typeof board) => new Set(b.players.map((p) => p.player_id));
+  const source: WeekSource = {
+    ...base,
+    arriving: [sourceFromStreamer(fa, DEMO_DAYS, demoSchedule(fa.team), wed)],
+    onRoster: DEMO_DAYS.map((d) => (d.index === today ? ids(board) : d.index === wed ? ids(swapped) : null)),
+  };
+  const dayBoards = DEMO_DAYS.map((d) =>
+    d.index === today ? { board, staged: {} } : d.index === wed ? { board: swapped, staged: {} } : null
+  );
+  const grid = buildWeekGrid({ source, board, staged: {}, dayBoards, incoming: null, viewDay: today });
+  const seated = (day: number) => grid.lineups.seats[day].flatMap((st) => (st ? [st.player.name] : []));
+
+  test("each day seats the roster ESPN has that day; a day not read keeps the day before's", () => {
+    expect(seated(today)).toContain("Scottie Barnes");
+    expect(seated(today)).not.toContain(fa.name);
+    for (const day of [wed, wed + 1, 6]) {
+      expect(seated(day)).toContain(fa.name);
+      expect(seated(day)).not.toContain("Scottie Barnes");
+    }
+    // In Barnes's spot on Wednesday's board.
+    const slot = grid.lineups.slots[grid.lineups.seats[wed].findIndex((st) => st?.player.id === fa.player_id)];
+    expect(slot.slotId).toBe(barnes.lineup_slot_id);
+  });
+
+  test("his games count from the day he joins; the player he replaced keeps only his days", () => {
+    const row = (id: number) => grid.rows.find((r) => r.player?.id === id)!;
+    const camara = row(fa.player_id);
+    expect(camara.later).toBe(true);                               // not on today's roster: below it
+    expect(camara.cells[today].state).toBe("none");
+    for (const day of [wed, wed + 1, 6]) expect(row(barnes.player_id).cells[day].state).toBe("none");
+    // Without the days' rosters Barnes sat on Wednesday's bench, a player still on the roster.
+    const unread = buildWeekGrid({ source: base, board, staged: {}, dayBoards, incoming: null, viewDay: today });
+    expect(unread.rows.find((r) => r.player?.id === barnes.player_id)!.cells[wed]).toMatchObject({ state: "upcoming", tag: "BENCH" });
+  });
+});
+
 describe("a day already played", () => {
   const source = demoSource();
   const board = demoBoard();
