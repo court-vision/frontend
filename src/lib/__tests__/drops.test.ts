@@ -51,6 +51,14 @@ describe("unstageEverywhere", () => {
     expect(out[today + 2]).toEqual({ [white]: F });
   });
 
+  test("from the day he leaves on only: dropped after today's first tip, today's moves stay", () => {
+    const later = demoBoard(undefined, "demo-1", today + 1);
+    const staged = { [today]: { [johnson]: BE, [white]: F }, [today + 1]: { [johnson]: BE } };
+    const out = unstageEverywhere([undefined, board, later], staged, johnson, today + 1);
+    expect(out[today]).toBe(staged[today]);
+    expect(out[today + 1]).toEqual({});
+  });
+
   test("hands back the same staging when he had nothing staged", () => {
     const staged = { [today]: { [white]: F } };
     expect(unstageEverywhere([undefined, board], staged, murray)).toBe(staged);

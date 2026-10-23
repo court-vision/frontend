@@ -37,21 +37,24 @@ export function withoutDropped(
 }
 
 /**
- * Take a player's staged moves back on every day, each with the swap it made
- * (`unstage`): dropped, he can't move, and whoever swapped with him would stay
- * moved for nothing. `boards` are the ones the staging was made on. The same
- * object when he had nothing staged.
+ * Take a player's staged moves back on every day from `from` (the first day he
+ * is gone) on, each with the swap it made (`unstage`): dropped, he can't move,
+ * and whoever swapped with him would stay moved for nothing. Days before it he
+ * still plays (dropped after today's first tip, he plays out today), so their
+ * moves stay. `boards` are the ones the staging was made on. The same object
+ * when he had nothing staged.
  */
 export function unstageEverywhere(
   boards: ReadonlyArray<LineupState | undefined>,
   stagedByDay: Readonly<Record<number, Staged>>,
-  playerId: number
+  playerId: number,
+  from = 0
 ): Record<number, Staged> {
   let out: Record<number, Staged> | null = null;
   for (const [key, staged] of Object.entries(stagedByDay)) {
     const day = Number(key);
     const b = boards[day];
-    if (!b) continue;
+    if (!b || day < from) continue;
     const next = unstage(b, staged, playerId);
     if (next === staged) continue;
     out ??= { ...stagedByDay };

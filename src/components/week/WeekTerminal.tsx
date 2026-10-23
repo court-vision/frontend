@@ -215,7 +215,7 @@ export function WeekTerminal({
       const back = pinned?.held;
       if (back != null && !list.includes(back)) {
         list = [...list, back];
-        setStagedByDay((prev) => unstageEverywhere(boards, prev, back));
+        setStagedByDay((prev) => unstageEverywhere(boards, prev, back, dropFrom ?? 0));
       }
       let ref: PreviewRef | null = next ? { ...next, held: undefined } : null;
       if (ref && ref.replaces !== NO_DROP && list.includes(ref.replaces)) {
@@ -226,7 +226,7 @@ export function WeekTerminal({
       if (list !== drops) setDrops(list);
       setPinned(ref);
     },
-    [drops, pinned, boards]
+    [drops, pinned, boards, dropFrom]
   );
   // A hovered pickup that was cancelled (or ran) under the pointer previews nothing.
   const hoverLive =
@@ -640,8 +640,10 @@ export function WeekTerminal({
   const moveInfo = useMemo(() => {
     if (!menu || menu.type !== "move" || !menuPlayer || !grid || !gridNoPreview) return null;
     const day = menu.day;
-    // Staged to drop, he has no spot to move from: the menu offers the drop back instead.
-    if (drops.includes(menuPlayer.id)) return { blocked: null, targets: [], day };
+    // Staged to drop, he has no spot to move from once he's gone: the menu offers the drop back
+    // instead. Dropped after today's first tip, he still plays today, so today's moves stay open.
+    const leave = leaves.find((x) => x.id === menuPlayer.id);
+    if (leave && day >= leave.from) return { blocked: null, targets: [], day };
     const b = boards[day];
     const onDay = b?.players.find((p) => p.player_id === menuPlayer.id);
     let blocked: string | null = null;
@@ -664,7 +666,7 @@ export function WeekTerminal({
       }));
     }
     return { blocked, targets, day };
-  }, [menu, menuPlayer, grid, gridNoPreview, drops, boards, board, editableOn, source, mode, staging, weekWith]);
+  }, [menu, menuPlayer, grid, gridNoPreview, leaves, boards, board, editableOn, source, mode, staging, weekWith]);
 
   // Free agents for the replace menu, best change to the week first.
   const replaceOptions = useMemo<ReplaceOption[]>(() => {
@@ -847,13 +849,13 @@ export function WeekTerminal({
   );
   // Why a staged drop's last send failed, by player.
   const [dropErrors, setDropErrors] = useState<Record<number, string>>({});
-  /** Stage a drop: his staged moves on every day are taken back, swaps and all. */
+  /** Stage a drop: his staged moves from the day he leaves on are taken back, swaps and all. */
   const stageDrop = useCallback(
     (id: number) => {
-      setStagedByDay((prev) => unstageEverywhere(boards, prev, id));
+      setStagedByDay((prev) => unstageEverywhere(boards, prev, id, dropFrom ?? 0));
       setDrops((prev) => (prev.includes(id) ? prev : [...prev, id]));
     },
-    [boards]
+    [boards, dropFrom]
   );
   const undrop = useCallback((id: number) => {
     setDrops((prev) => prev.filter((x) => x !== id));
@@ -884,7 +886,7 @@ export function WeekTerminal({
     if (drops.includes(id)) return { dropped: true, note: null, delta: 0 };
     const note = dropReason(id);
     if (note || dropFrom == null) return { dropped: false, note, delta: 0 };
-    const delta = weekFor([...leaves, { id, from: dropFrom }], unstageEverywhere(boards, stagedByDay, id)) - weekNow;
+    const delta = weekFor([...leaves, { id, from: dropFrom }], unstageEverywhere(boards, stagedByDay, id, dropFrom)) - weekNow;
     return { dropped: false, note: null, delta };
   }, [menu, menuPlayer, drops, dropReason, dropFrom, weekFor, leaves, boards, stagedByDay, weekNow]);
 
