@@ -5,10 +5,11 @@
  * A conversation is a list of turns; each turn's answer is `parts`: prose,
  * tables, charts and chips in the order the user saw them. Tables and charts
  * are built by the server from the agent's lookups, never typed by the model.
- * A chip is a roster move the agent proposed (`propose_move`) and the server
- * checked; it is staged into the Week desk's tray, rendered in the AI desk,
- * and sent by its slider through the roster transaction / scheduled pickup
- * with `proposal_id` on the request. Nothing is executed from the AI desk.
+ * A chip is a move the agent proposed and the server checked: an add / drop
+ * (`propose_move`) or a day's slot moves (`propose_lineup`); it is staged into
+ * the Week desk's tray, rendered in the AI desk, and sent by its slider through
+ * the roster transaction / scheduled pickup / lineup write with `proposal_id`
+ * on the request. Nothing is executed from the AI desk.
  */
 import type { components } from "./generated/api";
 
@@ -29,6 +30,8 @@ export type AiProposal = S["AiProposal"];
 /** The chip without its block id: what the proposal routes return. */
 export type AiProposalChip = S["AiProposalChip"];
 export type AiProposalPlayer = S["AiProposalPlayer"];
+/** One slot move of a lineup chip, as the lineup write takes it and the tray shows it. */
+export type AiProposalMove = S["AiProposalMove"];
 export type AiProposalState = AiProposalChip["state"];
 /** The chip as it stands plus why it can't be staged now (`problems` empty when it can). */
 export type AiProposalCheck = S["AiProposalCheckData"];

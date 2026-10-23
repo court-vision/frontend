@@ -4,6 +4,8 @@ import {
   changeLabel,
   chipState,
   dropChipOf,
+  lineupChipOf,
+  movesOf,
   patchChip,
   sendOrder,
   stageProblem,
@@ -15,7 +17,7 @@ import {
   withoutStaged,
   type StagedChip,
 } from "../ai-proposals";
-import type { AiProposalChip } from "@/types/ai";
+import type { AiProposalChip, AiProposalMove } from "@/types/ai";
 
 const NOW = Date.parse("2026-10-21T20:00:00Z");
 
@@ -31,6 +33,7 @@ function chip(over: Partial<AiProposalChip> = {}): AiProposalChip {
     scoring_period_id: 2,
     add: { espn_id: 6450, nba_player_id: 202695, name: "Kawhi Leonard", team: "LAC" },
     drop: { espn_id: 4594268, nba_player_id: 1630162, name: "Anthony Edwards", team: "MIN" },
+    moves: [],
     summary: "Add Kawhi Leonard, drop Anthony Edwards, today. Goes to ESPN when you send it.",
     reason: "4 games left at 2.4 blocks",
     change: 1.5,
@@ -42,6 +45,27 @@ function chip(over: Partial<AiProposalChip> = {}): AiProposalChip {
 }
 
 const staged = (c: AiProposalChip, over: Partial<StagedChip> = {}): StagedChip => ({ chip: c, problems: [], error: null, checking: false, ...over });
+
+const SWAP: AiProposalMove[] = [
+  { espn_id: 4594268, nba_player_id: 1630162, name: "Anthony Edwards", team: "MIN", from_slot_id: 12, from_slot: "BE", to_slot_id: 11, to_slot: "UT", role: "start", note: "vs LAL · 7:30 PM" },
+  { espn_id: 3112335, nba_player_id: 203999, name: "Nikola Jokic", team: "DEN", from_slot_id: 11, from_slot: "UT", to_slot_id: 12, to_slot: "BE", role: "bench", note: "no game today" },
+];
+
+/** A lineup chip: the swap on today's board. */
+function lineupChip(over: Partial<AiProposalChip> = {}): AiProposalChip {
+  return chip({
+    proposal_id: 40,
+    kind: "lineup",
+    add: null,
+    drop: null,
+    moves: SWAP,
+    summary: "Start Anthony Edwards, bench Nikola Jokic, today. Goes to ESPN when you send it.",
+    reason: "Edwards plays tonight; Jokic sits idle",
+    change: 42.5,
+    expires_at: "2026-10-22T07:00:00Z",
+    ...over,
+  });
+}
 
 describe("chipState", () => {
   test("a proposed chip past its expiry is expired; other states stand", () => {
@@ -98,6 +122,47 @@ describe("withStaged / withoutStaged", () => {
     expect(list.map((x) => x.chip.proposal_id)).toEqual([30, 34, 36, 35]);
     expect(list[3]).toMatchObject({ checking: true, error: null });
     expect(withoutStaged(list, 34).map((x) => x.chip.proposal_id)).toEqual([30, 36, 35]);
+  });
+});
+
+describe("lineup chips", () => {
+  test("two lineup chips for one day can't both be sent; one beside a drop or an add can", () => {
+    let list = withStaged([staged(chip())], lineupChip());
+    expect(list.map((x) => x.chip.proposal_id)).toEqual([31, 40]);
+    // The day's other lineup chip takes the column
+    list = withStaged(list, lineupChip({ proposal_id: 41, moves: SWAP.slice(0, 1) }));
+    expect(list.map((x) => x.chip.proposal_id)).toEqual([31, 41]);
+    // Another day's lineup is its own column
+    list = withStaged(list, lineupChip({ proposal_id: 42, day: 4, date: "2026-10-23", dow: "Fri", scoring_period_id: 4 }));
+    expect(list.map((x) => x.chip.proposal_id)).toEqual([31, 41, 42]);
+    // A lone drop of a player the lineup moves stays: the lineup goes first in its day
+    list = withStaged(list, chip({ proposal_id: 30, add: null }));
+    expect(list.map((x) => x.chip.proposal_id)).toEqual([41, 42, 30]);
+  });
+
+  test("its moves fill the column, it goes first in its day, and its × finds it by player", () => {
+    const list = [staged(chip()), staged(chip({ proposal_id: 30, add: null })), staged(lineupChip())];
+    const [wed] = trayDaysOf(list, NOW);
+    expect(wed.moves).toEqual([
+      { playerId: 4594268, name: "Anthony Edwards", from: 12, to: 11, role: "start" },
+      { playerId: 3112335, name: "Nikola Jokic", from: 11, to: 12, role: "bench" },
+    ]);
+    expect(wed.swap?.add.id).toBe(6450);
+    expect(wed.drops).toEqual([{ id: 4594268, name: "Anthony Edwards" }]);
+    expect(wed.delta).toBe(45.5);
+    expect(movesOf(lineupChip())).toEqual(wed.moves);
+    expect(sendOrder(list, 2).map((x) => x.chip.proposal_id)).toEqual([40, 30, 31]);
+    expect(lineupChipOf(list, 2, 3112335)?.chip.proposal_id).toBe(40);
+    expect(lineupChipOf(list, 2, 6450)).toBeUndefined();
+    expect(lineupChipOf(list, 3, 3112335)).toBeUndefined();
+    expect(timingOf(lineupChip())).toBeNull();
+    expect(changeLabel(lineupChip())).toBe("+42.5");
+  });
+
+  test("a lineup chip lasts until the day after its board's begins", () => {
+    expect(chipState(lineupChip(), Date.parse("2026-10-22T06:59:00Z"))).toBe("proposed");
+    expect(chipState(lineupChip(), Date.parse("2026-10-22T07:00:00Z"))).toBe("expired");
+    expect(stageProblem(lineupChip(), [staged(chip())], NOW)).toBeNull();
   });
 });
 

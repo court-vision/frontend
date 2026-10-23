@@ -9,6 +9,7 @@ import { useSchedulePickupMutation } from "@/hooks/useScheduledPickups";
 import {
   chipState,
   dropChipOf,
+  lineupChipOf,
   sendOrder,
   stageProblem,
   swapChipOf,
@@ -21,9 +22,10 @@ import {
 import { apiClient } from "@/lib/api";
 import { toApiError } from "@/lib/api-error";
 import { staleLineup } from "@/lib/lineup-editor";
+import { settleLineupWrites, writeLineupDay, type SentDay } from "@/components/week/lineup-send";
 import type { TrayDay } from "@/components/week/Tray";
 import type { AiConversation, AiProposalChip } from "@/types/ai";
-import { writeBlockedCopy } from "@/types/lineup-editor";
+import { writeBlockedCopy, type LineupState } from "@/types/lineup-editor";
 
 /** A chip's state written into the cached conversation, so its stored turn shows it at once. */
 function patchConversation(c: AiConversation | undefined, patches: ReadonlyMap<number, ChipPatch>): AiConversation | undefined {
@@ -55,9 +57,10 @@ export interface ChipTray {
   stage: (chip: AiProposalChip) => void;
   unstage: (proposalId: number) => void;
   dismiss: (chip: AiProposalChip) => void;
-  /** The Week desk's tray's callbacks: a column's add / drop, a lone drop, a day, everything. */
+  /** The Week desk's tray's callbacks: a column's add / drop, a lone drop, a lineup move (its whole chip), a day, everything. */
   cancelSwap: (day: number) => void;
   undrop: (playerId: number) => void;
+  unstageMove: (day: number, playerId: number) => void;
   discardDay: (day: number) => void;
   discardAll: () => void;
   /** Send these days, in order; stops at the first refusal, which stays on its column. */
@@ -68,9 +71,11 @@ export interface ChipTray {
  * The chips staged in this conversation and the sends behind the tray's slider.
  * Staging asks the server to check the chip again (`GET /ai/proposals/{id}`);
  * sending is the Week desk's own writes — the roster transaction for a move
- * today, pinned to the board as it stands, or the scheduled pickup for a later
- * day — with `proposal_id` on the request, so the server marks the chip sent.
- * A refusal stays on the chip's column for a retry; a stale board is read again.
+ * today, pinned to the board as it stands, the scheduled pickup for a later
+ * day, or the lineup write for a lineup chip (`writeLineupDay`, against its
+ * day's board: today's as the tray holds it, a later day's read first) — with
+ * `proposal_id` on the request, so the server marks the chip sent. A refusal
+ * stays on the chip's column for a retry; a stale board is read again.
  */
 export function useChipTray(conversationId: number | null): ChipTray {
   const { getToken, userId } = useAuth();
@@ -178,6 +183,11 @@ export function useChipTray(conversationId: number | null): ChipTray {
 
   const cancelSwap = useCallback((day: number) => setStaged((s) => (swapChipOf(s, day) ? withoutStaged(s, swapChipOf(s, day)!.chip.proposal_id) : s)), []);
   const undrop = useCallback((playerId: number) => setStaged((s) => (dropChipOf(s, playerId) ? withoutStaged(s, dropChipOf(s, playerId)!.chip.proposal_id) : s)), []);
+  // A lineup chip is one write: taking one of its moves back takes the chip out of the tray
+  const unstageMove = useCallback(
+    (day: number, playerId: number) => setStaged((s) => (lineupChipOf(s, day, playerId) ? withoutStaged(s, lineupChipOf(s, day, playerId)!.chip.proposal_id) : s)),
+    []
+  );
   const discardDay = useCallback((day: number) => setStaged((s) => s.filter((x) => x.chip.day !== day)), []);
   const discardAll = useCallback(() => setStaged([]), []);
 
@@ -188,6 +198,9 @@ export function useChipTray(conversationId: number | null): ChipTray {
       if (teamId == null) return;
       const fail = (proposalId: number, message: string) =>
         setStaged((s) => s.map((x) => (x.chip.proposal_id === proposalId ? { ...x, error: message } : x)));
+      // The lineup writes made, and the error that stopped the send: what the re-reads after it go by
+      const written: SentDay[] = [];
+      let stopped: unknown;
       try {
         // Today's writes go one after another, each pinned to the board the one before handed back:
         // the mutation writes that board into the cache, but a ref only catches up on a render
@@ -198,7 +211,29 @@ export function useChipTray(conversationId: number | null): ChipTray {
             const c = item.chip;
             const id = c.proposal_id;
             try {
-              if (c.kind === "scheduled") {
+              if (c.kind === "lineup") {
+                if (!board || board.scoring_period_id == null) {
+                  fail(id, "Your roster couldn't be read; try again in a moment");
+                  return;
+                }
+                // The chip's day's board: today's as the tray holds it, a later day's read now
+                const today = c.scoring_period_id === board.scoring_period_id;
+                const dayBoard: LineupState | null = today ? board : await apiClient.getTeamLineup(getToken, teamId, undefined, c.scoring_period_id);
+                if (!dayBoard) {
+                  fail(id, "That day's lineup couldn't be read; try again in a moment");
+                  return;
+                }
+                const sent = await writeLineupDay(
+                  queryClient,
+                  teamId,
+                  (body) => apiClient.applyLineupMoves(getToken, teamId, { ...body, proposal_id: id }),
+                  dayBoard,
+                  c.moves.map((m) => ({ player_id: m.espn_id, from_slot_id: m.from_slot_id, to_slot_id: m.to_slot_id }))
+                );
+                written.push(sent);
+                if (today) board = sent.lineup;
+                if (!sent.verified) toast.warning("Sent to ESPN — not confirmed yet, check your roster");
+              } else if (c.kind === "scheduled") {
                 if (!c.add) throw new Error("A drop on its own can't be scheduled");
                 await scheduleAsync({
                   add_player_id: c.add.espn_id,
@@ -225,6 +260,7 @@ export function useChipTray(conversationId: number | null): ChipTray {
               patch(id, { state: "sent", sent_at: new Date().toISOString() });
               unstage(id);
             } catch (err) {
+              stopped = err;
               const e = toApiError(err);
               const state = (e.data as { state?: string } | undefined)?.state;
               if (e.code === "AI_PROPOSAL_NOT_PENDING" && (state === "sent" || state === "dismissed" || state === "expired")) {
@@ -246,10 +282,12 @@ export function useChipTray(conversationId: number | null): ChipTray {
         }
       } finally {
         setSendingDay(null);
+        // After a lineup write, the Week desk's one wave of re-reads (later days, today's moves, the matchup, the roster)
+        settleLineupWrites(queryClient, teamId, written, stopped);
         reread();
       }
     },
-    [teamId, staged, scheduleAsync, transactAsync, queryClient, patch, unstage, reread]
+    [teamId, staged, scheduleAsync, transactAsync, getToken, queryClient, patch, unstage, reread]
   );
 
   const days = useMemo(() => trayDaysOf(staged, now), [staged, now]);
@@ -281,6 +319,7 @@ export function useChipTray(conversationId: number | null): ChipTray {
     dismiss,
     cancelSwap,
     undrop,
+    unstageMove,
     discardDay,
     discardAll,
     sendDays,

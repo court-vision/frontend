@@ -354,6 +354,7 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
             sendingDay={tray.sendingDay}
             onCancelSwap={tray.cancelSwap}
             onUndrop={tray.undrop}
+            onUnstageMove={tray.unstageMove}
             onDiscardDay={tray.discardDay}
             onDiscardAll={tray.discardAll}
             onSend={tray.sendDays}

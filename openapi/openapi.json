@@ -931,7 +931,7 @@
                 "type": "null"
               }
             ],
-            "description": "Projected change for the matchup (points, or category wins)",
+            "description": "Projected change for the matchup (points, or category wins); for a lineup chip the day's change in points, if a points league",
             "title": "Change"
           },
           "date": {
@@ -974,10 +974,19 @@
           "kind": {
             "enum": [
               "transaction",
-              "scheduled"
+              "scheduled",
+              "lineup"
             ],
             "title": "Kind",
             "type": "string"
+          },
+          "moves": {
+            "description": "A lineup chip's slot moves; empty otherwise",
+            "items": {
+              "$ref": "#/components/schemas/AiProposalMove"
+            },
+            "title": "Moves",
+            "type": "array"
           },
           "proposal_id": {
             "title": "Proposal Id",
@@ -1001,7 +1010,7 @@
             "title": "Scoring"
           },
           "scoring_period_id": {
-            "description": "ESPN's day for the move (the scheduled pickup's day)",
+            "description": "ESPN's day for the move (the scheduled pickup's day; a lineup chip's board, `ApplyLineupMovesReq.expected_scoring_period_id`)",
             "title": "Scoring Period Id",
             "type": "integer"
           },
@@ -1055,6 +1064,7 @@
           "scoring_period_id",
           "add",
           "drop",
+          "moves",
           "summary",
           "reason",
           "change",
@@ -1089,7 +1099,7 @@
         "type": "object"
       },
       "AiProposalChip": {
-        "description": "A roster move the agent proposed and the server checked: the chip the AI desk shows. Staged,\nit goes into the Week desk's tray (rendered in the AI desk) and is sent by its slider through\nthe roster transaction (`kind` transaction, today) or the scheduled pickup (`kind` scheduled, a\nlater day) with `proposal_id` on the request; the route marks it sent. Never executed from here.",
+        "description": "A move the agent proposed and the server checked: the chip the AI desk shows. Staged, it goes\ninto the Week desk's tray (rendered in the AI desk) and is sent by its slider through the Week\ndesk's own write with `proposal_id` on the request, which marks it sent: the roster transaction\n(`kind` transaction: `add` / `drop`, today), the scheduled pickup (`kind` scheduled: `add` / `drop`,\na later day) or the lineup write (`kind` lineup: `moves`, one day's board, today's or a later\nday's, written at once). Never executed from here.",
         "properties": {
           "add": {
             "anyOf": [
@@ -1110,7 +1120,7 @@
                 "type": "null"
               }
             ],
-            "description": "Projected change for the matchup (points, or category wins)",
+            "description": "Projected change for the matchup (points, or category wins); for a lineup chip the day's change in points, if a points league",
             "title": "Change"
           },
           "date": {
@@ -1148,10 +1158,19 @@
           "kind": {
             "enum": [
               "transaction",
-              "scheduled"
+              "scheduled",
+              "lineup"
             ],
             "title": "Kind",
             "type": "string"
+          },
+          "moves": {
+            "description": "A lineup chip's slot moves; empty otherwise",
+            "items": {
+              "$ref": "#/components/schemas/AiProposalMove"
+            },
+            "title": "Moves",
+            "type": "array"
           },
           "proposal_id": {
             "title": "Proposal Id",
@@ -1175,7 +1194,7 @@
             "title": "Scoring"
           },
           "scoring_period_id": {
-            "description": "ESPN's day for the move (the scheduled pickup's day)",
+            "description": "ESPN's day for the move (the scheduled pickup's day; a lineup chip's board, `ApplyLineupMovesReq.expected_scoring_period_id`)",
             "title": "Scoring Period Id",
             "type": "integer"
           },
@@ -1223,6 +1242,7 @@
           "scoring_period_id",
           "add",
           "drop",
+          "moves",
           "summary",
           "reason",
           "change",
@@ -1284,6 +1304,99 @@
           "timestamp"
         ],
         "title": "AiProposalDismissResp",
+        "type": "object"
+      },
+      "AiProposalMove": {
+        "description": "One slot move of a lineup chip, as the lineup write takes it (`LineupMoveReq`: espn_id,\nfrom_slot_id, to_slot_id) and the tray shows it.",
+        "properties": {
+          "espn_id": {
+            "description": "ESPN player id: `LineupMoveReq.player_id`",
+            "title": "Espn Id",
+            "type": "integer"
+          },
+          "from_slot": {
+            "description": "Its name (PG, UT, BE, IR, ...)",
+            "title": "From Slot",
+            "type": "string"
+          },
+          "from_slot_id": {
+            "description": "The slot he is in on the chip's board",
+            "title": "From Slot Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "nba.players.id when known (Scout, headshot)",
+            "title": "Nba Player Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The planner's note: his game, 'no game today', 'OUT'",
+            "title": "Note"
+          },
+          "role": {
+            "default": "shift",
+            "description": "start (bench to active), bench (to the bench), shift (the rest)",
+            "enum": [
+              "start",
+              "bench",
+              "shift"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA tricode",
+            "title": "Team"
+          },
+          "to_slot": {
+            "title": "To Slot",
+            "type": "string"
+          },
+          "to_slot_id": {
+            "title": "To Slot Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "espn_id",
+          "nba_player_id",
+          "name",
+          "team",
+          "from_slot_id",
+          "from_slot",
+          "to_slot_id",
+          "to_slot",
+          "role",
+          "note"
+        ],
+        "title": "AiProposalMove",
         "type": "object"
       },
       "AiProposalPlayer": {
@@ -2213,6 +2326,18 @@
             "minItems": 1,
             "title": "Moves",
             "type": "array"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
           },
           "roster_version": {
             "maxLength": 64,
@@ -25977,7 +26102,7 @@
     },
     "/v1/internal/matchups/week/{team_id}": {
       "get": {
-        "description": "Get all days in the current matchup period in a single request.\n\nMakes one ESPN/Yahoo API call and returns per-day player data for every\nday in the matchup period. Use this instead of N parallel getDailyMatchup\ncalls when rendering the matchup bar chart.",
+        "description": "Get all days in the current matchup period in a single request.\n\nMakes one ESPN/Yahoo API call and returns per-day player data for every\nday in the matchup period. Use this instead of N parallel getDailyMatchup\ncalls when rendering the matchup bar chart.\n\nToday is ESPN's own current day (the team's lineup board's), so the day\nESPN rolled past at 3 AM ET is past at once. Past days carry both sides'\nlineups as they stood (stored nightly; ESPN's history read live for last\nnight when it isn't stored yet), and their totals count the active slots.",
         "operationId": "get_weekly_matchup_v1_internal_matchups_week__team_id__get",
         "parameters": [
           {
