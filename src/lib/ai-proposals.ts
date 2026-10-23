@@ -18,7 +18,9 @@
  */
 import type { TrayDay, TrayMove } from "@/components/week/Tray";
 import { monthDay, signed } from "@/components/week/format";
-import type { AiProposalChip, AiProposalState } from "@/types/ai";
+import { diff, type Staged } from "@/lib/lineup-editor";
+import type { AiProposalChip, AiProposalMove, AiProposalState } from "@/types/ai";
+import type { LineupMove, LineupState } from "@/types/lineup-editor";
 
 /** A chip in the tray, with what the server's check said and how its last send went. */
 export interface StagedChip {
@@ -109,6 +111,22 @@ export function timingOf(chip: Pick<AiProposalChip, "kind" | "date">): string | 
 /** A lineup chip's slot moves as the tray lists them (ESPN ids, as the board keys players). */
 export function movesOf(chip: Pick<AiProposalChip, "moves">): TrayMove[] {
   return chip.moves.map((m) => ({ playerId: m.espn_id, name: m.name, from: m.from_slot_id, to: m.to_slot_id, role: m.role }));
+}
+
+/**
+ * A lineup chip's moves to send against `board` as it is now, as the Week desk
+ * sends what it has staged (`diff`): each player from the slot this board has
+ * him in, less the moves the board already shows. The chip proposes where each
+ * player goes; where he starts from is the board's, and an earlier day's write
+ * carries forward on ESPN (an edit there moves players too), so the chip's
+ * stored slots can be behind it. The server checks the moves it gets are the
+ * chip's (player and slot) before the write. `gone` names a player the chip
+ * moves who has left the roster: then the chip can't be sent as it shows.
+ */
+export function liveMoves(chip: Pick<AiProposalChip, "moves">, board: LineupState): { moves: LineupMove[]; gone: AiProposalMove | null } {
+  const gone = chip.moves.find((m) => !board.players.some((p) => p.player_id === m.espn_id)) ?? null;
+  const staged: Staged = Object.fromEntries(chip.moves.map((m) => [m.espn_id, m.to_slot_id]));
+  return { moves: gone ? [] : diff(board, staged), gone };
 }
 
 /** The projected change, in the league's terms: "+4.5" for points, "+1 cat" for categories; null when the server had none. */

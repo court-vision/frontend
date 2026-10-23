@@ -10,10 +10,12 @@ import {
   chipState,
   dropChipOf,
   lineupChipOf,
+  liveMoves,
   sendOrder,
   stageProblem,
   swapChipOf,
   trayDaysOf,
+  weekdayOf,
   withStaged,
   withoutStaged,
   type ChipPatch,
@@ -73,9 +75,10 @@ export interface ChipTray {
  * sending is the Week desk's own writes — the roster transaction for a move
  * today, pinned to the board as it stands, the scheduled pickup for a later
  * day, or the lineup write for a lineup chip (`writeLineupDay`, against its
- * day's board: today's as the tray holds it, a later day's read first) — with
- * `proposal_id` on the request, so the server marks the chip sent. A refusal
- * stays on the chip's column for a retry; a stale board is read again.
+ * day's board: today's as the tray holds it, a later day's read first, each
+ * move from the slot that board has the player in) — with `proposal_id` on the
+ * request, so the server marks the chip sent. A refusal stays on the chip's
+ * column for a retry; a stale board is read again.
  */
 export function useChipTray(conversationId: number | null): ChipTray {
   const { getToken, userId } = useAuth();
@@ -223,12 +226,26 @@ export function useChipTray(conversationId: number | null): ChipTray {
                   fail(id, "That day's lineup couldn't be read; try again in a moment");
                   return;
                 }
+                // The chip's moves from where this board has each player now, as the Week desk sends
+                // its own: an earlier day's write may have carried into this day, or ESPN moved on
+                const live = liveMoves(c, dayBoard);
+                if (live.gone) {
+                  fail(id, `${live.gone.name} is no longer on your roster`);
+                  return;
+                }
+                if (live.moves.length === 0) {
+                  // The board shows every move already (made in the Week desk, or carried forward from
+                  // an earlier day's write): nothing to send, and the chip stays as proposed
+                  toast.info(`${weekdayOf(c.date)}'s lineup is already set that way on ESPN; nothing to send`);
+                  unstage(id);
+                  continue;
+                }
                 const sent = await writeLineupDay(
                   queryClient,
                   teamId,
                   (body) => apiClient.applyLineupMoves(getToken, teamId, { ...body, proposal_id: id }),
                   dayBoard,
-                  c.moves.map((m) => ({ player_id: m.espn_id, from_slot_id: m.from_slot_id, to_slot_id: m.to_slot_id }))
+                  live.moves
                 );
                 written.push(sent);
                 if (today) board = sent.lineup;
