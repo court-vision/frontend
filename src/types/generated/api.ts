@@ -383,6 +383,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/app-map/maps/{build}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upload App Map
+         * @description Store the map the App Map workflow crawled for one commit.
+         */
+        put: operations["upload_app_map_v1_internal_app_map_maps__build__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/app-map/sign-in-token": {
         parameters: {
             query?: never;
@@ -3367,6 +3387,50 @@ export interface components {
          */
         AppMapSignInResp: {
             data: components["schemas"]["AppMapSignInData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** AppMapStats */
+        AppMapStats: {
+            /** Bytes */
+            bytes: number;
+            /** Desks */
+            desks: number;
+            /** Findings */
+            findings: number;
+            /** Screens */
+            screens: number;
+            /** Signed In Screens */
+            signed_in_screens: number;
+            /** Unseen Copy */
+            unseen_copy: number;
+        };
+        /** AppMapUploadData */
+        AppMapUploadData: {
+            /** Build */
+            build: string;
+            /**
+             * Crawled At
+             * Format: date-time
+             */
+            crawled_at: string;
+            /** Pruned */
+            pruned: number;
+            stats: components["schemas"]["AppMapStats"];
+            /** Stored */
+            stored: boolean;
+        };
+        /**
+         * AppMapUploadResp
+         * @description PUT /v1/internal/app-map/maps/{build}
+         */
+        AppMapUploadResp: {
+            data: components["schemas"]["AppMapUploadData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -11754,6 +11818,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevokeApiKeyResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_app_map_v1_internal_app_map_maps__build__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                build: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppMapUploadResp"];
                 };
             };
             /** @description Validation Error */
