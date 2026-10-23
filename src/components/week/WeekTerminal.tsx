@@ -144,12 +144,13 @@ export function WeekTerminal({
     const onBoard = (id: number) => rawToday.players.find((p) => p.player_id === id);
     return drops.find((id) => !!onBoard(id) && onBoard(id)!.lineup_slot_id !== IR_SLOT_ID) ?? null;
   }, [pinned, rawToday, drops]);
-  // Drops made now leave from today; one an add carries leaves when the add lands: the pickup's
-  // day, or tomorrow for one made now after today's first tip.
+  // Drops made now leave from today, or from tomorrow once today's first tip has passed (he
+  // plays out today); one an add carries leaves when the add lands, on the pickup's day.
   const pairedFrom = paired != null ? pinned?.from ?? addFrom : null;
+  const dropFrom = addFrom ?? todayDay;
   const leaves = useMemo<DropLeave[]>(
-    () => (todayDay == null ? [] : drops.map((id) => ({ id, from: id === paired && pairedFrom != null ? pairedFrom : todayDay }))),
-    [drops, paired, pairedFrom, todayDay]
+    () => (dropFrom == null ? [] : drops.map((id) => ({ id, from: id === paired && pairedFrom != null ? pairedFrom : dropFrom }))),
+    [drops, paired, pairedFrom, dropFrom]
   );
   // Lineup moves are staged on these: each day's lineup without the players gone by then.
   const boards = useMemo(() => withoutDropped(rawBoards, leaves), [rawBoards, leaves]);
@@ -838,9 +839,11 @@ export function WeekTerminal({
         scheduled: pickup ? { add: pickup.add.name, day: pickupDayLabel(pickup.nba_date) } : null,
         pinnedDrops: pinned?.replaces === id,
         demo: data.demo,
+        afterTip: addFrom != null,
+        tomorrow: addFrom != null ? rawBoards[addFrom] ?? null : null,
       });
     },
-    [pendingPickups, nameOf, rawToday, laneHolders, pickupDayLabel, pinned, data.demo]
+    [pendingPickups, nameOf, rawToday, laneHolders, pickupDayLabel, pinned, data.demo, addFrom, rawBoards]
   );
   // Why a staged drop's last send failed, by player.
   const [dropErrors, setDropErrors] = useState<Record<number, string>>({});
@@ -880,10 +883,10 @@ export function WeekTerminal({
     const id = menuPlayer.id;
     if (drops.includes(id)) return { dropped: true, note: null, delta: 0 };
     const note = dropReason(id);
-    if (note || todayDay == null) return { dropped: false, note, delta: 0 };
-    const delta = weekFor([...leaves, { id, from: todayDay }], unstageEverywhere(boards, stagedByDay, id)) - weekNow;
+    if (note || dropFrom == null) return { dropped: false, note, delta: 0 };
+    const delta = weekFor([...leaves, { id, from: dropFrom }], unstageEverywhere(boards, stagedByDay, id)) - weekNow;
     return { dropped: false, note: null, delta };
-  }, [menu, menuPlayer, drops, dropReason, todayDay, weekFor, leaves, boards, stagedByDay, weekNow]);
+  }, [menu, menuPlayer, drops, dropReason, dropFrom, weekFor, leaves, boards, stagedByDay, weekNow]);
 
   /** The staged add / drop as the tray shows it: in the column of the day it is made. */
   const swap = useMemo<(TraySwap & { blocked: string | null; delta: number; day: number }) | null>(() => {
@@ -1150,6 +1153,7 @@ export function WeekTerminal({
       columns.set(nowColumn, {
         ...col,
         drops: loneDrops.map((id) => ({ id, name: nameOf(id) })),
+        dropsTiming: addFrom != null ? `Made now, counts from ${source?.days[addFrom]?.dow ?? "next week"}: today's games have started` : null,
         delta: col.delta + loneDropsDelta,
         // A drop that can't be made now (his game started since, a lane took his spot) keeps the column back.
         problems: [...col.problems, ...loneDrops.map(dropReason).filter((r): r is string => r != null)],
@@ -1169,7 +1173,7 @@ export function WeekTerminal({
       });
     }
     return [...columns.values()].sort((a, b) => a.day - b.day);
-  }, [pending, source, boards, gridNoPreview, weekWith, dayErrors, loneDrops, nowColumn, dropErrors, nameOf, loneDropsDelta, dropReason, swap, data.scheduleError, swapError]);
+  }, [pending, source, boards, gridNoPreview, weekWith, dayErrors, loneDrops, nowColumn, dropErrors, nameOf, loneDropsDelta, dropReason, addFrom, swap, data.scheduleError, swapError]);
 
   // Hovering a pending pickup previews it (the pool has to know him first).
   const previewPickup = useCallback(

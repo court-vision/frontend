@@ -59,6 +59,8 @@ export interface TrayDay {
   moves: TrayMove[];
   /** Players dropped on their own, made now (today's column). */
   drops: Array<{ id: number; name: string }>;
+  /** When those drops count, in words, once today's first tip has passed (they play out today). */
+  dropsTiming?: string | null;
   swap: TraySwap | null;
   /** What this day's moves add to the week. */
   delta: number;
@@ -347,6 +349,10 @@ export function Tray({ days, blocked, sendingDay, onUnstage, onUndrop, onDiscard
               ) : sw?.timing ? (
                 <div className={s.trayColNote} data-tone="hint" title={sw.timing}>
                   {sw.timing}
+                </div>
+              ) : d.drops.length && d.dropsTiming ? (
+                <div className={s.trayColNote} data-tone="hint" title={d.dropsTiming}>
+                  {d.dropsTiming}
                 </div>
               ) : d.drops.length || sw?.drop?.staged ? (
                 <div className={s.trayColNote} data-tone="hint">

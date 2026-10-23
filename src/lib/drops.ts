@@ -72,20 +72,37 @@ export interface DropBlockedInput {
   pinnedDrops: boolean;
   /** The demo writes to nothing, so ESPN's write gate doesn't apply. */
   demo: boolean;
+  /**
+   * Past today's first tip ESPN takes a drop made now off tomorrow's roster, and he plays out
+   * today: today's lock doesn't hold it (James, 2026-10-23), and the drop is checked against
+   * `tomorrow`, that day's board when read (a player added after the tip is only on it).
+   */
+  afterTip?: boolean;
+  tomorrow?: LineupState | null;
 }
 
 /**
  * Why this player can't be dropped now, as a sentence for the menu (and the
  * tray, once staged) — or null when he can. The server refuses the same cases:
- * a locked player (`drop_locked`), a lane holder (`drop_is_lane_holder`) and a
- * player a scheduled pickup drops (`drop_is_scheduled`).
+ * a locked player before today's first tip (`drop_locked`), a lane holder
+ * (`drop_is_lane_holder`) and a player a scheduled pickup drops (`drop_is_scheduled`).
  */
-export function dropBlockedReason({ player, board, laneHolders, scheduled, pinnedDrops, demo }: DropBlockedInput): string | null {
+export function dropBlockedReason({
+  player,
+  board,
+  laneHolders,
+  scheduled,
+  pinnedDrops,
+  demo,
+  afterTip = false,
+  tomorrow = null,
+}: DropBlockedInput): string | null {
   if (!board) return "Dropping from here needs an ESPN team.";
   if (!demo && !board.can_write) return writeBlockedCopy(board.write_blocked_reason);
-  const onBoard = board.players.find((p) => p.player_id === player.id);
-  if (!onBoard) return `${player.name} isn't on today's ESPN roster.`;
-  if (onBoard.locked) {
+  const roster = afterTip && tomorrow ? tomorrow : board;
+  const onBoard = roster.players.find((p) => p.player_id === player.id);
+  if (!onBoard) return `${player.name} isn't on ${roster === board ? "today's" : "tomorrow's"} ESPN roster.`;
+  if (onBoard.locked && !afterTip) {
     return onBoard.game_started
       ? `${player.name} is locked until tomorrow: his game has started.`
       : `${player.name} is locked on ESPN today.`;

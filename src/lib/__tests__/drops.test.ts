@@ -83,6 +83,30 @@ describe("dropBlockedReason", () => {
     expect(dropBlockedReason({ ...base, player: { id: 1, name: "Nobody" } })).toBe("Nobody isn't on today's ESPN roster.");
   });
 
+  describe("past today's first tip", () => {
+    const tomorrow = demoBoard(undefined, "demo-1", today + 1);
+    const late = { ...base, afterTip: true, tomorrow };
+
+    test("his lock doesn't hold the drop: he plays out today", () => {
+      expect(dropBlockedReason({ ...late, board: lockedBoard(true) })).toBeNull();
+      expect(dropBlockedReason({ ...late, board: lockedBoard(false) })).toBeNull();
+    });
+
+    test("he is looked for on tomorrow's board, where one added tonight already is", () => {
+      const gone: LineupState = { ...tomorrow, players: tomorrow.players.filter((p) => p.player_id !== murray) };
+      expect(dropBlockedReason({ ...late, tomorrow: gone })).toBe("Keegan Murray isn't on tomorrow's ESPN roster.");
+      const added = { id: 999, name: "Moussa Diabate" };
+      const arriving: LineupState = { ...tomorrow, players: [...tomorrow.players, { ...tomorrow.players[0], player_id: added.id, name: added.name }] };
+      expect(dropBlockedReason({ ...late, tomorrow: arriving, player: added })).toBeNull();
+      expect(dropBlockedReason({ ...base, player: added })).toBe("Moussa Diabate isn't on today's ESPN roster.");
+    });
+
+    test("tomorrow's board unread, today's stands in for it", () => {
+      expect(dropBlockedReason({ ...late, tomorrow: null })).toBeNull();
+      expect(dropBlockedReason({ ...late, tomorrow: null, player: { id: 1, name: "Nobody" } })).toBe("Nobody isn't on today's ESPN roster.");
+    });
+  });
+
   test("a board ESPN won't take writes on blocks every drop, except in the demo", () => {
     const blocked: LineupState = { ...board, can_write: false, write_blocked_reason: "no_scoring_period" };
     expect(dropBlockedReason({ ...base, board: blocked })).not.toBeNull();
