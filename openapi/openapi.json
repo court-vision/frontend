@@ -276,6 +276,7 @@
             "discriminator": {
               "mapping": {
                 "chart": "#/components/schemas/AiChart",
+                "proposal": "#/components/schemas/AiProposal",
                 "table": "#/components/schemas/AiTable"
               },
               "propertyName": "type"
@@ -286,6 +287,9 @@
               },
               {
                 "$ref": "#/components/schemas/AiChart"
+              },
+              {
+                "$ref": "#/components/schemas/AiProposal"
               }
             ],
             "title": "Block"
@@ -903,6 +907,481 @@
           "timestamp"
         ],
         "title": "AiFeedbackResp",
+        "type": "object"
+      },
+      "AiProposal": {
+        "description": "The chip as a block in a turn's parts.",
+        "properties": {
+          "add": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiProposalPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Projected change for the matchup (points, or category wins)",
+            "title": "Change"
+          },
+          "date": {
+            "description": "The NBA date the move is for",
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "day": {
+            "description": "Matchup day index, 0 = the matchup's first day",
+            "title": "Day",
+            "type": "integer"
+          },
+          "dow": {
+            "description": "Mon, Tue, ...",
+            "title": "Dow",
+            "type": "string"
+          },
+          "drop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiProposalPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expires_at": {
+            "description": "When the chip stops being stageable (the day's first tip, or its rollover)",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique within its turn, e.g. 'p1'",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "transaction",
+              "scheduled"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "proposal_id": {
+            "title": "Proposal Id",
+            "type": "integer"
+          },
+          "reason": {
+            "description": "The agent's reason, as it wrote it",
+            "title": "Reason",
+            "type": "string"
+          },
+          "scoring": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The league's scoring format the change is in",
+            "title": "Scoring"
+          },
+          "scoring_period_id": {
+            "description": "ESPN's day for the move (the scheduled pickup's day)",
+            "title": "Scoring Period Id",
+            "type": "integer"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "state": {
+            "description": "proposed (can be staged), sent, dismissed, or expired",
+            "enum": [
+              "proposed",
+              "sent",
+              "dismissed",
+              "expired"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "summary": {
+            "description": "One sentence: the move, its day, and what sending does",
+            "title": "Summary",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "type": {
+            "const": "proposal",
+            "default": "proposal",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "state",
+          "kind",
+          "team_id",
+          "day",
+          "date",
+          "dow",
+          "scoring_period_id",
+          "add",
+          "drop",
+          "summary",
+          "reason",
+          "change",
+          "scoring",
+          "expires_at",
+          "sent_at",
+          "type",
+          "id"
+        ],
+        "title": "AiProposal",
+        "type": "object"
+      },
+      "AiProposalCheckData": {
+        "properties": {
+          "chip": {
+            "$ref": "#/components/schemas/AiProposalChip"
+          },
+          "problems": {
+            "description": "Why the chip can't be staged now; empty when it can",
+            "items": {
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          }
+        },
+        "required": [
+          "chip",
+          "problems"
+        ],
+        "title": "AiProposalCheckData",
+        "type": "object"
+      },
+      "AiProposalChip": {
+        "description": "A roster move the agent proposed and the server checked: the chip the AI desk shows. Staged,\nit goes into the Week desk's tray (rendered in the AI desk) and is sent by its slider through\nthe roster transaction (`kind` transaction, today) or the scheduled pickup (`kind` scheduled, a\nlater day) with `proposal_id` on the request; the route marks it sent. Never executed from here.",
+        "properties": {
+          "add": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiProposalPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Projected change for the matchup (points, or category wins)",
+            "title": "Change"
+          },
+          "date": {
+            "description": "The NBA date the move is for",
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "day": {
+            "description": "Matchup day index, 0 = the matchup's first day",
+            "title": "Day",
+            "type": "integer"
+          },
+          "dow": {
+            "description": "Mon, Tue, ...",
+            "title": "Dow",
+            "type": "string"
+          },
+          "drop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiProposalPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expires_at": {
+            "description": "When the chip stops being stageable (the day's first tip, or its rollover)",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "transaction",
+              "scheduled"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "proposal_id": {
+            "title": "Proposal Id",
+            "type": "integer"
+          },
+          "reason": {
+            "description": "The agent's reason, as it wrote it",
+            "title": "Reason",
+            "type": "string"
+          },
+          "scoring": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The league's scoring format the change is in",
+            "title": "Scoring"
+          },
+          "scoring_period_id": {
+            "description": "ESPN's day for the move (the scheduled pickup's day)",
+            "title": "Scoring Period Id",
+            "type": "integer"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "state": {
+            "description": "proposed (can be staged), sent, dismissed, or expired",
+            "enum": [
+              "proposed",
+              "sent",
+              "dismissed",
+              "expired"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "summary": {
+            "description": "One sentence: the move, its day, and what sending does",
+            "title": "Summary",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "state",
+          "kind",
+          "team_id",
+          "day",
+          "date",
+          "dow",
+          "scoring_period_id",
+          "add",
+          "drop",
+          "summary",
+          "reason",
+          "change",
+          "scoring",
+          "expires_at",
+          "sent_at"
+        ],
+        "title": "AiProposalChip",
+        "type": "object"
+      },
+      "AiProposalDismissResp": {
+        "description": "Response for POST /v1/internal/ai/proposals/{proposal_id}/dismiss.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiProposalChip"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiProposalDismissResp",
+        "type": "object"
+      },
+      "AiProposalPlayer": {
+        "properties": {
+          "espn_id": {
+            "description": "ESPN player id: what the roster transaction / scheduled pickup takes",
+            "title": "Espn Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "nba.players.id when known (Scout, headshot)",
+            "title": "Nba Player Id"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NBA tricode",
+            "title": "Team"
+          }
+        },
+        "required": [
+          "espn_id",
+          "nba_player_id",
+          "name",
+          "team"
+        ],
+        "title": "AiProposalPlayer",
+        "type": "object"
+      },
+      "AiProposalResp": {
+        "description": "Response for GET /v1/internal/ai/proposals/{proposal_id}.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiProposalCheckData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiProposalResp",
         "type": "object"
       },
       "AiTable": {
@@ -18355,6 +18834,18 @@
             "title": "Expected Scoring Period Id",
             "type": "integer"
           },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
+          },
           "roster_version": {
             "maxLength": 64,
             "minLength": 1,
@@ -18851,6 +19342,18 @@
               }
             ],
             "title": "Drop Player Id"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
           },
           "scoring_period_id": {
             "exclusiveMinimum": 0.0,
@@ -23209,6 +23712,125 @@
           }
         ],
         "summary": "Send the agent a message; the answer streams back",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/proposals/{proposal_id}": {
+      "get": {
+        "description": "The chip as it stands and a fresh check against the board and the player pool: what the desk reads before it stages the chip into the tray. `problems` says why it can't be staged.",
+        "operationId": "get_proposal_v1_internal_ai_proposals__proposal_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiProposalResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such proposal for this caller (AI_PROPOSAL_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One of the agent's proposed moves, checked again",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/proposals/{proposal_id}/dismiss": {
+      "post": {
+        "description": "The chip leaves the tray for good; a move that was already sent can't be dismissed (409 AI_PROPOSAL_SENT). Sending a chip is the Week desk's roster transaction / scheduled pickup with `proposal_id` on the request, never a route here.",
+        "operationId": "dismiss_proposal_v1_internal_ai_proposals__proposal_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiProposalDismissResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such proposal for this caller (AI_PROPOSAL_NOT_FOUND)"
+          },
+          "409": {
+            "description": "Already sent (AI_PROPOSAL_SENT)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Let one of the agent's proposed moves go",
         "tags": [
           "AI"
         ]

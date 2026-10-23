@@ -421,22 +421,49 @@ function sourceOpponent(s: OppSpec): SourceOpponent {
 
 const sum = (xs: number[]) => Math.round(xs.reduce((a, b) => a + b, 0) * 10) / 10;
 
+/** Cut after Monday's games, for Keegan Murray: on Monday's lineup, on no roster since. */
+const CUT: MineSpec = {
+  id: 4683688, nbaId: 1641709, name: "Ausar Thompson", team: "DET", slot: UT, eligible: [SG, SF, G, F, UT], avg: 27.5, line: { mon: 24.5 },
+};
+const ADDED_TUESDAY = 4594327;
+
+/**
+ * Monday's lineup as it stood (the nightly record): Hart sat on the bench, so
+ * his 33.5 didn't count; Thompson held a UT spot; Murray wasn't on the roster.
+ */
+const MONDAY: ReadonlyMap<number, number> = new Map([
+  ...MINE.filter((s) => s.id !== ADDED_TUESDAY).map((s): [number, number] => [s.id, s.name === "Josh Hart" ? BE : s.slot]),
+  [CUT.id, CUT.slot],
+]);
+const SLOT_IDS = Object.fromEntries(Object.entries(SLOT_NAMES).map(([id, name]) => [name, Number(id)]));
+const OPP_MONDAY: ReadonlyMap<number, number> = new Map(OPP.map((s) => [s.id, SLOT_IDS[s.slot] ?? BE]));
+
 export function demoSource(roster: MineSpec[] = MINE): WeekSource {
-  const mine = roster.map(sourcePlayer);
+  const onRoster = new Set(roster.map((s) => s.id));
+  const gone = [...MINE, CUT].filter((s) => MONDAY.has(s.id) && !onRoster.has(s.id));
+  // Like the API's, a player dropped since has Monday's game and no other.
+  const goneMine = gone.map((s) => {
+    const p = sourcePlayer(s);
+    return { ...p, games: p.games.map((g, i) => (DEMO_DAYS[i]?.kind === "past" ? g : null)) };
+  });
   const opponents = OPP.map(sourceOpponent);
   const youToday = sum(roster.filter((s) => s.slot !== BE && s.slot !== IR).map((s) => s.line?.tue?.fpts ?? 0));
   const oppToday = sum(OPP.filter((s) => !INACTIVE.has(s.slot)).map((s) => s.line?.tue?.fpts ?? 0));
-  const youMon = sum(MINE.map((s) => s.line?.mon ?? 0));
-  const oppMon = sum(OPP.map((s) => s.line?.mon ?? 0));
+  const counted = (slot: number | undefined) => slot != null && slot !== BE && slot !== IR;
+  const youMon = sum([...MINE, CUT].filter((s) => counted(MONDAY.get(s.id))).map((s) => s.line?.mon ?? 0));
+  const oppMon = sum(OPP.filter((s) => counted(OPP_MONDAY.get(s.id))).map((s) => s.line?.mon ?? 0));
+  const none = DEMO_DAYS.map(() => null);
   return {
     period: 4,
     days: DEMO_DAYS,
     todayIndex: TODAY,
     you: { name: "Paint Beasts", current: sum([youMon, youToday]) },
     opp: { name: "Splash Dept.", current: sum([oppMon, oppToday]) },
-    mine,
+    mine: roster.map(sourcePlayer),
     opponents,
     pastTotals: { you: [youMon, null, null, null, null, null, null], opp: [oppMon, null, null, null, null, null, null] },
+    pastLineups: { you: none.map((x, i) => (i === 0 ? MONDAY : x)), opp: none.map((x, i) => (i === 0 ? OPP_MONDAY : x)) },
+    gone: { mine: goneMine, opp: [] },
     activeSlotCount: 10,
   };
 }

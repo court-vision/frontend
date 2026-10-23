@@ -5,11 +5,13 @@
  *
  * Your spots come from the week grid's daily lineups (each day's own ESPN
  * lineup, or the best one, with any staged moves). The opponent's come from
- * today's lineup slot, the only one the API reports: future days carry it
- * forward, as ESPN does unless they edit ahead, and past days reuse it for
- * want of a record. Day totals for finished days are the API's, never a sum
- * over those approximate spots.
+ * today's lineup slot: future days carry it forward, as ESPN does unless they
+ * edit ahead. A finished day sits both sides as they stood when the API has
+ * that day's lineups on record, and reuses today's spots for a side it
+ * doesn't. Day totals for finished days are the API's, never a sum over
+ * approximate spots.
  */
+import { slotName } from "./lineup-editor";
 import type {
   DayGame,
   DayKind,
@@ -73,7 +75,7 @@ export interface MatchupDay {
   rows: DuelRow[];
   you: SideDay;
   opp: SideDay;
-  /** The spots are today's, not the day's own (past days, and the opponent's future). */
+  /** The spots are today's, not the day's own (a past day with no record, and the opponent's future). */
   spotsAsToday: { you: boolean; opp: boolean };
 }
 
@@ -151,10 +153,14 @@ export function buildMatchupDay(source: WeekSource, grid: WeekGrid, day: number)
   const { slots, seats } = grid.lineups;
   const daySeats = seats[day] ?? [];
 
-  // The opponent, seated by today's slot, in the order the API lists them.
+  // The opponent, seated by that day's slot when a finished day's lineup is on
+  // record (nobody added since, everyone dropped since), else by today's, in
+  // the order the API lists them.
+  const stood = kind === "past" ? source.pastLineups?.opp[day] ?? null : null;
   const queue = new Map<string, SourceOpponent[]>();
-  for (const o of source.opponents) {
-    const slot = canonical(o.slot ?? (o.active ? "UT" : "BE"));
+  for (const o of stood ? [...source.opponents, ...(source.gone?.opp ?? [])] : source.opponents) {
+    if (stood && !stood.has(o.id)) continue;
+    const slot = canonical(stood ? slotName(stood.get(o.id)!) : o.slot ?? (o.active ? "UT" : "BE"));
     queue.set(slot, [...(queue.get(slot) ?? []), o]);
   }
   const take = (slot: string) => {
@@ -215,7 +221,7 @@ export function buildMatchupDay(source: WeekSource, grid: WeekGrid, day: number)
     rows,
     you: sideTotals(rows.map((r) => r.you), youDay?.actual ?? null, youDay?.projected ?? null),
     opp: sideTotals(rows.map((r) => r.opp), oppDay?.actual ?? null, oppDay?.projected ?? null),
-    spotsAsToday: { you: kind === "past", opp: kind !== "today" },
+    spotsAsToday: { you: kind === "past" && !grid.lineups.asItStood[day], opp: kind === "past" ? !stood : kind !== "today" },
   };
 }
 

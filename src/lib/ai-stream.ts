@@ -6,7 +6,8 @@
  *   lookup, `note` for its own progress note, `step` for the start of each
  *   step after the first, when whatever the last status said is done);
  * - `text` `{delta}`: the answer's prose, as it is written;
- * - `block`: a table or chart the server built from the agent's lookups;
+ * - `block`: a table or chart the server built from the agent's lookups, or a
+ *   chip (a move the agent proposed and the server checked);
  * - `error` `{code, message}`: the turn failed;
  * - `done` `{turn_id, outcome, cost_usd, …}`: always last.
  *

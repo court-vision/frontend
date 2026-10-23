@@ -117,9 +117,11 @@ export function MatchupView({ grid, source, day, todayIndex, onDay }: MatchupVie
 
       {md.spotsAsToday.you || md.spotsAsToday.opp ? (
         <div className={s.muNote}>
-          {md.kind === "past"
-            ? "No lineup is recorded for past days: both sides sit in today's spots, so stat totals are approximate. Point totals are ESPN's."
-            : "The opponent's spots are today's, carried forward as ESPN does unless they set this day themselves."}
+          {md.kind !== "past"
+            ? "The opponent's spots are today's, carried forward as ESPN does unless they set this day themselves."
+            : md.spotsAsToday.you && md.spotsAsToday.opp
+              ? "No lineup is on record for this day: both sides sit in today's spots, so stat totals are approximate. Point totals are ESPN's."
+              : `No lineup is on record for ${md.spotsAsToday.you ? "your side" : "their side"} this day: it sits in today's spots, so its stat totals are approximate. Point totals are ESPN's.`}
         </div>
       ) : null}
 
@@ -152,7 +154,8 @@ export function MatchupView({ grid, source, day, todayIndex, onDay }: MatchupVie
         )}
         {scope === "week" && source.format !== "categories" ? (
           <div className={dk.sub} style={{ paddingTop: 8 }}>
-            Stats sum the counted box scores of the days played so far{days.some((x) => x.kind === "past") ? " (past days in today's spots)" : ""}.
+            Stats sum the counted box scores of the days played so far
+            {days.some((x) => x.kind === "past" && (x.spotsAsToday.you || x.spotsAsToday.opp)) ? " (a past day with no lineup on record in today's spots)" : ""}.
           </div>
         ) : null}
       </section>

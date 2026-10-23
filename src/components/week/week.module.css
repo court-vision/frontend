@@ -523,7 +523,8 @@ button.headCell:hover {
   color: var(--slot-ink, var(--text));
 }
 
-.slotChip[data-group="bench"] {
+.slotChip[data-group="bench"],
+.slotChip[data-group="later"] {
   border-style: dashed;
   background: transparent;
   color: var(--text-3);
@@ -551,7 +552,8 @@ button.headCell:hover {
 
 /* Bench and IR rows read as "not in the lineup": hatched roster cell, quieter name and face. */
 .row[data-group="bench"] .rosterCell,
-.row[data-group="ir"] .rosterCell {
+.row[data-group="ir"] .rosterCell,
+.row[data-group="later"] .rosterCell {
   background-image: repeating-linear-gradient(
     135deg,
     transparent 0 7px,
@@ -560,13 +562,15 @@ button.headCell:hover {
 }
 
 .row[data-group="bench"] .name,
-.row[data-group="ir"] .name {
+.row[data-group="ir"] .name,
+.row[data-group="later"] .name {
   color: var(--text-2);
   font-weight: 400;
 }
 
 .row[data-group="bench"] [data-face],
-.row[data-group="ir"] [data-face] {
+.row[data-group="ir"] [data-face],
+.row[data-group="later"] [data-face] {
   opacity: 0.6;
   filter: grayscale(0.7);
 }

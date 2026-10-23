@@ -2,15 +2,18 @@ import { describe, expect, test } from "bun:test";
 import {
   assignMin,
   buildWeekGrid,
+  defaultViewDay,
   healthOf,
   liveClock,
   planDay,
+  recordedSlots,
   slotsFromPositions,
   viewableDays,
   type DayGame,
   type SourcePlayer,
   type WeekSource,
 } from "../week-grid";
+import { isActiveSlot } from "../lineup-editor";
 import { sourceFromStreamer } from "../week-source";
 import { DEMO_DAYS, DEMO_STREAMERS, demoBoard, demoSchedule, demoSource } from "../week-demo";
 
@@ -98,9 +101,10 @@ describe("buildWeekGrid on the demo week", () => {
 
   test("now is the official score; past days use the API totals", () => {
     const grid = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today });
-    expect(grid.now.you).toBe(458.5);
+    expect(grid.now.you).toBe(449.5);
     expect(grid.now.opp).toBe(477.5);
-    expect(grid.you[0].projected).toBe(318.5);
+    // Monday's starters only: Hart's 33.5 sat on the bench, Thompson's 24.5 counted.
+    expect(grid.you[0].projected).toBe(309.5);
   });
 
   test("an OUT player's future games are marked out and never planned", () => {
@@ -203,8 +207,9 @@ describe("daily lineups", () => {
     expect(wed.slice(0, drop).map(name)).not.toContain("Keegan Murray");
     expect(wed[drop]).toMatchObject({ outgoing: true, player: { name: "Keegan Murray" } });
     expect(wed.find((s) => s?.incoming)?.player.name).toBe("Toumani Camara");
-    // On a day already played he is still where he sat, and the drop row is empty.
-    expect(lineups.seats[0].map(name)).toContain("Keegan Murray");
+    // A day already played is as it stood (Murray joined on Tuesday), and the drop row is empty.
+    expect(lineups.seats[0].map(name)).not.toContain("Keegan Murray");
+    expect(lineups.seats[0].map(name)).toContain("Ausar Thompson");
     expect(lineups.seats[0][drop]).toBeNull();
   });
 
@@ -440,6 +445,102 @@ describe("each day's own ESPN lineup", () => {
   });
 });
 
+describe("a day already played", () => {
+  const source = demoSource();
+  const board = demoBoard();
+  const today = source.todayIndex!;
+  const MON = 0;
+  const row = (g: ReturnType<typeof buildWeekGrid>, who: string) => g.rows.find((r) => r.player?.name === who);
+  const seatsOn = (g: ReturnType<typeof buildWeekGrid>, day: number) =>
+    g.lineups.slots.map((def, i) => [def.slot, g.lineups.seats[day][i]?.player.name ?? null] as const);
+
+  test("sits as it stood: a benched game doesn't count, and nobody added since is there", () => {
+    const grid = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today });
+    expect(grid.lineups.asItStood).toEqual([true, false, false, false, false, false, false]);
+    expect(row(grid, "Josh Hart")!.cells[MON]).toMatchObject({ state: "final", value: 33.5, counts: false, tag: "BENCH" });
+    expect(row(grid, "Jalen Johnson")!.cells[MON]).toMatchObject({ state: "final", value: 47, counts: true, tag: null });
+    expect(row(grid, "Keegan Murray")!.cells[MON].state).toBe("none");
+    const monday = seatsOn(grid, MON);
+    expect(monday.filter(([slot]) => slot === "UT").map(([, who]) => who)).toEqual(["Alperen Şengün", "Trey Murphy III", "Ausar Thompson"]);
+    expect(monday.filter(([slot]) => slot === "BE").map(([, who]) => who)).toContain("Josh Hart");
+    expect(monday.map(([, who]) => who)).not.toContain("Keegan Murray");
+  });
+
+  test("before the board loads, its starters sit in the spots on record", () => {
+    const grid = buildWeekGrid({ source, board: null, staged: {}, incoming: null, viewDay: MON });
+    const monday = seatsOn(grid, MON);
+    expect(monday.filter(([slot]) => slot === "UT").map(([, who]) => who)).toEqual(["Alperen Şengün", "Trey Murphy III", "Ausar Thompson"]);
+    expect(monday.find(([slot]) => slot === "PG")?.[1]).toBe("Tyrese Maxey");
+    expect(monday.filter(([slot]) => slot === "BE").map(([, who]) => who)).toContain("Josh Hart");
+    const viewed = grid.rows.filter((r) => r.player && r.slotId != null && isActiveSlot(r.slotId)).map((r) => r.player!.name);
+    expect(viewed).toHaveLength(10);
+    expect(viewed).toContain("Tyrese Maxey");
+    expect(grid.you[MON].actual).toBe(309.5);
+  });
+
+  test("before the board loads, a finished day with no record sits in today's spots, not another day's record", () => {
+    // Tuesday is played too, with nothing on record; Wednesday is today.
+    const later = {
+      ...source,
+      todayIndex: 2,
+      days: source.days.map((d) => (d.index === 1 ? { ...d, kind: "past" as const } : d.index === 2 ? { ...d, kind: "today" as const } : d)),
+    };
+    const grid = buildWeekGrid({ source: later, board: null, staged: {}, incoming: null, viewDay: 1 });
+    expect(grid.lineups.asItStood.slice(0, 3)).toEqual([true, false, false]);
+    const slotOf = (day: number) =>
+      new Map(seatsOn(grid, day).filter(([, who]) => who).map(([slot, who]) => [who!, slot]));
+    const tuesday = slotOf(1);
+    const wednesday = slotOf(2);
+    expect(tuesday.get("Tyrese Maxey")).toBe(wednesday.get("Tyrese Maxey"));
+    for (const [who, slot] of tuesday) if (wednesday.has(who)) expect(`${who} ${slot}`).toBe(`${who} ${wednesday.get(who)}`);
+  });
+
+  test("a spot left empty on every day on record still holds a starter on the days ahead", () => {
+    const ausar = source.gone!.mine.find((p) => p.name === "Ausar Thompson")!.id;
+    const benched = new Map(source.pastLineups!.you[MON]!).set(ausar, 12);
+    const emptyUt = { ...source, pastLineups: { ...source.pastLineups!, you: source.pastLineups!.you.map((l, d) => (d === MON ? benched : l)) } };
+    const grid = buildWeekGrid({ source: emptyUt, board: null, staged: {}, incoming: null, viewDay: today });
+    const ut = (day: number) => seatsOn(grid, day).filter(([slot]) => slot === "UT").map(([, who]) => who);
+    expect(ut(MON)).toEqual(["Alperen Şengün", "Trey Murphy III", null]);
+    // Every day plans with the league's 10 active spots, not the 9 Monday filled.
+    expect(grid.lineups.slots.filter((s) => isActiveSlot(s.slotId))).toHaveLength(source.activeSlotCount);
+    expect(recordedSlots([benched], 10)).toContainEqual({ slotId: 11, count: 3 });
+    expect(recordedSlots([null, null], 10)).toEqual([]);
+  });
+
+  test("a player dropped since is on that day only: not in today's rows or any later day", () => {
+    const grid = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today });
+    expect(row(grid, "Ausar Thompson")).toBeUndefined();
+    for (let day = today; day < grid.days.length; day++) {
+      expect(seatsOn(grid, day).map(([, who]) => who)).not.toContain("Ausar Thompson");
+    }
+    expect(seatsOn(grid, today).map(([, who]) => who)).toContain("Keegan Murray");
+  });
+
+  test("the player view can show it, read-only, with the players added since below", () => {
+    expect(viewableDays(source)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(defaultViewDay(source)).toBe(today);
+    const grid = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: MON });
+    expect(grid.rows.filter((r) => r.slot === "UT").map((r) => r.player?.name)).toContain("Ausar Thompson");
+    expect(row(grid, "Josh Hart")!.slot).toBe("BE");
+    expect(row(grid, "Keegan Murray")).toMatchObject({ slot: "—", slotId: null, later: true });
+    expect(grid.rows[grid.rows.length - 1].later).toBe(true);
+    expect(grid.lineups.editable[MON]).toBe(false);
+    // The week's totals are the same whichever day the roster column shows.
+    const onToday = buildWeekGrid({ source, board, staged: {}, incoming: null, viewDay: today });
+    expect(grid.projected).toEqual(onToday.projected);
+    expect(grid.you.map((t) => t.projected)).toEqual(onToday.you.map((t) => t.projected));
+  });
+
+  test("with no lineup on record it sits in today's spots and every game shows as counted", () => {
+    const bare = { ...source, gone: undefined, pastLineups: undefined };
+    const grid = buildWeekGrid({ source: bare, board, staged: {}, incoming: null, viewDay: today });
+    expect(grid.lineups.asItStood[MON]).toBe(false);
+    expect(row(grid, "Josh Hart")!.cells[MON]).toMatchObject({ state: "final", counts: true, tag: null });
+    expect(seatsOn(grid, MON).map(([, who]) => who)).toContain("Keegan Murray");
+  });
+});
+
 describe("buildWeekGrid without a board", () => {
   const g = (avg: number): DayGame => ({ opp: "vs X", time: "19:00", status: "scheduled", fpts: null, clock: null, remaining: 1, out: false });
   const player = (id: number, avg: number): SourcePlayer => ({
@@ -459,6 +560,7 @@ describe("buildWeekGrid without a board", () => {
 
   test("before the period starts every day is viewable and extras sit", () => {
     expect(viewableDays(source)).toEqual([0]);
+    expect(defaultViewDay(source)).toBe(0);
     const grid = buildWeekGrid({ source, board: null, staged: {}, incoming: null, viewDay: 0 });
     const sits = grid.rows.filter((r) => r.cells[0].tag === "SITS").map((r) => r.player?.id);
     expect(sits).toEqual([2]);
