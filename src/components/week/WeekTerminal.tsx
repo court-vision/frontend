@@ -30,6 +30,7 @@ import {
   buildWeekGrid,
   isOutStatus,
   planDay,
+  defaultViewDay,
   viewableDays,
   type DayBoard,
   type GridInput,
@@ -175,7 +176,8 @@ export function WeekTerminal({
   const viewableList = useMemo(() => (source ? viewableDays(source) : []), [source]);
   const viewable = useMemo(() => new Set(viewableList), [viewableList]);
   const [viewDayPick, setViewDay] = useState<number | null>(null);
-  const viewDay = viewDayPick != null && viewable.has(viewDayPick) ? viewDayPick : viewableList[0] ?? 0;
+  // The player view's day: today until another is picked; a day already played is read-only.
+  const viewDay = viewDayPick != null && viewable.has(viewDayPick) ? viewDayPick : source ? defaultViewDay(source) : 0;
   const todayIndex = source?.todayIndex ?? null;
   // The daily view's expanded day: any day, past ones included; today (or ESPN's day) by
   // default. "none" collapses every day (clicking the focused day again).

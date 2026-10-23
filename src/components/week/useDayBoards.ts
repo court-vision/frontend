@@ -32,6 +32,8 @@ export interface DayLineups {
   boards: Array<LineupState | undefined>;
   /** The day index of ESPN's today, if it falls in this week (day 1 before the season). */
   todayDay: number | null;
+  /** ESPN's today as the board names it (YYYY-MM-DD), in this week or not; null until it loads. */
+  boardDate: string | null;
   /** ESPN's day number for a day index. */
   periodOf: (day: number) => number | null;
   loading: boolean;
@@ -204,8 +206,9 @@ export function useDayBoards(
 
   const loading = today.isLoading || laterDays.loading;
   const applying = mutation.isPending;
+  const boardDate = anchor?.nba_date ?? null;
   return useMemo(
-    () => ({ boards, todayDay: todayDay >= 0 ? todayDay : null, periodOf, loading, apply, settle, refresh, planToday, applying }),
-    [boards, todayDay, periodOf, loading, apply, settle, refresh, planToday, applying]
+    () => ({ boards, todayDay: todayDay >= 0 ? todayDay : null, boardDate, periodOf, loading, apply, settle, refresh, planToday, applying }),
+    [boards, todayDay, boardDate, periodOf, loading, apply, settle, refresh, planToday, applying]
   );
 }

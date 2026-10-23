@@ -44,14 +44,41 @@ describe("buildMatchupDay", () => {
     expect(c.edge).toBe("you"); // Jokić 41.5 live vs Adebayo 39.0 final
   });
 
-  test("days ahead project, days past reuse today's spots", () => {
+  test("days ahead project; a past day on record sits both sides as they stood", () => {
     const thu = days[3];
     expect(thu.kind).toBe("future");
     expect(thu.spotsAsToday).toEqual({ you: false, opp: true });
     const withGame = thu.rows.find((r) => r.you?.game && r.you.counts)!;
     expect(withGame.you!.projected).toBe(true);
-    expect(days[0].spotsAsToday.you).toBe(true);
-    expect(days[0].you.actual).toBe(grid.you[0].actual);
+    const mon = days[0];
+    expect(mon.spotsAsToday).toEqual({ you: false, opp: false });
+    expect(mon.you.actual).toBe(grid.you[0].actual);
+    const hart = mon.rows.find((r) => r.you?.name === "Josh Hart")!;
+    expect(hart.group).toBe("bench");
+    expect(hart.you!.counts).toBe(false);
+    expect(mon.rows.find((r) => r.you?.name === "Ausar Thompson")!.group).toBe("active");
+    expect(mon.rows.some((r) => r.you?.name === "Keegan Murray")).toBe(false);
+  });
+
+  test("the opponent sits in that day's slots, and only the players on that day's roster", () => {
+    const stood = new Map(source.pastLineups!.opp[0]!);
+    const herro = source.opponents.find((o) => o.name === "Tyler Herro")!;
+    const sabonis = source.opponents.find((o) => o.name === "Domantas Sabonis")!;
+    stood.set(herro.id, 11);
+    stood.set(sabonis.id, 12);
+    const lineups = { you: source.pastLineups!.you, opp: [stood, ...source.pastLineups!.opp.slice(1)] };
+    const mon = buildMatchupDay({ ...source, pastLineups: lineups }, grid, 0);
+    expect(mon.rows.find((r) => r.opp?.name === "Tyler Herro")!.group).toBe("active");
+    expect(mon.rows.find((r) => r.opp?.name === "Domantas Sabonis")!.group).toBe("bench");
+    stood.delete(herro.id);
+    const without = buildMatchupDay({ ...source, pastLineups: lineups }, grid, 0);
+    expect(without.rows.some((r) => r.opp?.name === "Tyler Herro")).toBe(false);
+  });
+
+  test("a past day with no record reuses today's spots on both sides", () => {
+    const bare = { ...source, gone: undefined, pastLineups: undefined };
+    const g = buildWeekGrid({ source: bare, board, staged: {}, incoming: null, viewDay: DEMO_TODAY });
+    expect(buildMatchupDay(bare, g, 0).spotsAsToday).toEqual({ you: true, opp: true });
   });
 
   describe("a previewed add", () => {

@@ -63,7 +63,7 @@ interface WeekGridProps {
   /** A free agent is picked: clicking a roster player makes him the drop. */
 }
 
-type Group = "active" | "bench" | "ir" | "drop";
+type Group = "active" | "bench" | "ir" | "drop" | "later";
 
 const ROW_SPRING = { type: "spring", stiffness: 520, damping: 44, mass: 0.7 } as const;
 
@@ -73,9 +73,13 @@ function slotGroup(slotId: number | null): Group {
   return "active";
 }
 
-/** Each row's group: by its slot on the selected day; players leaving (a previewed add's drop, staged drops) have their own, last. */
+/**
+ * Each row's group: by its slot on the selected day; players leaving (a
+ * previewed add's drop, staged drops) have their own, last; on a past day,
+ * players added since sit in theirs, below its lineup.
+ */
 function rowGroups(rows: GridRow[]): Group[] {
-  return rows.map((r) => (r.outgoing ? "drop" : slotGroup(r.slotId)));
+  return rows.map((r) => (r.outgoing ? "drop" : r.later ? "later" : slotGroup(r.slotId)));
 }
 
 export function WeekGrid({
@@ -101,6 +105,9 @@ export function WeekGrid({
   const peak = Math.max(1, ...grid.rows.flatMap((r) => r.cells.map((c) => (c.counts ? c.value ?? 0 : 0))));
   const groups = rowGroups(grid.rows);
   const isToday = grid.viewDay === todayIndex;
+  const viewing = grid.days[grid.viewDay];
+  // A played day sits as it stood when it's on record; without one it shows today's spots, every game counted.
+  const played: Played = viewing?.kind !== "past" ? null : grid.lineups.asItStood[grid.viewDay] ? "stood" : "unrecorded";
   // Rows follow the ESPN board in the as-set view, and on today in either view.
   const onBoard = mode === "espn" || isToday;
 
@@ -152,7 +159,7 @@ export function WeekGrid({
     const count = groups.filter((g, j) => g === group && grid.rows[j].player && grid.rows[j].kind !== "incoming").length;
     return (
       <Fragment key={row.key}>
-        {starts ? <GroupRow group={group} count={count} onBoard={onBoard} /> : null}
+        {starts ? <GroupRow group={group} count={count} onBoard={onBoard} played={played} /> : null}
         <GridRowView
           row={row}
           group={group}
@@ -198,9 +205,11 @@ export function WeekGrid({
           <div className={s.head} role="row">
             <div className={s.rosterCell} role="columnheader">
               <span className={dk.label}>
-                {onBoard
-                  ? "ESPN lineup"
-                  : `Best lineup · ${grid.days[grid.viewDay] ? `${grid.days[grid.viewDay].dow} ${monthDay(grid.days[grid.viewDay].date)}` : ""}`}
+                {played
+                  ? `${grid.lineups.asItStood[grid.viewDay] ? "As it stood" : "Today's spots"} · ${viewing.dow} ${monthDay(viewing.date)}`
+                  : onBoard
+                    ? "ESPN lineup"
+                    : `Best lineup · ${viewing ? `${viewing.dow} ${monthDay(viewing.date)}` : ""}`}
               </span>
               {drag ? <span className={dk.sub} style={{ marginLeft: "auto" }}>drag to rearrange</span> : null}
             </div>
@@ -235,7 +244,7 @@ export function WeekGrid({
                   key={d.date}
                   type="button"
                   {...common}
-                  title={`Show the lineup for ${d.dow} ${monthDay(d.date)}`}
+                  title={`Show the lineup for ${d.dow} ${monthDay(d.date)}${d.kind === "past" ? " (played, read-only)" : ""}`}
                   onClick={() => onViewDay(d.index)}
                 >
                   {inner}
@@ -314,16 +323,26 @@ export function WeekGrid({
 // Rows
 // ---------------------------------------------------------------------------
 
-function GroupRow({ group, count, onBoard }: { group: Group; count: number; onBoard: boolean }) {
-  const label = group === "bench" ? "Bench" : group === "drop" ? "Dropping" : "Injured reserve";
+type Played = "stood" | "unrecorded" | null;
+
+function GroupRow({ group, count, onBoard, played }: { group: Group; count: number; onBoard: boolean; played: Played }) {
+  const label = group === "bench" ? "Bench" : group === "drop" ? "Dropping" : group === "later" ? "Added since" : "Injured reserve";
   const note =
-    group === "bench"
-      ? onBoard
-        ? "games here don't count"
-        : "no game, or no room that day"
-      : group === "drop"
-        ? "leaves the roster"
-        : "doesn't score";
+    played === "unrecorded" && (group === "bench" || group === "ir")
+      ? "today's spot; every game that day counted"
+      : group === "bench"
+        ? played
+          ? "games here didn't count"
+          : onBoard
+            ? "games here don't count"
+            : "no game, or no room that day"
+        : group === "drop"
+          ? "leaves the roster"
+          : group === "later"
+            ? "not on the roster that day"
+            : played
+              ? "didn't score"
+              : "doesn't score";
   return (
     <motion.div layout="position" transition={ROW_SPRING} className={s.groupRow} role="presentation">
       <div className={s.groupLabel}>
