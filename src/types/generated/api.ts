@@ -9409,6 +9409,8 @@ export interface components {
             added: components["schemas"]["RosterTransactionPlayer"] | null;
             /** Audit Id */
             audit_id: number | null;
+            /** Counts From */
+            counts_from: string | null;
             dropped: components["schemas"]["RosterTransactionPlayer"] | null;
             lineup: components["schemas"]["LineupState"];
             /** Scoring Period Id */

@@ -69,17 +69,16 @@ export function isRowStaged(staged: Staged, a: DailyAction): boolean {
 
 /**
  * An add row is staged when its free agent waits in the tray with the same
- * drop, made now — or, after today's first tip (`nowFrom`), as the pickup
- * scheduled for tomorrow that an add made now becomes.
+ * drop, made now (after today's first tip too: ESPN then counts it from
+ * tomorrow), not scheduled for a later day.
  */
 export function isAddStaged(
   a: DailyAction,
   pinned: { faId: number; replaces: number; from: number | null } | null,
-  noDrop: number,
-  nowFrom: number | null = null
+  noDrop: number
 ): boolean {
   const t = a.transaction;
-  if (!t || !pinned || pinned.from !== nowFrom) return false;
+  if (!t || !pinned || pinned.from != null) return false;
   return pinned.faId === t.pickup.player_id && pinned.replaces === (t.drop_player_id ?? noDrop);
 }
 

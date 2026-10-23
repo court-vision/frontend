@@ -16,8 +16,13 @@
  * that day's roster, each in that day's slot, so a player dropped since keeps
  * his rows there (`gone`) and one added since has none. A finished day with
  * no record lists today's roster instead.
+ *
+ * Today and the later days read from ESPN carry that day's roster too (each
+ * day's board): a move made after a day's first tip lands on the next day's,
+ * so a player added then shows from tomorrow (`arriving`) and the player he
+ * replaced plays out today.
  */
-import type { LineupState } from "@/types/lineup-editor";
+import type { LineupPlayer, LineupState } from "@/types/lineup-editor";
 import type {
   DailyMatchupFuturePlayer,
   DailyMatchupPlayerStats,
@@ -132,6 +137,12 @@ export interface SourceInputs {
   /** /matchups/current: only read when live fails; live's rows win whenever live has answered. */
   matchup: MatchupData | null | undefined;
   board: LineupState | null | undefined;
+  /**
+   * Each day's ESPN lineup by day index, as read (today's and the later days'):
+   * who is on the roster that day. Omitted (Yahoo, the demo): today's roster
+   * stands for every day.
+   */
+  boards?: ReadonlyArray<LineupState | null | undefined>;
 }
 
 /**
@@ -184,7 +195,21 @@ export function weekDaysFromApi(week: WeeklyMatchupData): WeekDay[] {
     }));
 }
 
-export function sourceFromApi({ week, live, matchup, board }: SourceInputs): WeekSource {
+/** A day's game as that day's board lists it, for a player on that day's roster. */
+function boardGame(p: LineupPlayer | undefined): DayGame | null {
+  if (!p?.has_game_today) return null;
+  return {
+    opp: p.opponent ?? null,
+    time: p.game_time_et ?? null,
+    status: "scheduled",
+    fpts: null,
+    clock: null,
+    remaining: 1,
+    out: isOutStatus(p.injury_status ?? null),
+  };
+}
+
+export function sourceFromApi({ week, live, matchup, board, boards }: SourceInputs): WeekSource {
   const sortedDays = [...week.days].sort((a, b) => a.day_index - b.day_index);
   const days = weekDaysFromApi(week);
   const todayIndex = days.find((d) => d.kind === "today")?.index ?? null;
@@ -295,6 +320,14 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
   rows?.your_team.roster.forEach((p) => addId(p.player_id));
   sortedDays.forEach((d) => rosterOf(d, "your_team").forEach((p) => addId(p.player_id)));
 
+  // ---- each unplayed day's roster, from the day's own board ----
+  const rosterBoards = days.map((d, i): LineupState | null => {
+    if (d.kind === "past") return null;
+    const b = boards?.[i] ?? (i === todayIndex && boardOnToday ? board : null);
+    return b && (!b.nba_date || b.nba_date === d.date) ? b : null;
+  });
+  const onRoster = rosterBoards.map((b) => (b ? new Set(b.players.map((p) => p.player_id)) : null));
+
   const mine: SourcePlayer[] = mineIds.map((id) => {
     const b = boardById.get(id);
     const m = matchMine.get(id);
@@ -312,6 +345,27 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
       games: gamesFor(id, "your_team", liveRow, injury),
     };
   });
+
+  // Players only a later day's board lists, not on the roster today: added after a first tip,
+  // or a scheduled pickup already made for that day. Each day's own board has his game; the
+  // latest names him. One dropped earlier this week and back keeps the days he played.
+  const arrivals = new Map<number, LineupPlayer>();
+  rosterBoards.forEach((b) => b?.players.forEach((p) => mineNow(p.player_id) || arrivals.set(p.player_id, p)));
+  const mineById = new Map(mine.map((p) => [p.id, p]));
+  const arriving: SourcePlayer[] = [...arrivals.values()].map((p) => ({
+    id: p.player_id,
+    name: p.name,
+    team: p.team,
+    nbaId: p.nba_player_id ?? null,
+    avg: p.avg_points,
+    injury: p.injury_status ?? null,
+    eligible: p.eligible_slot_ids.filter(isActiveSlot),
+    games: rosterBoards.map((b, i) =>
+      days[i].kind === "past"
+        ? mineById.get(p.player_id)?.games[i] ?? null
+        : boardGame(b?.players.find((x) => x.player_id === p.player_id))
+    ),
+  }));
 
   // ---- the opponent ----
   const oppIds: number[] = [];
@@ -365,7 +419,9 @@ export function sourceFromApi({ week, live, matchup, board }: SourceInputs): Wee
       opp: sortedDays.map((d, i) => (days[i].kind === "past" ? d.opponent_team.total_fpts ?? null : null)),
     },
     pastLineups,
-    gone: { mine: mine.filter((p) => !mineNow(p.id)), opp: opponents.filter((o) => !oppNow(o.id)) },
+    gone: { mine: mine.filter((p) => !mineNow(p.id) && !arrivals.has(p.id)), opp: opponents.filter((o) => !oppNow(o.id)) },
+    arriving,
+    onRoster: boards ? onRoster : undefined,
     activeSlotCount: n > 0 ? activeSlotCount : 10,
     format: (live?.scoring_format ?? matchup?.scoring_format) === "categories" ? "categories" : "points",
     categories: (comparison?.items ?? []).map((c) => ({

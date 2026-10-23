@@ -146,6 +146,21 @@ export interface WeekSource {
    * `opponents`, which are the rosters as they stand now.
    */
   gone?: { mine: SourcePlayer[]; opp: SourceOpponent[] };
+  /**
+   * Players on a later day's ESPN roster who aren't on today's: an add made
+   * after today's first tip (ESPN puts it on tomorrow), or a scheduled pickup
+   * already made for a later day. They show from the day they join. Never in
+   * `mine`, which other consumers (drop candidates, today's moves, lanes) read
+   * as the roster today.
+   */
+  arriving?: SourcePlayer[];
+  /**
+   * Who is on the roster each day as ESPN holds it, by day index: today's and
+   * each later day's board (null: a day already played, or not read yet, which
+   * keeps the day before's). A player dropped after a day's first tip is on it
+   * until the next day. Omitted: today's roster stands for every day.
+   */
+  onRoster?: Array<ReadonlySet<number> | null>;
   /** Active lineup spots, for teams with no ESPN board. */
   activeSlotCount: number;
   /** How the league scores; points when unknown. */
@@ -298,7 +313,7 @@ export interface GridRow {
   outgoing: boolean;
   /** Staged to drop (not a previewed add's drop). */
   dropped?: boolean;
-  /** Not on the roster on the selected (past) day: added since. */
+  /** Not on the roster on the selected day: added since (a past day), or joining later. */
   later?: boolean;
 }
 
@@ -410,6 +425,11 @@ export function defaultViewDay(source: WeekSource): number {
   return source.todayIndex ?? (source.days.length > 0 && source.days.every((d) => d.kind === "past") ? source.days.length - 1 : 0);
 }
 
+/** Everyone on your roster on a day still to play: today's roster, then those joining it later. */
+export function weekRoster(source: WeekSource): SourcePlayer[] {
+  return source.arriving?.length ? [...source.mine, ...source.arriving] : source.mine;
+}
+
 export function buildWeekGrid({
   source,
   board,
@@ -432,7 +452,16 @@ export function buildWeekGrid({
   const boardById = new Map((board?.players ?? []).map((p) => [p.player_id, p]));
   const todayAssign = board ? boardAssignment(board, staged) : null;
 
-  const current = source.mine;
+  // The roster today and the players joining it on a later day (each on the days ESPN has him).
+  const current = weekRoster(source);
+  // Who ESPN has on the roster each unplayed day; a day not read keeps the day before's.
+  const rosterSets: Array<ReadonlySet<number> | null> = [];
+  for (const d of days) {
+    const own = d.kind === "past" ? null : source.onRoster?.[d.index] ?? null;
+    rosterSets.push(own ?? (d.kind === "future" ? rosterSets[d.index - 1] ?? null : null));
+  }
+  /** On ESPN's roster that day (every day, when the days' rosters aren't known). */
+  const rostered = (id: number, day: number) => !rosterSets[day] || rosterSets[day]!.has(id);
   // Players dropped since a finished day are on that day's lineup, and nowhere else.
   const goneIds = new Set((source.gone?.mine ?? []).map((p) => p.id));
   const roster = goneIds.size ? [...current, ...source.gone!.mine] : current;
@@ -516,7 +545,7 @@ export function buildWeekGrid({
   const rosterOn = (day: number): SourcePlayer[] => {
     const stood = stoodOn(day);
     if (stood) return roster.filter((p) => stood.has(p.id));
-    return leaves.size ? current.filter((p) => !droppedOn(p.id, day)) : current;
+    return current.filter((p) => rostered(p.id, day) && !droppedOn(p.id, day));
   };
   // The stretch in force on a day: a scheduled pickup changes the roster from its
   // day on (before it the roster stands); a lane's stretch also ends.
@@ -608,7 +637,8 @@ export function buildWeekGrid({
 
   const cellFor = (p: SourcePlayer, d: WeekDay): GridCell => {
     const g = p.games[d.index];
-    if (!g || offRoster(p, d.index) || (d.kind !== "past" && goneIds.has(p.id))) {
+    const offDay = d.kind !== "past" && (goneIds.has(p.id) || (!inIds.has(p.id) && !rostered(p.id, d.index)));
+    if (!g || offRoster(p, d.index) || offDay) {
       return { state: "none", value: null, opp: null, note: null, counts: false, tag: null };
     }
     const base = { opp: g.opp, note: g.time, line: g.line ?? null };
@@ -696,9 +726,11 @@ export function buildWeekGrid({
         rows.push(openRow(r.slot_id, r.ordinal, days.length));
       }
     }
-    // Rostered players the board doesn't list (it re-read before the week did).
+    // Rostered players the board doesn't list (it re-read before the week did); those not on
+    // that day's roster at all (joining later, or leaving before it) sit below it.
     for (const p of current) {
-      if (!rows.some((r) => r.player?.id === p.id)) rows.push(rowFor(p, "player", BENCH_SLOT_ID, "BE"));
+      if (rows.some((r) => r.player?.id === p.id)) continue;
+      rows.push(rostered(p.id, viewDay) ? rowFor(p, "player", BENCH_SLOT_ID, "BE") : { ...rowFor(p, "player", null, "—"), later: true });
     }
   } else {
     const assign = dayAssign[viewDay] ?? unplayedAssign ?? new Map<number, number>();
@@ -713,10 +745,13 @@ export function buildWeekGrid({
       }
     }
     const benched = current
-      .filter((p) => !rows.some((r) => r.player?.id === p.id) && !irIds.has(p.id))
+      .filter((p) => !rows.some((r) => r.player?.id === p.id) && !irIds.has(p.id) && rostered(p.id, viewDay))
       .sort((a, b) => Number(!!b.games[viewDay]) - Number(!!a.games[viewDay]) || b.avg - a.avg);
     for (const p of benched) rows.push(rowFor(p, "player", BENCH_SLOT_ID, "BE"));
     for (const p of current.filter((x) => irIds.has(x.id))) rows.push(rowFor(p, "player", IR_SLOT_ID, "IR"));
+    for (const p of current.filter((x) => !irIds.has(x.id) && !rostered(x.id, viewDay))) {
+      rows.push({ ...rowFor(p, "player", null, "—"), later: true });
+    }
   }
 
   // A previewed free agent sits in the spot the selected day gives him (an open

@@ -18740,6 +18740,17 @@
             ],
             "title": "Audit Id"
           },
+          "counts_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counts From"
+          },
           "dropped": {
             "anyOf": [
               {
@@ -18775,7 +18786,8 @@
           "dropped",
           "verified",
           "audit_id",
-          "scoring_period_id"
+          "scoring_period_id",
+          "counts_from"
         ],
         "title": "RosterTransactionData",
         "type": "object"

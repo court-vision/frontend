@@ -179,6 +179,38 @@ describe("sourceFromApi without /matchups/current", () => {
   });
 });
 
+describe("each day's own ESPN roster", () => {
+  // After Wednesday's first tip Banchero was dropped for a pickup: ESPN has the swap on
+  // Thursday's board and every later one, Wednesday's as it was.
+  const pickup: F.Spec = { ...F.MINE[3], id: 4594327, nbaId: 1641708, name: "Sample Pickup", team: "CHA", avg: 27.4,
+    tips: [null, null, "19:00", "19:30", null, "20:00", null] };
+  const later = [...F.MINE.filter((s) => s.id !== F.MINE[3].id), pickup];
+  const boards = F.DATES.map((_, i) => (i < F.TODAY ? undefined : F.espnBoard(i, { roster: i === F.TODAY ? F.MINE : later })));
+  const src = sourceFromApi({ week: F.weekOf(), live: F.live(F.current()), matchup: undefined, board: boards[F.TODAY], boards });
+
+  test("a player only a later day's board lists is arriving, with that board's games, and not in mine", () => {
+    expect(src.mine.map((p) => p.id)).not.toContain(pickup.id);
+    expect(src.arriving?.map((p) => [p.id, p.name, p.avg, p.nbaId])).toEqual([[pickup.id, "Sample Pickup", 27.4, 1641708]]);
+    const games = src.arriving![0].games;
+    expect(games[F.TODAY]).toBeNull();                          // not on today's roster
+    expect(games[3]).toMatchObject({ status: "scheduled", opp: "@ LAL", time: "19:30" });
+    expect(games[4]).toBeNull();
+  });
+
+  test("who is on the roster each day: today's board today, each later day's own from then", () => {
+    expect(src.onRoster?.[F.TODAY]?.has(F.MINE[3].id)).toBe(true);
+    expect(src.onRoster?.[3]?.has(F.MINE[3].id)).toBe(false);
+    expect(src.onRoster?.[3]?.has(pickup.id)).toBe(true);
+    expect(src.onRoster?.slice(0, F.TODAY)).toEqual([null, null]);   // played days have their own record
+  });
+
+  test("without the days' boards (Yahoo, the demo) today's roster stands for every day", () => {
+    const flat = sourceFromApi({ week: F.weekOf(), live: F.live(F.current()), matchup: undefined, board: boards[F.TODAY] });
+    expect(flat.onRoster).toBeUndefined();
+    expect(flat.arriving).toEqual([]);
+  });
+});
+
 describe("racePeriod", () => {
   test("the preseason week (every day ahead) has no history to ask for", () => {
     expect(racePeriod(F.weekOf({ today: -1 }))).toBeNull();
@@ -262,6 +294,17 @@ describe("a finished day on record", () => {
     } as WeeklyMatchupData;
     const s = sourceFromApi({ week: odd, live: F.live(F.current()), matchup: undefined, board: F.espnBoard() });
     expect([...s.pastLineups!.you[1]!]).toEqual([[F.MINE[1].id, 0], [F.MINE[3].id, 12], [F.MINE[2].id, 13]]);
+  });
+
+  test("one dropped since and back after today's first tip is arriving, keeping the day he played", () => {
+    const boards = F.DATES.map((_, i) => (i < F.TODAY ? undefined : F.espnBoard(i, { roster: i === F.TODAY ? F.MINE : [...F.MINE, cut] })));
+    const back = sourceFromApi({ week: dated, live: F.live(F.current()), matchup: undefined, board: boards[F.TODAY], boards });
+    expect(back.gone!.mine.map((p) => p.id)).toEqual([]);
+    expect(back.mine.map((p) => p.id)).not.toContain(cut.id);
+    const games = back.arriving!.find((p) => p.id === cut.id)!.games;
+    expect(games[1]).toMatchObject({ status: "final", fpts: 20 });        // his day on record
+    expect(games[F.TODAY]).toBeNull();                                     // not on today's roster
+    expect(games[4]).toMatchObject({ status: "scheduled", time: "19:00" }); // from that day's board
   });
 
   test("a player dropped since is gone, off the roster, and plays only that day; one added since has no game there", () => {

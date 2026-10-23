@@ -122,7 +122,9 @@ export function MoveMenu({
                 <span className={dk.kbd}>X</span>
               </Command.Item>
             </Command.Group>
-          ) : blocked ? null : (
+          ) : null}
+          {/* Staged to drop, he can still move on a day before he leaves (dropped after the first tip, today). */}
+          {blocked || (staged && targets.length === 0) ? null : (
             <Command.Group heading={<span className={`${dk.label} ${dk.menuGroupLabel}`}>Move to · change to your week</span>}>
               {targets.length === 0 ? <div className={dk.menuEmpty}>No open or swappable slot fits him.</div> : null}
               {targets.map((t) => (

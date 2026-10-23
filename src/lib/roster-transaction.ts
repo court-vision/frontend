@@ -173,7 +173,8 @@ export interface TransactionOutcomeCopy {
  * confirm is a warning, not a success.
  */
 export function transactionOutcomeCopy(
-  data: Pick<RosterTransactionData, "added" | "dropped" | "verified">
+  data: Pick<RosterTransactionData, "added" | "dropped" | "verified"> &
+    Partial<Pick<RosterTransactionData, "counts_from">> & { lineup?: Pick<LineupState, "nba_date"> | null }
 ): TransactionOutcomeCopy {
   if (!data.verified) {
     return { tone: "warning", message: "Sent to ESPN — not confirmed yet, check your roster" };
@@ -182,7 +183,9 @@ export function transactionOutcomeCopy(
   if (data.added) parts.push(`Added ${data.added.name}`);
   if (data.dropped) parts.push(`${data.added ? "dropped" : "Dropped"} ${data.dropped.name}`);
   const what = parts.length ? parts.join(" · ") : "Roster updated";
-  return { tone: "success", message: `${what} on ESPN` };
+  // Made after today's first tip, it counts from tomorrow (the board handed back is today's).
+  const later = data.counts_from && data.lineup?.nba_date && data.counts_from > data.lineup.nba_date;
+  return { tone: "success", message: `${what} on ESPN${later ? `, counts from ${formatNbaDate(data.counts_from)}` : ""}` };
 }
 
 // ---------------------------------------------------------------------------
