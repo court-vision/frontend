@@ -16,3 +16,5 @@ export type TopPerformer = S["TopPerformer"];
 export type InjuredPlayer = S["InjuredPlayer"];
 export type GameScoreSnapshot = S["GameScoreSnapshot"];
 export type NBATeamLiveGameData = S["NBATeamLiveGameData"];
+export type GameLine = S["GameLine"];
+export type GameDetailData = S["GameDetailData"];

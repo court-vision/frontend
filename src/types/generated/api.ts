@@ -115,6 +115,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/games/{game_date}/{game_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one game
+         * @description One game of a night: its score, the score by period, the score through the game, and every player's line. A finished game comes back as it stood at the final buzzer: the lines are the settled game log once the post-game run has written it, the live box score's last read before.
+         */
+        get: operations["get_game_v1_games__game_date___game_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/ai/ask": {
         parameters: {
             query?: never;
@@ -5544,6 +5564,52 @@ export interface components {
          */
         FantasyProvider: "espn" | "yahoo";
         /**
+         * GameDetailData
+         * @description One game as it stood at its last read: the final buzzer, for a game that is over.
+         */
+        GameDetailData: {
+            /**
+             * Away Periods
+             * @description Away points per period (Q1-Q4, then each OT)
+             */
+            away_periods: number[];
+            game: components["schemas"]["GameInfo"];
+            /**
+             * Home Periods
+             * @description Home points per period (Q1-Q4, then each OT); empty when the league feed could not be read
+             */
+            home_periods: number[];
+            /**
+             * Lines
+             * @description Every player who took the floor, by fantasy points
+             */
+            lines: components["schemas"]["GameLine"][];
+            /**
+             * Lines Source
+             * @description settled: the game log the post-game run wrote; live: the live box score's last read, until the game log lands; null: no lines on record
+             */
+            lines_source: ("settled" | "live") | null;
+            /**
+             * Score History
+             * @description The score through the game, oldest first, from tip to final; empty when no snapshots were kept
+             */
+            score_history: components["schemas"]["GameScoreSnapshot"][];
+        };
+        /**
+         * GameDetailResp
+         * @description Response for GET /v1/games/{date}/{game_id}.
+         */
+        GameDetailResp: {
+            data: components["schemas"]["GameDetailData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
          * GameInfo
          * @description Individual game information.
          */
@@ -5603,6 +5669,65 @@ export interface components {
              * @description Game status: scheduled, in_progress, or final
              */
             status: string;
+        };
+        /**
+         * GameLine
+         * @description One player's line in one game.
+         */
+        GameLine: {
+            /** Ast */
+            ast: number;
+            /** Blk */
+            blk: number;
+            /**
+             * Espn Id
+             * @description ESPN player ID, when mapped
+             */
+            espn_id: number | null;
+            /** Fg3A */
+            fg3a: number;
+            /** Fg3M */
+            fg3m: number;
+            /** Fga */
+            fga: number;
+            /** Fgm */
+            fgm: number;
+            /** Fpts */
+            fpts: number;
+            /** Fta */
+            fta: number;
+            /** Ftm */
+            ftm: number;
+            /**
+             * Min
+             * @description Whole minutes played (a cameo under a minute is 0)
+             */
+            min: number;
+            /**
+             * Player Id
+             * @description NBA player ID
+             */
+            player_id: number;
+            /** Player Name */
+            player_name: string;
+            /**
+             * Plus Minus
+             * @description Plus-minus; null on live lines and older settled rows
+             */
+            plus_minus: number | null;
+            /** Pts */
+            pts: number;
+            /** Reb */
+            reb: number;
+            /** Stl */
+            stl: number;
+            /**
+             * Team
+             * @description Abbreviation of the team the player played for; null when it cannot be told
+             */
+            team: string | null;
+            /** Tov */
+            tov: number;
         };
         /**
          * GameLog
@@ -10991,6 +11116,54 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GamesOnDateResp"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_game_v1_games__game_date___game_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Date in YYYY-MM-DD format */
+                game_date: string;
+                /** @description NBA game ID (e.g. 0022600001) */
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Game retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameDetailResp"];
+                };
+            };
+            /** @description No such game on this date */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

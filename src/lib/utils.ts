@@ -4,7 +4,7 @@
  * (~2 AM ET), after which the new fantasy day is active.
  *
  * Note: for NBA *game* dates (live stats, scoreboard), use getTodayDate() from
- * useGames.ts which uses a simple midnight ET flip.
+ * useGames.ts, which flips at 6 AM ET like the backend's game date.
  */
 export function getTodayET(): string {
   const now = new Date();

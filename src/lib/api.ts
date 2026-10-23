@@ -79,7 +79,7 @@ import type {
   PlayerSearchData,
   PlayerTrendsData,
 } from "@/types/scout";
-import type { GamesOnDateData, TeamScheduleData, NBATeamLiveGameData } from "@/types/games";
+import type { GameDetailData, GamesOnDateData, TeamScheduleData, NBATeamLiveGameData } from "@/types/games";
 import type { NBATeamStatsData, NBATeamRosterData } from "@/types/nba-team";
 import type {
   MatchupData,
@@ -870,6 +870,11 @@ class ApiClient {
   // Games API (public - no auth required)
   async getGamesOnDate(date: string, opts?: RequestOptions): Promise<GamesOnDateData | null> {
     return nullOn404(this.getData<GamesOnDateData>(`${GAMES_API}/${date}`, opts));
+  }
+
+  /** One game of a night; a finished one as it stood at the final buzzer. Null when the night has no such game. */
+  async getGameDetail(date: string, gameId: string, opts?: RequestOptions): Promise<GameDetailData | null> {
+    return nullOn404(this.getData<GameDetailData>(`${GAMES_API}/${date}/${encodeURIComponent(gameId)}`, opts));
   }
 
   // Schedule API (public - no auth required)

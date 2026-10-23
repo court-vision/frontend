@@ -5,12 +5,12 @@ import { useQueries } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
 import { TeamLogo } from "@/components/desk/TeamLogo";
-import { gamesKeys, useGamesOnDateQuery } from "@/hooks/useGames";
+import { gamesKeys, useGameDetailQuery, useGamesOnDateQuery } from "@/hooks/useGames";
 import { useNBATeamLiveGameQuery } from "@/hooks/useNBATeam";
 import { apiClient } from "@/lib/api";
 import { userMessage } from "@/lib/api-error";
 import { addDays, clockText, dayName, dow, gameFocus, gameState, gameStatusText, monthDay, periodName, teamInfo, tipText, type Focus } from "@/lib/scout";
-import type { GameInfo, NBATeamLiveGameData } from "@/types/games";
+import type { GameDetailData, GameInfo, GameLine, GameScoreSnapshot, InjuredPlayer, NBATeamLiveGameData, TopPerformer } from "@/types/games";
 import type { LivePlayerData } from "@/types/live";
 import type { RankingsPlayer } from "@/types/rankings";
 import { Block, Skeleton } from "./blocks";
@@ -327,32 +327,90 @@ export function LeadersTable({ leaders, open, limit, poolById, games, date }: { 
 // One matchup
 // ---------------------------------------------------------------------------
 
+/** A box-score line as both sheets have it: tonight's live read, or a finished game's last one. */
+type BoxLine = Pick<LivePlayerData, "player_id" | "player_name" | "min" | "pts" | "reb" | "ast" | "stl" | "blk" | "tov" | "fgm" | "fga" | "fpts">;
+type Performer = Pick<TopPerformer, "player_id" | "name" | "pts" | "reb" | "ast" | "min">;
+
+interface Sides<T> {
+  away: T[];
+  home: T[];
+}
+
+/** What a game's sheet draws under its header, from tonight's live reads or a finished game's frozen one. */
+interface SheetView {
+  periods: Sides<number> | null;
+  /** The By period table's totals: the same read as its periods. */
+  totals: { away: number | null; home: number | null };
+  history: GameScoreSnapshot[];
+  lines: Sides<BoxLine> & { other: BoxLine[] };
+  performers: Sides<Performer> | null;
+  /** Null hides the block: a finished game's injury report is today's, not that night's. */
+  injured: InjuredPlayer[] | null;
+}
+
+function splitByTeam<T>(lines: T[], teamOf: (line: T) => string | null | undefined, game: GameInfo): Sides<T> & { other: T[] } {
+  const out: Sides<T> & { other: T[] } = { away: [], home: [], other: [] };
+  for (const line of lines) {
+    const team = teamOf(line);
+    if (team === game.away_team) out.away.push(line);
+    else if (team === game.home_team) out.home.push(line);
+    else out.other.push(line);
+  }
+  return out;
+}
+
+/** A finished game: every line, the period line and the margin, as the night ended. */
+function frozenView(data: GameDetailData | null, game: GameInfo): SheetView {
+  const lines = splitByTeam(data?.lines ?? [], (l) => l.team, game);
+  const top = (list: GameLine[]): Performer[] =>
+    [...list]
+      .sort((a, b) => b.pts - a.pts)
+      .slice(0, 5)
+      .map((l) => ({ player_id: l.player_id, name: l.player_name, pts: l.pts, reb: l.reb, ast: l.ast, min: l.min }));
+  return {
+    periods: data && (data.home_periods.length || data.away_periods.length) ? { away: data.away_periods, home: data.home_periods } : null,
+    totals: { away: game.away_score ?? null, home: game.home_score ?? null },
+    history: data?.score_history ?? [],
+    lines,
+    performers: data?.lines.length ? { away: top(lines.away), home: top(lines.home) } : null,
+    injured: null,
+  };
+}
+
 export function GameSheet({ date, gameId, today, open, live }: { date: string; gameId: string; today: string; open: (focus: Focus) => void; live: LiveCtx }) {
   const games = useGamesOnDateQuery(date);
-  const game = useMemo(() => {
+  const listed = useMemo(() => {
     const list = games.data?.games ?? [];
     return list.find((g) => g.game_id === gameId) ?? list.find((g) => `${g.away_team}@${g.home_team}` === gameId) ?? null;
   }, [games.data, gameId]);
   const isToday = date === today;
-  const detail = useNBATeamLiveGameQuery(isToday && game ? game.home_team : null);
-  const d: NBATeamLiveGameData | null = detail.data && game && detail.data.game_id === game.game_id ? detail.data : detail.data && game && detail.data.home_team === game.home_team && detail.data.away_team === game.away_team ? detail.data : null;
-  const lines = useMemo(() => (isToday && game?.game_id && live.leaders ? live.leaders.filter((p) => p.game_id === game.game_id) : []), [isToday, game, live.leaders]);
-  const split = useMemo(() => {
-    const away: LivePlayerData[] = [];
-    const home: LivePlayerData[] = [];
-    const other: LivePlayerData[] = [];
-    for (const p of lines) {
-      const team = live.poolById.get(p.player_id)?.team;
-      if (game && team === game.away_team) away.push(p);
-      else if (game && team === game.home_team) home.push(p);
-      else other.push(p);
-    }
-    return { away, home, other };
-  }, [lines, live.poolById, game]);
+  // Over, so frozen where it ended: any game of a past night, and tonight's once final.
+  const frozen = date < today || (isToday && listed != null && gameState(listed.status) === "final");
+  const box = useGameDetailQuery(date, listed?.game_id ?? gameId, frozen);
+  const ended = frozen ? (box.data ?? null) : null;
+  // The frozen read's score and status win: they come from the league's box score, which has
+  // the final before nba.games does in the hours between the 6 AM ET flip and the post-game run.
+  const game = ended?.game ?? listed;
+
+  const detail = useNBATeamLiveGameQuery(isToday && !frozen && listed ? listed.home_team : null);
+  const d: NBATeamLiveGameData | null = detail.data && listed && detail.data.game_id === listed.game_id ? detail.data : detail.data && listed && detail.data.home_team === listed.home_team && detail.data.away_team === listed.away_team ? detail.data : null;
+  const liveLines = useMemo(() => (isToday && !frozen && listed?.game_id && live.leaders ? live.leaders.filter((p) => p.game_id === listed.game_id) : []), [isToday, frozen, listed, live.leaders]);
+  const view = useMemo<SheetView | null>(() => {
+    if (!game) return null;
+    if (frozen) return frozenView(ended, game);
+    return {
+      periods: d ? { away: d.away_periods, home: d.home_periods } : null,
+      totals: { away: d?.away_score ?? game.away_score ?? null, home: d?.home_score ?? game.home_score ?? null },
+      history: d?.score_history ?? [],
+      lines: splitByTeam(liveLines, (p) => live.poolById.get(p.player_id)?.team, game),
+      performers: d ? { away: d.away_top_performers, home: d.home_top_performers } : null,
+      injured: d ? d.injured_players : null,
+    };
+  }, [game, frozen, ended, d, liveLines, live.poolById]);
 
   if (games.isLoading) return <Skeleton rows={8} />;
   if (games.error) return <div className={s.sheetError}>{userMessage(games.error, "Couldn't load this night")}</div>;
-  if (!game) {
+  if (!game || !view) {
     return (
       <div className={s.sheetInner}>
         <div className={s.hero}>
@@ -365,7 +423,10 @@ export function GameSheet({ date, gameId, today, open, live }: { date: string; g
   const state = gameState(game.status);
   const status = gameStatusText(game.status, game.period, game.game_clock, game.start_time_et);
   const awayLead = game.away_score != null && game.home_score != null ? game.away_score > game.home_score : null;
-  const periods = d ? Math.max(d.home_periods.length, d.away_periods.length, 4) : 0;
+  const periods = view.periods ? Math.max(view.periods.away.length, view.periods.home.length, 4) : 0;
+  const lineCount = view.lines.away.length + view.lines.home.length + view.lines.other.length;
+  // A past game still listed as not played (postponed, or its night never recorded) has nothing to freeze.
+  const unplayed = frozen && state === "scheduled" && !box.isLoading && !box.error && lineCount === 0;
 
   return (
     <div className={s.sheetInner}>
@@ -400,150 +461,179 @@ export function GameSheet({ date, gameId, today, open, live }: { date: string; g
         </div>
       </header>
 
-      {d && periods ? (
+      {view.periods || view.history.length ? (
         <div className={s.two}>
-          <Block title="By period">
-            <table className={s.periods}>
-              <thead>
-                <tr>
-                  <th />
-                  {Array.from({ length: periods }, (_, i) => (
-                    <th key={i}>{i < 4 ? `Q${i + 1}` : i === 4 ? "OT" : `${i - 3}OT`}</th>
-                  ))}
-                  <th>T</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(
-                  [
-                    [d.away_team, d.away_periods, d.away_score],
-                    [d.home_team, d.home_periods, d.home_score],
-                  ] as const
-                ).map(([team, per, total]) => (
-                  <tr key={team}>
-                    <td>
-                      <span className={s.inline}>
-                        <TeamLogo abbrev={team} size={16} />
-                        {team}
-                      </span>
-                    </td>
+          {view.periods ? (
+            <Block title="By period">
+              <table className={s.periods}>
+                <thead>
+                  <tr>
+                    <th />
                     {Array.from({ length: periods }, (_, i) => (
-                      <td key={i}>{per[i] ?? ""}</td>
+                      <th key={i}>{i < 4 ? `Q${i + 1}` : i === 4 ? "OT" : `${i - 3}OT`}</th>
                     ))}
-                    <td className={s.total}>{total ?? ""}</td>
+                    <th>T</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </Block>
-          <Block title="Margin" note={d.score_history.length ? `${d.score_history.length} snapshots · ${d.away_team} above the line` : "no snapshots yet"}>
-            {d.score_history.length > 1 ? <MarginChart data={d} /> : <div className={s.blockEmpty}>The line draws once the game has run a while.</div>}
-          </Block>
-        </div>
-      ) : null}
-
-      {isToday ? (
-        <Block title="On the floor" note={lines.length ? `${lines.length} players · by fantasy points` : state === "scheduled" ? "lines appear once the game tips" : "no lines on record"}>
-          {live.leadersLoading ? (
-            <Skeleton rows={5} className={s.ledgerSkel} />
-          ) : lines.length === 0 ? (
-            <div className={s.blockEmpty}>{state === "scheduled" ? `Tips ${status}.` : "Nobody has a line for this game."}</div>
-          ) : (
-            <div className={s.two} style={{ gap: 0 }}>
-              {(
-                [
-                  [game.away_team, split.away],
-                  [game.home_team, split.home],
-                ] as const
-              ).map(([team, list]) => (
-                <div key={team} className={s.sideTable}>
-                  <div className={`${dk.label} ${s.inline}`} style={{ marginBottom: 6 }}>
-                    <TeamLogo abbrev={team} size={14} />
-                    {team}
-                  </div>
-                  <LineTable rows={list} open={open} />
-                </div>
-              ))}
-              {split.other.length ? (
-                <div className={s.sideTable} style={{ gridColumn: "1 / -1" }}>
-                  <div className={dk.label} style={{ marginBottom: 6 }}>
-                    Unplaced · not in the ranked pool
-                  </div>
-                  <LineTable rows={split.other} open={open} />
-                </div>
-              ) : null}
-            </div>
-          )}
-        </Block>
-      ) : (
-        <Block title="Box score" note={state === "final" ? "final" : "not yet played"}>
-          <div className={s.blockEmpty}>{state === "final" ? "Live lines are kept for tonight only; the players' game logs carry this night's box scores." : `Tips ${status}. Lines appear here while it runs.`}</div>
-        </Block>
-      )}
-
-      {d ? (
-        <div className={s.two}>
-          <Block title="Top performers" note="from the league feed">
-            {d.away_top_performers.length || d.home_top_performers.length ? (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                {(
-                  [
-                    [d.away_team, d.away_top_performers],
-                    [d.home_team, d.home_top_performers],
-                  ] as const
-                ).map(([team, list]) => (
-                  <div key={team}>
-                    <div className={`${dk.label} ${s.inline}`} style={{ marginBottom: 4 }}>
-                      <TeamLogo abbrev={team} size={14} />
-                      {team}
-                    </div>
-                    <table className={s.table}>
-                      <tbody>
-                        {list.slice(0, 5).map((p) => (
-                          <tr key={p.player_id} className={s.click} onClick={() => open({ kind: "player", id: p.player_id })}>
-                            <td className={s.text}>{p.name}</td>
-                            <td className={s.strong}>{p.pts}</td>
-                            <td>{p.reb}r</td>
-                            <td>{p.ast}a</td>
-                            <td className={s.muted}>{p.min}m</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={s.blockEmpty}>None yet.</div>
-            )}
-          </Block>
-          <Block title="Out or doubtful" note={`${d.injured_players.length}`}>
-            {d.injured_players.length ? (
-              <table className={s.table}>
+                </thead>
                 <tbody>
-                  {d.injured_players.map((p) => (
-                    <tr key={p.player_id} className={s.click} onClick={() => open({ kind: "player", id: p.player_id })}>
-                      <td className={s.text}>{p.name}</td>
-                      <td className={s.text} style={{ color: "var(--warn)" }}>
-                        {p.status}
+                  {(
+                    [
+                      [game.away_team, view.periods.away, view.totals.away],
+                      [game.home_team, view.periods.home, view.totals.home],
+                    ] as const
+                  ).map(([team, per, total]) => (
+                    <tr key={team}>
+                      <td>
+                        <span className={s.inline}>
+                          <TeamLogo abbrev={team} size={16} />
+                          {team}
+                        </span>
                       </td>
-                      <td className={`${s.text} ${s.muted}`}>{p.injury_type ?? ""}</td>
-                      <td className={`${s.text} ${s.muted}`}>{p.expected_return ? `back ${p.expected_return}` : ""}</td>
+                      {Array.from({ length: periods }, (_, i) => (
+                        <td key={i}>{per[i] ?? ""}</td>
+                      ))}
+                      <td className={s.total}>{total ?? ""}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </Block>
+          ) : null}
+          <Block title="Margin" note={view.history.length ? `${game.away_team} above the line` : frozen ? undefined : "no snapshots yet"}>
+            {view.history.length > 1 ? (
+              <MarginChart history={view.history} away={game.away_team} home={game.home_team} />
             ) : (
-              <div className={s.blockEmpty}>Nobody listed.</div>
+              <div className={s.blockEmpty}>{frozen ? "No score history was kept for this game." : "The line draws once the game has run a while."}</div>
             )}
           </Block>
+        </div>
+      ) : null}
+
+      {frozen && !unplayed ? (
+        <Block title="On the floor" note={lineCount ? `${lineCount} players · as the game ended · by fantasy points` : undefined}>
+          {box.isLoading ? (
+            <Skeleton rows={5} className={s.ledgerSkel} />
+          ) : box.error ? (
+            <div className={dk.error}>{userMessage(box.error, "Couldn't load this game's lines")}</div>
+          ) : lineCount === 0 ? (
+            <div className={s.blockEmpty}>No lines on record for this game.</div>
+          ) : (
+            <Floor game={game} lines={view.lines} open={open} unplaced="team not on record" />
+          )}
+        </Block>
+      ) : isToday && !frozen ? (
+        <Block title="On the floor" note={lineCount ? `${lineCount} players · by fantasy points` : state === "scheduled" ? "lines appear once the game tips" : "no lines on record"}>
+          {live.leadersLoading ? (
+            <Skeleton rows={5} className={s.ledgerSkel} />
+          ) : lineCount === 0 ? (
+            <div className={s.blockEmpty}>{state === "scheduled" ? `Tips ${status}.` : "Nobody has a line for this game."}</div>
+          ) : (
+            <Floor game={game} lines={view.lines} open={open} unplaced="not in the ranked pool" />
+          )}
+        </Block>
+      ) : (
+        <Block title="Box score" note={unplayed ? "not played" : "not yet played"}>
+          <div className={s.blockEmpty}>{unplayed ? "This game is still listed as not played, and no lines are on record." : `Tips ${status}. Lines appear here while it runs.`}</div>
+        </Block>
+      )}
+
+      {view.performers || view.injured ? (
+        <div className={s.two}>
+          {view.performers ? (
+            <Block title="Top performers" note={frozen ? "by points" : "from the league feed"}>
+              {view.performers.away.length || view.performers.home.length ? (
+                <div className={s.sides}>
+                  {(
+                    [
+                      [game.away_team, view.performers.away],
+                      [game.home_team, view.performers.home],
+                    ] as const
+                  ).map(([team, list]) => (
+                    <div key={team} className={s.side}>
+                      <div className={`${dk.label} ${s.inline}`} style={{ marginBottom: 4 }}>
+                        <TeamLogo abbrev={team} size={14} />
+                        {team}
+                      </div>
+                      <table className={`${s.table} ${s.tableCompact}`}>
+                        <tbody>
+                          {list.slice(0, 5).map((p) => (
+                            <tr key={p.player_id} className={s.click} onClick={() => open({ kind: "player", id: p.player_id })}>
+                              <td className={s.text}>{p.name}</td>
+                              <td className={s.strong}>{p.pts}</td>
+                              <td>{p.reb}r</td>
+                              <td>{p.ast}a</td>
+                              <td className={s.muted}>{p.min}m</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={s.blockEmpty}>None yet.</div>
+              )}
+            </Block>
+          ) : null}
+          {view.injured ? (
+            <Block title="Out or doubtful" note={`${view.injured.length}`}>
+              {view.injured.length ? (
+                <table className={s.table}>
+                  <tbody>
+                    {view.injured.map((p) => (
+                      <tr key={p.player_id} className={s.click} onClick={() => open({ kind: "player", id: p.player_id })}>
+                        <td className={s.text}>{p.name}</td>
+                        <td className={s.text} style={{ color: "var(--warn)" }}>
+                          {p.status}
+                        </td>
+                        <td className={`${s.text} ${s.muted}`}>{p.injury_type ?? ""}</td>
+                        <td className={`${s.text} ${s.muted}`}>{p.expected_return ? `back ${p.expected_return}` : ""}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className={s.blockEmpty}>Nobody listed.</div>
+              )}
+            </Block>
+          ) : null}
         </div>
       ) : null}
     </div>
   );
 }
 
-function LineTable({ rows, open }: { rows: LivePlayerData[]; open: (f: Focus) => void }) {
+/** Each side's lines, away then home, and anyone the sheet cannot place on either. */
+function Floor({ game, lines, open, unplaced }: { game: GameInfo; lines: SheetView["lines"]; open: (f: Focus) => void; unplaced: string }) {
+  return (
+    <div className={s.sides}>
+      {(
+        [
+          [game.away_team, lines.away],
+          [game.home_team, lines.home],
+        ] as const
+      ).map(([team, list]) => (
+        <div key={team} className={s.side}>
+          <div className={`${dk.label} ${s.inline}`} style={{ marginBottom: 6 }}>
+            <TeamLogo abbrev={team} size={14} />
+            {team}
+          </div>
+          <LineTable rows={list} open={open} />
+        </div>
+      ))}
+      {lines.other.length ? (
+        <div className={`${s.side} ${s.sideWide}`}>
+          <div className={dk.label} style={{ marginBottom: 6 }}>
+            Unplaced · {unplaced}
+          </div>
+          <LineTable rows={lines.other} open={open} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function LineTable({ rows, open }: { rows: BoxLine[]; open: (f: Focus) => void }) {
   if (rows.length === 0) return <div className={s.blockEmpty}>No lines.</div>;
   return (
     <table className={s.table}>
@@ -588,17 +678,29 @@ function LineTable({ rows, open }: { rows: LivePlayerData[]; open: (f: Focus) =>
   );
 }
 
-/** The score margin over the game's snapshots: away minus home, zero in the middle. */
-function MarginChart({ data }: { data: NBATeamLiveGameData }) {
-  const pts = data.score_history.map((snap) => snap.away_score - snap.home_score);
+/** A snapshot's capture time in ms. The API sends UTC without a zone, and up to microseconds. */
+function capturedMs(iso: string): number {
+  const ms = iso.replace(/(\.\d{3})\d+/, "$1");
+  return Date.parse(/(Z|[+-]\d\d:\d\d)$/.test(ms) ? ms : `${ms}Z`);
+}
+
+/**
+ * The score margin through the game: away minus home, zero in the middle,
+ * drawn against the clock on the wall, so halftime is a flat stretch and an
+ * unchanged score holds its length (the API sends only the ends of each run).
+ */
+function MarginChart({ history, away, home }: { history: GameScoreSnapshot[]; away: string; home: string }) {
+  const pts = history.map((snap) => ({ t: capturedMs(snap.captured_at), v: snap.away_score - snap.home_score }));
   const W = 1000;
   const H = 120;
-  const largest = Math.max(0, ...pts.map((v) => Math.abs(v)));
+  const largest = Math.max(0, ...pts.map((p) => Math.abs(p.v)));
   const max = Math.max(5, largest);
-  const x = (i: number) => (pts.length === 1 ? W / 2 : (i / (pts.length - 1)) * W);
+  const t0 = pts[0].t;
+  const span = pts[pts.length - 1].t - t0;
+  const x = (t: number, i: number) => (span > 0 ? ((t - t0) / span) * W : pts.length === 1 ? W / 2 : (i / (pts.length - 1)) * W);
   const y = (v: number) => H / 2 - (v / max) * (H / 2 - 6);
-  const path = pts.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-  const last = pts[pts.length - 1];
+  const path = pts.map((p, i) => `${i === 0 ? "M" : "L"}${x(p.t, i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+  const last = pts[pts.length - 1].v;
   return (
     <>
       <svg className={s.chart} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-label="Score margin over time">
@@ -606,9 +708,7 @@ function MarginChart({ data }: { data: NBATeamLiveGameData }) {
         <path d={path} fill="none" stroke="var(--accent)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
       </svg>
       <div className={s.chartHover}>
-        <span style={{ color: "var(--text)" }}>
-          {last > 0 ? `${data.away_team} +${last}` : last < 0 ? `${data.home_team} +${-last}` : "tied"}
-        </span>
+        <span style={{ color: "var(--text)" }}>{last > 0 ? `${away} +${last}` : last < 0 ? `${home} +${-last}` : "tied"}</span>
         <span className={dk.spacer} />
         <span>largest lead {largest}</span>
       </div>
