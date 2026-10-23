@@ -879,6 +879,20 @@
   color: var(--text-3);
   font-weight: 700;
 }
+/* A lineup chip's slot moves, one per line: ▲ start, ▼ bench, → shift */
+.chipMoves {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chipMoves li[data-role="start"] .chipSign {
+  color: var(--up, var(--text-3));
+}
+.chipMoves li[data-role="bench"] .chipSign {
+  color: var(--down, var(--text-3));
+}
 .chipTeam {
   margin-left: 6px;
   font-size: 11.5px;
