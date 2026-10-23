@@ -296,6 +296,17 @@ describe("a finished day on record", () => {
     expect([...s.pastLineups!.you[1]!]).toEqual([[F.MINE[1].id, 0], [F.MINE[3].id, 12], [F.MINE[2].id, 13]]);
   });
 
+  test("one dropped since and back after today's first tip is arriving, keeping the day he played", () => {
+    const boards = F.DATES.map((_, i) => (i < F.TODAY ? undefined : F.espnBoard(i, { roster: i === F.TODAY ? F.MINE : [...F.MINE, cut] })));
+    const back = sourceFromApi({ week: dated, live: F.live(F.current()), matchup: undefined, board: boards[F.TODAY], boards });
+    expect(back.gone!.mine.map((p) => p.id)).toEqual([]);
+    expect(back.mine.map((p) => p.id)).not.toContain(cut.id);
+    const games = back.arriving!.find((p) => p.id === cut.id)!.games;
+    expect(games[1]).toMatchObject({ status: "final", fpts: 20 });        // his day on record
+    expect(games[F.TODAY]).toBeNull();                                     // not on today's roster
+    expect(games[4]).toMatchObject({ status: "scheduled", time: "19:00" }); // from that day's board
+  });
+
   test("a player dropped since is gone, off the roster, and plays only that day; one added since has no game there", () => {
     expect(src.gone!.mine.map((p) => p.id)).toEqual([cut.id]);
     expect(src.mine.some((p) => p.id === cut.id)).toBe(false);

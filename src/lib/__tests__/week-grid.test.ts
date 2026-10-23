@@ -9,6 +9,7 @@ import {
   recordedSlots,
   slotsFromPositions,
   viewableDays,
+  weekRoster,
   type DayGame,
   type SourcePlayer,
   type WeekSource,
@@ -470,6 +471,13 @@ describe("a move ESPN made for a later day (after a first tip, or a scheduled pi
   );
   const grid = buildWeekGrid({ source, board, staged: {}, dayBoards, incoming: null, viewDay: today });
   const seated = (day: number) => grid.lineups.seats[day].flatMap((st) => (st ? [st.player.name] : []));
+
+  test("a move or a later day's lineup can name him: he is on the week's roster after today's", () => {
+    const names = weekRoster(source).map((p) => p.name);
+    expect(names.slice(0, base.mine.length)).toEqual(base.mine.map((p) => p.name));
+    expect(names).toContain(fa.name);
+    expect(weekRoster(base)).toBe(base.mine);
+  });
 
   test("each day seats the roster ESPN has that day; a day not read keeps the day before's", () => {
     expect(seated(today)).toContain("Scottie Barnes");

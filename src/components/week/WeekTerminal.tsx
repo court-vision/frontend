@@ -32,6 +32,7 @@ import {
   planDay,
   defaultViewDay,
   viewableDays,
+  weekRoster,
   type DayBoard,
   type GridInput,
   type Incoming,
@@ -124,6 +125,8 @@ export function WeekTerminal({
   // The week reads the roster as ESPN holds it: a player staged to drop is still on it, leaving.
   // Each day's board says who is on it that day (an add after a first tip joins the next day).
   const source = useMemo(() => makeSource(rawBoard, rawBoards), [makeSource, rawBoard, rawBoards]);
+  // Today's roster and anyone joining it on a later day: the players a move or a later day's lineup can name.
+  const roster = useMemo(() => (source ? weekRoster(source) : []), [source]);
   // After today's first tip an add made now counts from tomorrow: ESPN puts it (and the drop it
   // rides with) on tomorrow's roster, so the player dropped plays out today. Previews, the market
   // and the tray all start it there.
@@ -419,13 +422,13 @@ export function WeekTerminal({
   // The detail offers a few more, never the stars: a week's gain can't see what a player is worth
   // the rest of the season (an injured star projects nothing this week, and is still no drop).
   const marketAllDrops = useMemo(() => (keptSource ? dropCandidates(keptSource, board, 7) : []), [keptSource, board]);
-  const avgOf = useCallback((id: number) => source?.mine.find((p) => p.id === id)?.avg ?? null, [source]);
+  const avgOf = useCallback((id: number) => roster.find((p) => p.id === id)?.avg ?? null, [roster]);
   // Open spots once every staged drop is made (one an add rides on included, whenever it lands).
   const marketRoom = useMemo(() => {
     const b = rawToday ?? board;
     return rosterRoom(b && drops.length ? { ...b, players: b.players.filter((p) => !drops.includes(p.player_id)) } : b);
   }, [rawToday, board, drops]);
-  const nameOf = useCallback((id: number) => source?.mine.find((p) => p.id === id)?.name ?? `#${id}`, [source]);
+  const nameOf = useCallback((id: number) => roster.find((p) => p.id === id)?.name ?? `#${id}`, [roster]);
   const { setDailyDay, requestBreakouts, requestStreamers: requestPool } = data;
   useEffect(() => {
     if (marketOpen) requestPool();
@@ -787,7 +790,7 @@ export function WeekTerminal({
   }, [autoslotDay, boards, source, editableOn, todayDay, lineup, dayLabel, setDay]);
 
   // ---- add / drop, now or scheduled ----
-  const swapOut = pinned && pinned.replaces !== NO_DROP ? source?.mine.find((p) => p.id === pinned.replaces) ?? null : null;
+  const swapOut = pinned && pinned.replaces !== NO_DROP ? roster.find((p) => p.id === pinned.replaces) ?? null : null;
   const swapFa = pinned ? faById.get(pinned.faId) ?? null : null;
   const swapFrom = pinned?.from ?? null;
   /**
@@ -896,7 +899,10 @@ export function WeekTerminal({
     else if (dup) blocked = `${swapFa.name} is already scheduled for ${pickupDayLabel(dup.nba_date)}.`;
     else if (already && out) blocked = `${out.name} is already being dropped for ${already.add.name} on ${pickupDayLabel(already.nba_date)}.`;
     else if (out && laneHolders.has(out.id)) blocked = "A stream lane is streaming his spot: stop it to drop him.";
-    else if (swapFrom == null && addFrom == null && out && rawToday.players.find((p) => p.player_id === out.id)?.locked) {
+    else if (swapFrom == null && addFrom == null && out && !rawToday.players.some((p) => p.player_id === out.id)) {
+      // Before today's first tip a move now is today's, and he is only on a later day's roster.
+      blocked = `${out.name} isn't on today's roster.`;
+    } else if (swapFrom == null && addFrom == null && out && rawToday.players.find((p) => p.player_id === out.id)?.locked) {
       // After today's first tip he leaves tomorrow, so his game tonight doesn't hold the add.
       blocked = `${out.name} is locked until his game ends.`;
     } else if (swapFrom == null && swapFa.acquisition_status === "waivers") blocked = `${swapFa.name} is on waivers.`;
@@ -905,7 +911,7 @@ export function WeekTerminal({
     // The day it lands on: the day it's scheduled for, or (made now after today's first tip) tomorrow.
     const lands = swapFrom ?? addFrom;
     const landsDow = lands != null ? source.days[lands]?.dow ?? null : null;
-    const leaving = swapOut ?? (rides ? source.mine.find((p) => p.id === rides.id) ?? null : null);
+    const leaving = swapOut ?? (rides ? roster.find((p) => p.id === rides.id) ?? null : null);
     return {
       add: {
         id: swapFa.player_id,
@@ -932,7 +938,7 @@ export function WeekTerminal({
       // Made now, it sits in today's column (or one of its own when today isn't on the board).
       day: swapFrom ?? todayDay ?? NOW_DAY,
     };
-  }, [pinned, swapFa, source, swapOut, paired, nameOf, swapFrom, pendingPickups, rawToday, laneHolders, data.demo, pickupDayLabel, timings, todayIndex, addFrom, pinnedDelta, todayDay]);
+  }, [pinned, swapFa, source, roster, swapOut, paired, nameOf, swapFrom, pendingPickups, rawToday, laneHolders, data.demo, pickupDayLabel, timings, todayIndex, addFrom, pinnedDelta, todayDay]);
 
   const [swapError, setSwapError] = useState<string | null>(null);
   /**
@@ -1846,10 +1852,11 @@ function canSit(player: LineupPlayer, slot: number): boolean {
  * bench is unbounded, so a spot may stay empty); IR untouched.
  */
 function bestDayStaging(board: LineupState, source: WeekSource, day: number): Staged {
-  const avgOf = new Map(source.mine.map((p) => [p.id, p.avg]));
+  const everyone = weekRoster(source);
+  const avgOf = new Map(everyone.map((p) => [p.id, p.avg]));
   const playing = board.players.filter((p) => {
     if (p.lineup_slot_id === IR_SLOT_ID) return false;
-    const g = source.mine.find((m) => m.id === p.player_id)?.games[day];
+    const g = everyone.find((m) => m.id === p.player_id)?.games[day];
     return !!g && !g.out && !isOutStatus(p.injury_status);
   });
   const slots = board.slots.filter((x) => isActiveSlot(x.slot_id) && x.count > 0).map((x) => ({ slotId: x.slot_id, count: x.count }));

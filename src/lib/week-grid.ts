@@ -425,6 +425,11 @@ export function defaultViewDay(source: WeekSource): number {
   return source.todayIndex ?? (source.days.length > 0 && source.days.every((d) => d.kind === "past") ? source.days.length - 1 : 0);
 }
 
+/** Everyone on your roster on a day still to play: today's roster, then those joining it later. */
+export function weekRoster(source: WeekSource): SourcePlayer[] {
+  return source.arriving?.length ? [...source.mine, ...source.arriving] : source.mine;
+}
+
 export function buildWeekGrid({
   source,
   board,
@@ -448,8 +453,7 @@ export function buildWeekGrid({
   const todayAssign = board ? boardAssignment(board, staged) : null;
 
   // The roster today and the players joining it on a later day (each on the days ESPN has him).
-  const arriving = source.arriving ?? [];
-  const current = arriving.length ? [...source.mine, ...arriving] : source.mine;
+  const current = weekRoster(source);
   // Who ESPN has on the roster each unplayed day; a day not read keeps the day before's.
   const rosterSets: Array<ReadonlySet<number> | null> = [];
   for (const d of days) {
