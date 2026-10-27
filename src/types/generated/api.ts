@@ -1107,6 +1107,11 @@ export interface paths {
          *     Makes one ESPN/Yahoo API call and returns per-day player data for every
          *     day in the matchup period. Use this instead of N parallel getDailyMatchup
          *     calls when rendering the matchup bar chart.
+         *
+         *     Today is ESPN's own current day (the team's lineup board's), so the day
+         *     ESPN rolled past at 3 AM ET is past at once. Past days carry both sides'
+         *     lineups as they stood (stored nightly; ESPN's history read live for last
+         *     night when it isn't stored yet), and their totals count the active slots.
          */
         get: operations["get_weekly_matchup_v1_internal_matchups_week__team_id__get"];
         put?: never;
@@ -2889,7 +2894,7 @@ export interface components {
             add: components["schemas"]["AiProposalPlayer"] | null;
             /**
              * Change
-             * @description Projected change for the matchup (points, or category wins)
+             * @description Projected change for the matchup (points, or category wins); for a lineup chip the day's change in points, if a points league
              */
             change: number | null;
             /**
@@ -2924,7 +2929,12 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "transaction" | "scheduled";
+            kind: "transaction" | "scheduled" | "lineup";
+            /**
+             * Moves
+             * @description A lineup chip's slot moves; empty otherwise
+             */
+            moves: components["schemas"]["AiProposalMove"][];
             /** Proposal Id */
             proposal_id: number;
             /**
@@ -2939,7 +2949,7 @@ export interface components {
             scoring: string | null;
             /**
              * Scoring Period Id
-             * @description ESPN's day for the move (the scheduled pickup's day)
+             * @description ESPN's day for the move (the scheduled pickup's day; a lineup chip's board, `ApplyLineupMovesReq.expected_scoring_period_id`)
              */
             scoring_period_id: number;
             /** Sent At */
@@ -2974,16 +2984,18 @@ export interface components {
         };
         /**
          * AiProposalChip
-         * @description A roster move the agent proposed and the server checked: the chip the AI desk shows. Staged,
-         *     it goes into the Week desk's tray (rendered in the AI desk) and is sent by its slider through
-         *     the roster transaction (`kind` transaction, today) or the scheduled pickup (`kind` scheduled, a
-         *     later day) with `proposal_id` on the request; the route marks it sent. Never executed from here.
+         * @description A move the agent proposed and the server checked: the chip the AI desk shows. Staged, it goes
+         *     into the Week desk's tray (rendered in the AI desk) and is sent by its slider through the Week
+         *     desk's own write with `proposal_id` on the request, which marks it sent: the roster transaction
+         *     (`kind` transaction: `add` / `drop`, today), the scheduled pickup (`kind` scheduled: `add` / `drop`,
+         *     a later day) or the lineup write (`kind` lineup: `moves`, one day's board, today's or a later
+         *     day's, written at once). Never executed from here.
          */
         AiProposalChip: {
             add: components["schemas"]["AiProposalPlayer"] | null;
             /**
              * Change
-             * @description Projected change for the matchup (points, or category wins)
+             * @description Projected change for the matchup (points, or category wins); for a lineup chip the day's change in points, if a points league
              */
             change: number | null;
             /**
@@ -3013,7 +3025,12 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "transaction" | "scheduled";
+            kind: "transaction" | "scheduled" | "lineup";
+            /**
+             * Moves
+             * @description A lineup chip's slot moves; empty otherwise
+             */
+            moves: components["schemas"]["AiProposalMove"][];
             /** Proposal Id */
             proposal_id: number;
             /**
@@ -3028,7 +3045,7 @@ export interface components {
             scoring: string | null;
             /**
              * Scoring Period Id
-             * @description ESPN's day for the move (the scheduled pickup's day)
+             * @description ESPN's day for the move (the scheduled pickup's day; a lineup chip's board, `ApplyLineupMovesReq.expected_scoring_period_id`)
              */
             scoring_period_id: number;
             /** Sent At */
@@ -3060,6 +3077,56 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /**
+         * AiProposalMove
+         * @description One slot move of a lineup chip, as the lineup write takes it (`LineupMoveReq`: espn_id,
+         *     from_slot_id, to_slot_id) and the tray shows it.
+         */
+        AiProposalMove: {
+            /**
+             * Espn Id
+             * @description ESPN player id: `LineupMoveReq.player_id`
+             */
+            espn_id: number;
+            /**
+             * From Slot
+             * @description Its name (PG, UT, BE, IR, ...)
+             */
+            from_slot: string;
+            /**
+             * From Slot Id
+             * @description The slot he is in on the chip's board
+             */
+            from_slot_id: number;
+            /** Name */
+            name: string;
+            /**
+             * Nba Player Id
+             * @description nba.players.id when known (Scout, headshot)
+             */
+            nba_player_id: number | null;
+            /**
+             * Note
+             * @description The planner's note: his game, 'no game today', 'OUT'
+             */
+            note: string | null;
+            /**
+             * Role
+             * @description start (bench to active), bench (to the bench), shift (the rest)
+             * @default shift
+             * @enum {string}
+             */
+            role: "start" | "bench" | "shift";
+            /**
+             * Team
+             * @description NBA tricode
+             */
+            team: string | null;
+            /** To Slot */
+            to_slot: string;
+            /** To Slot Id */
+            to_slot_id: number;
         };
         /** AiProposalPlayer */
         AiProposalPlayer: {
@@ -3411,6 +3478,8 @@ export interface components {
             expected_scoring_period_id: number;
             /** Moves */
             moves: components["schemas"]["LineupMoveReq"][];
+            /** Proposal Id */
+            proposal_id?: number | null;
             /** Roster Version */
             roster_version: string;
         };
