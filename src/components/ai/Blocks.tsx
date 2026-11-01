@@ -92,6 +92,12 @@ export function PlaceBlock({ place }: { place: AiPlace }) {
   return (
     <div className={s.place}>
       <span className={s.placeSteps}>{place.steps}</span>
+      {/* The map is of another build than the one open: the screen may have moved since */}
+      {place.matches_build ? null : (
+        <span className={s.placeOld} title="Court Vision's map of the app is from another version of the site">
+          may have changed
+        </span>
+      )}
       <span className={dk.spacer} />
       {APP_PATH.test(place.href) ? (
         <Link href={place.href} className={`${dk.link} ${s.placeOpen}`}>
