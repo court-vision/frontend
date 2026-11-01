@@ -23,7 +23,9 @@
 // the few that keep Clerk's session alive (src/lib/app-map/clerk.ts) and the
 // API's searches sent as a POST (src/lib/app-map/reads.ts), so no click can
 // write anything anywhere; demo writes stay in the tab, and storage is cleared
-// on every load.
+// on every load. Every request the crawl sends the API carries its mark
+// (src/lib/app-map/crawl-mark.ts), and the API refuses a marked write too: the
+// account writes when a person uses it, never from the crawl.
 import { execSync } from "node:child_process";
 import { appendFileSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -35,6 +37,7 @@ import {
   type AriaNode, type Control,
 } from "@/lib/app-map/aria";
 import { clerkFrontendApi, keepsSessionAlive } from "@/lib/app-map/clerk";
+import { markedForApi } from "@/lib/app-map/crawl-mark";
 import { isReadSentAsPost } from "@/lib/app-map/reads";
 import { APP_MAP_VERSION, deskOfFile, screenId, type AppMap, type MapCopy, type MapDesk, type MapScreen, type MapStep } from "@/lib/app-map/map";
 import { chromeTest, copyOf, pageParams, seenIn, sweptFile } from "@/lib/app-map/sweep";
@@ -210,10 +213,15 @@ async function newContext(browser: Browser, opts: { clerkWrites?: boolean } = {}
     const req = route.request();
     // Pictures and fonts change no role or name (an image's alt is in the page): not fetched
     if (["image", "font", "media"].includes(req.resourceType())) return route.abort("blockedbyclient");
-    if (["GET", "HEAD", "OPTIONS"].includes(req.method())) return route.continue();
-    if (CLERK_FAPI && new URL(req.url()).host === CLERK_FAPI && (opts.clerkWrites || keepsSessionAlive(req.url(), req.method()))) return route.continue();
-    // A search whose options go in the body; the API refuses the account any other write too
-    if (isReadSentAsPost(req.url(), req.method(), API)) return route.continue();
+    // On its way, marked as the crawl's when it goes to the API, which then refuses it any write
+    const send = () => {
+      const headers = markedForApi(req.url(), req.headers(), API);
+      return headers ? route.continue({ headers }) : route.continue();
+    };
+    if (["GET", "HEAD", "OPTIONS"].includes(req.method())) return send();
+    if (CLERK_FAPI && new URL(req.url()).host === CLERK_FAPI && (opts.clerkWrites || keepsSessionAlive(req.url(), req.method()))) return send();
+    // A search whose options go in the body; the API refuses the crawl any other write too
+    if (isReadSentAsPost(req.url(), req.method(), API)) return send();
     blocked.push(`${req.method()} ${req.url()}`);
     return route.abort("blockedbyclient");
   });
