@@ -1339,7 +1339,9 @@ export function WeekTerminal({
         }
         case "Escape":
           // A staged add / drop is the tray's to take back, like a staged lineup move.
+          // Then open stats (they follow the cursor, so they close before it clears).
           if (tapeBox) setTapeBox(null);
+          else if (stats) setStats(null);
           else setCursor(null);
           return;
       }
@@ -1499,7 +1501,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, toggleMarket, streamable, toggleDrop, toggleStats, laneFor, tapeBox, data.actions]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, toggleMarket, streamable, toggleDrop, toggleStats, stats, laneFor, tapeBox, data.actions]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
