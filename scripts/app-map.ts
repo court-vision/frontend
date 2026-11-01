@@ -20,9 +20,10 @@
 // APP_MAP_TOKEN (and --serve), signed in first as the app map's own account,
 // through the desks as a user has them; the demos then add only what it
 // didn't show. Every request that isn't GET, HEAD or OPTIONS is aborted, bar
-// the few that keep Clerk's session alive (src/lib/app-map/clerk.ts), so no
-// click can write anything anywhere; demo writes stay in the tab, and storage
-// is cleared on every load.
+// the few that keep Clerk's session alive (src/lib/app-map/clerk.ts) and the
+// API's searches sent as a POST (src/lib/app-map/reads.ts), so no click can
+// write anything anywhere; demo writes stay in the tab, and storage is cleared
+// on every load.
 import { execSync } from "node:child_process";
 import { appendFileSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -34,6 +35,7 @@ import {
   type AriaNode, type Control,
 } from "@/lib/app-map/aria";
 import { clerkFrontendApi, keepsSessionAlive } from "@/lib/app-map/clerk";
+import { isReadSentAsPost } from "@/lib/app-map/reads";
 import { APP_MAP_VERSION, deskOfFile, screenId, type AppMap, type MapCopy, type MapDesk, type MapScreen, type MapStep } from "@/lib/app-map/map";
 import { chromeTest, copyOf, pageParams, seenIn, sweptFile } from "@/lib/app-map/sweep";
 
@@ -210,6 +212,8 @@ async function newContext(browser: Browser, opts: { clerkWrites?: boolean } = {}
     if (["image", "font", "media"].includes(req.resourceType())) return route.abort("blockedbyclient");
     if (["GET", "HEAD", "OPTIONS"].includes(req.method())) return route.continue();
     if (CLERK_FAPI && new URL(req.url()).host === CLERK_FAPI && (opts.clerkWrites || keepsSessionAlive(req.url(), req.method()))) return route.continue();
+    // A search whose options go in the body; the API refuses the account any other write too
+    if (isReadSentAsPost(req.url(), req.method(), API)) return route.continue();
     blocked.push(`${req.method()} ${req.url()}`);
     return route.abort("blockedbyclient");
   });
