@@ -72,6 +72,8 @@ describe("streamTurn", () => {
       await streamTurn(async () => "tok", "https://api/x", "where are free agents?", () => {});
       process.env.NEXT_PUBLIC_BUILD_SHA = "";
       await streamTurn(async () => "tok", "https://api/x", "hello", () => {});
+      process.env.NEXT_PUBLIC_BUILD_SHA = "dbe2069";
+      await streamTurn(async () => "tok", "https://api/x", "short", () => {});
     } finally {
       if (before === undefined) delete process.env.NEXT_PUBLIC_BUILD_SHA;
       else process.env.NEXT_PUBLIC_BUILD_SHA = before;
@@ -79,6 +81,7 @@ describe("streamTurn", () => {
     expect(bodies).toEqual([
       { message: "where are free agents?", build: "dbe2069a0de03c0c306abcfb556e81b06ed3abf3" },
       { message: "hello" },
+      { message: "short" },
     ]);
   });
 

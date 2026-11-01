@@ -41,10 +41,11 @@ export interface AiTurnDone {
 const KNOWN = new Set(["status", "text", "block", "error", "done"]);
 
 /** The commit this build is of, so CV AI reads the app map of the app the user
- * has open; a local build without one gets the newest map. */
+ * has open; a local build without one gets the newest map. A full SHA only: the
+ * maps are stored under full ones, and the API refuses a short one. */
 function buildSha(): string | undefined {
   const sha = process.env.NEXT_PUBLIC_BUILD_SHA ?? "";
-  return /^[0-9a-f]{7,40}$/.test(sha) ? sha : undefined;
+  return /^[0-9a-f]{40}$/.test(sha) ? sha : undefined;
 }
 
 /**

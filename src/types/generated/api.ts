@@ -3362,7 +3362,7 @@ export interface components {
         AiTurnReq: {
             /**
              * Build
-             * @description The frontend build the user has open, its commit SHA: CV AI reads that build's app map, or the newest when it has none yet
+             * @description The frontend build the user has open, its commit's full SHA: CV AI reads that build's app map, or the newest when it has none yet
              */
             build?: string | null;
             /** Message */

@@ -1882,14 +1882,14 @@
           "build": {
             "anyOf": [
               {
-                "pattern": "^[0-9a-f]{7,40}$",
+                "pattern": "^[0-9a-f]{40}$",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "The frontend build the user has open, its commit SHA: CV AI reads that build's app map, or the newest when it has none yet",
+            "description": "The frontend build the user has open, its commit's full SHA: CV AI reads that build's app map, or the newest when it has none yet",
             "title": "Build"
           },
           "message": {
@@ -24582,7 +24582,7 @@
             "name": "build",
             "required": true,
             "schema": {
-              "pattern": "^[0-9a-f]{7,40}$",
+              "pattern": "^[0-9a-f]{40}$",
               "title": "Build",
               "type": "string"
             }
