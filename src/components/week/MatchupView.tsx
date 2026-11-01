@@ -37,9 +37,11 @@ interface MatchupViewProps {
   day: number;
   todayIndex: number | null;
   onDay: (day: number) => void;
+  /** Open a player's stats (either side's), by ESPN id. */
+  onPlayer?: (id: number) => void;
 }
 
-export function MatchupView({ grid, source, day, todayIndex, onDay }: MatchupViewProps) {
+export function MatchupView({ grid, source, day, todayIndex, onDay, onPlayer }: MatchupViewProps) {
   const days = useMemo(() => source.days.map((d) => buildMatchupDay(source, grid, d.index)), [source, grid]);
   const md = days[day] ?? days[0];
   const [scope, setScope] = useState<"day" | "week">("day");
@@ -98,20 +100,20 @@ export function MatchupView({ grid, source, day, todayIndex, onDay }: MatchupVie
           </span>
         </div>
         {active.map((r) => (
-          <Duel key={r.key} row={r} past={md.kind === "past"} />
+          <Duel key={r.key} row={r} past={md.kind === "past"} onPlayer={onPlayer} />
         ))}
         <TotalRow md={md} />
         {bench.length ? <GroupRow label="Bench" note="games here don't count" /> : null}
         {bench.map((r) => (
-          <Duel key={r.key} row={r} past={md.kind === "past"} />
+          <Duel key={r.key} row={r} past={md.kind === "past"} onPlayer={onPlayer} />
         ))}
         {ir.length ? <GroupRow label="IR" /> : null}
         {ir.map((r) => (
-          <Duel key={r.key} row={r} past={md.kind === "past"} />
+          <Duel key={r.key} row={r} past={md.kind === "past"} onPlayer={onPlayer} />
         ))}
         {drop.length ? <GroupRow label="Dropping" note="leaves the roster for the free agent: his games stop counting" tone="var(--down)" /> : null}
         {drop.map((r) => (
-          <Duel key={r.key} row={r} past={md.kind === "past"} />
+          <Duel key={r.key} row={r} past={md.kind === "past"} onPlayer={onPlayer} />
         ))}
       </div>
 
@@ -194,16 +196,16 @@ function GroupRow({ label, note, tone }: { label: string; note?: string; tone?: 
   );
 }
 
-function Duel({ row, past }: { row: DuelRow; past: boolean }) {
+function Duel({ row, past, onPlayer }: { row: DuelRow; past: boolean; onPlayer?: (id: number) => void }) {
   return (
     <div className={s.muRow} style={{ gridTemplateColumns: TEMPLATE }} data-group={row.group}>
-      <Side side={row.you} edge={row.edge === "you"} past={past} />
+      <Side side={row.you} edge={row.edge === "you"} past={past} onPlayer={onPlayer} />
       <span className={s.muSpine}>
         <span className={s.slotChip} data-group={row.group} data-in={row.you?.incoming}>
           {row.slot}
         </span>
       </span>
-      <Side side={row.opp} edge={row.edge === "opp"} past={past} mirror blank={row.group === "drop"} />
+      <Side side={row.opp} edge={row.edge === "opp"} past={past} mirror blank={row.group === "drop"} onPlayer={onPlayer} />
     </div>
   );
 }
@@ -215,6 +217,7 @@ function Side({
   past,
   mirror = false,
   blank: quiet = false,
+  onPlayer,
 }: {
   side: DuelSide | null;
   edge: boolean;
@@ -222,6 +225,7 @@ function Side({
   mirror?: boolean;
   /** No spot to fill on this side (the drop row's opponent side): leave it unlabelled. */
   blank?: boolean;
+  onPlayer?: (id: number) => void;
 }) {
   if (!side) {
     const blank = [
@@ -264,7 +268,20 @@ function Side({
       data-incoming={side.incoming}
       data-shifted={side.shifted || undefined}
       data-outgoing={side.outgoing || undefined}
-      title={side.shifted ? `${side.name} moves here to make room for the free agent` : side.outgoing ? `${side.name} is dropped for the free agent` : undefined}
+      title={side.shifted ? `${side.name} moves here to make room for the free agent` : side.outgoing ? `${side.name} is dropped for the free agent` : onPlayer ? `${side.name}'s stats` : undefined}
+      {...(onPlayer
+        ? {
+            role: "button",
+            tabIndex: 0,
+            "data-clickable": true,
+            onClick: () => onPlayer(side.id),
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
+              e.preventDefault();
+              onPlayer(side.id);
+            },
+          }
+        : {})}
     >
       <Headshot nbaId={side.nbaId} name={side.name} size={28} />
       <span className={s.muWho}>
