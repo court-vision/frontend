@@ -38,6 +38,7 @@ import {
   type Incoming,
   type IncomingPreview,
   type LineupMode,
+  type SourcePlayer,
   type WeekSource,
 } from "@/lib/week-grid";
 import { sourceFromStreamer } from "@/lib/week-source";
@@ -69,6 +70,8 @@ import { Tray, type PendingDay, type SwapTiming, type TrayDay, type TraySwap } f
 import { TodayStrip, type TodayRow } from "./TodayStrip";
 import { sendLineupDays } from "./lineup-send";
 import { EdgeTick } from "./EdgeTick";
+import { PlayerStats } from "./PlayerStats";
+import { opponentAsPlayer, type StatsKind } from "@/lib/player-stats";
 import { tickOf, type TapeBox } from "./TickBox";
 import { keyStaysIn } from "./tape-box";
 import { buildRace, categoryRace, categoryRacePoints } from "@/lib/matchup-race";
@@ -80,6 +83,7 @@ import { monthDay, shortName, signed, whenTime } from "./format";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
+import { useLatestCallback } from "@/hooks/useLatestCallback";
 
 const NO_STAGING: Staged = {};
 const MAX_REPLACE_OPTIONS = 80;
@@ -101,6 +105,8 @@ type View = WeekView;
  */
 type PreviewRef = { faId: number; replaces: number; from: number | null; pickup?: number; held?: number };
 type Planned = DropTarget & { moves: Array<{ player_id: number; to_slot_id: number }> };
+/** Whose stats are open, by ESPN id; a free agent opened from the market brings his row along. */
+type StatsRef = { id: number; fa?: StreamerPlayer };
 
 export function WeekTerminal({
   data,
@@ -244,8 +250,28 @@ export function WeekTerminal({
     [actionPickups, data.daily, data.streamers]
   );
   const previewFa = preview ? faById.get(preview.faId) ?? null : null;
+
+  // ---- a player's stats: yours, the opponent's or a free agent's, in a pane beside the grid ----
+  const [stats, setStats] = useState<StatsRef | null>(null);
+  const toggleStats = useCallback((id: number) => setStats((cur) => (cur?.id === id ? null : { id })), []);
+  const statsFa = stats ? stats.fa ?? null : null;
+
+  // Opponents for the previewed free agent's games, else for the one whose stats are open.
   const { setScheduleTeam } = data;
-  useEffect(() => setScheduleTeam(previewFa?.team ?? null), [previewFa?.team, setScheduleTeam]);
+  const scheduleTeam = previewFa?.team ?? statsFa?.team ?? null;
+  useEffect(() => setScheduleTeam(scheduleTeam), [scheduleTeam, setScheduleTeam]);
+  const statsView = useMemo<{ player: SourcePlayer; kind: StatsKind } | null>(() => {
+    if (!stats || !source) return null;
+    const mine = [...roster, ...(source.gone?.mine ?? [])].find((p) => p.id === stats.id);
+    if (mine) return { player: mine, kind: "mine" };
+    const opp = [...source.opponents, ...(source.gone?.opp ?? [])].find((p) => p.id === stats.id);
+    if (opp) return { player: opponentAsPlayer(opp), kind: "opp" };
+    const fa = stats.fa ?? faById.get(stats.id);
+    if (!fa) return null;
+    // The loaded schedule is his team's unless a preview of another free agent holds it.
+    const schedule = !previewFa || previewFa.team === fa.team ? data.schedule : null;
+    return { player: sourceFromStreamer(fa, source.days, schedule, addFrom), kind: "fa" };
+  }, [stats, source, roster, faById, previewFa, data.schedule, addFrom]);
 
   // ---- the stream lanes: up to four open, one per spot; hovering a lane's row previews its projection ----
   const openLanes = data.lanes.open;
@@ -1256,6 +1282,22 @@ export function WeekTerminal({
     clearLaneError();
   }, [clearLaneError]);
 
+  // Open stats follow the cursor to the player under it (the arrows walk the roster).
+  const playerAt = useLatestCallback((c: Cursor): number | null => {
+    if (!grid) return null;
+    if (view === "daily") {
+      const { slots, seats } = grid.lineups;
+      return seats[c.col]?.[slots.findIndex((d) => d.key === c.key)]?.player.id ?? null;
+    }
+    if (view === "players") return grid.rows.find((r) => r.key === c.key)?.player?.id ?? null;
+    return null;
+  });
+  useEffect(() => {
+    if (!cursor) return;
+    const id = playerAt(cursor);
+    if (id != null) setStats((cur) => (cur && cur.id !== id ? { id } : cur));
+  }, [cursor, playerAt]);
+
   // ---- keyboard ----
   useEffect(() => {
     if (!grid) return;
@@ -1312,6 +1354,9 @@ export function WeekTerminal({
         } else if (e.key === "]" || e.key === "ArrowRight") {
           e.preventDefault();
           setFocusPick(Math.min(lastDay, at + 1));
+        } else if (e.key === "i") {
+          // No cursor here: I only closes them (a name opens a player's).
+          setStats(null);
         }
         return;
       }
@@ -1368,6 +1413,12 @@ export function WeekTerminal({
           case "x": {
             const seat = seatHere();
             if (seat && !seat.incoming && (!seat.outgoing || seat.dropped)) toggleDrop(seat.player.id);
+            return;
+          }
+          case "i": {
+            const seat = seatHere();
+            if (seat) toggleStats(seat.player.id);
+            else setStats(null);
             return;
           }
           case "r": {
@@ -1427,6 +1478,12 @@ export function WeekTerminal({
         case "r":
           if (cursor) openReplace(cursor.key);
           return;
+        case "i": {
+          const row = cursor ? rows.find((r) => r.key === cursor.key) : null;
+          if (row?.player) toggleStats(row.player.id);
+          else setStats(null);
+          return;
+        }
         case "x": {
           const row = cursor ? rows.find((r) => r.key === cursor.key) : null;
           if (row?.player && row.kind === "player" && (!row.outgoing || row.dropped)) toggleDrop(row.player.id);
@@ -1442,7 +1499,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, toggleMarket, streamable, toggleDrop, laneFor, tapeBox, data.actions]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, toggleMarket, streamable, toggleDrop, toggleStats, laneFor, tapeBox, data.actions]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
@@ -1601,6 +1658,7 @@ export function WeekTerminal({
             day={focusDay ?? defaultFocus}
             todayIndex={todayIndex}
             onDay={(d) => setFocusPick(d)}
+            onPlayer={toggleStats}
           />
         ) : view === "daily" ? (
           <DailyGrid
@@ -1638,6 +1696,7 @@ export function WeekTerminal({
             onReplace={openReplace}
             drag={drag}
             mode={mode}
+            onStats={toggleStats}
           />
         )}
         {trayDays.length ? (
@@ -1675,6 +1734,18 @@ export function WeekTerminal({
           />
         ) : null}
         </div>
+        {statsView ? (
+          <PlayerStats
+            key={statsView.player.id}
+            player={statsView.player}
+            kind={statsView.kind}
+            days={grid.days}
+            todayIndex={todayIndex}
+            categories={source.format === "categories"}
+            besideMarket={marketOpen}
+            onClose={() => setStats(null)}
+          />
+        ) : null}
         {marketOpen ? (
           <MarketPane
             days={grid.days}
@@ -1708,6 +1779,9 @@ export function WeekTerminal({
               pin(pick ? { ...pick, from: pinned?.faId === pick.faId ? pinned.from : null } : null);
             }}
             onClose={closeMarket}
+            statsId={stats?.id ?? null}
+            statsFollow={statsView?.kind === "fa"}
+            onStats={(fa) => setStats(fa ? { id: fa.player_id, fa } : null)}
           />
         ) : null}
         </div>
@@ -1774,6 +1848,10 @@ export function WeekTerminal({
           streamNote={streamable(menuPlayer.id)}
           onPick={(slot) => {
             stageOneOn(moveInfo.day, menuPlayer.id, slot);
+            closeMenu();
+          }}
+          onStats={() => {
+            setStats({ id: menuPlayer.id });
             closeMenu();
           }}
           onReplace={() => {

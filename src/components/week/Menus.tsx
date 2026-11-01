@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Command } from "cmdk";
-import { Radio, Repeat2, Undo2, UserMinus } from "lucide-react";
+import { BarChart3, Radio, Repeat2, Undo2, UserMinus } from "lucide-react";
 import { slotName } from "@/lib/lineup-editor";
 import type { SourcePlayer, WeekDay } from "@/lib/week-grid";
 import type { StreamerPlayer } from "@/types/streamer";
@@ -68,6 +68,8 @@ interface MoveMenuProps extends Anchored {
   streamNote?: string | null;
   /** Dropping him now: the item, or why it can't be offered; omitted where drops aren't. */
   drop?: MoveMenuDrop | null;
+  /** Open his stats beside the grid. */
+  onStats?: () => void;
 }
 
 /** The move menu's drop: made now, staged in the tray's today column. */
@@ -96,6 +98,7 @@ export function MoveMenu({
   streamThrough = null,
   streamNote = null,
   drop = null,
+  onStats,
   ...shell
 }: MoveMenuProps) {
   const staged = !!drop?.staged;
@@ -174,6 +177,13 @@ export function MoveMenu({
             </Command.Item>
           ) : streamNote ? (
             <div className={dk.menuEmpty}>{streamNote}</div>
+          ) : null}
+          {onStats ? (
+            <Command.Item value="stats" className={dk.menuItem} onSelect={onStats}>
+              <BarChart3 size={14} style={{ color: "var(--text-2)" }} />
+              <span className={dk.grow}>His stats</span>
+              <span className={dk.kbd}>I</span>
+            </Command.Item>
           ) : null}
         </Command.List>
         {blocked && !staged ? <div className={dk.menuFoot}>{blocked}</div> : null}

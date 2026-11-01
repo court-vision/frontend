@@ -343,6 +343,7 @@ const WEEK_KEYS: Array<[string, string]> = [
   ["M", "move player"],
   ["R", "replace"],
   ["S", "stream spot"],
+  ["I", "stats"],
   ["A", "autoslot"],
   ["L", "as set / best"],
   ["V", "view"],

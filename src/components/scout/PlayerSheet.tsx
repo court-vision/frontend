@@ -575,7 +575,7 @@ function profileItems(prof: NonNullable<import("@/types/scout").PlayerProfileDet
 // Form chart
 // ---------------------------------------------------------------------------
 
-function FormChart({ logs, window, mean }: { logs: GameLog[]; window: Window; mean: number | null }) {
+export function FormChart({ logs, window, mean }: { logs: GameLog[]; window: Window; mean: number | null }) {
   const [hover, setHover] = useState<number | null>(null);
   const n = logs.length;
   const inWindow = useMemo(() => {

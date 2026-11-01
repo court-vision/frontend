@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
 import dk from "@/components/desk/desk.module.css";
 import {
@@ -78,6 +78,12 @@ interface MarketProps {
   pinned: MarketPick | null;
   /** Why the pinned add can't be sent, if it can't. */
   pinnedBlocked: string | null;
+  /** The player whose stats are open beside the market (any player, by ESPN id), if any. */
+  statsId: number | null;
+  /** The open stats are a free agent's: they follow the list's focus. */
+  statsFollow: boolean;
+  /** Open a free agent's stats, or close them (null). */
+  onStats: (fa: StreamerPlayer | null) => void;
   /** Free agents already scheduled to be picked up, and the day each is for ("Thu"). */
   scheduled: ReadonlyMap<number, string>;
   onHover: (pick: MarketPick | null) => void;
@@ -308,7 +314,8 @@ interface ItemProps extends MarketProps {
 }
 
 function FaItem(props: ItemProps) {
-  const { fa, best, target, selected, days, open, nameOf, onHover, onPin } = props;
+  const { fa, best, target, selected, days, open, nameOf, onHover, onPin, statsId, statsFollow, onStats } = props;
+  const statsOpen = statsId === fa.player_id;
   const gain = best ? (target != null ? best.byDay[target] ?? 0 : best.week) : null;
   const injured = isInjured(fa);
   return (
@@ -321,8 +328,17 @@ function FaItem(props: ItemProps) {
         // over the picked free agent: his preview is the pinned one, with the drop chosen below.
         onMouseEnter={() => best && !selected && onHover({ faId: fa.player_id, replaces: best.dropId })}
         onMouseLeave={() => onHover(null)}
-        onFocus={() => best && !selected && onHover({ faId: fa.player_id, replaces: best.dropId })}
+        onFocus={() => {
+          if (best && !selected) onHover({ faId: fa.player_id, replaces: best.dropId });
+          // A free agent's stats walk the list with the focus.
+          if (statsFollow && !statsOpen) onStats(fa);
+        }}
         onBlur={() => onHover(null)}
+        onKeyDown={(e) => {
+          if (e.key !== "i" || e.metaKey || e.ctrlKey || e.altKey) return;
+          e.preventDefault();
+          onStats(statsOpen ? null : fa);
+        }}
         onClick={() => onPin(selected ? null : best ? { faId: fa.player_id, replaces: best.dropId } : null)}
         title={selected ? "Stop previewing" : "Preview him in the grid"}
       >
@@ -349,6 +365,16 @@ function FaItem(props: ItemProps) {
         <span className={s.marketGain} data-sign={gain == null ? "none" : gain > 0.05 ? "up" : gain < -0.05 ? "down" : "flat"}>
           {gain == null ? "—" : signed(gain)}
         </span>
+      </button>
+      <button
+        type="button"
+        className={`${dk.iconBtn} ${s.marketStats}`}
+        aria-label={`${fa.name}'s stats`}
+        aria-pressed={statsOpen}
+        title="Stats (I)"
+        onClick={() => onStats(statsOpen ? null : fa)}
+      >
+        <BarChart3 size={13} />
       </button>
       {selected ? <DropOptions {...props} /> : null}
     </div>

@@ -1282,6 +1282,17 @@ button.dayHead:hover {
   font-weight: 500;
 }
 
+.muName[data-clickable] {
+  cursor: pointer;
+  outline: none;
+}
+
+.muName[data-clickable]:hover .muPlayer,
+.muName[data-clickable]:focus-visible .muPlayer {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .muMeta {
   display: flex;
   align-items: center;
@@ -3311,4 +3322,233 @@ button.marketRow:hover {
 .raceUp[data-projected],
 .raceDown[data-projected] {
   opacity: 0.7;
+}
+
+/* ------------------------------------------------------------ player stats */
+
+/*
+ * A player's stats: a pane at the work area's right edge, like the market, or
+ * just left of it when both are open (the market keeps its place at the edge).
+ */
+.statsPane {
+  flex: 0 0 440px;
+  width: 440px;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line-2);
+  background: var(--surface);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.18);
+  z-index: 5;
+}
+
+/* Side by side, one shadow: the left one's, over the grid. */
+.statsPane[data-beside-market] + .market {
+  box-shadow: none;
+}
+
+.statsScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.statsScroll > section {
+  padding: 12px 16px 14px;
+}
+
+.statsHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.statsWho {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.statsName {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.statsMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.statsScout {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: fit-content;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.statsScout:hover {
+  text-decoration: underline;
+}
+
+.statsBig {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.statsBigValue {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text);
+}
+
+/* Scout's stat tiles, six to a row and a size down. */
+.statsLine {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.statsLine > div {
+  gap: 3px;
+  padding: 6px 7px 7px;
+}
+
+.statsLine > div > span:nth-child(2) {
+  font-size: 15px;
+}
+
+.statsLine > div > span:nth-child(3) {
+  min-height: 0;
+  font-size: 10px;
+}
+
+.statsLine > div > span:nth-child(3):empty {
+  display: none;
+}
+
+.statsForm > svg {
+  height: 84px;
+}
+
+.statsForm [class*="chartHover"] {
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-size: 10.5px;
+}
+
+.statsWeek {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.statsDay {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px 6px 7px;
+  border-radius: calc(4px * var(--round, 1));
+  background: var(--surface-2);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.statsDay[data-today="true"] {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.statsDay[data-state="none"] {
+  background: transparent;
+  outline: 1px dashed var(--line);
+  outline-offset: -1px;
+}
+
+.statsDow {
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+
+.statsOpp {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 10.5px;
+  color: var(--text-2);
+}
+
+.statsVal {
+  min-height: 15px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.statsDay[data-state="scheduled"] .statsVal {
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+.statsDay[data-state="live"] .statsVal {
+  color: var(--up);
+}
+
+.statsDay[data-state="out"] .statsVal {
+  color: var(--down);
+}
+
+.statsTable th,
+.statsTable td {
+  height: 26px;
+  padding: 0 5px;
+}
+
+/* A free agent's stats button: in the row's name column, shown on hover, focus or while open. */
+.marketStats {
+  position: absolute;
+  top: 27px;
+  right: 188px;
+  width: 24px;
+  height: 24px;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.marketItem {
+  position: relative;
+}
+
+.marketItem .marketWho {
+  padding-right: 26px;
+}
+
+.marketItem:hover .marketStats,
+.marketItem:focus-within .marketStats,
+.marketStats[aria-pressed="true"] {
+  opacity: 1;
 }

@@ -15,7 +15,7 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { ArrowLeftRight, Lock, Repeat2 } from "lucide-react";
+import { ArrowLeftRight, BarChart3, Lock, Repeat2 } from "lucide-react";
 import { BENCH_SLOT_ID, IR_SLOT_ID, isActiveSlot, slotName } from "@/lib/lineup-editor";
 import { healthOf, type GridCell, type GridRow, type LineupMode, type WeekGrid as Grid } from "@/lib/week-grid";
 import type { LineupPlayer } from "@/types/lineup-editor";
@@ -60,7 +60,8 @@ interface WeekGridProps {
   /** Present when the lineup on screen can be rearranged (today, ESPN board). */
   drag: DragApi | null;
   mode: LineupMode;
-  /** A free agent is picked: clicking a roster player makes him the drop. */
+  /** Open (or close) a player's stats. */
+  onStats?: (playerId: number) => void;
 }
 
 type Group = "active" | "bench" | "ir" | "drop" | "later";
@@ -97,6 +98,7 @@ export function WeekGrid({
   onReplace,
   drag,
   mode,
+  onStats,
 }: WeekGridProps) {
   const [hotCol, setHotCol] = useState<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -178,6 +180,7 @@ export function WeekGrid({
           onHotCol={setHotCol}
           onMove={onMove}
           onReplace={onReplace}
+          onStats={onStats}
         />
       </Fragment>
     );
@@ -375,6 +378,7 @@ interface GridRowViewProps {
   onHotCol: (col: number) => void;
   onMove: (rowKey: string, el: HTMLElement) => void;
   onReplace: (rowKey: string, el: HTMLElement) => void;
+  onStats?: (playerId: number) => void;
 }
 
 function GridRowView({
@@ -395,6 +399,7 @@ function GridRowView({
   onHotCol,
   onMove,
   onReplace,
+  onStats,
 }: GridRowViewProps) {
   const { setNodeRef } = useDroppable({ id: row.key, disabled: !droppable });
   return (
@@ -419,6 +424,7 @@ function GridRowView({
         onFocus={() => onCursor({ key: row.key, col: 0 })}
         onMove={(el) => onMove(row.key, el)}
         onReplace={(el) => onReplace(row.key, el)}
+        onStats={onStats && row.player ? () => onStats(row.player!.id) : undefined}
       />
       {row.cells.map((cell, i) => (
         <DayCell
@@ -495,9 +501,10 @@ interface RosterCellProps {
   onFocus: () => void;
   onMove: (el: HTMLElement) => void;
   onReplace: (el: HTMLElement) => void;
+  onStats?: () => void;
 }
 
-const RosterCell = memo(function RosterCell({ row, group, board, isToday, draggable, cursor, onFocus, onMove, onReplace }: RosterCellProps) {
+const RosterCell = memo(function RosterCell({ row, group, board, isToday, draggable, cursor, onFocus, onMove, onReplace, onStats }: RosterCellProps) {
   const p = row.player;
   const cellRef = useRef<HTMLDivElement | null>(null);
   const { setNodeRef, listeners, attributes } = useDraggable({
@@ -581,6 +588,20 @@ const RosterCell = memo(function RosterCell({ row, group, board, isToday, dragga
       ) : null}
       {row.kind === "player" ? (
         <span className={s.rowActions}>
+          {onStats ? (
+            <button
+              type="button"
+              className={dk.iconBtn}
+              style={{ width: 26, height: 26 }}
+              aria-label={`${p.name}'s stats`}
+              title="Stats (I)"
+              data-stats
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={onStats}
+            >
+              <BarChart3 size={13} />
+            </button>
+          ) : null}
           <button
             type="button"
             className={dk.iconBtn}
