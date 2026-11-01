@@ -55,8 +55,8 @@ interface MarketProps {
   lineupMode: LineupMode;
   mode: MarketMode;
   onMode: (mode: MarketMode) => void;
-  /** The one-day mode's day (today or later). */
-  day: number;
+  /** The one-day mode's day (today or later), or null when no day of the week is left (the last day's games have started). */
+  day: number | null;
   onDay: (day: number) => void;
   pool: StreamerPlayer[];
   poolLoading: boolean;
@@ -119,7 +119,7 @@ export function MarketPane(props: MarketProps) {
   const breakoutRows = useMemo(() => (mode === "breakouts" ? joinBreakouts(props.breakouts, pool) : []), [mode, props.breakouts, pool]);
   const loading = mode === "day" ? props.dailyLoading : mode === "breakouts" ? props.breakoutsLoading || props.poolLoading : props.poolLoading;
   const remaining = days.filter((d) => d.kind !== "past");
-  const dayInfo = days[day];
+  const dayInfo = day != null ? days[day] : undefined;
 
   return (
     <motion.aside
@@ -177,7 +177,7 @@ export function MarketPane(props: MarketProps) {
             );
           })}
         </div>
-        {mode === "day" && dayInfo ? (
+        {mode === "day" && day != null && dayInfo ? (
           <span className={s.marketDay}>
             <button type="button" className={dk.iconBtn} disabled={!remaining.length || day <= Math.max(remaining[0].index, props.addFrom ?? 0)} onClick={() => onDay(day - 1)} aria-label="Previous day">
               <ChevronLeft size={14} />
@@ -223,9 +223,10 @@ export function MarketPane(props: MarketProps) {
         </div>
       ) : null}
 
-      {props.addFrom != null && days[props.addFrom] ? (
+      {props.addFrom != null ? (
         <div className={s.marketNote}>
-          Today&apos;s games have started: an add made now counts from {days[props.addFrom].dow} {monthDay(days[props.addFrom].date)}.
+          Today&apos;s games have started: an add made now counts from{" "}
+          {days[props.addFrom] ? `${days[props.addFrom].dow} ${monthDay(days[props.addFrom].date)}` : "next week"}.
         </div>
       ) : null}
       <div className={`${s.marketRow} ${s.marketColHead}`}>
@@ -238,7 +239,7 @@ export function MarketPane(props: MarketProps) {
               : "Measured against your lineup as set on ESPN, the add seated where he helps most. Switch the lineup to Best (L) to judge with ideal lineups"
           }
         >
-          {mode === "breakouts" ? "Beneficiary" : target != null ? `Best for ${days[target]?.dow ?? ""}` : "Best for your week"}
+          {mode === "breakouts" ? "Beneficiary" : target != null ? `Best for ${days[target]?.dow ?? ""}` : mode === "day" ? "Best for one day" : "Best for your week"}
           <span className={dk.sub} style={{ display: "block", textTransform: "none", letterSpacing: 0, marginTop: 2 }}>
             vs {props.lineupMode === "best" ? "best lineups" : "lineups as set"}
           </span>
@@ -254,7 +255,7 @@ export function MarketPane(props: MarketProps) {
           ))}
         </span>
         <span className={dk.label} style={{ textAlign: "right" }}>
-          {target != null ? "Day" : "Week"}
+          {mode === "day" ? "Day" : "Week"}
         </span>
       </div>
 
@@ -275,7 +276,17 @@ export function MarketPane(props: MarketProps) {
             breakoutRows.map((row) => <BreakoutItem key={row.candidate.beneficiary.player_id} row={row} {...props} candidates={candidates} />)
           )
         ) : visible.length === 0 ? (
-          <Empty text={ranked.length ? "Nobody matches these filters." : mode === "day" ? "No free agent plays that day." : "No free agents to show."} />
+          <Empty
+            text={
+              ranked.length
+                ? "Nobody matches these filters."
+                : mode === "day"
+                  ? day == null
+                    ? "No day left this week to pick up for."
+                    : "No free agent plays that day."
+                  : "No free agents to show."
+            }
+          />
         ) : (
           visible.map((r) => <FaItem key={r.fa.player_id} fa={r.fa} best={r.best} target={target} selected={pinned?.faId === r.fa.player_id} {...props} />)
         )}
