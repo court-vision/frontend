@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useState, type ReactNode } from "react";
 import {
   barSpan,
@@ -17,7 +18,7 @@ import {
   xTickIndexes,
   type Plot,
 } from "@/lib/ai-chart";
-import type { AiChart, AiTable } from "@/types/ai";
+import type { AiChart, AiPlace, AiTable } from "@/types/ai";
 import dk from "@/components/desk/desk.module.css";
 import s from "./ai.module.css";
 
@@ -26,7 +27,8 @@ import s from "./ai.module.css";
  * server built from the agent's lookups, never typed by the model (backend
  * services/ai/display.py). Both sit in one figure whose caption says where
  * the rows came from; a chart can also be read as a table, so every value it
- * draws is there in full.
+ * draws is there in full. A place is one line into the app: the steps and a
+ * link the server copied from the app map.
  *
  * Charts follow the desk's rules for data marks: thin bars with a rounded
  * data end, 2px lines with 8px markers, hairline grid, the series' hue from
@@ -80,6 +82,29 @@ export function ChartBlock({ chart }: { chart: AiChart }) {
         <Lines chart={chart} />
       )}
     </BlockFigure>
+  );
+}
+
+// A path inside the app; anything else the server should never have sent is shown without a link
+const APP_PATH = /^\/(?!\/)[^\s\\]*$/;
+
+export function PlaceBlock({ place }: { place: AiPlace }) {
+  return (
+    <div className={s.place}>
+      <span className={s.placeSteps}>{place.steps}</span>
+      {/* The map is of another build than the one open: the screen may have moved since */}
+      {place.matches_build ? null : (
+        <span className={s.placeOld} title="Court Vision's map of the app is from another version of the site">
+          may have changed
+        </span>
+      )}
+      <span className={dk.spacer} />
+      {APP_PATH.test(place.href) ? (
+        <Link href={place.href} className={`${dk.link} ${s.placeOpen}`}>
+          {place.direct ? "Open" : `Open ${place.desk}`}
+        </Link>
+      ) : null}
+    </div>
   );
 }
 

@@ -167,8 +167,12 @@ type ClerkWindow = {
     client?: { signIn: { create(p: { strategy: "ticket"; ticket: string }): Promise<{ status: string | null; createdSessionId: string | null }> } };
     session?: { getToken(o: { skipCache: boolean }): Promise<string | null> } | null;
     setActive(p: { session: string | null }): Promise<void>;
-    signOut(): Promise<void>;
+    // A callback in place of the redirect: the session ends and the page stays
+    signOut(after?: () => void): Promise<void>;
   };
+  // @clerk/nextjs's hooks around a session change (a server action, then a route refresh)
+  __internal_onBeforeSetActive?: unknown;
+  __internal_onAfterSetActive?: unknown;
 };
 
 const blocked: string[] = [];
@@ -733,11 +737,18 @@ async function signIn(browser: Browser): Promise<boolean> {
     await page.goto(`${BASE}${ALL_DESKS.find((d) => d.id === "scout")?.href ?? "/"}`, { waitUntil: "load", timeout: 60_000 });
     await page.waitForFunction(() => (window as ClerkWindow).Clerk?.loaded, null, { timeout: 30_000 });
     const status = await page.evaluate(async (t) => {
-      const clerk = (window as ClerkWindow).Clerk!;
+      const w = window as ClerkWindow;
+      const clerk = w.Clerk!;
       const attempt = await clerk.client!.signIn.create({ strategy: "ticket", ticket: t });
       if (attempt.status !== "complete") return attempt.status ?? "incomplete";
+      // Before a session change @clerk/nextjs posts a server action to the page.
+      // The crawl blocks it as a write, and Next then reloads the page in the
+      // middle of the sign-in. This page only holds the session, so it needs
+      // neither the action nor the refresh after it; Clerk skips a missing hook
+      delete w.__internal_onBeforeSetActive;
+      delete w.__internal_onAfterSetActive;
       await clerk.setActive({ session: attempt.createdSessionId });
-      return "complete";
+      return clerk.session ? "complete" : "not active";
     }, ticket);
     if (status !== "complete") throw new Error(`Clerk left the sign-in ${status}`);
   } catch (e) {
@@ -779,7 +790,8 @@ async function session(ctx: BrowserContext) {
 async function signOut() {
   if (!account) return;
   try {
-    await account.page.evaluate(() => (window as ClerkWindow).Clerk?.signOut());
+    // With a callback Clerk ends the session without navigating, which would cut the call off
+    await account.page.evaluate(() => (window as ClerkWindow).Clerk?.signOut(() => {}));
   } catch (e) {
     finding("sign-out failed", "all", firstLine(e));
   }

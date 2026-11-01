@@ -6,8 +6,8 @@
  *   lookup, `note` for its own progress note, `step` for the start of each
  *   step after the first, when whatever the last status said is done);
  * - `text` `{delta}`: the answer's prose, as it is written;
- * - `block`: a table or chart the server built from the agent's lookups, or a
- *   chip (a move the agent proposed and the server checked);
+ * - `block`: a table, chart or place in the app the server built from the agent's
+ *   lookups, or a chip (a move the agent proposed and the server checked);
  * - `error` `{code, message}`: the turn failed;
  * - `done` `{turn_id, outcome, cost_usd, …}`: always last.
  *
@@ -39,6 +39,14 @@ export interface AiTurnDone {
 }
 
 const KNOWN = new Set(["status", "text", "block", "error", "done"]);
+
+/** The commit this build is of, so CV AI reads the app map of the app the user
+ * has open; a local build without one gets the newest map. A full SHA only: the
+ * maps are stored under full ones, and the API refuses a short one. */
+function buildSha(): string | undefined {
+  const sha = process.env.NEXT_PUBLIC_BUILD_SHA ?? "";
+  return /^[0-9a-f]{40}$/.test(sha) ? sha : undefined;
+}
 
 /**
  * Splits SSE text into events. Feed it chunks as they arrive; it returns the
@@ -109,7 +117,7 @@ export async function streamTurn(
         Authorization: `Bearer ${token}`,
         ...(correlationId ? { [CORRELATION_HEADER]: correlationId } : {}),
       },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, build: buildSha() }),
       signal,
     });
   } catch (err) {

@@ -37,8 +37,9 @@ export type AiProposalState = AiProposalChip["state"];
 export type AiProposalCheck = S["AiProposalCheckData"];
 export type AiProposalResponse = S["AiProposalResp"];
 export type AiProposalDismissResponse = S["AiProposalDismissResp"];
-/** What a block part carries: a table, a chart or a chip. */
-export type AiBlock = AiTable | AiChart | AiProposal;
+export type AiPlace = S["AiPlace"];
+/** What a block part carries: a table, a chart, a chip or a place in the app. */
+export type AiBlock = AiTable | AiChart | AiProposal | AiPlace;
 export type AiPart = S["AiTextPart"] | S["AiBlockPart"];
 export type AiTurnFeedbackResponse = S["AiTurnFeedbackResp"];
 export type AiTurnCommentResponse = S["AiTurnCommentResp"];
