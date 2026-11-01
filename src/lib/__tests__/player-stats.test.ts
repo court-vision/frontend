@@ -72,4 +72,10 @@ describe("opponentAsPlayer", () => {
       games,
     });
   });
+
+  test("carries his team, nba.com id and injury through (the pane fetches by the id)", () => {
+    const games = [game()];
+    const p = opponentAsPlayer({ id: 7, name: "O Seven", team: "BOS", nbaId: 1629000, injury: "OUT", avg: 25, active: true, games });
+    expect(p).toMatchObject({ team: "BOS", nbaId: 1629000, injury: "OUT", games });
+  });
 });
