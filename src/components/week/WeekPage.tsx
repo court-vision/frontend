@@ -133,6 +133,8 @@ export interface TerminalData {
   requestBreakouts: () => void;
   /** Opponents for a previewed free agent's games. */
   schedule: ScheduleGame[] | null;
+  /** The team whose games `schedule` holds (the last `setScheduleTeam`). */
+  scheduleOf: string | null;
   setScheduleTeam: (team: string | null) => void;
   /** Add and/or drop on the provider, pinned to `board`. */
   transact: (add: number | null, drop: number | null, board: LineupState) => Promise<TransactOutcome>;
@@ -373,6 +375,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     breakoutsLoading: false,
     requestBreakouts: () => {},
     schedule: scheduleTeam ? demoSchedule(scheduleTeam) : null,
+    scheduleOf: scheduleTeam,
     setScheduleTeam,
     transact,
     transacting,
@@ -659,6 +662,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     breakoutsLoading: wantBreakouts && breakouts.isLoading,
     requestBreakouts: () => setWantBreakouts(true),
     schedule: schedule.data?.schedule ?? null,
+    scheduleOf: scheduleTeam,
     setScheduleTeam,
     transact,
     transacting: transaction.isPending,

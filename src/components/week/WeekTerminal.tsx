@@ -38,6 +38,7 @@ import {
   type Incoming,
   type IncomingPreview,
   type LineupMode,
+  type SourceOpponent,
   type SourcePlayer,
   type WeekSource,
 } from "@/lib/week-grid";
@@ -254,24 +255,37 @@ export function WeekTerminal({
   // ---- a player's stats: yours, the opponent's or a free agent's, in a pane beside the grid ----
   const [stats, setStats] = useState<StatsRef | null>(null);
   const toggleStats = useCallback((id: number) => setStats((cur) => (cur?.id === id ? null : { id })), []);
-  const statsFa = stats ? stats.fa ?? null : null;
+  // Whose stats: yours (on the roster now), else, unless they were opened from the
+  // market, one who left your roster or the opponent's; else a free agent (the live
+  // record first, so a refetch reaches the open pane).
+  const statsWho = useMemo<{ mine: SourcePlayer } | { opp: SourceOpponent } | { fa: StreamerPlayer } | null>(() => {
+    if (!stats || !source) return null;
+    const onRoster = roster.find((p) => p.id === stats.id);
+    if (onRoster) return { mine: onRoster };
+    if (!stats.fa) {
+      const gone = source.gone?.mine.find((p) => p.id === stats.id);
+      if (gone) return { mine: gone };
+      const opp = [...source.opponents, ...(source.gone?.opp ?? [])].find((p) => p.id === stats.id);
+      if (opp) return { opp };
+    }
+    const fa = faById.get(stats.id) ?? stats.fa;
+    return fa ? { fa } : null;
+  }, [stats, source, roster, faById]);
+  const statsFa = statsWho && "fa" in statsWho ? statsWho.fa : null;
 
   // Opponents for the previewed free agent's games, else for the one whose stats are open.
   const { setScheduleTeam } = data;
   const scheduleTeam = previewFa?.team ?? statsFa?.team ?? null;
   useEffect(() => setScheduleTeam(scheduleTeam), [scheduleTeam, setScheduleTeam]);
   const statsView = useMemo<{ player: SourcePlayer; kind: StatsKind } | null>(() => {
-    if (!stats || !source) return null;
-    const mine = [...roster, ...(source.gone?.mine ?? [])].find((p) => p.id === stats.id);
-    if (mine) return { player: mine, kind: "mine" };
-    const opp = [...source.opponents, ...(source.gone?.opp ?? [])].find((p) => p.id === stats.id);
-    if (opp) return { player: opponentAsPlayer(opp), kind: "opp" };
-    const fa = stats.fa ?? faById.get(stats.id);
-    if (!fa) return null;
-    // The loaded schedule is his team's unless a preview of another free agent holds it.
-    const schedule = !previewFa || previewFa.team === fa.team ? data.schedule : null;
+    if (!statsWho || !source) return null;
+    if ("mine" in statsWho) return { player: statsWho.mine, kind: "mine" };
+    if ("opp" in statsWho) return { player: opponentAsPlayer(statsWho.opp), kind: "opp" };
+    const fa = statsWho.fa;
+    // Only his team's schedule: the loaded one can be another team's (a preview's, or the last one's for a render).
+    const schedule = data.scheduleOf === fa.team ? data.schedule : null;
     return { player: sourceFromStreamer(fa, source.days, schedule, addFrom), kind: "fa" };
-  }, [stats, source, roster, faById, previewFa, data.schedule, addFrom]);
+  }, [statsWho, source, data.scheduleOf, data.schedule, addFrom]);
 
   // ---- the stream lanes: up to four open, one per spot; hovering a lane's row previews its projection ----
   const openLanes = data.lanes.open;

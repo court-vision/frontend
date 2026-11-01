@@ -104,9 +104,30 @@ export function MoveMenu({
   const staged = !!drop?.staged;
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => ref.current?.focus(), []);
+  // The letters on the items work here too, as they do on the grid.
+  const shortcuts: Record<string, (() => void) | undefined> = {
+    r: onReplace,
+    x: drop && (staged || !drop.note) ? drop.onToggle : undefined,
+    s: onStream,
+    i: onStats,
+  };
   return (
     <Shell {...shell}>
-      <Command ref={ref} loop label={`Move ${player.name}`} style={{ outline: "none" }}>
+      <Command
+        ref={ref}
+        loop
+        label={`Move ${player.name}`}
+        style={{ outline: "none" }}
+        onKeyDown={(e) => {
+          if (e.metaKey || e.ctrlKey || e.altKey) return;
+          const run = shortcuts[e.key];
+          if (!run) return;
+          // Taken here, so the desk doesn't read the same key once the menu has closed.
+          e.preventDefault();
+          e.stopPropagation();
+          run();
+        }}
+      >
         <div className={dk.menuHead} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <Headshot nbaId={player.nbaId} name={player.name} size={34} />
           <span className={s.who}>

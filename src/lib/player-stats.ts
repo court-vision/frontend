@@ -33,7 +33,10 @@ export interface WeekSummary {
   projected: number;
 }
 
-/** What his week has given and has left. A game ruled out counts neither way. */
+/**
+ * What his week has given and has left. A game ruled out counts neither way, nor
+ * does a played one with no points on record (a DNP), as in the matchup view.
+ */
 export function weekSummary(player: SourcePlayer, days: readonly WeekDay[], todayIndex: number | null): WeekSummary {
   let played = 0;
   let scored = 0;
@@ -42,8 +45,9 @@ export function weekSummary(player: SourcePlayer, days: readonly WeekDay[], toda
     const g = player.games[i];
     if (!g || g.out) return;
     if (g.status === "final" || g.status === "live") {
+      if (g.fpts == null) return;
       played++;
-      scored += g.fpts ?? 0;
+      scored += g.fpts;
     } else if (todayIndex == null || i >= todayIndex) {
       left++;
     }

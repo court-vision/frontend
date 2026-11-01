@@ -100,14 +100,17 @@ export function PlayerStats({ player, kind, days, todayIndex, categories, beside
           <span className={s.statsWho}>
             <span className={s.statsName}>{player.name}</span>
             <span className={s.statsMeta}>
-              <span>{player.team || "Free agent"}</span>
+              <span>{player.team || (kind === "fa" ? "Free agent" : "Team unknown")}</span>
               {injury ? <span className={`${dk.chip} ${/OUT|INJURY/.test(injury) ? dk.down : dk.warnChip}`}>{injury}</span> : null}
               {owned ? <span>{owned}</span> : null}
             </span>
-            <Link href={player.nbaId ? `/scout?p=${player.nbaId}` : "/scout"} className={s.statsScout} title="His whole sheet on the Scout desk">
-              Open in Scout
-              <ArrowUpRight size={12} />
-            </Link>
+            {/* Scout opens a player by nba.com id only; without one there is no sheet to link. */}
+            {player.nbaId ? (
+              <Link href={`/scout?p=${player.nbaId}`} className={s.statsScout} title="His whole sheet on the Scout desk">
+                Open in Scout
+                <ArrowUpRight size={12} />
+              </Link>
+            ) : null}
           </span>
           {categories ? null : (
             <span className={s.statsBig}>

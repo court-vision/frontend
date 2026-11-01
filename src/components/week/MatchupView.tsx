@@ -269,7 +269,7 @@ function Side({
       data-shifted={side.shifted || undefined}
       data-outgoing={side.outgoing || undefined}
       title={side.shifted ? `${side.name} moves here to make room for the free agent` : side.outgoing ? `${side.name} is dropped for the free agent` : onPlayer ? `${side.name}'s stats` : undefined}
-      {...(onPlayer && !side.incoming
+      {...(onPlayer
         ? {
             role: "button",
             tabIndex: 0,

@@ -47,6 +47,11 @@ describe("weekSummary", () => {
     expect(weekSummary(p, days, 2).left).toBe(1);
   });
 
+  test("a final with no points on record (a DNP) is not played", () => {
+    const p = player([game({ status: "final", fpts: null }), game({ status: "final", fpts: 22 }), game(), null, null]);
+    expect(weekSummary(p, days, 2)).toEqual({ played: 1, scored: 22, left: 1, projected: 30 });
+  });
+
   test("outside the period every scheduled game is left", () => {
     const p = player([game(), null, game(), null, game()], 20);
     expect(weekSummary(p, days, null)).toEqual({ played: 0, scored: 0, left: 3, projected: 60 });
