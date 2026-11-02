@@ -64,7 +64,7 @@ import {
 import { Bar, EmptyState, LoadingGrid, StatusLine, Tape, Toolbar, type WeekView } from "./Chrome";
 import { MatchupView } from "./MatchupView";
 import { MarketPane, type MarketMode, type MarketPick } from "./Market";
-import { NO_DROP, addsCountFrom, dropCandidates, gainOf, openSpots, rosterRoom } from "@/lib/market";
+import { NO_DROP, addsCountFrom, dropCandidates, gainOf, oneDayTarget, openSpots, rosterRoom } from "@/lib/market";
 import { dropBlockedReason, unstageEverywhere, withoutDropped, type DropLeave } from "@/lib/drops";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Tray, type PendingDay, type SwapTiming, type TrayDay, type TraySwap } from "./Tray";
@@ -451,9 +451,10 @@ export function WeekTerminal({
     [source, marketBase, gainBuild, addFrom]
   );
   const marketOpenSpots = useMemo(() => (marketBase ? openSpots(marketBase) : []), [marketBase]);
-  // The one-day search follows the expanded day, never a day already played.
   const firstOpenDay = addFrom ?? source?.days.find((d) => d.kind !== "past")?.index ?? 0;
-  const marketDay = Math.max(focusDay ?? defaultFocus, firstOpenDay);
+  // The one-day search follows the expanded day, never a day already played; none once the
+  // last day's games have started (an add made now counts from next week).
+  const marketDay = oneDayTarget(source?.days ?? [], focusDay ?? defaultFocus, addFrom);
   // Players staged to drop are already leaving: the market offers the spot they free instead.
   const keptSource = useMemo(
     () => (source && drops.length ? { ...source, mine: source.mine.filter((p) => !drops.includes(p.id)) } : source),
@@ -475,7 +476,7 @@ export function WeekTerminal({
     if (marketOpen) requestPool();
   }, [marketOpen, requestPool]);
   useEffect(() => {
-    setDailyDay(marketOpen && marketMode === "day" ? marketDay : null);
+    setDailyDay(marketOpen && marketMode === "day" && marketDay != null ? marketDay : null);
   }, [marketOpen, marketMode, marketDay, setDailyDay]);
   useEffect(() => {
     if (marketOpen && marketMode === "breakouts") requestBreakouts();

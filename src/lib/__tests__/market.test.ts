@@ -11,6 +11,7 @@ import {
   gainOf,
   joinBreakouts,
   matchesFilters,
+  oneDayTarget,
   openSpots,
   rosterRoom,
   stripFor,
@@ -57,6 +58,20 @@ describe("gains", () => {
       opponents: source.opponents.map((p) => ({ ...p, games: p.games.map((g, i) => (i === DEMO_TODAY && g ? { ...g, status: "scheduled" as const, fpts: null } : g)) })),
     };
     expect(addsCountFrom(quiet, { ...board, players: board.players.map((p) => ({ ...p, game_started: false })) })).toBeNull();
+  });
+
+  test("the one-day search never asks for a played day, or one past the week", () => {
+    const days = source.days;
+    const last = days.length - 1;
+    // Before today's first tip: the asked-for day, or today when a played day is asked.
+    expect(oneDayTarget(days, DEMO_TODAY, null)).toBe(DEMO_TODAY);
+    expect(oneDayTarget(days, 0, null)).toBe(DEMO_TODAY);
+    expect(oneDayTarget(days, last, null)).toBe(last);
+    // After it: tomorrow at the earliest.
+    expect(oneDayTarget(days, DEMO_TODAY, DEMO_TODAY + 1)).toBe(DEMO_TODAY + 1);
+    // The last day after its first tip: an add counts next week, so there is no day to search.
+    expect(oneDayTarget(days, last, last + 1)).toBeNull();
+    expect(oneDayTarget([], 0, null)).toBeNull();
   });
 
   test("ranking prefers the asked-for day, then the week", () => {

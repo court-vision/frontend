@@ -75,6 +75,18 @@ export function addsCountFrom(source: WeekSource, board: LineupState | null): nu
   return started ? today + 1 : null;
 }
 
+/**
+ * The day the one-day market searches: the day asked for, but never a day already
+ * played or one an add made now no longer reaches. Null once no day of the week is
+ * left: after the last day's first tip an add counts from next week, and the search
+ * only knows this week's days (the API refuses an index past the last one).
+ */
+export function oneDayTarget(days: ReadonlyArray<Pick<WeekDay, "index" | "kind">>, asked: number, addFrom: number | null): number | null {
+  const first = addFrom ?? days.find((d) => d.kind !== "past")?.index ?? 0;
+  const day = Math.max(asked, first);
+  return day < days.length ? day : null;
+}
+
 /** Open roster spots: room to add without dropping anyone. */
 export function rosterRoom(board: LineupState | null): number {
   if (!board) return 0;
