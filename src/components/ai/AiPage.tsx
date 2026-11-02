@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { LayoutList, Loader2, Plus, Trash2 } from "lucide-react";
+import { BookOpen, LayoutList, Loader2, Plus, Repeat, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { DeskDialog } from "@/components/desk/DeskDialog";
@@ -31,6 +31,8 @@ import { useUIStore } from "@/stores/useUIStore";
 import type { AiConversationSummary, AiFeedback } from "@/types/ai";
 import { ChipTray, type ChipActions } from "./Chips";
 import { Composer, type ComposerHandle } from "./Composer";
+import { DimeNotesDialog } from "./DimeNotes";
+import { MoveLedgerDialog } from "./MoveLedger";
 import { Thread } from "./Thread";
 import dk from "@/components/desk/desk.module.css";
 import s from "./ai.module.css";
@@ -38,6 +40,8 @@ import s from "./ai.module.css";
 const KEYS: Array<[string, string]> = [
   ["/", "write"],
   ["N", "new conversation"],
+  ["K", "what Dime knows"],
+  ["M", "how moves went"],
   ["T", "theme"],
 ];
 
@@ -122,6 +126,7 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
   const [current, setCurrent] = useState<number | null>(initialConversation);
   const [pane, setPane] = useState<"list" | "thread">("thread");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [dimeView, setDimeView] = useState<"notes" | "moves" | null>(null);
   const router = useRouter();
   const toggleTheme = useDeskTheme((st) => st.toggle);
   const composer = useRef<ComposerHandle>(null);
@@ -264,6 +269,12 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
       } else if (e.key === "n" || e.key === "N") {
         e.preventDefault();
         newConversation();
+      } else if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        setDimeView("notes");
+      } else if (e.key === "m" || e.key === "M") {
+        e.preventDefault();
+        setDimeView("moves");
       } else if (e.key === "t" || e.key === "T") {
         toggleTheme();
       }
@@ -323,7 +334,14 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
       </DeskBar>
 
       <div className={s.body} data-pane={pane}>
-        <ConversationList conversations={conversations} loading={list.isLoading} current={current} onOpen={(id) => go(id)} onNew={newConversation} />
+        <ConversationList
+          conversations={conversations}
+          loading={list.isLoading}
+          current={current}
+          onOpen={(id) => go(id)}
+          onNew={newConversation}
+          onDime={setDimeView}
+        />
 
         <div className={s.main}>
           <div
@@ -374,6 +392,20 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
       <DeskStatus keys={KEYS}>
         <span>Opus 5.5 · answers from Court Vision&apos;s lookups</span>
       </DeskStatus>
+
+      <DimeNotesDialog
+        open={dimeView === "notes"}
+        onOpenChange={(o) => setDimeView(o ? "notes" : null)}
+        teams={teams}
+        teamId={conversation?.team_id ?? selected.teamId}
+      />
+      <MoveLedgerDialog
+        open={dimeView === "moves"}
+        onOpenChange={(o) => setDimeView(o ? "moves" : null)}
+        teams={teams}
+        teamId={selected.teamId}
+        onTeam={setSelectedTeam}
+      />
 
       <DeskDialog
         open={confirmDelete}
@@ -429,12 +461,14 @@ function ConversationList({
   current,
   onOpen,
   onNew,
+  onDime,
 }: {
   conversations: AiConversationSummary[];
   loading: boolean;
   current: number | null;
   onOpen: (id: number) => void;
   onNew: () => void;
+  onDime: (view: "notes" | "moves") => void;
 }) {
   return (
     <nav className={s.list} aria-label="Conversations">
@@ -468,6 +502,15 @@ function ConversationList({
             </button>
           ))
         )}
+      </div>
+      <div className={s.dime}>
+        <span className={`${dk.label} ${s.dimeHead}`}>Dime</span>
+        <button type="button" className={s.dimeLink} onClick={() => onDime("notes")}>
+          <BookOpen size={13} /> What Dime knows
+        </button>
+        <button type="button" className={s.dimeLink} onClick={() => onDime("moves")}>
+          <Repeat size={13} /> How moves went
+        </button>
       </div>
     </nav>
   );

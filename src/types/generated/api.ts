@@ -219,6 +219,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The agent's notes on the caller's teams ("What Dime knows")
+         * @description The notes the agent keeps between conversations, newest first: with `team_id`, that team's and the ones about the caller; without, every one. `include_retired` adds the revised and forgotten ones.
+         */
+        get: operations["list_notes_v1_internal_ai_notes_get"];
+        put?: never;
+        /**
+         * Write a note for the agent
+         * @description A note of the caller's own (author `user`): the agent reads it and may not change or retire it.
+         */
+        post: operations["add_note_v1_internal_ai_notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/notes/{note_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Retire one of the agent's notes
+         * @description The note stops reaching the agent. It is kept as retired by the caller, not erased.
+         */
+        delete: operations["delete_note_v1_internal_ai_notes__note_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Change one of the agent's notes
+         * @description Any live note, the agent's or the caller's: it is retired and replaced by the caller's version, which the agent may no longer change.
+         */
+        patch: operations["edit_note_v1_internal_ai_notes__note_id__patch"];
+        trace?: never;
+    };
     "/v1/internal/ai/proposals/{proposal_id}": {
         parameters: {
             query?: never;
@@ -818,6 +866,31 @@ export interface paths {
          *     A `league_pending` room (a live room started without a team) links to the ESPN draft this INIT came from and then adopts its league: the league's settings are synced and your team in it is added to your account, as the add-team flow would, and the room takes the league's scoring and roster. `league_adopted` reports it; when ESPN cannot be read `league_adoption_error` says why and the next connect tries again.
          */
         post: operations["sync_draft_init_v1_internal_drafts__session_id__sync_init_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/jobs/ledger/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Move Ledger
+         * @description Rebuild the move ledger (usr.move_outcomes) of every league with a recent snapshot,
+         *     or of the one named.
+         *
+         *     Called by data-platform's move_ledger pipeline each night, after the lineup
+         *     snapshots. Each league's rows are replaced whole in one transaction, so a rerun
+         *     is always safe; a league that fails is reported in `data.leagues`, never raised.
+         */
+        post: operations["run_move_ledger_v1_internal_jobs_ledger_run_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1703,6 +1776,27 @@ export interface paths {
          * @description The fill-only moves Court Vision would make today. Never writes.
          */
         get: operations["get_lineup_plan_v1_internal_teams__team_id__lineup_plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/move-outcomes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Move Outcomes
+         * @description The moves, newest first, each with its day, matchup and two-week results, and a
+         *     summary per source (the desk, scheduled pickups, stream lanes, Dime, outside).
+         */
+        get: operations["list_move_outcomes_v1_internal_teams__team_id__move_outcomes_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2898,6 +2992,102 @@ export interface components {
          */
         AiFeedbackResp: {
             data: components["schemas"]["AiFeedbackData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** AiNote */
+        AiNote: {
+            /**
+             * Author
+             * @enum {string}
+             */
+            author: "dime" | "user";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "plan" | "player" | "league" | "opponent" | "preference" | "lesson" | "note";
+            /** Note Id */
+            note_id: number;
+            /** Recheck On */
+            recheck_on: string | null;
+            /** Retired By */
+            retired_by: ("dime" | "user") | null;
+            /** Retired On */
+            retired_on: string | null;
+            /** Retired Reason */
+            retired_reason: string | null;
+            /**
+             * Team Id
+             * @description The team it is about; null for a note about the user
+             */
+            team_id: number | null;
+            /** Text */
+            text: string;
+            /**
+             * Written On
+             * Format: date
+             */
+            written_on: string;
+        };
+        /**
+         * AiNoteCreateReq
+         * @description Body for POST /v1/internal/ai/notes: a note the user writes for the agent.
+         */
+        AiNoteCreateReq: {
+            /**
+             * Kind
+             * @default preference
+             * @enum {string}
+             */
+            kind?: "plan" | "player" | "league" | "opponent" | "preference" | "lesson" | "note";
+            /** Recheck On */
+            recheck_on?: string | null;
+            /** Team Id */
+            team_id?: number | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * AiNoteEditReq
+         * @description Body for PATCH /v1/internal/ai/notes/{note_id}: the note is replaced by the user's version.
+         */
+        AiNoteEditReq: {
+            /**
+             * Clear Recheck
+             * @default false
+             */
+            clear_recheck?: boolean;
+            /** Kind */
+            kind?: ("plan" | "player" | "league" | "opponent" | "preference" | "lesson" | "note") | null;
+            /** Recheck On */
+            recheck_on?: string | null;
+            /** Text */
+            text?: string | null;
+        };
+        /**
+         * AiNoteListResp
+         * @description Response for GET /v1/internal/ai/notes.
+         */
+        AiNoteListResp: {
+            /** Data */
+            data: components["schemas"]["AiNote"][] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** AiNoteResp */
+        AiNoteResp: {
+            data: components["schemas"]["AiNote"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -6567,6 +6757,61 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** LedgerLeagueResult */
+        LedgerLeagueResult: {
+            /**
+             * By Source
+             * @default {}
+             */
+            by_source: {
+                [key: string]: number;
+            };
+            /**
+             * Days
+             * @default 0
+             */
+            days: number;
+            /** Error */
+            error: string | null;
+            /**
+             * Moves
+             * @default 0
+             */
+            moves: number;
+            /** Ok */
+            ok: boolean;
+            /** Provider League Id */
+            provider_league_id: string;
+            /** Season */
+            season: number;
+        };
+        /** LedgerRunData */
+        LedgerRunData: {
+            /** Failed */
+            failed: number;
+            /** Leagues */
+            leagues: components["schemas"]["LedgerLeagueResult"][];
+            /** Rebuilt */
+            rebuilt: number;
+        };
+        /** LedgerRunReq */
+        LedgerRunReq: {
+            /** Provider League Id */
+            provider_league_id?: string | null;
+            /** Season */
+            season?: number | null;
+        };
+        /** LedgerRunResp */
+        LedgerRunResp: {
+            data: components["schemas"]["LedgerRunData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /**
          * LineupCheckResp
          * @description Lineup check result for a team.
@@ -7537,6 +7782,97 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /** MoveOutcome */
+        MoveOutcome: {
+            add: components["schemas"]["MoveOutcomePlayer"] | null;
+            /** Date */
+            date: string;
+            drop: components["schemas"]["MoveOutcomePlayer"] | null;
+            /** Forecast */
+            forecast: {
+                [key: string]: unknown;
+            } | null;
+            /** Mine */
+            mine: boolean;
+            /** Move Id */
+            move_id: number;
+            /** Paired */
+            paired: boolean;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "you" | "scheduled" | "lane" | "dime" | "outside";
+            /** Team Name */
+            team_name: string;
+            /** Windows */
+            windows: {
+                [key: string]: unknown;
+            };
+        };
+        /** MoveOutcomeListData */
+        MoveOutcomeListData: {
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "points" | "categories";
+            /** Moves */
+            moves: components["schemas"]["MoveOutcome"][];
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "team" | "league";
+            /** Summary */
+            summary: components["schemas"]["MoveSourceSummary"][];
+            /** Team Id */
+            team_id: number;
+            /** Total */
+            total: number;
+        };
+        /** MoveOutcomeListResp */
+        MoveOutcomeListResp: {
+            data: components["schemas"]["MoveOutcomeListData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** MoveOutcomePlayer */
+        MoveOutcomePlayer: {
+            /** Name */
+            name: string | null;
+            /** Player Id */
+            player_id: number | null;
+        };
+        /** MoveSourceSummary */
+        MoveSourceSummary: {
+            /** Ahead */
+            ahead: number | null;
+            /** Behind */
+            behind: number | null;
+            /** Categories Lost */
+            categories_lost: number | null;
+            /** Categories Won */
+            categories_won: number | null;
+            /** Moves */
+            moves: number;
+            /** Net Points */
+            net_points: number | null;
+            /** Settled */
+            settled: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "you" | "scheduled" | "lane" | "dime" | "outside";
         };
         /**
          * NBATeamLiveGameData
@@ -11691,6 +12027,221 @@ export interface operations {
             };
         };
     };
+    list_notes_v1_internal_ai_notes_get: {
+        parameters: {
+            query?: {
+                team_id?: number | null;
+                include_retired?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiNoteListResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such live note, or team_id is not one of the caller's teams */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_note_v1_internal_ai_notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiNoteCreateReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiNoteResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such live note, or team_id is not one of the caller's teams */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_note_v1_internal_ai_notes__note_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BaseResponse"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such live note, or team_id is not one of the caller's teams */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    edit_note_v1_internal_ai_notes__note_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiNoteEditReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiNoteResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such live note, or team_id is not one of the caller's teams */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_proposal_v1_internal_ai_proposals__proposal_id__get: {
         parameters: {
             query?: never;
@@ -12919,6 +13470,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_move_ledger_v1_internal_jobs_ledger_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LedgerRunReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerRunResp"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -14330,6 +14914,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LineupPlanResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_move_outcomes_v1_internal_teams__team_id__move_outcomes_get: {
+        parameters: {
+            query?: {
+                /** @description team: this team's moves; league: every team's in its league */
+                scope?: "team" | "league";
+                /** @description Only these sources */
+                source?: ("you" | "scheduled" | "lane" | "dime" | "outside")[] | null;
+                /** @description Only moves that added or dropped this NBA player */
+                player_id?: number | null;
+                /** @description First day (YYYY-MM-DD) */
+                since?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoveOutcomeListResp"];
                 };
             };
             /** @description Validation Error */

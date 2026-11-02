@@ -44,3 +44,55 @@ export type AiPart = S["AiTextPart"] | S["AiBlockPart"];
 export type AiTurnFeedbackResponse = S["AiTurnFeedbackResp"];
 export type AiTurnCommentResponse = S["AiTurnCommentResp"];
 export type AiFeedback = "up" | "down";
+
+/**
+ * Dime's notes (`/v1/internal/ai/notes`): what the agent keeps between
+ * conversations, per team or about the user. A note is never edited in place:
+ * an edit retires it and writes its replacement, so a retired note says who
+ * retired it and why. The user's own notes (author `user`) outrank Dime's.
+ */
+export type AiNote = S["AiNote"];
+export type AiNoteKind = AiNote["kind"];
+export type AiNoteCreateRequest = S["AiNoteCreateReq"];
+export type AiNoteEditRequest = S["AiNoteEditReq"];
+export type AiNoteListResponse = S["AiNoteListResp"];
+export type AiNoteResponse = S["AiNoteResp"];
+
+/**
+ * The move ledger (`/v1/internal/teams/{id}/move-outcomes`): every add and drop
+ * a team made (read off its daily rosters, whoever made it) and what it earned
+ * in the box scores, over the day it counted, the rest of that matchup and two
+ * weeks. Rebuilt each night after the games.
+ */
+export type MoveOutcome = S["MoveOutcome"];
+export type MoveOutcomeList = S["MoveOutcomeListData"];
+export type MoveOutcomeListResponse = S["MoveOutcomeListResp"];
+export type MoveSourceSummary = S["MoveSourceSummary"];
+export type MoveOutcomePlayer = S["MoveOutcomePlayer"];
+export type MoveSource = MoveOutcome["source"];
+export type MoveScope = MoveOutcomeList["scope"];
+export type MoveWindowName = "day" | "matchup" | "two_weeks";
+
+/** One side of a window: its player's games, and for the add the ones he started here. */
+export interface MoveSide {
+  games: number;
+  points?: number;
+  totals?: Record<string, number>;
+  counted_games?: number;
+  counted_points?: number;
+  counted_totals?: Record<string, number>;
+}
+
+/** One scoring window of a move (the API types `windows` loosely; this is its shape). */
+export interface MoveWindow {
+  start: string;
+  end: string;
+  /** False while the window is still being played. */
+  complete: boolean;
+  add: MoveSide | null;
+  drop: MoveSide | null;
+  /** Points leagues: the add's points minus the drop's. */
+  net?: number;
+  /** Category leagues with both sides: the categories the add won, lost and tied against the drop. */
+  edge?: { won: string[]; lost: string[]; tied: string[] };
+}

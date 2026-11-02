@@ -60,6 +60,11 @@ import type {
   AiConversationResponse,
   AiConversationSummary,
   AiFeedback,
+  AiNote,
+  AiNoteCreateRequest,
+  AiNoteEditRequest,
+  AiNoteListResponse,
+  AiNoteResponse,
   AiProposalCheck,
   AiProposalChip,
   AiProposalDismissResponse,
@@ -68,6 +73,9 @@ import type {
   AiTurnFeedbackResponse,
   AiUsage,
   AiUsageResponse,
+  MoveOutcomeList,
+  MoveOutcomeListResponse,
+  MoveScope,
 } from "@/types/ai";
 import type {
   ESPNMarketData,
@@ -1182,6 +1190,39 @@ class ApiClient {
     // A note that was sent must come back: a null here would read as "cleared" and drop it from the page
     if (comment?.trim() && stored == null) throw ApiError.empty({ message: "The note wasn't saved" });
     return stored;
+  }
+
+  // ---- Dime's notes: what the agent keeps between conversations (the AI desk's
+  // "What Dime knows"). The user's notes outrank Dime's; an edit replaces a note.
+
+  /** Every note: about the user and on each of their teams. */
+  async listAiNotes(getToken: GetTokenFn, includeRetired: boolean, opts?: RequestOptions): Promise<AiNote[]> {
+    const q = includeRetired ? "?include_retired=true" : "";
+    return unwrap(await fetchJson<AiNoteListResponse>(`${AI_API}/notes${q}`, { ...opts, getToken }), []);
+  }
+
+  async createAiNote(getToken: GetTokenFn, note: AiNoteCreateRequest): Promise<AiNote> {
+    return unwrap(await fetchJson<AiNoteResponse>(`${AI_API}/notes`, { getToken, method: "POST", body: note }));
+  }
+
+  /** The note is retired and replaced by this version, which is the user's from now on. */
+  async editAiNote(getToken: GetTokenFn, noteId: number, edit: AiNoteEditRequest): Promise<AiNote> {
+    return unwrap(await fetchJson<AiNoteResponse>(`${AI_API}/notes/${noteId}`, { getToken, method: "PATCH", body: edit }));
+  }
+
+  async deleteAiNote(getToken: GetTokenFn, noteId: number): Promise<void> {
+    await fetchJson(`${AI_API}/notes/${noteId}`, { getToken, method: "DELETE" });
+  }
+
+  /** The move ledger: a team's adds and drops (or its whole league's) and what each earned. */
+  async getMoveOutcomes(
+    getToken: GetTokenFn,
+    teamId: number,
+    scope: MoveScope,
+    opts?: RequestOptions
+  ): Promise<MoveOutcomeList> {
+    const q = new URLSearchParams({ scope, limit: "200" });
+    return unwrap(await fetchJson<MoveOutcomeListResponse>(`${TEAMS_API}/${teamId}/move-outcomes?${q}`, { ...opts, getToken }));
   }
 
   /** The URL a turn streams from (see `streamTurn`). */

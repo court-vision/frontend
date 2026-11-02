@@ -913,6 +913,343 @@
         "title": "AiFeedbackResp",
         "type": "object"
       },
+      "AiNote": {
+        "properties": {
+          "author": {
+            "enum": [
+              "dime",
+              "user"
+            ],
+            "title": "Author",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "plan",
+              "player",
+              "league",
+              "opponent",
+              "preference",
+              "lesson",
+              "note"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "note_id": {
+            "title": "Note Id",
+            "type": "integer"
+          },
+          "recheck_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recheck On"
+          },
+          "retired_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "dime",
+                  "user"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired By"
+          },
+          "retired_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired On"
+          },
+          "retired_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired Reason"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The team it is about; null for a note about the user",
+            "title": "Team Id"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "written_on": {
+            "format": "date",
+            "title": "Written On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note_id",
+          "kind",
+          "team_id",
+          "text",
+          "recheck_on",
+          "author",
+          "written_on",
+          "retired_on",
+          "retired_by",
+          "retired_reason"
+        ],
+        "title": "AiNote",
+        "type": "object"
+      },
+      "AiNoteCreateReq": {
+        "description": "Body for POST /v1/internal/ai/notes: a note the user writes for the agent.",
+        "properties": {
+          "kind": {
+            "default": "preference",
+            "enum": [
+              "plan",
+              "player",
+              "league",
+              "opponent",
+              "preference",
+              "lesson",
+              "note"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "recheck_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recheck On"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 2147483647.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 1,
+            "pattern": "^[^\\x00]*$",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "AiNoteCreateReq",
+        "type": "object"
+      },
+      "AiNoteEditReq": {
+        "description": "Body for PATCH /v1/internal/ai/notes/{note_id}: the note is replaced by the user's version.",
+        "properties": {
+          "clear_recheck": {
+            "default": false,
+            "title": "Clear Recheck",
+            "type": "boolean"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plan",
+                  "player",
+                  "league",
+                  "opponent",
+                  "preference",
+                  "lesson",
+                  "note"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "recheck_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recheck On"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "title": "AiNoteEditReq",
+        "type": "object"
+      },
+      "AiNoteListResp": {
+        "description": "Response for GET /v1/internal/ai/notes.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AiNote"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiNoteListResp",
+        "type": "object"
+      },
+      "AiNoteResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiNote"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiNoteResp",
+        "type": "object"
+      },
       "AiPlace": {
         "description": "A place in the app, from the app map: the server builds its steps and link, the model never types them.",
         "properties": {
@@ -10243,6 +10580,169 @@
         "title": "LeagueSyncResp",
         "type": "object"
       },
+      "LedgerLeagueResult": {
+        "properties": {
+          "by_source": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "title": "By Source",
+            "type": "object"
+          },
+          "days": {
+            "default": 0,
+            "title": "Days",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "moves": {
+            "default": 0,
+            "title": "Moves",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "provider_league_id": {
+            "title": "Provider League Id",
+            "type": "string"
+          },
+          "season": {
+            "title": "Season",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider_league_id",
+          "season",
+          "ok",
+          "days",
+          "moves",
+          "by_source",
+          "error"
+        ],
+        "title": "LedgerLeagueResult",
+        "type": "object"
+      },
+      "LedgerRunData": {
+        "properties": {
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "leagues": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerLeagueResult"
+            },
+            "title": "Leagues",
+            "type": "array"
+          },
+          "rebuilt": {
+            "title": "Rebuilt",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "leagues",
+          "rebuilt",
+          "failed"
+        ],
+        "title": "LedgerRunData",
+        "type": "object"
+      },
+      "LedgerRunReq": {
+        "properties": {
+          "provider_league_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider League Id"
+          },
+          "season": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season"
+          }
+        },
+        "title": "LedgerRunReq",
+        "type": "object"
+      },
+      "LedgerRunResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerRunData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "LedgerRunResp",
+        "type": "object"
+      },
       "LineupCheckResp": {
         "description": "Lineup check result for a team.",
         "properties": {
@@ -13056,6 +13556,330 @@
           "timestamp"
         ],
         "title": "MockAdvanceResponse",
+        "type": "object"
+      },
+      "MoveOutcome": {
+        "properties": {
+          "add": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoveOutcomePlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "drop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoveOutcomePlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast"
+          },
+          "mine": {
+            "title": "Mine",
+            "type": "boolean"
+          },
+          "move_id": {
+            "title": "Move Id",
+            "type": "integer"
+          },
+          "paired": {
+            "title": "Paired",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "source": {
+            "enum": [
+              "you",
+              "scheduled",
+              "lane",
+              "dime",
+              "outside"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          },
+          "windows": {
+            "additionalProperties": true,
+            "title": "Windows",
+            "type": "object"
+          }
+        },
+        "required": [
+          "move_id",
+          "date",
+          "team_name",
+          "mine",
+          "source",
+          "add",
+          "drop",
+          "paired",
+          "windows",
+          "forecast",
+          "reason"
+        ],
+        "title": "MoveOutcome",
+        "type": "object"
+      },
+      "MoveOutcomeListData": {
+        "properties": {
+          "format": {
+            "enum": [
+              "points",
+              "categories"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "moves": {
+            "items": {
+              "$ref": "#/components/schemas/MoveOutcome"
+            },
+            "title": "Moves",
+            "type": "array"
+          },
+          "scope": {
+            "enum": [
+              "team",
+              "league"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "summary": {
+            "items": {
+              "$ref": "#/components/schemas/MoveSourceSummary"
+            },
+            "title": "Summary",
+            "type": "array"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "team_id",
+          "scope",
+          "format",
+          "total",
+          "moves",
+          "summary"
+        ],
+        "title": "MoveOutcomeListData",
+        "type": "object"
+      },
+      "MoveOutcomeListResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoveOutcomeListData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "MoveOutcomeListResp",
+        "type": "object"
+      },
+      "MoveOutcomePlayer": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Id"
+          }
+        },
+        "required": [
+          "player_id",
+          "name"
+        ],
+        "title": "MoveOutcomePlayer",
+        "type": "object"
+      },
+      "MoveSourceSummary": {
+        "properties": {
+          "ahead": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ahead"
+          },
+          "behind": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Behind"
+          },
+          "categories_lost": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categories Lost"
+          },
+          "categories_won": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categories Won"
+          },
+          "moves": {
+            "title": "Moves",
+            "type": "integer"
+          },
+          "net_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Points"
+          },
+          "settled": {
+            "title": "Settled",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "you",
+              "scheduled",
+              "lane",
+              "dime",
+              "outside"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "moves",
+          "settled",
+          "net_points",
+          "ahead",
+          "behind",
+          "categories_won",
+          "categories_lost"
+        ],
+        "title": "MoveSourceSummary",
         "type": "object"
       },
       "NBATeamLiveGameData": {
@@ -24053,6 +24877,260 @@
         ]
       }
     },
+    "/v1/internal/ai/notes": {
+      "get": {
+        "description": "The notes the agent keeps between conversations, newest first: with `team_id`, that team's and the ones about the caller; without, every one. `include_retired` adds the revised and forgotten ones.",
+        "operationId": "list_notes_v1_internal_ai_notes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "maximum": 2147483647,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_retired",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Retired",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiNoteListResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such live note, or team_id is not one of the caller's teams"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The agent's notes on the caller's teams (\"What Dime knows\")",
+        "tags": [
+          "AI"
+        ]
+      },
+      "post": {
+        "description": "A note of the caller's own (author `user`): the agent reads it and may not change or retire it.",
+        "operationId": "add_note_v1_internal_ai_notes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiNoteCreateReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiNoteResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such live note, or team_id is not one of the caller's teams"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Write a note for the agent",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/notes/{note_id}": {
+      "delete": {
+        "description": "The note stops reaching the agent. It is kept as retired by the caller, not erased.",
+        "operationId": "delete_note_v1_internal_ai_notes__note_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Note Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such live note, or team_id is not one of the caller's teams"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retire one of the agent's notes",
+        "tags": [
+          "AI"
+        ]
+      },
+      "patch": {
+        "description": "Any live note, the agent's or the caller's: it is retired and replaced by the caller's version, which the agent may no longer change.",
+        "operationId": "edit_note_v1_internal_ai_notes__note_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Note Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiNoteEditReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiNoteResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such live note, or team_id is not one of the caller's teams"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change one of the agent's notes",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
     "/v1/internal/ai/proposals/{proposal_id}": {
       "get": {
         "description": "The chip as it stands and a fresh check against the board and the player pool: what the desk reads before it stages the chip into the tray. `problems` says why it can't be staged.",
@@ -25712,6 +26790,53 @@
         "summary": "Reconcile a session with the ESPN draft room's INIT frame",
         "tags": [
           "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/jobs/ledger/run": {
+      "post": {
+        "description": "Rebuild the move ledger (usr.move_outcomes) of every league with a recent snapshot,\nor of the one named.\n\nCalled by data-platform's move_ledger pipeline each night, after the lineup\nsnapshots. Each league's rows are replaced whole in one transaction, so a rerun\nis always safe; a league that fails is reported in `data.leagues`, never raised.",
+        "operationId": "run_move_ledger_v1_internal_jobs_ledger_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LedgerRunReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerRunResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Run Move Ledger",
+        "tags": [
+          "internal jobs"
         ]
       }
     },
@@ -27931,6 +29056,148 @@
         "summary": "Get Lineup Plan",
         "tags": [
           "lineup editor"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/move-outcomes": {
+      "get": {
+        "description": "The moves, newest first, each with its day, matchup and two-week results, and a\nsummary per source (the desk, scheduled pickups, stream lanes, Dime, outside).",
+        "operationId": "list_move_outcomes_v1_internal_teams__team_id__move_outcomes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "team: this team's moves; league: every team's in its league",
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "team",
+              "description": "team: this team's moves; league: every team's in its league",
+              "enum": [
+                "team",
+                "league"
+              ],
+              "title": "Scope",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only these sources",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "enum": [
+                      "you",
+                      "scheduled",
+                      "lane",
+                      "dime",
+                      "outside"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only these sources",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "Only moves that added or dropped this NBA player",
+            "in": "query",
+            "name": "player_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only moves that added or dropped this NBA player",
+              "title": "Player Id"
+            }
+          },
+          {
+            "description": "First day (YYYY-MM-DD)",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day (YYYY-MM-DD)",
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoveOutcomeListResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Move Outcomes",
+        "tags": [
+          "move ledger"
         ]
       }
     },

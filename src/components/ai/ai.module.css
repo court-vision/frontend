@@ -966,3 +966,234 @@
   box-shadow: none;
   backdrop-filter: none;
 }
+
+/* ---------------------------------------------------------------- Dime: its notes and the move ledger */
+
+.dime {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0 12px;
+  border-top: 1px solid var(--line);
+}
+.dimeHead {
+  padding: 0 14px 4px;
+}
+.dimeLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.dimeLink:hover {
+  background: var(--hover);
+}
+.dimeLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.select,
+.textarea {
+  box-sizing: border-box;
+  border-radius: calc(6px * var(--round, 1));
+  border: var(--ctl-w) solid var(--ctl-line);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+}
+.select {
+  height: 30px;
+  max-width: 200px;
+  padding: 0 8px;
+}
+.textarea {
+  width: 100%;
+  padding: 8px 10px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.select:focus,
+.textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.textarea::placeholder {
+  color: var(--text-3);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.check input {
+  accent-color: var(--accent);
+}
+
+.noteForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.noteFormRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.dateField {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dateInput {
+  height: 30px;
+  font-size: 12px;
+}
+.noteBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.noteList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.noteGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.noteRow,
+.moveRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--surface);
+}
+.noteRow[data-retired] {
+  opacity: 0.6;
+}
+.noteHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.noteAuthor {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.noteAuthor[data-author="user"] {
+  color: var(--accent);
+}
+.noteText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.noteRow[data-retired] .noteText {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+}
+.noteEdit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ledgerSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--surface-2);
+  font-size: 12.5px;
+}
+.ledgerSummaryRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sourceTag {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  min-width: 88px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.sourceTag[data-source="dime"] {
+  color: var(--accent);
+}
+.moveTeamMine {
+  font-size: 12px;
+  font-weight: 600;
+}
+.moveResults {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.moveResult {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.moveResult [data-open] {
+  opacity: 0.55;
+}
+.movePlayers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 13px;
+}
+.movePlayer[data-sign="add"] > span:first-child {
+  color: var(--up);
+}
+.movePlayer[data-sign="drop"] > span:first-child {
+  color: var(--down);
+}
+.moveDetail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+@media (max-width: 560px) {
+  .moveResults {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
