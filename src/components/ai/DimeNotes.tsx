@@ -170,6 +170,9 @@ function NoteRow({ note, due }: { note: AiNote; due: boolean }) {
   const busy = edit.isPending || remove.isPending;
 
   const save = () => {
+    // Cmd/Ctrl+Enter can fire while the first save is in flight; a second PATCH
+    // would hit the note the first one just replaced and report a failure.
+    if (edit.isPending) return;
     const clean = draft.trim();
     if (!clean || clean === note.text) {
       setEditing(false);

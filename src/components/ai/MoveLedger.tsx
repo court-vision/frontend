@@ -54,7 +54,10 @@ export function MoveLedgerDialog({
   onTeam: (id: number) => void;
 }) {
   const [scope, setScope] = useState<MoveScope>("team");
-  const ledger = useMoveOutcomesQuery(teamId, scope, open);
+  // No team picked yet (the desk's selection is empty): read the first one, the
+  // one the team picker shows, rather than saying there are no teams.
+  const team = teamId ?? teams[0]?.id ?? null;
+  const ledger = useMoveOutcomesQuery(team, scope, open);
   const data = ledger.data;
   const espnOnly = ledger.isError && toApiError(ledger.error).code === "MOVE_LEDGER_NOT_FOUND";
   const fmt = data?.format ?? "points";
@@ -67,14 +70,14 @@ export function MoveLedgerDialog({
       title="How moves went"
       description={
         fmt === "categories"
-          ? "Every add and drop, read off the rosters each night, and how the added player did against the dropped one in your league's categories: the day it counted, the rest of that matchup, and two weeks."
-          : "Every add and drop, read off the rosters each night, and what it earned with your league's scoring: the added player's points minus the dropped one's, for the day it counted, the rest of that matchup, and two weeks."
+          ? "Adds and drops, newest first, read off the rosters each night, and how the added player did against the dropped one in your league's categories: the day it counted, the rest of that matchup, and two weeks."
+          : "Adds and drops, newest first, read off the rosters each night, and what each earned with your league's scoring: the added player's points minus the dropped one's, for the day it counted, the rest of that matchup, and two weeks."
       }
       cancelLabel="Close"
     >
       <div className={s.noteFormRow}>
         {teams.length > 1 ? (
-          <select className={s.select} aria-label="Team" value={teamId ?? ""} onChange={(e) => onTeam(Number(e.target.value))}>
+          <select className={s.select} aria-label="Team" value={team ?? ""} onChange={(e) => onTeam(Number(e.target.value))}>
             {teams.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
@@ -95,7 +98,7 @@ export function MoveLedgerDialog({
         </SegRail>
       </div>
 
-      {teamId == null ? (
+      {team == null ? (
         <div className={s.rowEmpty}>Add a team to see how its moves went.</div>
       ) : ledger.isLoading ? (
         <div className={s.noteList} aria-busy>
