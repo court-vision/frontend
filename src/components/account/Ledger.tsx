@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, LayoutDashboard, Plus, UserRound } from "lucide-react";
+import { Bell, Bot, LayoutDashboard, Plus, UserRound } from "lucide-react";
 import { YAHOO_ENABLED, YAHOO_SOON, connectionForTeam, connectionState, connectionTitle, focusKey, leagueName, teamName, teamTag, type AccountFocus } from "@/lib/account";
 import type { ProviderConnection } from "@/types/connections";
 import type { TeamResponseData } from "@/types/team";
@@ -21,6 +21,7 @@ export function ledgerRows(teams: readonly TeamResponseData[], connections: read
     { action: { kind: "connect", provider: "espn" } },
     { action: { kind: "connect", provider: "yahoo" } },
     { focus: { kind: "alerts" } },
+    { focus: { kind: "automation" } },
     { focus: { kind: "account" } },
   ];
 }
@@ -36,6 +37,8 @@ interface LedgerProps {
   cursor: number;
   rows: LedgerRow[];
   alertsOn: boolean | null;
+  /** How many teams have the lineup set for them; null while the settings load. */
+  autoTeams: number | null;
   email: string | null;
   loading: boolean;
   onOpen: (focus: AccountFocus) => void;
@@ -45,9 +48,9 @@ interface LedgerProps {
 
 /**
  * The ledger: the overview, your teams, the accounts they read through, and
- * the two things about you. A team or an account in trouble carries a dot.
+ * the things about you. A team or an account in trouble carries a dot.
  */
-export function Ledger({ teams, connections, focus, cursor, rows, alertsOn, email, loading, onOpen, onAction, onCursor }: LedgerProps) {
+export function Ledger({ teams, connections, focus, cursor, rows, alertsOn, autoTeams, email, loading, onOpen, onAction, onCursor }: LedgerProps) {
   const indexOf = (key: string) => rows.findIndex((r) => rowKey(r) === key);
   const cls = (key: string, on: boolean, extra?: string) =>
     [s.row, on ? s.rowOn : "", indexOf(key) === cursor ? s.rowCursor : "", extra ?? ""].filter(Boolean).join(" ");
@@ -195,9 +198,26 @@ export function Ledger({ teams, connections, focus, cursor, rows, alertsOn, emai
           </span>
           <span className={s.rowBody}>
             <span className={s.rowName}>
-              <span>Lineup alerts</span>
+              <span>Notifications</span>
             </span>
-            <span className={s.rowSub}>{alertsOn == null ? "before tip-off" : alertsOn ? "on, before tip-off" : "off"}</span>
+            <span className={s.rowSub}>{alertsOn == null ? "lineup email before tip-off" : alertsOn ? "lineup email on" : "lineup email off"}</span>
+          </span>
+        </button>
+        <button type="button" className={cls("automation", focus.kind === "automation")} onClick={() => onOpen({ kind: "automation" })} onMouseEnter={() => onCursor(indexOf("automation"))}>
+          <span className={s.rowIcon}>
+            <Bot size={14} />
+          </span>
+          <span className={s.rowBody}>
+            <span className={s.rowName}>
+              <span>AI and automation</span>
+            </span>
+            <span className={s.rowSub}>{autoTeams == null
+                ? "Dime, setting lineups"
+                : autoTeams === 0
+                  ? "nothing runs by itself"
+                  : autoTeams === teams.length
+                    ? "sets your lineups"
+                    : `sets lineups on ${autoTeams} of ${teams.length} teams`}</span>
           </span>
         </button>
         <button type="button" className={cls("account", focus.kind === "account")} onClick={() => onOpen({ kind: "account" })} onMouseEnter={() => onCursor(indexOf("account"))}>

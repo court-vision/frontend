@@ -82,10 +82,11 @@ export interface AccountModel extends AddTeamModel {
   verifying: number | null;
   disconnect: (connectionId: number) => Promise<void>;
 
-  // ---- lineup alerts
+  // ---- notifications, and AI and automation (one stored set of preferences)
   usePrefs: () => Loaded<NotificationPreference>;
   savePrefs: (prefs: NotificationPreference) => Promise<void>;
   useTeamPrefs: () => Loaded<NotificationTeamPreference[]>;
+  /** Writes only the fields sent; a null hands that field back to the account's. */
   saveTeamPrefs: (teamId: number, data: NotificationTeamPreferenceRequest) => Promise<void>;
   clearTeamPrefs: (teamId: number) => Promise<void>;
 

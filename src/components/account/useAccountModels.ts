@@ -491,13 +491,13 @@ export function useDemoAccount(): AccountModel {
     savePrefs: async (prefs) => {
       await wait(300);
       set({ prefs });
-      toast.success("Alert settings saved (demo)");
+      toast.success("Settings saved (demo)");
     },
     useTeamPrefs: useDemoTeamPrefs,
     saveTeamPrefs: async (teamId, data) => {
       await wait(300);
       set((s) => ({ teamPrefs: s.teamPrefs.map((p) => (p.team_id === teamId ? { ...p, ...data, has_override: true } : p)) }));
-      toast.success("Team alert settings saved (demo)");
+      toast.success("Team settings saved (demo)");
     },
     clearTeamPrefs: async (teamId) => {
       await wait(300);
@@ -508,7 +508,7 @@ export function useDemoAccount(): AccountModel {
             : p
         ),
       }));
-      toast.success("Back to the account's alert settings (demo)");
+      toast.success("Back to the account's settings (demo)");
     },
     user: DEMO_USER,
     signOut: () => toast.info("Demo: nothing to sign out of"),

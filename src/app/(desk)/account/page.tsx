@@ -4,7 +4,7 @@ import { focusFromSearch, yahooReturn } from "@/lib/account";
 
 export const metadata: Metadata = {
   title: "Account",
-  description: "Your teams, the ESPN and Yahoo accounts they read through, and lineup alerts.",
+  description: "Your teams, the ESPN and Yahoo accounts they read through, notifications, and AI and automation.",
   robots: { index: false, follow: false },
 };
 

@@ -1,6 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import {
+  AUTOMATION_FIELDS,
+  NOTIFICATION_FIELDS,
   accountTeamLine,
+  automationSummary,
+  clearPatch,
+  effectivePrefs,
+  hasOwn,
+  lineupTeams,
+  notificationSummary,
+  ownPatch,
+  setsLineup,
   capabilityRows,
   connectionLine,
   connectionState,
@@ -31,6 +41,7 @@ import {
   type Capabilities,
 } from "../account";
 import type { EspnAccountTeam, ProviderConnection } from "@/types/connections";
+import type { NotificationPreference, NotificationTeamPreference } from "@/types/notifications";
 import type { LeagueSummary, TeamResponseData } from "@/types/team";
 
 const NOW = Date.parse("2026-10-09T12:00:00Z");
@@ -107,7 +118,7 @@ function connection(over: Partial<ProviderConnection> = {}): ProviderConnection 
 
 describe("focus", () => {
   test("round-trips through the URL", () => {
-    for (const q of ["", "t=22", "c=1", "v=alerts", "v=account"]) {
+    for (const q of ["", "t=22", "c=1", "v=alerts", "v=automation", "v=account"]) {
       expect(focusToSearch(focusFromSearch(new URLSearchParams(q)))).toBe(q);
     }
   });
@@ -331,5 +342,92 @@ describe("the Yahoo round trip", () => {
     expect(returnPath("/week", new URLSearchParams("view=a b"), ["view"])).toBe("/week");
     expect(returnPath("/me", new URLSearchParams("t=22"), [])).toBe("/me");
     expect(returnPath("/me", new URLSearchParams(`t=${"9".repeat(250)}`), ["t"])).toBe("/me");
+  });
+});
+
+const PREFS: NotificationPreference = {
+  lineup_alerts_enabled: true,
+  alert_benched_starters: true,
+  alert_active_non_playing: true,
+  alert_injured_active: true,
+  alert_minutes_before: 90,
+  auto_lineup_enabled: false,
+  email: null,
+};
+
+function own(over: Partial<NotificationTeamPreference> = {}): NotificationTeamPreference {
+  return {
+    team_id: 22,
+    has_override: true,
+    lineup_alerts_enabled: null,
+    alert_benched_starters: null,
+    alert_active_non_playing: null,
+    alert_injured_active: null,
+    alert_minutes_before: null,
+    auto_lineup_enabled: null,
+    email: null,
+    ...over,
+  };
+}
+
+describe("settings: notifications, and AI and automation", () => {
+  test("every stored field belongs to exactly one sheet", () => {
+    const all: string[] = [...NOTIFICATION_FIELDS, ...AUTOMATION_FIELDS];
+    expect(new Set(all).size).toBe(all.length);
+    expect([...all].sort()).toEqual(Object.keys(PREFS).sort());
+  });
+
+  test("a team's own values win field by field", () => {
+    expect(effectivePrefs(PREFS, undefined)).toBe(PREFS);
+    expect(effectivePrefs(PREFS, own({ has_override: false, auto_lineup_enabled: true }))).toBe(PREFS);
+    const e = effectivePrefs(PREFS, own({ auto_lineup_enabled: true, alert_minutes_before: 30 }));
+    expect(e).toEqual({ ...PREFS, auto_lineup_enabled: true, alert_minutes_before: 30 });
+  });
+
+  test("own settings are counted per sheet", () => {
+    const auto = own({ auto_lineup_enabled: true });
+    expect(hasOwn(auto, AUTOMATION_FIELDS)).toBe(true);
+    expect(hasOwn(auto, NOTIFICATION_FIELDS)).toBe(false);
+    // A false is a setting of its own too; only null is the account's.
+    expect(hasOwn(own({ lineup_alerts_enabled: false }), NOTIFICATION_FIELDS)).toBe(true);
+    expect(hasOwn(undefined, NOTIFICATION_FIELDS)).toBe(false);
+  });
+
+  test("a sheet writes only its own fields", () => {
+    expect(ownPatch({ ...PREFS, auto_lineup_enabled: true }, AUTOMATION_FIELDS)).toEqual({ auto_lineup_enabled: true });
+    const n = ownPatch({ ...PREFS, alert_minutes_before: 30 }, NOTIFICATION_FIELDS);
+    expect(n.alert_minutes_before).toBe(30);
+    expect("auto_lineup_enabled" in n).toBe(false);
+  });
+
+  test("handing a sheet back clears its fields, or the whole override when nothing else is the team's", () => {
+    const both = own({ auto_lineup_enabled: true, lineup_alerts_enabled: false });
+    expect(clearPatch(both, AUTOMATION_FIELDS)).toEqual({ auto_lineup_enabled: null });
+    const cleared = clearPatch(both, NOTIFICATION_FIELDS);
+    expect(cleared?.lineup_alerts_enabled).toBeNull();
+    expect(cleared?.email).toBeNull();
+    expect(cleared && "auto_lineup_enabled" in cleared).toBe(false);
+    expect(clearPatch(own({ auto_lineup_enabled: true }), AUTOMATION_FIELDS)).toBeNull();
+    expect(clearPatch(undefined, AUTOMATION_FIELDS)).toBeNull();
+  });
+
+  test("the lineup is set only when the tip-off email is on too", () => {
+    expect(setsLineup({ ...PREFS, auto_lineup_enabled: true })).toBe(true);
+    expect(setsLineup({ ...PREFS, auto_lineup_enabled: true, lineup_alerts_enabled: false })).toBe(false);
+    expect(automationSummary({ ...PREFS, auto_lineup_enabled: true })).toBe("sets the lineup · 90 min before");
+    expect(automationSummary({ ...PREFS, auto_lineup_enabled: true, lineup_alerts_enabled: false })).toBe("on, waiting for the tip-off email");
+    expect(automationSummary(PREFS)).toBe("off");
+  });
+
+  test("teams whose lineup is set, each by its own settings", () => {
+    const overrides = [own({ team_id: 1, auto_lineup_enabled: true }), own({ team_id: 2, auto_lineup_enabled: true, lineup_alerts_enabled: false })];
+    expect(lineupTeams(PREFS, overrides, [1, 2, 3])).toBe(1);
+    expect(lineupTeams({ ...PREFS, auto_lineup_enabled: true }, overrides, [1, 2, 3])).toBe(2);
+    expect(lineupTeams(PREFS, [], [])).toBe(0);
+  });
+
+  test("the notification line", () => {
+    expect(notificationSummary({ ...PREFS, alert_minutes_before: 200, email: "me@x.dev" })).toBe("on · 150 min before · me@x.dev");
+    expect(notificationSummary({ ...PREFS, lineup_alerts_enabled: false })).toBe("off");
   });
 });

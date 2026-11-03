@@ -6,6 +6,7 @@
  */
 import type { EspnAccountTeam, ProviderConnection } from "@/types/connections";
 import type { components } from "@/types/generated/api";
+import type { NotificationPreference, NotificationTeamPreference, NotificationTeamPreferenceRequest } from "@/types/notifications";
 import type { FantasyProvider, LeagueSummary, TeamResponseData } from "@/types/team";
 import { formatRelativeTime } from "./relative-time";
 
@@ -20,20 +21,21 @@ export type AccountFocus =
   | { kind: "team"; id: number }
   | { kind: "connection"; id: number }
   | { kind: "alerts" }
+  | { kind: "automation" }
   | { kind: "account" };
 
 export const OVERVIEW: AccountFocus = { kind: "overview" };
 
 const ID = /^\d{1,9}$/;
 
-/** `?t=<team>`, `?c=<connection>`, `?v=alerts|account`; anything else is the overview. */
+/** `?t=<team>`, `?c=<connection>`, `?v=alerts|automation|account`; anything else is the overview. */
 export function focusFromSearch(p: URLSearchParams): AccountFocus {
   const t = p.get("t");
   if (t && ID.test(t)) return { kind: "team", id: Number(t) };
   const c = p.get("c");
   if (c && ID.test(c)) return { kind: "connection", id: Number(c) };
   const v = p.get("v");
-  if (v === "alerts" || v === "account") return { kind: v };
+  if (v === "alerts" || v === "automation" || v === "account") return { kind: v };
   return OVERVIEW;
 }
 
@@ -45,6 +47,7 @@ export function focusToSearch(focus: AccountFocus): string {
     case "connection":
       return `c=${focus.id}`;
     case "alerts":
+    case "automation":
     case "account":
       return `v=${focus.kind}`;
     default:
@@ -58,6 +61,90 @@ export function focusKey(focus: AccountFocus): string {
 
 export function sameFocus(a: AccountFocus, b: AccountFocus): boolean {
   return focusKey(a) === focusKey(b);
+}
+
+// ---------------------------------------------------------------------------
+// Settings: notifications, and AI and automation
+// ---------------------------------------------------------------------------
+
+export type PrefField = keyof NotificationPreference;
+
+/**
+ * The two kinds of setting, each on its own sheet. They share one stored
+ * preference (the account's, and a team's own over it), so each sheet reads
+ * the whole set and writes only its own fields: a team's own notification
+ * settings and its own automation settings come and go apart.
+ */
+export const NOTIFICATION_FIELDS = [
+  "lineup_alerts_enabled",
+  "alert_minutes_before",
+  "email",
+  "alert_benched_starters",
+  "alert_active_non_playing",
+  "alert_injured_active",
+] as const satisfies readonly PrefField[];
+
+export const AUTOMATION_FIELDS = ["auto_lineup_enabled"] as const satisfies readonly PrefField[];
+
+export type PrefFields = readonly PrefField[];
+
+const PREF_FIELDS: PrefFields = [...NOTIFICATION_FIELDS, ...AUTOMATION_FIELDS];
+
+/** The team's own settings over the account's, field by field, as one complete set. */
+export function effectivePrefs(base: NotificationPreference, override: NotificationTeamPreference | null | undefined): NotificationPreference {
+  if (!override?.has_override) return base;
+  const out = { ...base } as Record<PrefField, unknown>;
+  for (const f of PREF_FIELDS) out[f] = override[f] ?? base[f];
+  return out as unknown as NotificationPreference;
+}
+
+/** Whether the team holds its own value for any of `fields`. */
+export function hasOwn(override: NotificationTeamPreference | null | undefined, fields: PrefFields): boolean {
+  return !!override?.has_override && fields.some((f) => override[f] != null);
+}
+
+/** The write that gives a team its own `fields`, taken from `prefs`; its other settings stay as they are. */
+export function ownPatch(prefs: NotificationPreference, fields: PrefFields): NotificationTeamPreferenceRequest {
+  return Object.fromEntries(fields.map((f) => [f, prefs[f]])) as NotificationTeamPreferenceRequest;
+}
+
+/**
+ * The write that hands `fields` back to the account: those fields cleared
+ * while the team keeps settings of its own elsewhere, or null when nothing of
+ * its own would be left, and the team's override can go altogether.
+ */
+export function clearPatch(override: NotificationTeamPreference | null | undefined, fields: PrefFields): NotificationTeamPreferenceRequest | null {
+  const keeps = PREF_FIELDS.some((f) => !fields.includes(f) && override?.[f] != null);
+  return keeps ? (Object.fromEntries(fields.map((f) => [f, null])) as NotificationTeamPreferenceRequest) : null;
+}
+
+/** How early the tip-off email goes, in minutes, within what the pipeline honours. */
+export function alertMinutes(prefs: Pick<NotificationPreference, "alert_minutes_before">): number {
+  return Math.min(150, Math.max(15, prefs.alert_minutes_before));
+}
+
+/**
+ * Whether Court Vision sets the lineup. It runs in the tip-off email's pass,
+ * at the email's time, and the email reports what it changed, so it needs the
+ * email on as well as its own switch.
+ */
+export function setsLineup(prefs: Pick<NotificationPreference, "lineup_alerts_enabled" | "auto_lineup_enabled">): boolean {
+  return prefs.lineup_alerts_enabled && prefs.auto_lineup_enabled;
+}
+
+/** How many of the teams have the lineup set for them, each by its own settings over the account's. */
+export function lineupTeams(base: NotificationPreference, overrides: readonly NotificationTeamPreference[], teamIds: readonly number[]): number {
+  return teamIds.filter((id) => setsLineup(effectivePrefs(base, overrides.find((o) => o.team_id === id)))).length;
+}
+
+export function notificationSummary(prefs: NotificationPreference): string {
+  if (!prefs.lineup_alerts_enabled) return "off";
+  return `on · ${alertMinutes(prefs)} min before${prefs.email ? ` · ${prefs.email}` : ""}`;
+}
+
+export function automationSummary(prefs: NotificationPreference): string {
+  if (setsLineup(prefs)) return `sets the lineup · ${alertMinutes(prefs)} min before`;
+  return prefs.auto_lineup_enabled ? "on, waiting for the tip-off email" : "off";
 }
 
 // ---------------------------------------------------------------------------
