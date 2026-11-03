@@ -78,7 +78,7 @@ export function AccountSettings({ model, kind, onOpen }: { model: AccountModel; 
       ) : shown ? (
         <>
           {error ? <div className={s.formError} style={{ marginBottom: 10 }}>{error}</div> : null}
-          <Fields prefs={shown} onChange={setDraft} email={model.user?.email ?? null} onOpen={onOpen} />
+          <Fields prefs={shown} onChange={setDraft} email={model.user?.email ?? null} onOpen={onOpen} disabled={saving} />
         </>
       ) : null}
     </Block>
@@ -92,7 +92,9 @@ export function TeamSettings({ model, kind, onOpen }: { model: AccountModel; kin
 
   return (
     <Block title="Per team" note={teamPrefs.loading ? "loading…" : `${model.teams.length}`}>
-      {teamPrefs.loading || !base ? (
+      {!base && prefs.error ? (
+        <div className={s.formError}>{prefs.error}</div>
+      ) : teamPrefs.loading || !base ? (
         <Skeleton rows={3} />
       ) : teamPrefs.error ? (
         <div className={s.formError}>{teamPrefs.error}</div>
@@ -197,7 +199,7 @@ function TeamRow({
       {editing || error ? (
         <div style={{ padding: "4px 12px 10px" }}>
           {error ? <div className={s.formError} style={{ marginBottom: editing ? 8 : 0 }}>{error}</div> : null}
-          {editing ? <Fields prefs={draft} onChange={setDraft} email={model.user?.email ?? null} onOpen={onOpen} /> : null}
+          {editing ? <Fields prefs={draft} onChange={setDraft} email={model.user?.email ?? null} onOpen={onOpen} disabled={busy != null} /> : null}
         </div>
       ) : null}
     </div>

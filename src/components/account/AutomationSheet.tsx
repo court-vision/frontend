@@ -18,7 +18,8 @@ function AutomationFields({ prefs, onChange, disabled, onOpen }: FieldsProps) {
         label="Set the lineup for me"
         help="Before tip-off, bench players with a game move into spots held by players without one. Healthy starters stay, IR is untouched, and the tip-off email says what changed."
         checked={prefs.auto_lineup_enabled}
-        disabled={disabled || waiting}
+        // Waiting on the email, it can still be turned off, just not on.
+        disabled={disabled || (waiting && !prefs.auto_lineup_enabled)}
         onChange={(v) => onChange({ ...prefs, auto_lineup_enabled: v })}
       />
       {waiting ? (

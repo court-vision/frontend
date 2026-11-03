@@ -264,7 +264,7 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
         key={team.team_id}
         model={model}
         team={team}
-        settings={prefs.data ? { prefs: effectivePrefs(prefs.data, override), notifyCustom: hasOwn(override, NOTIFICATION_FIELDS), autoCustom: hasOwn(override, AUTOMATION_FIELDS) } : null}
+        settings={prefs.data && teamPrefs.data ? { prefs: effectivePrefs(prefs.data, override), notifyCustom: hasOwn(override, NOTIFICATION_FIELDS), autoCustom: hasOwn(override, AUTOMATION_FIELDS) } : null}
         onOpen={open}
         onRemoved={() => open({ kind: "overview" })}
       />

@@ -73,7 +73,7 @@ export function Overview({ model, alertsOn, autoTeams, onOpen, onAdd, onTarget }
           <span className={dk.label}>Auto-lineup</span>
           <span className={s.tickValue}>{autoTeams == null ? "—" : autoTeams ? "on" : "off"}</span>
           <span className={s.tickSub}>
-            {!autoTeams ? "lineups stay as you set them" : autoTeams === teams.length ? "every team, before tip-off" : `${autoTeams} of ${teams.length} teams, before tip-off`}
+            {autoTeams == null ? "setting the lineup for you" : !autoTeams ? "lineups stay as you set them" : autoTeams === teams.length ? "every team, before tip-off" : `${autoTeams} of ${teams.length} teams, before tip-off`}
           </span>
         </div>
       </div>
