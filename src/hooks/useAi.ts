@@ -3,8 +3,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
 import { toApiError, userMessage } from "@/lib/api-error";
+import type { GetTokenFn } from "@/lib/http";
 import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
-import type { AiBlock, AiConversation, AiConversationSummary, AiFeedback, AiUsage } from "@/types/ai";
+import type {
+  AiBlock,
+  AiConversation,
+  AiConversationSummary,
+  AiFeedback,
+  AiNote,
+  AiNoteCreateRequest,
+  AiNoteEditRequest,
+  AiUsage,
+  MoveOutcomeList,
+  MoveScope,
+} from "@/types/ai";
 
 /**
  * The words for an AI desk error. The backend writes its AI_* refusals for the
@@ -28,6 +40,9 @@ export const aiKeys = {
   usage: (userId: string | null | undefined) => [...aiKeys.user(userId), "usage"] as const,
   conversations: (userId: string | null | undefined) => [...aiKeys.user(userId), "conversations"] as const,
   conversation: (userId: string | null | undefined, id: number) => [...aiKeys.user(userId), "conversation", id] as const,
+  notes: (userId: string | null | undefined) => [...aiKeys.user(userId), "notes"] as const,
+  moves: (userId: string | null | undefined, teamId: number, scope: MoveScope) =>
+    [...aiKeys.user(userId), "moves", teamId, scope] as const,
 };
 
 /** Whether the caller may use the agent, and this month's spend. 503 = turned off. */
@@ -127,6 +142,56 @@ export function useAiComment(conversationId: number | null) {
         c ? { ...c, history: c.history.map((t) => (t.id === turnId ? { ...t, comment: stored } : t)) } : c
       );
     },
+  });
+}
+
+// ---- Dime's notes ("What Dime knows") and the move ledger ("How moves went")
+
+/** Every note Dime keeps for the user, live ones first; with `includeRetired`, the retired ones too. */
+export function useAiNotesQuery(enabled: boolean, includeRetired: boolean) {
+  const { getToken, isSignedIn, userId } = useAuth();
+  return useQuery<AiNote[]>({
+    queryKey: [...aiKeys.notes(userId), includeRetired],
+    queryFn: ({ signal }) => apiClient.listAiNotes(getToken, includeRetired, { signal }),
+    enabled: enabled && isSignedIn === true,
+    staleTime: 30_000,
+    meta: { toast: false },
+  });
+}
+
+function useNoteMutation<V>(fn: (getToken: GetTokenFn, vars: V) => Promise<unknown>) {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: V) => fn(getToken, vars),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: aiKeys.notes(userId) }),
+  });
+}
+
+export function useCreateAiNote() {
+  return useNoteMutation((getToken, note: AiNoteCreateRequest) => apiClient.createAiNote(getToken, note));
+}
+
+export function useEditAiNote() {
+  return useNoteMutation((getToken, { noteId, edit }: { noteId: number; edit: AiNoteEditRequest }) =>
+    apiClient.editAiNote(getToken, noteId, edit)
+  );
+}
+
+export function useDeleteAiNote() {
+  return useNoteMutation((getToken, noteId: number) => apiClient.deleteAiNote(getToken, noteId));
+}
+
+/** A team's moves (or its league's) and what they earned; the ledger changes once a night. */
+export function useMoveOutcomesQuery(teamId: number | null, scope: MoveScope, enabled: boolean) {
+  const { getToken, isSignedIn, userId } = useAuth();
+  return useQuery<MoveOutcomeList>({
+    queryKey: aiKeys.moves(userId, teamId ?? 0, scope),
+    queryFn: ({ signal }) => apiClient.getMoveOutcomes(getToken, teamId!, scope, { signal }),
+    enabled: enabled && teamId != null && isSignedIn === true,
+    staleTime: 5 * 60_000,
+    retry: false,
+    meta: { toast: false },
   });
 }
 
