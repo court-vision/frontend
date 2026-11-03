@@ -39,7 +39,7 @@ export const ACCOUNT = {
   label: "Account",
   href: ACCOUNT_DESK,
   note: "Your teams, the accounts they read through, alerts",
-  keywords: ["teams", "connections", "espn", "yahoo", "alerts", "settings", "profile", "me"],
+  keywords: ["teams", "connections", "espn", "yahoo", "alerts", "notifications", "automation", "auto-lineup", "settings", "profile", "me"],
 } as const;
 
 export const ALL_DESKS = [...DESKS, DEVELOPER, ACCOUNT] as const;

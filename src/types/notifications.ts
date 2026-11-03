@@ -5,7 +5,7 @@ export interface NotificationPreference {
   alert_active_non_playing: boolean;
   alert_injured_active: boolean;
   alert_minutes_before: number;
-  /** Let Court Vision apply the fill-only plan to ESPN before tip-off (requires alerts on). */
+  /** Let Court Vision apply the fill-only plan to ESPN before tip-off (runs in the alerts pass, so it needs alerts on). */
   auto_lineup_enabled: boolean;
   email: string | null;
 }
@@ -28,14 +28,18 @@ export interface NotificationTeamPreference {
   email: string | null;
 }
 
+/**
+ * A write to a team's own settings: a field left out keeps what the team
+ * holds, and null hands it back to the account's.
+ */
 export interface NotificationTeamPreferenceRequest {
-  lineup_alerts_enabled: boolean | null;
-  alert_benched_starters: boolean | null;
-  alert_active_non_playing: boolean | null;
-  alert_injured_active: boolean | null;
-  alert_minutes_before: number | null;
-  auto_lineup_enabled: boolean | null;
-  email: string | null;
+  lineup_alerts_enabled?: boolean | null;
+  alert_benched_starters?: boolean | null;
+  alert_active_non_playing?: boolean | null;
+  alert_injured_active?: boolean | null;
+  alert_minutes_before?: number | null;
+  auto_lineup_enabled?: boolean | null;
+  email?: string | null;
 }
 
 export interface NotificationTeamPreferenceListResponse {

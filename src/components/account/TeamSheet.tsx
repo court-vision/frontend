@@ -15,6 +15,7 @@ import {
   providerLabel,
   rolloverSeason,
   seasonLabel,
+  setsLineup,
   teamCredentials,
   teamLine,
   teamName,
@@ -22,6 +23,7 @@ import {
   writeSummary,
   type AccountFocus,
 } from "@/lib/account";
+import type { NotificationPreference } from "@/types/notifications";
 import type { LeagueDetail, ScoringPreview, TeamResponseData } from "@/types/team";
 import type { AccountModel } from "./model";
 import { Block, Facts, Skeleton, ago, useNow } from "./blocks";
@@ -31,7 +33,8 @@ import s from "./account.module.css";
 interface TeamSheetProps {
   model: AccountModel;
   team: TeamResponseData;
-  alerts: { on: boolean | null; custom: boolean } | null;
+  /** The settings in force on this team, and which kinds it holds its own of; null while they load. */
+  settings: { prefs: NotificationPreference; notifyCustom: boolean; autoCustom: boolean } | null;
   onOpen: (focus: AccountFocus) => void;
   onRemoved: () => void;
 }
@@ -43,7 +46,7 @@ const PREVIEWS: Array<{ id: ScoringPreview | ""; label: string; help: string }> 
 ];
 
 /** One team: its league as synced, the account it reads through, what can be sent, and the ways out. */
-export function TeamSheet({ model, team, alerts, onOpen, onRemoved }: TeamSheetProps) {
+export function TeamSheet({ model, team, settings, onOpen, onRemoved }: TeamSheetProps) {
   const now = useNow();
   const league = model.useLeague(team.team_id);
   const [confirm, setConfirm] = useState(false);
@@ -255,13 +258,34 @@ export function TeamSheet({ model, team, alerts, onOpen, onRemoved }: TeamSheetP
         </div>
       </Block>
 
-      <Block title="Lineup alerts" note={alerts ? (alerts.custom ? "custom for this team" : "the account's settings") : undefined}>
+      <Block title="Notifications" note={settings ? (settings.notifyCustom ? "custom for this team" : "the account's settings") : undefined}>
         <div className={s.row2}>
           <span className={s.prose}>
-            {alerts == null ? "Alerts before tip-off, set for the account or for this team alone." : alerts.on ? "An email before the first tip-off when a starter is out or benched." : "Off for this team."}
+            {settings == null
+              ? "An email before tip-off, set for the account or for this team alone."
+              : settings.prefs.lineup_alerts_enabled
+                ? "An email before the first tip-off when a starter is out or benched."
+                : "No lineup email for this team."}
           </span>
           <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={() => onOpen({ kind: "alerts" })}>
-            Open alerts
+            Open notifications
+          </button>
+        </div>
+      </Block>
+
+      <Block title="AI and automation" note={settings ? (settings.autoCustom ? "custom for this team" : "the account's settings") : undefined}>
+        <div className={s.row2}>
+          <span className={s.prose}>
+            {settings == null
+              ? "Setting the lineup before tip-off, for the account or for this team alone."
+              : setsLineup(settings.prefs)
+                ? "Court Vision sets this team's lineup before the first tip-off."
+                : settings.prefs.auto_lineup_enabled
+                  ? "Set to fill the lineup, but it waits for the tip-off email, which is off for this team."
+                  : "Nothing runs on this team by itself."}
+          </span>
+          <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={() => onOpen({ kind: "automation" })}>
+            Open automation
           </button>
         </div>
       </Block>

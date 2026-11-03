@@ -7,13 +7,30 @@ import { LayoutList } from "lucide-react";
 import { toast } from "sonner";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
-import { focusFromSearch, focusKey, focusToSearch, providerEnabled, returnPath, sameFocus, withoutYahooReturn, type AccountFocus, type IssueTarget, type YahooReturn } from "@/lib/account";
+import {
+  AUTOMATION_FIELDS,
+  NOTIFICATION_FIELDS,
+  effectivePrefs,
+  focusFromSearch,
+  focusKey,
+  focusToSearch,
+  hasOwn,
+  lineupTeams,
+  providerEnabled,
+  returnPath,
+  sameFocus,
+  withoutYahooReturn,
+  type AccountFocus,
+  type IssueTarget,
+  type YahooReturn,
+} from "@/lib/account";
 import { yahooConnectErrorMessage } from "@/lib/yahoo-connect";
 import { AccountSheet } from "./AccountSheet";
 import { AddTeamTray, type AddStart } from "./AddTeamTray";
-import { AlertsSheet, effectivePrefs } from "./AlertsSheet";
+import { AutomationSheet } from "./AutomationSheet";
 import { ConnectionSheet } from "./ConnectionSheet";
-import { Ledger, ledgerRows, rowKey, type LedgerAction } from "./Ledger";
+import { Ledger, ledgerRows, type LedgerAction } from "./Ledger";
+import { NotificationsSheet } from "./NotificationsSheet";
 import { Overview } from "./Overview";
 import { TeamSheet } from "./TeamSheet";
 import type { AccountModel } from "./model";
@@ -65,6 +82,10 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
   const prefs = model.usePrefs();
   const teamPrefs = model.useTeamPrefs();
   const alertsOn = prefs.data ? prefs.data.lineup_alerts_enabled : null;
+  const autoTeams = useMemo(
+    () => (prefs.data && teamPrefs.data ? lineupTeams(prefs.data, teamPrefs.data, model.teams.map((t) => t.team_id)) : null),
+    [prefs.data, teamPrefs.data, model.teams]
+  );
 
   const rows = useMemo(() => ledgerRows(model.teams, model.connections), [model.teams, model.connections]);
 
@@ -213,7 +234,7 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
     body = (
       <div className={s.hero}>
         <span className={s.heroTitle}>Sign in to see your account</span>
-        <span className={s.heroSub}>Your teams, the ESPN and Yahoo accounts they read through, and the alerts are all yours alone.</span>
+        <span className={s.heroSub}>Your teams, the ESPN and Yahoo accounts they read through, and your settings are all yours alone.</span>
         <div className={s.linkRow}>
           <Link href="/sign-in?redirect_url=%2Faccount" className={`${dk.btn} ${dk.btnPrimary}`}>
             Sign in
@@ -243,7 +264,7 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
         key={team.team_id}
         model={model}
         team={team}
-        alerts={prefs.data ? { on: effectivePrefs(prefs.data, override).lineup_alerts_enabled, custom: !!override?.has_override } : null}
+        settings={prefs.data && teamPrefs.data ? { prefs: effectivePrefs(prefs.data, override), notifyCustom: hasOwn(override, NOTIFICATION_FIELDS), autoCustom: hasOwn(override, AUTOMATION_FIELDS) } : null}
         onOpen={open}
         onRemoved={() => open({ kind: "overview" })}
       />
@@ -262,7 +283,9 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
       />
     );
   } else if (focus.kind === "alerts") {
-    body = <AlertsSheet model={model} />;
+    body = <NotificationsSheet model={model} onOpen={open} />;
+  } else if (focus.kind === "automation") {
+    body = <AutomationSheet model={model} onOpen={open} />;
   } else if (focus.kind === "account") {
     body = <AccountSheet model={model} />;
   } else if (loading) {
@@ -274,7 +297,7 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
       </div>
     );
   } else {
-    body = <Overview model={model} alertsOn={alertsOn} onOpen={open} onAdd={() => setAdd(START_PROVIDER)} onTarget={onTarget} />;
+    body = <Overview model={model} alertsOn={alertsOn} autoTeams={autoTeams} onOpen={open} onAdd={() => setAdd(START_PROVIDER)} onTarget={onTarget} />;
   }
 
   const teamsLine = loading ? "" : `${model.teams.length} ${model.teams.length === 1 ? "team" : "teams"} · ${model.connections.length} ${model.connections.length === 1 ? "account" : "accounts"}`;
@@ -297,6 +320,7 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
           cursor={cursor}
           rows={rows}
           alertsOn={alertsOn}
+          autoTeams={autoTeams}
           email={model.user?.email ?? null}
           loading={loading}
           onOpen={open}

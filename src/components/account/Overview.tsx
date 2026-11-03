@@ -24,13 +24,14 @@ import s from "./account.module.css";
 interface OverviewProps {
   model: AccountModel;
   alertsOn: boolean | null;
+  autoTeams: number | null;
   onOpen: (focus: AccountFocus) => void;
   onAdd: () => void;
   onTarget: (target: IssueTarget) => void;
 }
 
 /** The overview: the account in numbers, what needs doing, and every team in one table. */
-export function Overview({ model, alertsOn, onOpen, onAdd, onTarget }: OverviewProps) {
+export function Overview({ model, alertsOn, autoTeams, onOpen, onAdd, onTarget }: OverviewProps) {
   const { teams, connections } = model;
   const list = issues(teams, connections, model.seasonKey);
   const connected = connections.filter((c) => c.status === "ok").length;
@@ -42,7 +43,7 @@ export function Overview({ model, alertsOn, onOpen, onAdd, onTarget }: OverviewP
         <div className={s.headBody}>
           <span className={s.headTitle}>{model.demo ? "A sample account" : "Your account"}</span>
           <span className={s.headSub}>
-            The teams Court Vision follows, the ESPN and Yahoo accounts they read through, and the alerts. An account is connected once; every team on it draws on it. What changes here shows up on the Week desk straight away.
+            The teams Court Vision follows, the ESPN and Yahoo accounts they read through, and your notifications and automation. An account is connected once; every team on it draws on it. What changes here shows up on the Week desk straight away.
           </span>
         </div>
         <div className={s.headActions}>
@@ -67,6 +68,13 @@ export function Overview({ model, alertsOn, onOpen, onAdd, onTarget }: OverviewP
           <span className={dk.label}>Lineup alerts</span>
           <span className={s.tickValue}>{alertsOn == null ? "—" : alertsOn ? "on" : "off"}</span>
           <span className={s.tickSub}>{alertsOn ? "before the first tip-off" : "an email before tip-off"}</span>
+        </div>
+        <div className={s.tick}>
+          <span className={dk.label}>Auto-lineup</span>
+          <span className={s.tickValue}>{autoTeams == null ? "—" : autoTeams ? "on" : "off"}</span>
+          <span className={s.tickSub}>
+            {autoTeams == null ? "setting the lineup for you" : !autoTeams ? "lineups stay as you set them" : autoTeams === teams.length ? "every team, before tip-off" : `${autoTeams} of ${teams.length} teams, before tip-off`}
+          </span>
         </div>
       </div>
 
