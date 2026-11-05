@@ -4,9 +4,10 @@ import { memo, useState } from "react";
 import { MessageSquarePlus, ThumbsDown, ThumbsUp } from "lucide-react";
 import { prose } from "@/lib/ai-prose";
 import type { LivePart, LiveTurn } from "@/hooks/useAi";
-import type { AiFeedback, AiPart, AiTurn } from "@/types/ai";
+import type { AiFeedback, AiPart, AiTurn, AiVerdict } from "@/types/ai";
 import dk from "@/components/desk/desk.module.css";
 import { ChartBlock, PlaceBlock, TableBlock } from "./Blocks";
+import { DecisionBlock } from "./Checkins";
 import { ProposalChip, type ChipActions } from "./Chips";
 import s from "./ai.module.css";
 
@@ -20,6 +21,7 @@ const OUTCOME_COPY: Record<string, string> = {
 
 /** Save a note; resolves true when it was stored. */
 type OnComment = (turnId: number, text: string | null) => Promise<boolean>;
+type OnVerdict = (decisionId: number, verdict: AiVerdict | null) => void;
 
 export function Thread({
   turns,
@@ -27,6 +29,8 @@ export function Thread({
   chips,
   onVote,
   onComment,
+  checkin = false,
+  onVerdict,
 }: {
   turns: AiTurn[];
   /** The turn streaming now (or just finished), until the stored copy replaces it. */
@@ -35,11 +39,15 @@ export function Thread({
   chips: ChipActions;
   onVote: (turnId: number, feedback: AiFeedback | null) => void;
   onComment: OnComment;
+  /** A check-in's conversation: its first message is the server's brief, not the user's. */
+  checkin?: boolean;
+  /** Agree / disagree on a check-in's calls. */
+  onVerdict?: OnVerdict;
 }) {
   return (
     <>
-      {turns.map((t) => (
-        <StoredTurn key={t.id} turn={t} chips={chips} onVote={onVote} onComment={onComment} />
+      {turns.map((t, i) => (
+        <StoredTurn key={t.id} turn={t} chips={chips} onVote={onVote} onComment={onComment} brief={checkin && i === 0} onVerdict={onVerdict} />
       ))}
       {live ? <Live turn={live} chips={chips} /> : null}
     </>
@@ -51,19 +59,30 @@ const StoredTurn = memo(function StoredTurn({
   chips,
   onVote,
   onComment,
+  brief,
+  onVerdict,
 }: {
   turn: AiTurn;
   chips: ChipActions;
   onVote: (turnId: number, f: AiFeedback | null) => void;
   onComment: OnComment;
+  brief: boolean;
+  onVerdict?: OnVerdict;
 }) {
   const ok = turn.outcome === "ok";
   const [editing, setEditing] = useState(false);
   return (
-    <section className={s.turn} aria-label="Question and answer">
-      <div className={s.ask}>{turn.message}</div>
+    <section className={s.turn} aria-label={brief ? "Check-in" : "Question and answer"}>
+      {brief ? (
+        <details className={s.brief}>
+          <summary>What Dime was asked to check</summary>
+          <div className={s.briefText}>{turn.message}</div>
+        </details>
+      ) : (
+        <div className={s.ask}>{turn.message}</div>
+      )}
       <div className={s.answer}>
-        <Parts parts={turn.parts} chips={chips} />
+        <Parts parts={turn.parts} chips={chips} onVerdict={onVerdict} />
         {!ok ? <div className={s.failed}>{OUTCOME_COPY[turn.outcome] ?? "This answer didn't finish."}</div> : null}
         <div className={s.foot}>
           {ok ? <Vote turn={turn} onVote={onVote} /> : null}
@@ -172,7 +191,17 @@ function Live({ turn, chips }: { turn: LiveTurn; chips: ChipActions }) {
   );
 }
 
-function Parts({ parts, chips, caret = false }: { parts: Array<AiPart | LivePart>; chips: ChipActions; caret?: boolean }) {
+function Parts({
+  parts,
+  chips,
+  caret = false,
+  onVerdict,
+}: {
+  parts: Array<AiPart | LivePart>;
+  chips: ChipActions;
+  caret?: boolean;
+  onVerdict?: OnVerdict;
+}) {
   return (
     <>
       {parts.map((p, i) =>
@@ -180,6 +209,8 @@ function Parts({ parts, chips, caret = false }: { parts: Array<AiPart | LivePart
           <Prose key={i} text={p.text} caret={caret && i === parts.length - 1} />
         ) : p.block.type === "proposal" ? (
           <ProposalChip key={`${p.block.id}-${i}`} chip={p.block} actions={chips} />
+        ) : p.block.type === "decision" ? (
+          <DecisionBlock key={`${p.block.id}-${i}`} decision={p.block} onVerdict={onVerdict} />
         ) : p.block.type === "chart" ? (
           <ChartBlock key={`${p.block.id}-${i}`} chart={p.block} />
         ) : p.block.type === "place" ? (

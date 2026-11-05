@@ -1197,3 +1197,241 @@
     justify-content: space-between;
   }
 }
+
+/* ---------------------------------------------------------------- Dime's check-ins, in shadow */
+
+.listTabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: calc(6px * var(--round, 1));
+  background: var(--surface-2);
+}
+.listTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: calc(5px * var(--round, 1));
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.listTab[aria-selected="true"] {
+  background: var(--raised);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.listTab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* A check-in that has nothing to open (running, missed, skipped) */
+.rowStatic {
+  cursor: default;
+}
+.rowStatic:hover {
+  background: transparent;
+}
+.row [data-state="failed"] {
+  color: var(--down);
+}
+.row [data-state="missed"],
+.row [data-state="skipped"] {
+  color: var(--warn);
+}
+
+.autopilot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 10px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--raised);
+}
+.autopilotHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.autopilotName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.autopilotRun {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.autopilotRun .select {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  font-size: 12px;
+}
+
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 20px;
+  border-radius: calc(10px * var(--round, 1));
+  border: 0;
+  background: var(--line-2);
+  cursor: pointer;
+  transition: background 120ms ease-out;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: transform 120ms ease-out;
+}
+.switch[aria-checked="true"] {
+  background: var(--accent);
+}
+.switch[aria-checked="true"]::after {
+  transform: translateX(14px);
+}
+.switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.checkinMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 10px;
+  padding: 0 14px 8px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+/* The check-in's opening message is the server's brief: folded away, readable on demand */
+.brief {
+  align-self: stretch;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.brief summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.brief summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.briefText {
+  margin-top: 8px;
+  padding: 9px 12px;
+  border-left: 2px solid var(--line-2);
+  color: var(--text-2);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.decision {
+  display: grid;
+  gap: 6px;
+  max-width: 560px;
+  padding: 10px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-2);
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--surface);
+}
+.decision[data-call="change"] {
+  border-left-color: var(--accent);
+}
+.decisionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.decisionCall {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.decisionCall[data-call="change"] {
+  color: var(--accent);
+}
+.decisionSummary {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.decisionReason {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.decisionFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+}
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: calc(5px * var(--round, 1));
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.verdict:hover {
+  background: var(--hover);
+}
+.verdict:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.verdict[data-verdict="agree"][aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--up) 55%, var(--line-2));
+  background: color-mix(in srgb, var(--up) 14%, transparent);
+  color: var(--up);
+}
+.verdict[data-verdict="disagree"][aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--down) 55%, var(--line-2));
+  background: color-mix(in srgb, var(--down) 14%, transparent);
+  color: var(--down);
+}
+
+.chip[data-state="shadow"] {
+  border-style: dashed;
+}

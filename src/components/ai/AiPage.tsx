@@ -12,9 +12,11 @@ import { TeamSwitch, type DeskTeam } from "@/components/desk/TeamSwitch";
 import { ACCOUNT_DESK, AI_DESK } from "@/components/desk/routes";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import {
+  useAiCheckinsQuery,
   useAiConversationQuery,
   useAiConversationsQuery,
   useAiComment,
+  useAiDecisionVerdict,
   useAiFeedback,
   useAiTurn,
   useAiUsageQuery,
@@ -28,7 +30,8 @@ import { draftKey } from "@/lib/ai-drafts";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { teamName, teamTag } from "@/lib/account";
 import { useUIStore } from "@/stores/useUIStore";
-import type { AiConversationSummary, AiFeedback } from "@/types/ai";
+import type { AiCheckins, AiConversationSummary, AiFeedback, AiVerdict } from "@/types/ai";
+import { CheckinList } from "./Checkins";
 import { ChipTray, type ChipActions } from "./Chips";
 import { Composer, type ComposerHandle } from "./Composer";
 import { DimeNotesDialog } from "./DimeNotes";
@@ -134,6 +137,11 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
 
   const list = useAiConversationsQuery(true);
   const detail = useAiConversationQuery(current, true);
+  const checkins = useAiCheckinsQuery(true);
+  // The side list shows the chats or Dime's check-ins (when Dime runs any on the user's teams)
+  const [listView, setListView] = useState<"chats" | "checkins">("chats");
+  const hasCheckins = (checkins.data?.teams.length ?? 0) > 0 || (checkins.data?.checkins.length ?? 0) > 0;
+  const verdict = useAiDecisionVerdict(current);
   const create = useCreateAiConversation();
   const remove = useDeleteAiConversation();
   const feedback = useAiFeedback(current);
@@ -190,6 +198,11 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
   // ---- the live turn: shown until the stored copy of it arrives
 
   const conversation = current != null ? detail.data : undefined;
+  const isCheckin = conversation?.kind === "checkin";
+  // Opening a check-in (a link, back and forward) shows the check-ins beside it
+  useEffect(() => {
+    if (isCheckin) setListView("checkins");
+  }, [isCheckin, current]);
   const turns = useMemo(() => conversation?.history ?? [], [conversation]);
   const liveHere = live && live.conversationId === current ? live : null;
   const stored = liveHere?.done?.turn_id != null && turns.some((t) => t.id === liveHere.done!.turn_id);
@@ -249,6 +262,13 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
     [comment]
   );
 
+  const onVerdict = useCallback(
+    (decisionId: number, value: AiVerdict | null) => {
+      verdict.mutate({ decisionId, verdict: value }, { onError: (err) => toast.error(userMessage(err, "Couldn't save that")) });
+    },
+    [verdict]
+  );
+
   const newConversation = useCallback(() => {
     go(null);
     setTimeout(() => composer.current?.focus(), 0);
@@ -302,6 +322,12 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
         </button>
       </>
     );
+  } else if (isCheckin) {
+    banner = (
+      <span className={dk.sub}>
+        In shadow: nothing in this check-in was sent to ESPN. Mark each call agree or disagree; a follow-up here is an ordinary chat.
+      </span>
+    );
   } else if (current == null && selected.teams.length > 0) {
     banner = (
       <>
@@ -341,6 +367,11 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
           onOpen={(id) => go(id)}
           onNew={newConversation}
           onDime={setDimeView}
+          view={hasCheckins ? listView : "chats"}
+          onView={hasCheckins ? setListView : undefined}
+          checkins={checkins.data}
+          checkinsLoading={checkins.isLoading}
+          teams={teams}
         />
 
         <div className={s.main}>
@@ -362,7 +393,15 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
               ) : turns.length === 0 && !showLive ? (
                 <Empty onPick={(q) => void onSend(q)} disabled={running} />
               ) : (
-                <Thread turns={turns} live={showLive} chips={chipActions} onVote={onVote} onComment={onComment} />
+                <Thread
+                  turns={turns}
+                  live={showLive}
+                  chips={chipActions}
+                  onVote={onVote}
+                  onComment={onComment}
+                  checkin={isCheckin}
+                  onVerdict={isCheckin ? onVerdict : undefined}
+                />
               )}
             </div>
           </div>
@@ -381,7 +420,15 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
             ref={composer}
             disabled={full}
             busy={running || create.isPending}
-            placeholder={running ? "Answering…" : current == null ? "Ask about your team, a player, or the free-agent pool" : "Ask a follow-up"}
+            placeholder={
+              running
+                ? "Answering…"
+                : current == null
+                  ? "Ask about your team, a player, or the free-agent pool"
+                  : isCheckin
+                    ? "Ask Dime about this check-in"
+                    : "Ask a follow-up"
+            }
             banner={banner}
             draftKey={draftKey(userId, current)}
             onSend={(m) => void onSend(m)}
@@ -462,6 +509,11 @@ function ConversationList({
   onOpen,
   onNew,
   onDime,
+  view,
+  onView,
+  checkins,
+  checkinsLoading,
+  teams,
 }: {
   conversations: AiConversationSummary[];
   loading: boolean;
@@ -469,40 +521,40 @@ function ConversationList({
   onOpen: (id: number) => void;
   onNew: () => void;
   onDime: (view: "notes" | "moves") => void;
+  view: "chats" | "checkins";
+  /** Absent when Dime runs no check-ins on the user's teams: the list is the chats alone. */
+  onView?: (view: "chats" | "checkins") => void;
+  checkins: AiCheckins | undefined;
+  checkinsLoading: boolean;
+  teams: DeskTeam[];
 }) {
+  const running = checkins?.checkins.some((c) => c.state === "running") ?? false;
   return (
     <nav className={s.list} aria-label="Conversations">
       <div className={s.listHead}>
-        <span className={dk.label}>Conversations</span>
+        {onView ? (
+          <div className={s.listTabs} role="tablist" aria-label="Show">
+            <button type="button" role="tab" aria-selected={view === "chats"} className={s.listTab} onClick={() => onView("chats")}>
+              Chats
+            </button>
+            <button type="button" role="tab" aria-selected={view === "checkins"} className={s.listTab} onClick={() => onView("checkins")}>
+              Check-ins
+              {running ? <Loader2 size={11} className={dk.spin} aria-label="One is running" /> : null}
+            </button>
+          </div>
+        ) : (
+          <span className={dk.label}>Conversations</span>
+        )}
         <span className={dk.spacer} />
         <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={onNew}>
           <Plus size={13} /> New
         </button>
       </div>
-      <div className={s.listScroll}>
-        {loading ? (
-          <div className={s.rowEmpty} aria-busy>
-            <span className={dk.skel} style={{ width: "80%" }} />
-          </div>
-        ) : conversations.length === 0 ? (
-          <div className={s.rowEmpty}>Nothing yet. Your conversations show up here.</div>
-        ) : (
-          conversations.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={`${s.row} ${c.id === current ? s.rowOn : ""}`}
-              aria-current={c.id === current ? "page" : undefined}
-              onClick={() => onOpen(c.id)}
-            >
-              <span className={s.rowTitle}>{c.title ?? "Untitled"}</span>
-              <span className={dk.sub}>
-                {relative(c.updated_at)} · {c.turns} {c.turns === 1 ? "turn" : "turns"}
-              </span>
-            </button>
-          ))
-        )}
-      </div>
+      {view === "checkins" ? (
+        <CheckinList data={checkins} loading={checkinsLoading} teams={teams} current={current} onOpen={onOpen} />
+      ) : (
+        <ConversationRows conversations={conversations} loading={loading} current={current} onOpen={onOpen} />
+      )}
       <div className={s.dime}>
         <span className={`${dk.label} ${s.dimeHead}`}>Dime</span>
         <button type="button" className={s.dimeLink} onClick={() => onDime("notes")}>
@@ -513,6 +565,45 @@ function ConversationList({
         </button>
       </div>
     </nav>
+  );
+}
+
+function ConversationRows({
+  conversations,
+  loading,
+  current,
+  onOpen,
+}: {
+  conversations: AiConversationSummary[];
+  loading: boolean;
+  current: number | null;
+  onOpen: (id: number) => void;
+}) {
+  return (
+    <div className={s.listScroll}>
+      {loading ? (
+        <div className={s.rowEmpty} aria-busy>
+          <span className={dk.skel} style={{ width: "80%" }} />
+        </div>
+      ) : conversations.length === 0 ? (
+        <div className={s.rowEmpty}>Nothing yet. Your conversations show up here.</div>
+      ) : (
+        conversations.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            className={`${s.row} ${c.id === current ? s.rowOn : ""}`}
+            aria-current={c.id === current ? "page" : undefined}
+            onClick={() => onOpen(c.id)}
+          >
+            <span className={s.rowTitle}>{c.title ?? "Untitled"}</span>
+            <span className={dk.sub}>
+              {relative(c.updated_at)} · {c.turns} {c.turns === 1 ? "turn" : "turns"}
+            </span>
+          </button>
+        ))
+      )}
+    </div>
   );
 }
 

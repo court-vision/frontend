@@ -58,7 +58,7 @@ export function AutomationSheet({ model, onOpen }: { model: AccountModel; onOpen
       <Block title="Dime">
         <div className={s.row2}>
           <span className={s.prose}>
-            Dime, the agent on the AI desk, suggests adds, drops and lineups in chat and makes a move only when you confirm it. What it remembers about your teams, and how its moves went, are on the AI desk.
+            Dime, the agent on the AI desk, suggests adds, drops and lineups in chat and makes a move only when you confirm it. On a team it runs check-ins on, it also looks over what the automations above will do, morning and night, and logs what it would change without sending anything. Its check-ins, what it remembers about your teams and how its moves went are on the AI desk.
           </span>
           <Link href={AI_DESK} className={`${dk.btn} ${dk.btnSmall}`}>
             <MessagesSquare size={12} /> Open the AI desk

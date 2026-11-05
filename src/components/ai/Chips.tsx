@@ -30,10 +30,11 @@ export interface ChipActions {
 /** start / bench / shift, as the move's glyph. */
 const ROLE_SIGN: Record<AiProposalMove["role"], string> = { start: "▲", bench: "▼", shift: "→" };
 
-const STATE_LABEL: Record<"sent" | "dismissed" | "expired", string> = {
+const STATE_LABEL: Record<"sent" | "dismissed" | "expired" | "shadow", string> = {
   sent: "Sent",
   dismissed: "Dismissed",
   expired: "Expired",
+  shadow: "Logged in shadow, not sent",
 };
 
 export function ProposalChip({ chip: raw, actions }: { chip: AiProposalChip; actions: ChipActions }) {
@@ -41,8 +42,10 @@ export function ProposalChip({ chip: raw, actions }: { chip: AiProposalChip; act
   const state = chipState(chip);
   const staged = state === "proposed" && actions.stagedIds.has(chip.proposal_id);
   const when = chip.kind === "transaction" ? "Today" : `${chip.dow} ${monthDay(chip.date)}`;
-  const how =
-    chip.kind === "scheduled"
+  const shadow = state === "shadow";
+  const how = shadow
+    ? "what Dime would have done in a check-in"
+    : chip.kind === "scheduled"
       ? "scheduled: made for you ahead of that day's games"
       : chip.kind === "lineup"
         ? "lineup: set on ESPN when you send it"
@@ -54,7 +57,7 @@ export function ProposalChip({ chip: raw, actions }: { chip: AiProposalChip; act
   return (
     <div className={s.chip} data-state={state} data-staged={staged || undefined} role="group" aria-label={chip.kind === "lineup" ? "Proposed lineup" : "Proposed move"}>
       <div className={s.chipHead}>
-        <span className={dk.label}>CV AI proposes</span>
+        <span className={dk.label}>{shadow ? "Dime would" : "CV AI proposes"}</span>
         <span>
           {when} · {how}
         </span>

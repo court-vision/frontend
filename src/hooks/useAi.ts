@@ -7,13 +7,17 @@ import type { GetTokenFn } from "@/lib/http";
 import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
 import type {
   AiBlock,
+  AiCheckinKind,
+  AiCheckins,
   AiConversation,
   AiConversationSummary,
+  AiDecisionBlock,
   AiFeedback,
   AiNote,
   AiNoteCreateRequest,
   AiNoteEditRequest,
   AiUsage,
+  AiVerdict,
   MoveOutcomeList,
   MoveScope,
 } from "@/types/ai";
@@ -41,6 +45,7 @@ export const aiKeys = {
   conversations: (userId: string | null | undefined) => [...aiKeys.user(userId), "conversations"] as const,
   conversation: (userId: string | null | undefined, id: number) => [...aiKeys.user(userId), "conversation", id] as const,
   notes: (userId: string | null | undefined) => [...aiKeys.user(userId), "notes"] as const,
+  checkins: (userId: string | null | undefined) => [...aiKeys.user(userId), "checkins"] as const,
   moves: (userId: string | null | undefined, teamId: number, scope: MoveScope) =>
     [...aiKeys.user(userId), "moves", teamId, scope] as const,
 };
@@ -142,6 +147,90 @@ export function useAiComment(conversationId: number | null) {
         c ? { ...c, history: c.history.map((t) => (t.id === turnId ? { ...t, comment: stored } : t)) } : c
       );
     },
+  });
+}
+
+// ---- Dime's check-ins, in shadow
+
+/**
+ * The teams Dime runs check-ins on and what it ran. A check-in runs for a few
+ * minutes after it starts, so the list is read every 15 seconds while one is
+ * running, and every 5 minutes otherwise (the schedule starts them on its own).
+ */
+export function useAiCheckinsQuery(enabled: boolean) {
+  const { getToken, isSignedIn, userId } = useAuth();
+  return useQuery<AiCheckins>({
+    queryKey: aiKeys.checkins(userId),
+    queryFn: ({ signal }) => apiClient.getAiCheckins(getToken, { signal }),
+    enabled: enabled && isSignedIn === true,
+    staleTime: 15_000,
+    refetchInterval: (query) => (query.state.data?.checkins.some((c) => c.state === "running") ? 15_000 : 5 * 60_000),
+    retry: false,
+    meta: { toast: false },
+  });
+}
+
+export function useRunAiCheckin() {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, kind }: { teamId: number; kind?: AiCheckinKind }) => apiClient.runAiCheckin(getToken, teamId, kind),
+    onSuccess: (checkin) => {
+      queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
+        d ? { ...d, checkins: [checkin, ...d.checkins.filter((c) => c.checkin_id !== checkin.checkin_id)] } : d
+      );
+      void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
+    },
+  });
+}
+
+export function useSetAiAutopilot() {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, on }: { teamId: number; on: boolean }) => apiClient.setAiAutopilot(getToken, teamId, on),
+    onSuccess: (team) => {
+      queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
+        d ? { ...d, teams: d.teams.map((t) => (t.team_id === team.team_id ? team : t)) } : d
+      );
+    },
+  });
+}
+
+/** Write one decision block's verdict into a cached conversation. */
+function withVerdict(c: AiConversation, decisionId: number, verdict: AiVerdict | null): AiConversation {
+  return {
+    ...c,
+    history: c.history.map((t) => ({
+      ...t,
+      parts: t.parts.map((p) =>
+        p.kind === "block" && p.block.type === "decision" && (p.block as AiDecisionBlock).decision_id === decisionId
+          ? { ...p, block: { ...p.block, verdict } }
+          : p
+      ),
+    })),
+  };
+}
+
+/** Agree / disagree with one of a check-in's calls: shown at once, put back if the save fails. */
+export function useAiDecisionVerdict(conversationId: number | null) {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ decisionId, verdict }: { decisionId: number; verdict: AiVerdict | null }) =>
+      apiClient.setAiDecisionVerdict(getToken, decisionId, verdict),
+    onMutate: ({ decisionId, verdict }) => {
+      if (conversationId == null) return undefined;
+      const key = aiKeys.conversation(userId, conversationId);
+      const before = queryClient.getQueryData<AiConversation>(key);
+      if (before) queryClient.setQueryData<AiConversation>(key, withVerdict(before, decisionId, verdict));
+      return before;
+    },
+    onError: (_err, _vars, before) => {
+      if (conversationId != null && before) queryClient.setQueryData(aiKeys.conversation(userId, conversationId), before);
+    },
+    // The inbox's agree / disagree tallies
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) }),
   });
 }
 
