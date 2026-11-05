@@ -33,6 +33,19 @@ export type AiProposalPlayer = S["AiProposalPlayer"];
 /** One slot move of a lineup chip, as the lineup write takes it and the tray shows it. */
 export type AiProposalMove = S["AiProposalMove"];
 export type AiProposalState = AiProposalChip["state"];
+export type AiProposalKind = AiProposalChip["kind"];
+/**
+ * Dime's steering chips (the Dime autopilot plan, step 4): `steer` sets and clears
+ * holds, `lane` starts / pauses / resumes / stops a stream lane, `cancel_pickup`
+ * cancels a pending pickup. They change no ESPN roster, so they never go in the
+ * tray: the chip's Apply button calls the Week desk's own route for it with
+ * `proposal_id` (lib/steering.ts).
+ */
+export type AiSteerAction = S["AiSteerAction"];
+export type AiHoldChange = S["AiHoldChange"];
+export type AiHoldCleared = S["AiHoldCleared"];
+export type AiLaneAction = S["AiLaneAction"];
+export type AiCancelPickupAction = S["AiCancelPickupAction"];
 /** The chip as it stands plus why it can't be staged now (`problems` empty when it can). */
 export type AiProposalCheck = S["AiProposalCheckData"];
 export type AiProposalResponse = S["AiProposalResp"];

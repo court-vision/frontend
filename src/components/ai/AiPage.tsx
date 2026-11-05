@@ -158,8 +158,10 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
       onStage: tray.stage,
       onUnstage: tray.unstage,
       onDismiss: tray.dismiss,
+      onApply: tray.apply,
+      applying: tray.applying,
     }),
-    [tray.stagedIds, tray.patches, tray.busy, tray.stage, tray.unstage, tray.dismiss]
+    [tray.stagedIds, tray.patches, tray.busy, tray.stage, tray.unstage, tray.dismiss, tray.apply, tray.applying]
   );
 
   const selected = useSelectedTeam();
