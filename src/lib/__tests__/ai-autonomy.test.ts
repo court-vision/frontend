@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { actionLine, autonomyLine, checkinBanner, heldBack, modeOf, pauseLine, policyLine } from "../ai-autonomy";
+import { demoDimeChange, demoDimeTeams } from "../account-demo";
+import { actionLine, autonomyLine, checkinBanner, effectiveOf, heldBack, modeOf, pauseLine, policyLine } from "../ai-autonomy";
 import type { AiActingPolicy, AiAutonomy, AiConversation } from "@/types/ai";
 
 function autonomy(over: Partial<AiAutonomy> = {}): AiAutonomy {
@@ -41,6 +42,35 @@ describe("a team's modes", () => {
     expect(pauseLine({ paused_at: "2026-11-10T20:00:00Z", paused_by: "system", paused_reason: "2 of its moves were refused today" })).toBe(
       "Dime paused itself: 2 of its moves were refused today"
     );
+  });
+});
+
+describe("what each kind may do now", () => {
+  test("its own mode or the team's; act suggests while acting is off; all shadow while paused", () => {
+    const own = { lineup: "act" as const, streaming: null, adds_drops: "shadow" as const };
+    expect(effectiveOf("suggest", own, false, true)).toEqual({ lineup: "act", streaming: "suggest", adds_drops: "shadow" });
+    expect(effectiveOf("act", own, false, false)).toEqual({ lineup: "suggest", streaming: "suggest", adds_drops: "shadow" });
+    expect(effectiveOf("act", own, true, true)).toEqual({ lineup: "shadow", streaming: "shadow", adds_drops: "shadow" });
+  });
+});
+
+describe("the demo's Dime", () => {
+  const NOW = Date.parse("2026-11-05T15:00:00Z");
+
+  test("is one team in suggest, adds and drops kept in shadow, its next check-in tomorrow morning", () => {
+    const [t] = demoDimeTeams(NOW);
+    expect(autonomyLine(t.autonomy)).toBe("Suggest · adds and drops shadow");
+    expect(t.next).toEqual({ kind: "morning", date: "2026-11-06", due_at: "2026-11-06T14:00:00Z" });
+  });
+
+  test("a change is answered as the server would: switching off is your pause, and modes are re-read", () => {
+    const [t] = demoDimeTeams(NOW);
+    const off = demoDimeChange(t, { on: false }, true, NOW);
+    expect([off.on, off.paused_by, off.paused_at]).toEqual([false, "user", "2026-11-05T15:00:00.000Z"]);
+    expect(off.autonomy.effective.lineup).toBe("shadow");
+    const back = demoDimeChange(off, { on: true, mode: "act", own: { adds_drops: null } }, false, NOW);
+    expect([back.on, back.paused_at, back.autonomy.mode, back.autonomy.own.adds_drops]).toEqual([true, null, "act", null]);
+    expect(back.autonomy.effective).toEqual({ lineup: "suggest", streaming: "suggest", adds_drops: "suggest" });
   });
 });
 

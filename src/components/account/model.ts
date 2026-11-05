@@ -3,6 +3,7 @@
  * and the demo both implement. The desk's components never fetch: they ask
  * the model, so the demo and the real thing render the same code.
  */
+import type { AiActing, AiAutopilotChange, AiAutopilotTeam } from "@/types/ai";
 import type { EspnAccountTeam, ProviderConnection } from "@/types/connections";
 import type { NotificationPreference, NotificationTeamPreference, NotificationTeamPreferenceRequest } from "@/types/notifications";
 import type { LeagueDetail, LeagueInfoRequest, ScoringPreview, TeamResponseData } from "@/types/team";
@@ -51,6 +52,12 @@ export interface AddTeamModel {
   useYahooTeams: (connectionId: number | null, leagueKey: string | null) => Loaded<YahooTeam[]>;
 }
 
+export interface DimeState {
+  teams: AiAutopilotTeam[];
+  /** Acting's switches and the policy; null from a server without them. */
+  acting: AiActing | null;
+}
+
 export interface AccountUser {
   name: string | null;
   email: string | null;
@@ -89,6 +96,12 @@ export interface AccountModel extends AddTeamModel {
   /** Writes only the fields sent; a null hands that field back to the account's. */
   saveTeamPrefs: (teamId: number, data: NotificationTeamPreferenceRequest) => Promise<void>;
   clearTeamPrefs: (teamId: number) => Promise<void>;
+
+  // ---- Dime (AI and automation's Dime block)
+  /** The teams Dime runs check-ins on, and what the server lets it do. A hook: call it unconditionally. */
+  useDime: () => Loaded<DimeState>;
+  /** A team's check-ins switch, its mode or a kind of move's own. Throws with the refusal. */
+  setDime: (teamId: number, change: AiAutopilotChange) => Promise<void>;
 
   // ---- the account itself
   user: AccountUser | null;

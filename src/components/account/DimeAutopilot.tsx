@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { MessagesSquare } from "lucide-react";
 import { toast } from "sonner";
-import { aiMessage, useAiCheckinsQuery, useSetAiAutopilot } from "@/hooks/useAi";
+import { aiMessage } from "@/hooks/useAi";
 import { AI_DESK } from "@/components/desk/routes";
 import { SegRail } from "@/components/desk/SegRail";
 import { whenTime } from "@/components/week/format";
@@ -21,7 +22,7 @@ import {
 } from "@/lib/ai-autonomy";
 import { teamName } from "@/lib/account";
 import type { AiActing, AiAutonomyMode, AiAutopilotChange, AiAutopilotTeam, AiCapability } from "@/types/ai";
-import type { TeamResponseData } from "@/types/team";
+import type { AccountModel } from "./model";
 import { Block, Toggle } from "./blocks";
 import dk from "@/components/desk/desk.module.css";
 import s from "./account.module.css";
@@ -33,12 +34,13 @@ const ACT_OFF = "Acting is switched off on the server for now";
  * team Dime runs check-ins on, the check-ins' switch and how much Dime may do
  * there, the team's mode and each kind of move's own. Both shapes are shown
  * while James decides between one setting per team and one per kind; dropping
- * either is deleting its rows here.
+ * either is deleting its rows here. It reads and writes through the account's
+ * model, so the demo shows a sample team and keeps every change in memory.
  */
-export function DimeAutopilot({ teams }: { teams: TeamResponseData[] }) {
-  const checkins = useAiCheckinsQuery(true);
-  const pilots = checkins.data?.teams ?? [];
-  const acting = checkins.data?.acting ?? null;
+export function DimeAutopilot({ model }: { model: AccountModel }) {
+  const dime = model.useDime();
+  const pilots = dime.data?.teams ?? [];
+  const acting = dime.data?.acting ?? null;
   return (
     <Block title="Dime">
       <div className={s.row2}>
@@ -52,8 +54,17 @@ export function DimeAutopilot({ teams }: { teams: TeamResponseData[] }) {
         </Link>
       </div>
       {pilots.map((t) => {
-        const team = teams.find((x) => x.team_id === t.team_id);
-        return <PilotTeam key={t.team_id} pilot={t} name={team ? teamName(team) : `Team ${t.team_id}`} acting={acting} />;
+        const team = model.teams.find((x) => x.team_id === t.team_id);
+        return (
+          <PilotTeam
+            key={t.team_id}
+            pilot={t}
+            name={team ? teamName(team) : `Team ${t.team_id}`}
+            acting={acting}
+            demo={model.demo}
+            onSet={model.setDime}
+          />
+        );
       })}
     </Block>
   );
@@ -66,17 +77,28 @@ function statusLine(t: AiAutopilotTeam): string {
   return t.next ? `On. Next: ${KIND_LABEL[t.next.kind].toLowerCase()}, ${whenTime(t.next.due_at)}.` : "On. Nothing due until the season's next game day.";
 }
 
-function PilotTeam({ pilot: t, name, acting }: { pilot: AiAutopilotTeam; name: string; acting: AiActing | null }) {
-  const set = useSetAiAutopilot();
+function PilotTeam({
+  pilot: t,
+  name,
+  acting,
+  demo,
+  onSet,
+}: {
+  pilot: AiAutopilotTeam;
+  name: string;
+  acting: AiActing | null;
+  demo: boolean;
+  onSet: AccountModel["setDime"];
+}) {
+  const [pending, setPending] = useState(false);
   const canAct = acting?.available ?? false;
-  const change = (c: AiAutopilotChange, done?: string) =>
-    set.mutate(
-      { teamId: t.team_id, ...c },
-      {
-        onSuccess: () => (done ? toast.success(done) : undefined),
-        onError: (err) => toast.error(aiMessage(err, "Couldn't change that")),
-      }
-    );
+  const change = (c: AiAutopilotChange, done?: string) => {
+    setPending(true);
+    onSet(t.team_id, c)
+      .then(() => (done ? toast.success(demo ? `${done} (demo)` : done) : undefined))
+      .catch((err: unknown) => toast.error(aiMessage(err, "Couldn't change that")))
+      .finally(() => setPending(false));
+  };
   const a = t.autonomy;
   return (
     <div className={s.pilot} data-paused-by={t.paused_by ?? undefined}>
@@ -84,7 +106,7 @@ function PilotTeam({ pilot: t, name, acting }: { pilot: AiAutopilotTeam; name: s
         label={name}
         help={statusLine(t)}
         checked={t.on}
-        disabled={set.isPending}
+        disabled={pending}
         onChange={(on) => change({ on }, on ? `Check-ins on for ${name}` : `Check-ins paused on ${name}`)}
       />
       <div className={s.pilotGrid} role="group" aria-label={`How much Dime may do on ${name}`}>
@@ -97,12 +119,12 @@ function PilotTeam({ pilot: t, name, acting }: { pilot: AiAutopilotTeam; name: s
             label={`Dime on ${name}`}
             value={a.mode}
             canAct={canAct}
-            disabled={set.isPending}
+            disabled={pending}
             onPick={(mode) => change({ mode })}
           />
         </div>
         {CAPABILITIES.map((c) => (
-          <KindRow key={c} cap={c} pilot={t} canAct={canAct} disabled={set.isPending} onChange={change} />
+          <KindRow key={c} cap={c} pilot={t} canAct={canAct} disabled={pending} onChange={change} />
         ))}
       </div>
       <div className={s.pilotFoot}>

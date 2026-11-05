@@ -63,6 +63,13 @@ describe("pickupNote", () => {
     expect(pickupNote({ status: "failed", reason: "espn_rejected", seated_slot: null, detail: "Roster limit" })).toBe("Failed: Roster limit");
     expect(pickupNote({ status: "expired", reason: "some_new_reason", seated_slot: null, detail: null })).toBe("Expired: some new reason");
   });
+
+  test("a pickup Dime scheduled, stopped when it came due, says why", () => {
+    expect(pickupNote({ status: "skipped", reason: "dime_paused", seated_slot: null, detail: null })).toBe("Skipped: Dime is paused on this team");
+    expect(pickupNote({ status: "skipped", reason: "dime_reserve", seated_slot: null, detail: null })).toBe(
+      "Skipped: it would have used the add Dime keeps for you"
+    );
+  });
 });
 
 describe("pickupTiming", () => {

@@ -49,6 +49,24 @@ export function modeOf(a: AiAutonomy, c: AiCapability): AiAutonomyMode {
   return a.own[c] ?? a.mode;
 }
 
+/**
+ * What each kind may do now, as the server reads it (autonomy.effective): its own mode or the
+ * team's, act read as suggest while acting is switched off, every kind in shadow while paused.
+ */
+export function effectiveOf(
+  mode: AiAutonomyMode,
+  own: AiAutonomy["own"],
+  paused: boolean,
+  canAct: boolean
+): AiAutonomy["effective"] {
+  const one = (c: AiCapability): AiAutonomyMode => {
+    if (paused) return "shadow";
+    const set = own[c] ?? mode;
+    return set === "act" && !canAct ? "suggest" : set;
+  };
+  return { lineup: one("lineup"), streaming: one("streaming"), adds_drops: one("adds_drops") };
+}
+
 /** The settings in a line: "Shadow", or "Suggest · adds and drops act" when a kind differs from the team. */
 export function autonomyLine(a: AiAutonomy): string {
   const differ = CAPABILITIES.filter((c) => modeOf(a, c) !== a.mode);

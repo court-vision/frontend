@@ -54,7 +54,7 @@ export function AutomationSheet({ model, onOpen }: { model: AccountModel; onOpen
       <AccountSettings model={model} kind={AUTOMATION} onOpen={onOpen} />
       <TeamSettings model={model} kind={AUTOMATION} onOpen={onOpen} />
 
-      <DimeAutopilot teams={model.teams} />
+      <DimeAutopilot model={model} />
     </div>
   );
 }

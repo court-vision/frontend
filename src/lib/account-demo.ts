@@ -4,11 +4,13 @@
  * Yahoo account nobody has checked, and lineup alerts half set up. Every
  * write lands in memory. Nothing here is real.
  */
+import type { AiActing, AiAutonomy, AiAutopilotChange, AiAutopilotTeam } from "@/types/ai";
 import type { EspnAccountTeam, ProviderConnection } from "@/types/connections";
 import type { NotificationPreference, NotificationTeamPreference } from "@/types/notifications";
 import type { LeagueDetail, LeagueSummary, TeamResponseData } from "@/types/team";
 import type { YahooLeague, YahooTeam } from "@/types/yahoo";
 import type { Capabilities } from "./account";
+import { effectiveOf } from "./ai-autonomy";
 
 export const DEMO_NOW = Date.parse("2026-10-09T15:00:00Z");
 const h = (hours: number) => new Date(DEMO_NOW - hours * 3600_000).toISOString();
@@ -226,3 +228,51 @@ export const DEMO_TEAM_PREFS: NotificationTeamPreference[] = [
 ];
 
 export const DEMO_USER = { name: "Demo Manager", email: "demo@courtvision.dev", imageUrl: null as string | null };
+
+// ---- Dime: one team it runs check-ins on, every change kept in memory
+
+/** The server's switches and policy, as a server with acting on would send them. */
+export const DEMO_ACTING: AiActing = {
+  available: true,
+  steering: true,
+  writes: true,
+  policy: { adds_per_day: 2, adds_per_matchup: 5, adds_reserve: 1, protected_top: 6, churn_hours: 48, pause_refused: 2, pause_same_block: 2 },
+};
+
+/** The demo's first team, in suggest with adds and drops kept in shadow; its next check-in is tomorrow morning. */
+export function demoDimeTeams(now: number = Date.now()): AiAutopilotTeam[] {
+  const date = new Date(now + 86_400_000).toISOString().slice(0, 10);
+  const own: AiAutonomy["own"] = { lineup: null, streaming: null, adds_drops: "shadow" };
+  return [
+    {
+      team_id: DEMO_TEAMS[0].team_id,
+      on: true,
+      active_since: new Date(now - 7 * 86_400_000).toISOString(),
+      paused_at: null,
+      paused_by: null,
+      paused_reason: null,
+      next: { kind: "morning", date, due_at: `${date}T14:00:00Z` },
+      autonomy: { mode: "suggest", own, effective: effectiveOf("suggest", own, false, DEMO_ACTING.available) },
+    },
+  ];
+}
+
+/** A change to a demo team, as the server would answer it: switching off pauses it (yours), on resumes it. */
+export function demoDimeChange(t: AiAutopilotTeam, change: AiAutopilotChange, canAct: boolean, now: number = Date.now()): AiAutopilotTeam {
+  const on = change.on ?? t.on;
+  const pause =
+    on === t.on
+      ? { paused_at: t.paused_at, paused_by: t.paused_by, paused_reason: t.paused_reason }
+      : on
+        ? { paused_at: null, paused_by: null, paused_reason: null }
+        : { paused_at: new Date(now).toISOString(), paused_by: "user" as const, paused_reason: null };
+  const mode = change.mode ?? t.autonomy.mode;
+  const own = { ...t.autonomy.own, ...(change.own ?? {}) };
+  return {
+    ...t,
+    on,
+    ...pause,
+    active_since: on && !t.on ? new Date(now).toISOString() : t.active_since,
+    autonomy: { mode, own, effective: effectiveOf(mode, own, !on, canAct) },
+  };
+}
