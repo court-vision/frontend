@@ -739,7 +739,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
             onEditKeepers={() => setKeepersOpen(true)}
             onRecordKeepers={() => void recordKeepers()}
             recordingKeepers={recordingKeepers || model.picking}
-            onUndo={completed ? null : undoPick}
+            onUndo={completed || dime.drafting ? null : undoPick}
             canUndo={canUndo}
           />
         </aside>

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
 import dk from "@/components/desk/desk.module.css";
 import { AI_DESK } from "@/components/desk/routes";
 import { aiMessage } from "@/hooks/useAi";
 import { useAskDimeDraft, useDimeDraftQuery, useSetDimeDraftNotes, useSetDimeDraftSeat } from "@/hooks/useDimeDraft";
+import { draftKeys } from "@/hooks/useDrafts";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { toApiError } from "@/lib/api-error";
 import { prose } from "@/lib/ai-prose";
@@ -53,16 +55,32 @@ export function useRoomDime(model: RoomModel, session: DraftSession): RoomDime {
   const notesM = useSetDimeDraftNotes(session.id);
   const seatM = useSetDimeDraftSeat(session.id);
   const room = query.data?.available ? query.data : null;
-  const refetch = useLatestCallback(() => model.refetch());
+  const queryClient = useQueryClient();
 
-  // A finished plan sets punts and a seat pick adds a pick: the room reads itself again
+  // A finished plan sets punts and a seat pick adds a pick: everything that reads the draft reads it
+  // again, as after the room's own writes (the session, every board view, the recap, the lobby)
   const signature = roomSignature(room);
   const seen = useRef<string | null>(null);
   useEffect(() => {
     if (!signature) return;
-    if (seen.current !== null && seen.current !== signature) refetch();
+    if (seen.current !== null && seen.current !== signature) {
+      void queryClient.invalidateQueries({ queryKey: draftKeys.detail(session.id) });
+      void queryClient.invalidateQueries({ queryKey: draftKeys.board(session.id) });
+      void queryClient.invalidateQueries({ queryKey: draftKeys.recap(session.id) });
+      void queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
+    }
     seen.current = signature;
-  }, [signature, refetch]);
+  }, [signature, session.id, queryClient]);
+
+  // Whether Dime can hold the seat follows the room's seat, shape, link and state: read the view
+  // again when one of them changes (the view doesn't poll while nothing runs)
+  const seatShape = [session.my_slot, session.status, session.espn_league_id, session.pick_order.length, session.rounds, session.draft_type].join(":");
+  const shapeSeen = useRef<string | null>(null);
+  const refetchView = useLatestCallback(() => void query.refetch());
+  useEffect(() => {
+    if (shapeSeen.current !== null && shapeSeen.current !== seatShape && query.data) refetchView();
+    shapeSeen.current = seatShape;
+  }, [seatShape, query.data, refetchView]);
 
   const ask = useLatestCallback((kind: DimeDraftNoteKind, quiet = false) => {
     askM.mutate(kind, {
