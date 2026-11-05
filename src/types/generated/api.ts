@@ -164,8 +164,8 @@ export interface paths {
         };
         get?: never;
         /**
-         * Switch Dime's scheduled check-ins on or off for a team
-         * @description On starts (or resumes) the team's check-ins; off pauses them. A check-in whose window closed while they were off is not counted as missed.
+         * Dime's autopilot on a team: the check-ins' switch, and how much Dime may do
+         * @description Any of: `on` starts (or resumes) the team's check-ins and off pauses them (a check-in whose window closed while they were off is not counted as missed; resuming also lifts a pause Dime made itself); `mode` sets how much Dime may do on the whole team (shadow logs, suggest makes chips, act sends within the policy); `own` sets a kind of move's own mode (lineup, streaming, adds_drops), null to follow the team's. Setting up a team that was never switched on leaves it paused unless `on` is true.
          */
         put: operations["set_autopilot_v1_internal_ai_autopilot__team_id__put"];
         post?: never;
@@ -2907,15 +2907,135 @@ export interface components {
             usg_pct: number | null;
         };
         /**
+         * AiActing
+         * @description Whether Dime can act on its own at all, and the policy it acts within.
+         */
+        AiActing: {
+            /**
+             * Available
+             * @description DIME_ACTING_ENABLED: off, act can't be set and reads as suggest
+             */
+            available: boolean;
+            policy: components["schemas"]["AiActingPolicy"];
+            /**
+             * Steering
+             * @description DIME_STEERING_ENABLED: Dime's steering chips exist at all
+             */
+            steering: boolean;
+            /**
+             * Writes
+             * @description ROSTER_WRITES_ENABLED: writes to ESPN are on
+             */
+            writes: boolean;
+        };
+        /**
+         * AiActingPolicy
+         * @description The rules every move Dime sends itself is held to (core/settings.py).
+         */
+        AiActingPolicy: {
+            /** Adds Per Day */
+            adds_per_day: number;
+            /** Adds Per Matchup */
+            adds_per_matchup: number;
+            /**
+             * Adds Reserve
+             * @description Adds this matchup Dime leaves for the user (injuries)
+             */
+            adds_reserve: number;
+            /**
+             * Churn Hours
+             * @description Nor a player added this recently, unless he is out
+             */
+            churn_hours: number;
+            /**
+             * Pause Refused
+             * @description It pauses itself after this many refused writes in a day
+             */
+            pause_refused: number;
+            /**
+             * Pause Same Block
+             * @description ...or this many blocks by the same rule in a day
+             */
+            pause_same_block: number;
+            /**
+             * Protected Top
+             * @description Dime never drops one of the roster's top this many by value
+             */
+            protected_top: number;
+        };
+        /**
+         * AiAutonomy
+         * @description How much Dime may do on the team (services/ai/autonomy.py): shadow logs, suggest makes chips, act
+         *     sends within the policy. `mode` is the team's; `own` a kind of move's, standing in for it when set;
+         *     `effective` what each kind is now (act reads as suggest while acting is off on the server, and every
+         *     kind is shadow while the team is paused).
+         */
+        AiAutonomy: {
+            effective: components["schemas"]["AiAutonomyModes"];
+            /**
+             * Mode
+             * @default shadow
+             * @enum {string}
+             */
+            mode: "shadow" | "suggest" | "act";
+            own: components["schemas"]["AiAutonomyOwn"];
+        };
+        /** AiAutonomyModes */
+        AiAutonomyModes: {
+            /**
+             * Adds Drops
+             * @default shadow
+             * @enum {string}
+             */
+            adds_drops: "shadow" | "suggest" | "act";
+            /**
+             * Lineup
+             * @default shadow
+             * @enum {string}
+             */
+            lineup: "shadow" | "suggest" | "act";
+            /**
+             * Streaming
+             * @default shadow
+             * @enum {string}
+             */
+            streaming: "shadow" | "suggest" | "act";
+        };
+        /**
+         * AiAutonomyOwn
+         * @description A kind of move's own setting; null follows the team's.
+         */
+        AiAutonomyOwn: {
+            /** Adds Drops */
+            adds_drops: ("shadow" | "suggest" | "act") | null;
+            /** Lineup */
+            lineup: ("shadow" | "suggest" | "act") | null;
+            /** Streaming */
+            streaming: ("shadow" | "suggest" | "act") | null;
+        };
+        /**
          * AiAutopilotReq
-         * @description Body for PUT /v1/internal/ai/autopilot/{team_id}.
+         * @description Body for PUT /v1/internal/ai/autopilot/{team_id}: any of the switch and the modes; what is left out
+         *     stays as it is.
          */
         AiAutopilotReq: {
             /**
-             * On
-             * @description true starts (or resumes) the team's check-ins, false pauses them
+             * Mode
+             * @description How much Dime may do on the whole team
              */
-            on: boolean;
+            mode?: ("shadow" | "suggest" | "act") | null;
+            /**
+             * On
+             * @description true starts (or resumes, a pause Dime made itself included) the team's check-ins, false pauses them
+             */
+            on?: boolean | null;
+            /**
+             * Own
+             * @description A kind of move's own mode; null makes it follow the team's again
+             */
+            own?: {
+                [key: string]: ("shadow" | "suggest" | "act") | null;
+            } | null;
         };
         /** AiAutopilotResp */
         AiAutopilotResp: {
@@ -2930,7 +3050,7 @@ export interface components {
         };
         /**
          * AiAutopilotTeam
-         * @description A team Dime may run check-ins on, and its switch.
+         * @description A team Dime may run check-ins on, its switch, and how much Dime may do there.
          */
         AiAutopilotTeam: {
             /**
@@ -2938,6 +3058,7 @@ export interface components {
              * @description When it was last switched on or resumed
              */
             active_since: string | null;
+            autonomy: components["schemas"]["AiAutonomy"];
             /** @description The next scheduled check-in, while on */
             next: components["schemas"]["AiCheckinSlot"] | null;
             /**
@@ -3150,6 +3271,12 @@ export interface components {
              */
             reason: string | null;
             /**
+             * Sent
+             * @description Moves it sent on its own (where a kind of move acts)
+             * @default 0
+             */
+            sent: number;
+            /**
              * Started At
              * Format: date-time
              */
@@ -3166,6 +3293,7 @@ export interface components {
         };
         /** AiCheckinsData */
         AiCheckinsData: {
+            acting: components["schemas"]["AiActing"] | null;
             /**
              * Cap Usd
              * @description The check-ins' monthly budget, apart from the AI desk's
@@ -3352,12 +3480,39 @@ export interface components {
             updated_at: string;
         };
         /**
+         * AiDecisionAction
+         * @description What Dime did about a change on its own, on a team where that kind of move acts (the Dime
+         *     autopilot plan, step 5; usr.autopilot_actions). A blocked or refused move is left as a chip.
+         */
+        AiDecisionAction: {
+            /** At */
+            at: string | null;
+            /**
+             * Message
+             * @description What happened, in a sentence
+             */
+            message: string;
+            /**
+             * Outcome
+             * @description sent (it went out) · blocked (a rule of the policy stopped it before anything was sent) · refused (the route or ESPN said no) · failed (ESPN unreachable, credentials, an error)
+             * @enum {string}
+             */
+            outcome: "sent" | "blocked" | "refused" | "failed";
+            /**
+             * Rule
+             * @description The rule that blocked it (cap_day, cap_matchup, reserve, protected, churn, paused, writes_off, ...) or the error code
+             */
+            rule: string | null;
+        };
+        /**
          * AiDecisionBlock
          * @description One call a check-in made (usr.ai_decisions), holds included: shown in its conversation for the user
          *     to agree or disagree with. A change to the lineup or the roster names the shadow proposal behind it,
          *     the chip shown just above it in the same turn.
          */
         AiDecisionBlock: {
+            /** @description What Dime did about it on its own, where its kind of move acts; null in shadow and suggest */
+            action: components["schemas"]["AiDecisionAction"] | null;
             /**
              * Area
              * @enum {string}
@@ -12564,14 +12719,19 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description act while acting is switched off on the server (AI_ACTING_OFF) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nothing to change, or an unknown mode or kind of move (AI_AUTOPILOT_INVALID) */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
             /** @description Turned off (AI_DISABLED, AI_AUTOPILOT_DISABLED) */
             503: {

@@ -81,6 +81,30 @@ export type AiAutopilotResponse = S["AiAutopilotResp"];
 export type AiDecisionVerdictResponse = S["AiDecisionVerdictResp"];
 
 /**
+ * How much Dime may do on a team (the Dime autopilot plan, step 5; backend
+ * services/ai/autonomy.py): shadow logs what it would do, suggest makes its
+ * changes chips you send, act has the server send them itself within the
+ * policy. `mode` is the team's; `own` a kind of move's, standing in for it when
+ * set (null follows the team's); `effective` what each kind is now (act reads as
+ * suggest while acting is off on the server, everything is shadow while paused).
+ */
+export type AiAutonomy = S["AiAutonomy"];
+export type AiAutonomyMode = AiAutonomy["mode"];
+export type AiCapability = keyof S["AiAutonomyModes"];
+/** Whether the server lets Dime act at all, and the policy it acts within. */
+export type AiActing = S["AiActing"];
+export type AiActingPolicy = S["AiActingPolicy"];
+/** What became of a check-in's change in an area that acts: sent, blocked by a rule, refused or failed. */
+export type AiDecisionAction = S["AiDecisionAction"];
+export type AiActionOutcome = AiDecisionAction["outcome"];
+/** A change to a team's autopilot: any of the switch, the team's mode and a kind's own. */
+export type AiAutopilotChange = {
+  on?: boolean;
+  mode?: AiAutonomyMode;
+  own?: Partial<Record<AiCapability, AiAutonomyMode | null>>;
+};
+
+/**
  * Dime's notes (`/v1/internal/ai/notes`): what the agent keeps between
  * conversations, per team or about the user. A note is never edited in place:
  * an edit retires it and writes its replacement, so a retired note says who

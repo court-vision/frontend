@@ -57,6 +57,7 @@ import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData
 import type { BaseApiResponse } from "@/types/auth";
 import type {
   AiAutopilotResponse,
+  AiAutopilotChange,
   AiAutopilotTeam,
   AiCheckin,
   AiCheckinKind,
@@ -1273,10 +1274,10 @@ class ApiClient {
     return unwrap(await fetchJson<AiCheckinResponse>(`${AI_API}/checkins`, { getToken, method: "POST", body }));
   }
 
-  /** Switch a team's scheduled check-ins on (or resume them), or pause them. */
-  async setAiAutopilot(getToken: GetTokenFn, teamId: number, on: boolean): Promise<AiAutopilotTeam> {
+  /** A team's autopilot: switch its check-ins on (or resume them) or pause them, and set how much Dime may do. */
+  async setAiAutopilot(getToken: GetTokenFn, teamId: number, change: AiAutopilotChange): Promise<AiAutopilotTeam> {
     return unwrap(
-      await fetchJson<AiAutopilotResponse>(`${AI_API}/autopilot/${teamId}`, { getToken, method: "PUT", body: { on } })
+      await fetchJson<AiAutopilotResponse>(`${AI_API}/autopilot/${teamId}`, { getToken, method: "PUT", body: change })
     );
   }
 

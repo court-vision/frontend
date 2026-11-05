@@ -26,6 +26,7 @@ import {
 } from "@/hooks/useAi";
 import { useChipTray } from "@/hooks/useAiProposals";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
+import { checkinBanner } from "@/lib/ai-autonomy";
 import { draftKey } from "@/lib/ai-drafts";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { teamName, teamTag } from "@/lib/account";
@@ -326,9 +327,7 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
     );
   } else if (isCheckin) {
     banner = (
-      <span className={dk.sub}>
-        In shadow: nothing in this check-in was sent to ESPN. Mark each call agree or disagree; a follow-up here is an ordinary chat.
-      </span>
+      <span className={dk.sub}>{conversation ? checkinBanner(conversation) : null}</span>
     );
   } else if (current == null && selected.teams.length > 0) {
     banner = (

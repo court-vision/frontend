@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { Bell, MessagesSquare } from "lucide-react";
+import { Bell } from "lucide-react";
 import { AUTOMATION_FIELDS, automationSummary, type AccountFocus } from "@/lib/account";
-import { AI_DESK } from "@/components/desk/routes";
 import type { AccountModel } from "./model";
-import { Block, Toggle } from "./blocks";
+import { Toggle } from "./blocks";
+import { DimeAutopilot } from "./DimeAutopilot";
 import { AccountSettings, TeamSettings, type FieldsProps, type SettingsKind } from "./SettingsBlocks";
 import dk from "@/components/desk/desk.module.css";
 import s from "./account.module.css";
@@ -55,16 +54,7 @@ export function AutomationSheet({ model, onOpen }: { model: AccountModel; onOpen
       <AccountSettings model={model} kind={AUTOMATION} onOpen={onOpen} />
       <TeamSettings model={model} kind={AUTOMATION} onOpen={onOpen} />
 
-      <Block title="Dime">
-        <div className={s.row2}>
-          <span className={s.prose}>
-            Dime, the agent on the AI desk, suggests adds, drops and lineups in chat and makes a move only when you confirm it. On a team it runs check-ins on, it also looks over what the automations above will do, morning and night, and logs what it would change without sending anything. Its check-ins, what it remembers about your teams and how its moves went are on the AI desk.
-          </span>
-          <Link href={AI_DESK} className={`${dk.btn} ${dk.btnSmall}`}>
-            <MessagesSquare size={12} /> Open the AI desk
-          </Link>
-        </div>
-      </Block>
+      <DimeAutopilot teams={model.teams} />
     </div>
   );
 }

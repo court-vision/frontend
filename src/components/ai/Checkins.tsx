@@ -1,22 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Check, Loader2, Play, X } from "lucide-react";
 import { toast } from "sonner";
 import { aiMessage, useRunAiCheckin, useSetAiAutopilot } from "@/hooks/useAi";
 import { KIND_HELP, KIND_LABEL, STATE_LABEL, agreement, checkinLine, decisionKicker } from "@/lib/ai-checkins";
+import { actionLine, autonomyLine, pauseLine } from "@/lib/ai-autonomy";
+import { ACCOUNT_DESK } from "@/components/desk/routes";
 import { whenTime } from "@/components/week/format";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
-import type { AiAutopilotTeam, AiCheckin, AiCheckinKind, AiCheckins, AiDecisionBlock, AiVerdict } from "@/types/ai";
+import type { AiAutopilotTeam, AiCheckin, AiCheckinKind, AiCheckins, AiDecisionAction, AiDecisionBlock, AiVerdict } from "@/types/ai";
 import dk from "@/components/desk/desk.module.css";
 import s from "./ai.module.css";
 
 /**
  * Dime's check-ins in the AI desk's side list (the Dime autopilot plan, step 3):
  * each team Dime may run them on, with its switch, its next check-in and Run now,
- * then the check-ins themselves. A check-in opens like any conversation. In
- * shadow: nothing a check-in does is sent; the user marks each call agree or
- * disagree, and that agreement is what decides when Dime may act.
+ * then the check-ins themselves. A check-in opens like any conversation. The
+ * user marks each call agree or disagree. How much Dime may do on a team (step
+ * 5) is set in Account, AI and automation: in shadow nothing a check-in does is
+ * sent, in suggest its changes are chips, in act Dime sends them itself and each
+ * call says what became of its move.
  */
 export function CheckinList({
   data,
@@ -93,6 +98,7 @@ function CheckinRow({ checkin: c, current, onOpen }: { checkin: AiCheckin; curre
 }
 
 const KINDS: AiCheckinKind[] = ["morning", "weekly", "pre_lock", "night"];
+const AUTOMATION_SETTINGS = `${ACCOUNT_DESK}?v=automation`;
 
 function AutopilotTeam({ team, name, running }: { team: AiAutopilotTeam; name: string; running: boolean }) {
   const toggle = useSetAiAutopilot();
@@ -102,9 +108,7 @@ function AutopilotTeam({ team, name, running }: { team: AiAutopilotTeam; name: s
     ? team.next
       ? `Next: ${KIND_LABEL[team.next.kind].toLowerCase()}, ${whenTime(team.next.due_at)}`
       : "Nothing due until the season's next game day"
-    : team.paused_at
-      ? "Paused"
-      : "Off";
+    : (pauseLine(team) ?? "Off");
   return (
     <div className={s.autopilot}>
       <div className={s.autopilotHead}>
@@ -124,7 +128,12 @@ function AutopilotTeam({ team, name, running }: { team: AiAutopilotTeam; name: s
           }
         />
       </div>
-      <span className={dk.sub}>{next}</span>
+      <span className={dk.sub} data-paused-by={team.paused_by ?? undefined}>
+        {next}
+      </span>
+      <Link href={AUTOMATION_SETTINGS} className={s.autopilotMode} title="How much Dime may do on this team: set it in Account, AI and automation">
+        {autonomyLine(team.autonomy)}
+      </Link>
       <div className={s.autopilotRun}>
         <select
           className={s.select}
@@ -182,6 +191,7 @@ export function DecisionBlock({
       </div>
       <div className={s.decisionSummary}>{d.summary}</div>
       <div className={s.decisionReason}>{d.reason}</div>
+      {d.action ? <DecisionAction action={d.action} /> : null}
       {onVerdict ? (
         <div className={s.decisionFoot}>
           <button type="button" className={s.verdict} data-verdict="agree" aria-pressed={d.verdict === "agree"} onClick={() => set("agree")}>
@@ -193,6 +203,17 @@ export function DecisionBlock({
           <span className={dk.sub}>{d.verdict ? "Click again to clear" : "Would you have made the same call?"}</span>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** What became of a change in an area that acts: sent by Dime, or held back and left as a chip. */
+function DecisionAction({ action }: { action: AiDecisionAction }) {
+  const { label, text } = actionLine(action);
+  return (
+    <div className={s.decisionAction} data-outcome={action.outcome}>
+      <span className={s.decisionActionLabel}>{label}</span>
+      <span>{text}</span>
     </div>
   );
 }

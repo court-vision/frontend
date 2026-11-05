@@ -7,6 +7,7 @@ import type { GetTokenFn } from "@/lib/http";
 import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
 import { verdictOf, withVerdict } from "@/lib/ai-checkins";
 import type {
+  AiAutopilotChange,
   AiBlock,
   AiCheckinKind,
   AiCheckins,
@@ -188,7 +189,7 @@ export function useSetAiAutopilot() {
   const { getToken, userId } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ teamId, on }: { teamId: number; on: boolean }) => apiClient.setAiAutopilot(getToken, teamId, on),
+    mutationFn: ({ teamId, ...change }: { teamId: number } & AiAutopilotChange) => apiClient.setAiAutopilot(getToken, teamId, change),
     onSuccess: (team) => {
       queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
         d ? { ...d, teams: d.teams.map((t) => (t.team_id === team.team_id ? team : t)) } : d
