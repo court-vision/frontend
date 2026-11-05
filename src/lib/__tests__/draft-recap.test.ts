@@ -435,6 +435,7 @@ describe("pickSourceGlyph and signed", () => {
     expect(pickSourceGlyph("keeper")?.glyph).toBe("K");
     expect(pickSourceGlyph("import")?.glyph).toBe("I");
     expect(pickSourceGlyph("mock")?.glyph).toBe("M");
+    expect(pickSourceGlyph("dime")?.glyph).toBe("D");
     expect(pickSourceGlyph("espn_sync")?.glyph).toBe("E");
     expect(pickSourceGlyph("manual")).toBeNull();
   });

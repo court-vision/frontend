@@ -828,6 +828,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/drafts/{session_id}/dime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dime in a draft room: its notes, the notes switch and the mock seat
+         * @description What Dime has written in the room, newest first (a plan, a note at each of the user's picks, a recap; each with the board's numbers the server read for it in `facts`), whether a note is being written now, the switch for a note whenever the user's pick is `lead` picks away or nearer, and whether Dime holds the user's seat in a mock. Never refuses for a switched-off server or a user off the AI desk's list: `available` says whether the room shows Dime at all.
+         */
+        get: operations["get_dime_v1_internal_drafts__session_id__dime_get"];
+        /**
+         * Switch Dime's note at each of the user's picks on or off
+         * @description With `notes` on, the room asks Dime for a note whenever the user's pick is `lead` picks away or nearer, one per pick. Each note is a turn on the AI desk's budget.
+         */
+        put: operations["set_dime_v1_internal_drafts__session_id__dime_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/drafts/{session_id}/dime/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Dime for a note in the room: a plan, a note at the user's pick, or a recap
+         * @description Starts the note and returns it `running`; it is written after the response (poll the GET, or open its conversation). `plan` sets the plan the draft is played to: its concessions become the room's punts, and in a real draft on a team the plan is saved to the team's notes. `pick` is about the user's coming pick, read off the room's board; one per pick, so asking again returns the one already written. `recap` reads the room's recap and, in a real draft, saves what the season starts from and league-mates' habits to Dime's notes.
+         */
+        post: operations["ask_dime_v1_internal_drafts__session_id__dime_notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/drafts/{session_id}/dime/seat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hand Dime the user's seat in a mock, or take it back
+         * @description `on`: Dime drafts the user's seat to the end of the mock: the autopicker runs the other seats to the user's turn, Dime makes the pick (recorded `dime`, with its reason as a note), and so on. Mock rooms following nothing only; a live ESPN draft stays the user's to pick in. `off`: Dime hands the seat back after the pick it is making. Each pick is a turn on the AI desk's budget.
+         */
+        post: operations["set_seat_v1_internal_drafts__session_id__dime_seat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/drafts/{session_id}/import": {
         parameters: {
             query?: never;
@@ -3638,11 +3702,11 @@ export interface components {
             id: number;
             /**
              * Kind
-             * @description chat (the user's), or a check-in's conversation
+             * @description chat (the user's), a check-in's conversation, or one of Dime's notes in a draft room
              * @default chat
              * @enum {string}
              */
-            kind: "chat" | "checkin";
+            kind: "chat" | "checkin" | "draft";
             /** Team Id */
             team_id: number | null;
             /**
@@ -3692,11 +3756,11 @@ export interface components {
             id: number;
             /**
              * Kind
-             * @description chat (the user's), or a check-in's conversation
+             * @description chat (the user's), a check-in's conversation, or one of Dime's notes in a draft room
              * @default chat
              * @enum {string}
              */
-            kind: "chat" | "checkin";
+            kind: "chat" | "checkin" | "draft";
             /** Team Id */
             team_id: number | null;
             /**
@@ -5654,6 +5718,198 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /**
+         * DimeDraftNote
+         * @description One note Dime wrote in the room: its words (`text`, null while it runs), the board's numbers
+         *     the server read for it (`facts`), and what it set or made.
+         */
+        DimeDraftNote: {
+            /**
+             * Conversation Id
+             * @description Opens in the AI desk
+             */
+            conversation_id: number | null;
+            /**
+             * Cost Usd
+             * @default 0
+             */
+            cost_usd: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Facts
+             * @description pick: pick, picks_until, on_clock, gone_before (the pick `gone` is about), top (three recommendations: name, position, score, availability, reason...), gone (who won't last), punts, roster, needs. recap: grade, place, seats, value_over_slot, by_dime. plan: none
+             */
+            facts: {
+                [key: string]: unknown;
+            };
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * For Pick
+             * @description A pick note: the user's overall pick it is about
+             */
+            for_pick: number | null;
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "plan" | "pick" | "recap";
+            /**
+             * Plan
+             * @description A plan note: the plan it set
+             */
+            plan: string | null;
+            /**
+             * Punts
+             * @description A plan note: the room's punts it set
+             */
+            punts: string[] | null;
+            /**
+             * Punts Before
+             * @description A plan note: the room's punts before it
+             */
+            punts_before: string[] | null;
+            /**
+             * Reason
+             * @description Why it failed
+             */
+            reason: string | null;
+            /**
+             * Seat
+             * @description A pick Dime made itself, holding the user's seat in a mock
+             * @default false
+             */
+            seat: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "running" | "done" | "failed";
+            /** Text */
+            text: string | null;
+            /**
+             * Took
+             * @description A seat note: the pick it recorded (overall_pick, round, player_id, name, position, team, reason)
+             */
+            took: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** DimeDraftNoteReq */
+        DimeDraftNoteReq: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "plan" | "pick" | "recap";
+        };
+        /** DimeDraftNoteResp */
+        DimeDraftNoteResp: {
+            data: components["schemas"]["DimeDraftNote"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** DimeDraftRoom */
+        DimeDraftRoom: {
+            /**
+             * Available
+             * @description enabled, and the caller is on the AI desk's list: the room shows Dime
+             */
+            available: boolean;
+            /**
+             * Can Seat
+             * @description Dime can hold the user's seat here (a mock following nothing)
+             */
+            can_seat: boolean | null;
+            /**
+             * Enabled
+             * @description DIME_DRAFT_ENABLED (and AI_ENABLED) on the server
+             */
+            enabled: boolean;
+            /**
+             * Lead
+             * @description The room asks for a pick note once the user's pick is this many picks away
+             */
+            lead: number;
+            /**
+             * Notes
+             * @description Newest first
+             */
+            notes: components["schemas"]["DimeDraftNote"][];
+            /**
+             * Notes On
+             * @description A note when each of the user's picks is near
+             */
+            notes_on: boolean;
+            /**
+             * Running
+             * @description The note being written now
+             */
+            running: number | null;
+            seat: components["schemas"]["DimeDraftSeat"];
+            /**
+             * Seat Blocker
+             * @description Why it can't, in a line
+             */
+            seat_blocker: string | null;
+        };
+        /** DimeDraftRoomReq */
+        DimeDraftRoomReq: {
+            /**
+             * Notes
+             * @description A note when each of the user's picks is near
+             */
+            notes: boolean;
+        };
+        /** DimeDraftRoomResp */
+        DimeDraftRoomResp: {
+            data: components["schemas"]["DimeDraftRoom"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** DimeDraftSeat */
+        DimeDraftSeat: {
+            /**
+             * Live
+             * @description Its loop is still running (one whose process died reads false)
+             * @default false
+             */
+            live: boolean;
+            /**
+             * Reason
+             * @description Why it last stopped: done, stopped, pick_failed, cap_blocked, pool_exhausted, blocked, or an error code
+             */
+            reason: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "off" | "drafting" | "stopping";
+        };
+        /** DimeDraftSeatReq */
+        DimeDraftSeatReq: {
+            /**
+             * On
+             * @description true: Dime drafts the user's seat to the end; false: hand it back after this pick
+             */
+            on: boolean;
+        };
         /** DraftBoardMeta */
         DraftBoardMeta: {
             /** Available */
@@ -6390,7 +6646,7 @@ export interface components {
              * @default manual
              * @enum {string}
              */
-            source: "manual" | "espn_sync" | "import" | "keeper" | "mock";
+            source: "manual" | "espn_sync" | "import" | "keeper" | "mock" | "dime";
         };
         /**
          * DraftPickResponse
@@ -10941,7 +11197,7 @@ export interface components {
              * Source
              * @enum {string}
              */
-            source: "manual" | "espn_sync" | "import" | "keeper" | "mock";
+            source: "manual" | "espn_sync" | "import" | "keeper" | "mock" | "dime";
             /**
              * Surplus Cv
              * @description cv_rank − overall_pick; positive = taken later than his rank
@@ -14866,6 +15122,233 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    get_dime_v1_internal_drafts__session_id__dime_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimeDraftRoomResp"];
+                };
+            };
+            /** @description No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_dime_v1_internal_drafts__session_id__dime_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DimeDraftRoomReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimeDraftRoomResp"];
+                };
+            };
+            /** @description The caller is not on the AI desk's invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED, AI_DRAFT_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ask_dime_v1_internal_drafts__session_id__dime_notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DimeDraftNoteReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimeDraftNoteResp"];
+                };
+            };
+            /** @description The caller is not on the AI desk's invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A note is already being written (AI_DRAFT_BUSY), the draft is finished (AI_DRAFT_FINISHED), no pick of the user's is left (AI_DRAFT_NO_PICK), or nothing has been drafted yet (AI_DRAFT_NO_PICKS) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The AI desk's monthly budget is used up */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED, AI_DRAFT_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    set_seat_v1_internal_drafts__session_id__dime_seat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DimeDraftSeatReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimeDraftRoomResp"];
+                };
+            };
+            /** @description The caller is not on the AI desk's invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a room Dime can draft in: not a mock, linked to an ESPN lobby, finished, no seat or shape set (AI_DRAFT_NO_SEAT) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED, AI_DRAFT_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

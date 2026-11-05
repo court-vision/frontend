@@ -175,3 +175,19 @@ export type PickSortKey =
 export type PositionFilter = "all" | "PG" | "SG" | "SF" | "PF" | "C";
 
 export const POSITION_FILTERS: PositionFilter[] = ["all", "PG", "SG", "SF", "PF", "C"];
+
+/**
+ * Dime in a draft room (`/v1/internal/drafts/{id}/dime`; the Dime autopilot
+ * plan, step 7): the notes it wrote there (a plan, a note at each of the
+ * user's picks, a recap), the switch for a note whenever the user's pick is
+ * near, and the user's seat in a mock, which Dime can draft to the end. Each
+ * note is an AI desk turn with its own conversation (`kind` draft). `facts`
+ * are the board's numbers the server read for a note, typed in
+ * `lib/draft-dime.ts`.
+ */
+export type DimeDraftRoom = S["DimeDraftRoom"];
+export type DimeDraftRoomResponse = S["DimeDraftRoomResp"];
+export type DimeDraftNote = S["DimeDraftNote"];
+export type DimeDraftNoteResponse = S["DimeDraftNoteResp"];
+export type DimeDraftNoteKind = DimeDraftNote["kind"];
+export type DimeDraftSeat = S["DimeDraftSeat"];

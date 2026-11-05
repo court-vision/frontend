@@ -194,6 +194,11 @@ import type {
   RecapPick,
   RecapSeat,
   RecapStanding,
+  DimeDraftNote,
+  DimeDraftNoteKind,
+  DimeDraftNoteResponse,
+  DimeDraftRoom,
+  DimeDraftRoomResponse,
 } from "@/types/draft";
 
 /** The lineup optimiser runs a genetic algorithm; give it well beyond the default 15 s. */
@@ -1172,6 +1177,35 @@ class ApiClient {
       { getToken, method: "POST", timeoutMs: 30_000 }
     );
     return unwrap(env);
+  }
+
+  // ---- Dime in a draft room (the Dime autopilot plan, step 7): its notes, the
+  // switch for a note at each of the user's picks, and the user's seat in a mock.
+
+  /** What Dime wrote in the room and its switches. Never refuses for a server or user without Dime: `available` says. */
+  async getDimeDraft(getToken: GetTokenFn, sessionId: number, opts?: RequestOptions): Promise<DimeDraftRoom> {
+    return unwrap(await fetchJson<DimeDraftRoomResponse>(`${DRAFTS_API}/${sessionId}/dime`, { ...opts, getToken }));
+  }
+
+  /** A note whenever the user's pick is near, on or off. */
+  async setDimeDraftNotes(getToken: GetTokenFn, sessionId: number, notes: boolean): Promise<DimeDraftRoom> {
+    return unwrap(
+      await fetchJson<DimeDraftRoomResponse>(`${DRAFTS_API}/${sessionId}/dime`, { getToken, method: "PUT", body: { notes } })
+    );
+  }
+
+  /** Ask for a plan, a note at the coming pick, or a recap. It comes back running (or the pick's note already written). */
+  async askDimeDraft(getToken: GetTokenFn, sessionId: number, kind: DimeDraftNoteKind): Promise<DimeDraftNote> {
+    return unwrap(
+      await fetchJson<DimeDraftNoteResponse>(`${DRAFTS_API}/${sessionId}/dime/notes`, { getToken, method: "POST", body: { kind } })
+    );
+  }
+
+  /** Hand Dime the user's seat in a mock (it drafts to the end), or take it back after the pick it is making. */
+  async setDimeDraftSeat(getToken: GetTokenFn, sessionId: number, on: boolean): Promise<DimeDraftRoom> {
+    return unwrap(
+      await fetchJson<DimeDraftRoomResponse>(`${DRAFTS_API}/${sessionId}/dime/seat`, { getToken, method: "POST", body: { on } })
+    );
   }
 
   // ---- The AI desk (/v1/internal/ai): conversations with the agent. A turn

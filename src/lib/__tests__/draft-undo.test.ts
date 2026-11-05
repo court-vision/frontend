@@ -11,7 +11,7 @@ const session = (espn_league_id: number | null) => ({ espn_league_id } as DraftS
 const pick = (source: DraftPick["source"]) => ({ source, overall_pick: 1 } as DraftPick);
 
 describe("a room that follows nothing", () => {
-  test.each(["manual", "mock", "keeper", "espn_sync", "import"] as const)(
+  test.each(["manual", "mock", "dime", "keeper", "espn_sync", "import"] as const)(
     "owns its %s pick",
     (source) => {
       expect(pickIsUndoable(session(null), pick(source))).toBe(true);
@@ -27,7 +27,7 @@ describe("a room that follows nothing", () => {
 describe("a room that follows an ESPN draft", () => {
   const tracked = session(426893737);
 
-  test.each(["manual", "mock"] as const)("still undoes its own %s pick", (source) => {
+  test.each(["manual", "mock", "dime"] as const)("still undoes its own %s pick", (source) => {
     expect(pickIsUndoable(tracked, pick(source))).toBe(true);
   });
 

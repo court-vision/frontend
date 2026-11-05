@@ -24,6 +24,7 @@ import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
 import type { BoardSource, DraftBoardRow, DraftKeeper, DraftRecommendation, DraftSession } from "@/types/draft";
 import { BoardTable, BoardToolbar } from "./Board";
 import { Calls, Needs, Roster } from "./Rail";
+import { DimeRail, useRoomDime } from "./DimeRail";
 import { KeepersDialog, SeatDialog } from "./RoomDialogs";
 import { PickTape } from "./Tape";
 import { SyncPill } from "./SyncPill";
@@ -139,6 +140,9 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
   const simBlocker = mockBlocker(session);
   const myTurnBlocker = mockMyTurnBlocker(session);
   const completed = session.status === "completed";
+  // Dime in the room: its notes, and the user's seat in a mock while Dime drafts it
+  const dime = useRoomDime(model, session);
+  const dimeSeat = dime.drafting ? "Dime has your seat: take it back first" : null;
 
   // A highlight from another room must never aim a keystroke here.
   useEffect(() => {
@@ -179,6 +183,10 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
         toast.message("This draft is complete");
         return;
       }
+      if (dimeSeat) {
+        toast.message(dimeSeat);
+        return;
+      }
       if (isPendingKeeper(row)) {
         toast.error(`${row.name} is one of your keepers — record him from the roster`);
         return;
@@ -196,7 +204,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
           inflight.current = false;
         });
     },
-    [model, completed, isPendingKeeper]
+    [model, completed, isPendingKeeper, dimeSeat]
   );
 
   const draftOnEspn = useCallback(
@@ -244,6 +252,10 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
       toast.message("Nothing to undo");
       return;
     }
+    if (dimeSeat) {
+      toast.message(dimeSeat);
+      return;
+    }
     // ⌘Z means "take back what just happened"; it never reaches for an earlier pick instead.
     const blocked = undoBlocker(session, last);
     if (blocked) {
@@ -254,7 +266,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
       .undo(last.overall_pick)
       .then(() => model.demo && toast.success(`Pick ${last.overall_pick} undone`))
       .catch(() => undefined);
-  }, [session, model]);
+  }, [session, model, dimeSeat]);
 
   const undoPick = useCallback(
     (overall: number) => {
@@ -288,12 +300,12 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
     [model]
   );
   const simToMe = useCallback(() => {
-    if (myTurnBlocker) {
-      toast.message(myTurnBlocker);
+    if (myTurnBlocker || dimeSeat) {
+      toast.message(myTurnBlocker ?? dimeSeat);
       return;
     }
     runAdvance("my_turn");
-  }, [myTurnBlocker, runAdvance]);
+  }, [myTurnBlocker, dimeSeat, runAdvance]);
   const simToEnd = useCallback(() => {
     if (needsSeatConfirm(session)) setConfirmEnd(true);
     else runAdvance("end");
@@ -603,18 +615,18 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
         <div className={s.tickActions}>
           {mock && !simBlocker ? (
             <>
-              <button type="button" className={dk.btn} disabled={model.advancing || !!myTurnBlocker} onClick={simToMe} title={myTurnBlocker ?? "Run the other seats up to your next pick"}>
+              <button type="button" className={dk.btn} disabled={model.advancing || !!myTurnBlocker || !!dimeSeat} onClick={simToMe} title={myTurnBlocker ?? dimeSeat ?? "Run the other seats up to your next pick"}>
                 <FastForward size={13} />
                 {model.advancing ? "Simulating…" : "Sim to my pick"}
                 <span className={dk.kbd}>S</span>
               </button>
-              <button type="button" className={dk.btn} disabled={model.advancing} onClick={simToEnd} title="Run every remaining pick, yours included">
+              <button type="button" className={dk.btn} disabled={model.advancing || !!dimeSeat} onClick={simToEnd} title={dimeSeat ?? "Run every remaining pick, yours included"}>
                 <SkipForward size={13} />
                 Sim to end
               </button>
             </>
           ) : null}
-          <button type="button" className={dk.btn} disabled={model.undoing || session.picks.length === 0} onClick={undoLast} title="Undo the last pick (⌘Z)">
+          <button type="button" className={dk.btn} disabled={model.undoing || session.picks.length === 0 || !!dimeSeat} onClick={undoLast} title={dimeSeat ?? "Undo the last pick (⌘Z)"}>
             <RotateCcw size={13} />
             Undo
           </button>
@@ -683,7 +695,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
               onMark={onBoardMark}
               onEspn={writeUi ? onBoardEspn : undefined}
               espnDisabled={espnDisabled}
-              marking={model.picking || completed}
+              marking={model.picking || completed || dime.drafting}
               pendingEspnId={sync?.state.pending?.playerId ?? null}
             />
           )}
@@ -708,8 +720,16 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
                 : undefined
             }
             espnDisabled={espnDisabled}
-            marking={model.picking || completed}
+            marking={model.picking || completed || dime.drafting}
             loading={model.boardLoading}
+          />
+          <DimeRail
+            dime={dime}
+            session={session}
+            board={board}
+            onFocus={focusPlayer}
+            onRestorePunts={completed ? null : (punts) => model.update({ punts }).then(() => toast.success("Punts put back")).catch(() => undefined)}
+            updating={model.updating}
           />
           <Needs board={board} onPunt={completed ? null : togglePunt} saving={model.updating} />
           <Roster

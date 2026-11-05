@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { BookOpen, ChevronLeft, ClipboardCheck, LayoutList, Loader2, Plus, Repeat, Send, Trash2 } from "lucide-react";
+import { BookOpen, ChevronLeft, ClipboardCheck, LayoutList, ListOrdered, Loader2, Plus, Repeat, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { DeskDialog } from "@/components/desk/DeskDialog";
 import { TeamSwitch, type DeskTeam } from "@/components/desk/TeamSwitch";
-import { ACCOUNT_DESK, AI_DESK } from "@/components/desk/routes";
+import { ACCOUNT_DESK, AI_DESK, DRAFT_DESK } from "@/components/desk/routes";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import {
   useAiCheckinsQuery,
@@ -28,7 +28,7 @@ import { useChipTray } from "@/hooks/useAiProposals";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { checkinBanner } from "@/lib/ai-autonomy";
 import { unrated } from "@/lib/ai-checkins";
-import { VIEW_LABEL, aiLocation, aiSearch, showsConversation, type AiLocation, type AiView } from "@/lib/ai-desk";
+import { VIEW_LABEL, aiLocation, aiSearch, holdsConversation, showsConversation, viewOfKind, type AiLocation, type AiView } from "@/lib/ai-desk";
 import { draftKey } from "@/lib/ai-drafts";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { teamName, teamTag } from "@/lib/account";
@@ -39,6 +39,7 @@ import { ChipTray, type ChipActions } from "./Chips";
 import { Composer, type ComposerHandle } from "./Composer";
 import { DimeMoves } from "./DimeMoves";
 import { DimeMemory } from "./DimeNotes";
+import { DraftNotes } from "./DraftNotes";
 import { MoveResults } from "./MoveLedger";
 import { Thread } from "./Thread";
 import dk from "@/components/desk/desk.module.css";
@@ -198,19 +199,22 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
   // A conversation that's gone (deleted elsewhere, someone else's) falls back to where it was opened from
   const missing = detail.isError && toApiError(detail.error).status === 404;
   useEffect(() => {
-    if (missing) go({ view: loc.view === "checkins" ? "checkins" : "chat", conversation: null }, "replace");
+    if (missing) go({ view: holdsConversation(loc.view) ? loc.view : "chat", conversation: null }, "replace");
   }, [missing, go, loc.view]);
 
   // ---- the live turn: shown until the stored copy of it arrives
 
   const conversation = current != null && detail.data?.id === current ? detail.data : undefined;
   const isCheckin = conversation?.kind === "checkin";
-  // A check-in opens with Dime's Check-ins selected, a chat under Conversations, however it was linked
+  // A note Dime wrote in a draft room (a plan, a pick, a recap), opened to follow up
+  const isDraft = conversation?.kind === "draft";
+  // A check-in opens with Dime's Check-ins selected, a draft note with Draft notes, a chat under
+  // Conversations, however it was linked
   useEffect(() => {
     if (!conversation || !inConversation) return;
-    if (isCheckin && loc.view === "chat") go({ view: "checkins", conversation: conversation.id }, "replace");
-    else if (!isCheckin && loc.view === "checkins") go({ view: "chat", conversation: conversation.id }, "replace");
-  }, [conversation, isCheckin, inConversation, loc.view, go]);
+    const home = viewOfKind(conversation.kind);
+    if (home !== loc.view) go({ view: home, conversation: conversation.id }, "replace");
+  }, [conversation, inConversation, loc.view, go]);
   const turns = useMemo(() => conversation?.history ?? [], [conversation]);
   const liveHere = live && live.conversationId === current ? live : null;
   const stored = liveHere?.done?.turn_id != null && turns.some((t) => t.id === liveHere.done!.turn_id);
@@ -339,6 +343,15 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
     );
   } else if (isCheckin && conversation) {
     banner = <span className={dk.sub}>{checkinBanner(conversation)}</span>;
+  } else if (isDraft) {
+    banner = (
+      <>
+        <span className={dk.sub}>A note Dime wrote in a draft room.</span>
+        <Link href={DRAFT_DESK} className={dk.link}>
+          Draft desk
+        </Link>
+      </>
+    );
   } else if (current == null && selected.teams.length > 0) {
     banner = (
       <>
@@ -404,7 +417,9 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
                 ? "Ask about your team, a player, or the free-agent pool"
                 : isCheckin
                   ? "Ask Dime about this check-in"
-                  : "Ask a follow-up"
+                  : isDraft
+                    ? "Ask Dime about this draft"
+                    : "Ask a follow-up"
           }
           banner={banner}
           draftKey={draftKey(userId, current)}
@@ -435,6 +450,8 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
     );
   } else if (loc.view === "memory") {
     main = <DimeMemory teams={teams} teamId={viewTeam} teamSwitch={teamSwitch(viewTeam)} />;
+  } else if (loc.view === "drafts") {
+    main = <DraftNotes onOpen={(id) => go({ view: "drafts", conversation: id })} />;
   } else {
     main = <MoveResults teams={teams} teamId={viewTeam} teamSwitch={teamSwitch(viewTeam)} />;
   }
@@ -455,6 +472,10 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
         {loc.view === "checkins" && current != null ? (
           <button type="button" className={dk.ghost} title="Back to the check-ins" onClick={() => openView("checkins")}>
             <ChevronLeft size={14} /> Check-ins
+          </button>
+        ) : loc.view === "drafts" && current != null ? (
+          <button type="button" className={dk.ghost} title="Back to the draft notes" onClick={() => openView("drafts")}>
+            <ChevronLeft size={14} /> Draft notes
           </button>
         ) : null}
         <span style={{ fontWeight: 600, maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
@@ -498,8 +519,8 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
               remove.mutate(current, {
                 onSuccess: () => {
                   setConfirmDelete(false);
-                  // A deleted check-in's conversation goes back to the check-ins; a chat to a new one
-                  go({ view: loc.view === "checkins" ? "checkins" : "chat", conversation: null }, "replace");
+                  // A deleted check-in's (or draft note's) conversation goes back to its list; a chat to a new one
+                  go({ view: holdsConversation(loc.view) ? loc.view : "chat", conversation: null }, "replace");
                 },
                 onError: (err) => toast.error(userMessage(err, "Couldn't delete it")),
               });
@@ -584,6 +605,7 @@ function SideList({
         {nav("moves", <Send size={13} />)}
         {nav("memory", <BookOpen size={13} />)}
         {nav("results", <Repeat size={13} />)}
+        {nav("drafts", <ListOrdered size={13} />)}
       </div>
       <div className={s.listHead}>
         <span className={dk.label}>Conversations</span>
