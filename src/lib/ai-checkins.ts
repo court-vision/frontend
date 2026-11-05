@@ -5,7 +5,7 @@
  * makes (holds included), and sends nothing. The AI desk lists them beside the
  * chats; the user marks each call agree or disagree.
  */
-import type { AiCheckin, AiCheckinKind, AiCheckinState, AiDecisionBlock } from "@/types/ai";
+import type { AiCheckin, AiCheckinKind, AiCheckinState, AiConversation, AiDecisionBlock, AiVerdict } from "@/types/ai";
 
 export const KIND_LABEL: Record<AiCheckinKind, string> = {
   morning: "Morning",
@@ -93,4 +93,31 @@ export const AUTOMATION_LABEL: Record<AiDecisionBlock["automation"], string | nu
 export function decisionKicker(d: Pick<AiDecisionBlock, "area" | "automation">): string {
   const whose = AUTOMATION_LABEL[d.automation];
   return whose ? `${AREA_LABEL[d.area]} · ${whose}` : AREA_LABEL[d.area];
+}
+
+type Part = AiConversation["history"][number]["parts"][number];
+
+function isDecision(p: Part, decisionId: number): p is Extract<Part, { kind: "block" }> {
+  return p.kind === "block" && p.block.type === "decision" && (p.block as AiDecisionBlock).decision_id === decisionId;
+}
+
+/** One decision's verdict in a conversation: null unrated, undefined when the call isn't there. */
+export function verdictOf(c: AiConversation, decisionId: number): AiVerdict | null | undefined {
+  for (const t of c.history) {
+    for (const p of t.parts) {
+      if (isDecision(p, decisionId)) return (p.block as AiDecisionBlock).verdict ?? null;
+    }
+  }
+  return undefined;
+}
+
+/** The conversation with one decision's verdict set, every other part as it was. */
+export function withVerdict(c: AiConversation, decisionId: number, verdict: AiVerdict | null): AiConversation {
+  return {
+    ...c,
+    history: c.history.map((t) => ({
+      ...t,
+      parts: t.parts.map((p) => (isDecision(p, decisionId) ? { ...p, block: { ...p.block, verdict } } : p)),
+    })),
+  };
 }

@@ -5,13 +5,13 @@ import { apiClient } from "@/lib/api";
 import { toApiError, userMessage } from "@/lib/api-error";
 import type { GetTokenFn } from "@/lib/http";
 import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
+import { verdictOf, withVerdict } from "@/lib/ai-checkins";
 import type {
   AiBlock,
   AiCheckinKind,
   AiCheckins,
   AiConversation,
   AiConversationSummary,
-  AiDecisionBlock,
   AiFeedback,
   AiNote,
   AiNoteCreateRequest,
@@ -197,22 +197,10 @@ export function useSetAiAutopilot() {
   });
 }
 
-/** Write one decision block's verdict into a cached conversation. */
-function withVerdict(c: AiConversation, decisionId: number, verdict: AiVerdict | null): AiConversation {
-  return {
-    ...c,
-    history: c.history.map((t) => ({
-      ...t,
-      parts: t.parts.map((p) =>
-        p.kind === "block" && p.block.type === "decision" && (p.block as AiDecisionBlock).decision_id === decisionId
-          ? { ...p, block: { ...p.block, verdict } }
-          : p
-      ),
-    })),
-  };
-}
-
-/** Agree / disagree with one of a check-in's calls: shown at once, put back if the save fails. */
+/**
+ * Agree / disagree with one of a check-in's calls: shown at once, and if the save fails only that
+ * call goes back to what it was (another call rated meanwhile keeps its own, saved or not).
+ */
 export function useAiDecisionVerdict(conversationId: number | null) {
   const { getToken, userId } = useAuth();
   const queryClient = useQueryClient();
@@ -223,11 +211,16 @@ export function useAiDecisionVerdict(conversationId: number | null) {
       if (conversationId == null) return undefined;
       const key = aiKeys.conversation(userId, conversationId);
       const before = queryClient.getQueryData<AiConversation>(key);
-      if (before) queryClient.setQueryData<AiConversation>(key, withVerdict(before, decisionId, verdict));
-      return before;
+      if (!before) return undefined;
+      const previous = verdictOf(before, decisionId);
+      queryClient.setQueryData<AiConversation>(key, withVerdict(before, decisionId, verdict));
+      return previous === undefined ? undefined : { previous };
     },
-    onError: (_err, _vars, before) => {
-      if (conversationId != null && before) queryClient.setQueryData(aiKeys.conversation(userId, conversationId), before);
+    onError: (_err, { decisionId }, ctx) => {
+      if (conversationId == null || !ctx) return;
+      queryClient.setQueryData<AiConversation>(aiKeys.conversation(userId, conversationId), (c) =>
+        c ? withVerdict(c, decisionId, ctx.previous) : c
+      );
     },
     // The inbox's agree / disagree tallies
     onSettled: () => void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) }),

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { agreement, checkinLine, decisionKicker, reasonWords } from "../ai-checkins";
+import { agreement, checkinLine, decisionKicker, reasonWords, verdictOf, withVerdict } from "../ai-checkins";
 import { chipState, stageProblem } from "../ai-proposals";
-import type { AiCheckin, AiProposalChip } from "@/types/ai";
+import type { AiCheckin, AiConversation, AiProposalChip } from "@/types/ai";
 
 function checkin(over: Partial<AiCheckin> = {}): AiCheckin {
   return {
@@ -54,6 +54,34 @@ describe("a decision", () => {
   test("names the automation whose plan it reviewed", () => {
     expect(decisionKicker({ area: "lineup", automation: "auto_lineup" })).toBe("Lineup · auto-lineup's fill");
     expect(decisionKicker({ area: "adds_drops", automation: "none" })).toBe("Adds and drops");
+  });
+});
+
+describe("a verdict in a cached conversation", () => {
+  const decision = (decision_id: number, verdict: "agree" | "disagree" | null) => ({
+    kind: "block",
+    block: { type: "decision", id: `d${decision_id}`, decision_id, verdict },
+  });
+  const conv = {
+    history: [
+      { parts: [{ kind: "text", text: "Two calls" }, decision(1, null), decision(2, "agree")] },
+      { parts: [{ kind: "text", text: "A follow-up" }] },
+    ],
+  } as unknown as AiConversation;
+
+  test("reads one call's verdict, or says the call isn't there", () => {
+    expect(verdictOf(conv, 1)).toBeNull();
+    expect(verdictOf(conv, 2)).toBe("agree");
+    expect(verdictOf(conv, 9)).toBeUndefined();
+  });
+
+  test("sets one call's verdict and leaves the others as they were", () => {
+    // Rate call 1, then call 2; call 1's save fails: putting it back keeps call 2's new verdict
+    const rated = withVerdict(withVerdict(conv, 1, "disagree"), 2, "disagree");
+    const rolledBack = withVerdict(rated, 1, null);
+    expect(verdictOf(rolledBack, 1)).toBeNull();
+    expect(verdictOf(rolledBack, 2)).toBe("disagree");
+    expect(verdictOf(conv, 1)).toBeNull(); // the original is untouched
   });
 });
 
