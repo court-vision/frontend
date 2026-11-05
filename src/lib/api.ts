@@ -62,7 +62,7 @@ import type {
   AiAutopilotChange,
   AiAutopilotTeam,
   AiCheckin,
-  AiCheckinKind,
+  AiCheckinRunKind,
   AiCheckinResponse,
   AiCheckins,
   AiCheckinsResponse,
@@ -1273,7 +1273,7 @@ class ApiClient {
   }
 
   /** Run a check-in now; without `kind` the clock picks. It comes back running. */
-  async runAiCheckin(getToken: GetTokenFn, teamId: number, kind?: AiCheckinKind): Promise<AiCheckin> {
+  async runAiCheckin(getToken: GetTokenFn, teamId: number, kind?: AiCheckinRunKind): Promise<AiCheckin> {
     const body = kind ? { team_id: teamId, kind } : { team_id: teamId };
     return unwrap(await fetchJson<AiCheckinResponse>(`${AI_API}/checkins`, { getToken, method: "POST", body }));
   }

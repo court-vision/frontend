@@ -12,7 +12,7 @@ import type {
   AiAutopilotChange,
   AiFeatures,
   AiBlock,
-  AiCheckinKind,
+  AiCheckinRunKind,
   AiCheckins,
   AiConversation,
   AiConversationSummary,
@@ -185,7 +185,7 @@ export function useRunAiCheckin() {
   const { getToken, userId } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ teamId, kind }: { teamId: number; kind?: AiCheckinKind }) => apiClient.runAiCheckin(getToken, teamId, kind),
+    mutationFn: ({ teamId, kind }: { teamId: number; kind?: AiCheckinRunKind }) => apiClient.runAiCheckin(getToken, teamId, kind),
     onSuccess: (checkin) => {
       queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
         d ? { ...d, checkins: [checkin, ...d.checkins.filter((c) => c.checkin_id !== checkin.checkin_id)] } : d

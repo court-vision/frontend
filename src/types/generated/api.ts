@@ -980,6 +980,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/jobs/checkins/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Checkin Events
+         * @description What came in about players: verdicts that changed for games not yet tipped, news items just
+         *     stored. Each becomes an event on every team Dime runs that rosters the player, and a team with a
+         *     new one gets a check-in about it (or the scheduled one about to run takes it).
+         *
+         *     Called by data-platform's availability pipeline (its late-scratch events, every 2-minute tick that
+         *     has one) and its news feed (every 5 minutes). Keys only: the verdicts and items are read here. Off
+         *     unless DIME_EVENTS_ENABLED; the check-ins run on here after the response.
+         */
+        post: operations["checkin_events_v1_internal_jobs_checkins_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/jobs/checkins/run": {
         parameters: {
             query?: never;
@@ -2394,6 +2420,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * League news
+         * @description The newest NBA news items Court Vision has stored, from ESPN, Rotowire and RealGM: headline, source, attribution, link and the players and teams each is about. No blurb: a player's own news (`/players/{player_id}/news`) carries it.
+         */
+        get: operations["get_news_v1_news_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ownership/trending": {
         parameters: {
             query?: never;
@@ -2512,6 +2558,26 @@ export interface paths {
          * @description Retrieve the recent game log for a player showing box scores for each game.
          */
         get: operations["get_player_games_v1_players__player_id__games_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/players/{player_id}/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get player news
+         * @description The news items about a player, newest first, from ESPN's injury notes and player news, Rotowire and RealGM: source, time, headline, blurb, attribution and link.
+         */
+        get: operations["get_player_news_v1_players__player_id__news_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3294,6 +3360,43 @@ export interface components {
              */
             values: (number | null)[];
         };
+        /**
+         * AiCheckinEvent
+         * @description Something that came in about a rostered player that this check-in was told about (the Dime
+         *     autopilot plan, step 6; services/ai/events.py).
+         */
+        AiCheckinEvent: {
+            /**
+             * News Id
+             * @description news: the item's id
+             */
+            news_id: number | null;
+            /**
+             * Player Id
+             * @description NBA player id
+             */
+            player_id: number;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "availability" | "news";
+            /**
+             * Summary
+             * @description The server's line about it, as the brief gave it
+             */
+            summary: string;
+            /**
+             * Verdict
+             * @description availability: the new verdict (out, doubtful, available)
+             */
+            verdict: string | null;
+        };
         /** AiCheckinResp */
         AiCheckinResp: {
             data: components["schemas"]["AiCheckinSummary"] | null;
@@ -3334,7 +3437,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "morning" | "weekly" | "pre_lock" | "night";
+            kind: "morning" | "weekly" | "pre_lock" | "night" | "event";
         };
         /**
          * AiCheckinSummary
@@ -3375,14 +3478,19 @@ export interface components {
              * Format: date-time
              */
             due_at: string;
+            /**
+             * Events
+             * @description What came in that it was told about: an event check-in's reason, or what a scheduled one picked up
+             */
+            events: components["schemas"]["AiCheckinEvent"][];
             /** Finished At */
             finished_at: string | null;
             /**
              * Kind
-             * @description morning, weekly (a matchup's first morning), pre_lock (before the first tip) or night (the next morning's follow-up)
+             * @description morning, weekly (a matchup's first morning), pre_lock (before the first tip), night (the next morning's follow-up) or event (news about a rostered player)
              * @enum {string}
              */
-            kind: "morning" | "weekly" | "pre_lock" | "night";
+            kind: "morning" | "weekly" | "pre_lock" | "night" | "event";
             /**
              * Manual
              * @description Run from the AI desk rather than on the schedule
@@ -5125,6 +5233,43 @@ export interface components {
              * @default 0
              */
             wins: number;
+        };
+        /** CheckinEventsData */
+        CheckinEventsData: {
+            /** Facts */
+            facts: number;
+            /** Off */
+            off: boolean;
+            /** Recorded */
+            recorded: number;
+            /** Started */
+            started: components["schemas"]["CheckinStarted"][];
+            /** Teams */
+            teams: number;
+        };
+        /**
+         * CheckinEventsReq
+         * @description Body for POST /v1/internal/jobs/checkins/events: keys only, the facts are read here.
+         */
+        CheckinEventsReq: {
+            /** Availability */
+            availability?: components["schemas"]["VerdictChangeIn"][];
+            /**
+             * News
+             * @description nba.news_items ids just stored
+             */
+            news?: number[];
+        };
+        /** CheckinEventsResp */
+        CheckinEventsResp: {
+            data: components["schemas"]["CheckinEventsData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /** CheckinRunData */
         CheckinRunData: {
@@ -9090,6 +9235,70 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** NewsItemResp */
+        NewsItemResp: {
+            /** Attribution */
+            attribution: string | null;
+            /**
+             * Body
+             * @description The blurb (a player's news only)
+             */
+            body: string | null;
+            /** Headline */
+            headline: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "injury" | "availability" | "lineup" | "transaction" | "performance" | "rumor" | "other";
+            /** News Id */
+            news_id: number;
+            /** Players */
+            players: components["schemas"]["NewsPlayerRef"][];
+            /**
+             * Published At
+             * @description The source's time, else when it was fetched
+             */
+            published_at: string | null;
+            /**
+             * Source
+             * @description espn_injuries, espn_player_news, rotowire_rss or realgm_rss
+             */
+            source: string;
+            /**
+             * Teams
+             * @description NBA tricodes
+             */
+            teams: string[];
+            /** Url */
+            url: string | null;
+        };
+        /** NewsListData */
+        NewsListData: {
+            /** Items */
+            items: components["schemas"]["NewsItemResp"][];
+        };
+        /** NewsListResp */
+        NewsListResp: {
+            data: components["schemas"]["NewsListData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** NewsPlayerRef */
+        NewsPlayerRef: {
+            /** Name */
+            name: string;
+            /**
+             * Player Id
+             * @description NBA player id
+             */
+            player_id: number;
+        };
         /**
          * NotificationPreferenceReq
          * @description Request model for creating/updating notification preferences.
@@ -12409,6 +12618,20 @@ export interface components {
              */
             team?: string | null;
         };
+        /**
+         * VerdictChangeIn
+         * @description A verdict the availability pipeline resolved this tick that changed for a game not yet tipped.
+         *     The backend reads the verdict itself (nba.player_availability).
+         */
+        VerdictChangeIn: {
+            /**
+             * Game Date
+             * Format: date
+             */
+            game_date: string;
+            /** Player Id */
+            player_id: number;
+        };
         /** WeekResult */
         WeekResult: {
             /** Categories Lost */
@@ -14953,6 +15176,39 @@ export interface operations {
             };
         };
     };
+    checkin_events_v1_internal_jobs_checkins_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinEventsReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinEventsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     run_checkins_v1_internal_jobs_checkins_run_post: {
         parameters: {
             query?: never;
@@ -17160,6 +17416,50 @@ export interface operations {
             };
         };
     };
+    get_news_v1_news_get: {
+        parameters: {
+            query?: {
+                /** @description Only these kinds */
+                kind?: ("injury" | "availability" | "lineup" | "transaction" | "performance" | "rumor" | "other")[] | null;
+                /** @description An NBA tricode */
+                team?: string | null;
+                /** @description Only items since this time (default the last 24 hours) */
+                since?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description News retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsListResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_ownership_trending_v1_ownership_trending_get: {
         parameters: {
             query?: {
@@ -17439,6 +17739,49 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_player_news_v1_players__player_id__news_get: {
+        parameters: {
+            query?: {
+                /** @description How far back */
+                days?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description NBA player ID */
+                player_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Player news retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsListResp"];
+                };
             };
             /** @description Validation Error */
             422: {

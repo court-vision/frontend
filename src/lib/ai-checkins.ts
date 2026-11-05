@@ -6,17 +6,30 @@
  * limits (step 5); anywhere else a change is a review, logged and never sent. The
  * AI desk lists them beside the chats; the user marks each call agree or disagree.
  */
-import type { AiCheckin, AiCheckinKind, AiCheckinState, AiConversation, AiDecisionBlock, AiVerdict } from "@/types/ai";
+import type {
+  AiCheckin,
+  AiCheckinEvent,
+  AiCheckinKind,
+  AiCheckinRunKind,
+  AiCheckinState,
+  AiConversation,
+  AiDecisionBlock,
+  AiVerdict,
+} from "@/types/ai";
 
 export const KIND_LABEL: Record<AiCheckinKind, string> = {
   morning: "Morning",
   weekly: "Weekly",
   pre_lock: "Pre-lock",
   night: "Night follow-up",
+  event: "Event",
 };
 
+/** The kinds the Run menu offers: an event check-in starts only when news comes in about the roster. */
+export const RUN_KINDS: AiCheckinRunKind[] = ["morning", "weekly", "pre_lock", "night"];
+
 /** What each kind does, for the Run menu's titles. */
-export const KIND_HELP: Record<AiCheckinKind, string> = {
+export const KIND_HELP: Record<AiCheckinRunKind, string> = {
   morning: "Today's plan: what each automation will do, and any move none of them makes",
   weekly: "The morning check-in plus the week's preview and last week's retro",
   pre_lock: "The lineup after the fill, before the first tip",
@@ -38,6 +51,7 @@ const REASONS: Record<string, string> = {
   daily_cap: "the team had its check-ins for the day",
   stale: "it stopped partway (a restart)",
   start_failed: "it couldn't start",
+  no_events: "the news it was for went to another check-in",
   AI_TIMEOUT: "it took too long",
   AI_INCOMPLETE: "the answer was cut off",
   AI_BUSY: "the model was busy",
@@ -56,6 +70,8 @@ export function checkinLine(c: AiCheckin): string {
   if (c.state === "running") return "Running…";
   const parts: string[] = [];
   if (c.state === "failed") parts.push(`Failed${c.reason ? `: ${reasonWords(c.reason)}` : ""}`);
+  const news = c.events?.length ?? 0;
+  if (news) parts.push(`${news} ${news === 1 ? "thing" : "things"} came in`);
   parts.push(`${c.decisions} ${c.decisions === 1 ? "call" : "calls"}`);
   if (c.changes) parts.push(`${c.changes} ${c.changes === 1 ? "change" : "changes"}`);
   if (c.sent) parts.push(`${c.sent} sent by Dime`);
@@ -64,6 +80,12 @@ export function checkinLine(c: AiCheckin): string {
   else if (c.decisions) parts.push("not rated");
   if (c.cost_usd > 0) parts.push(c.cost_usd < 0.01 ? "<$0.01" : `$${c.cost_usd.toFixed(2)}`);
   return parts.join(" · ");
+}
+
+/** At most `max` of what a check-in took (oldest first, as it came in), and how many more there are. */
+export function eventsShown(c: Pick<AiCheckin, "events">, max = 3): { shown: AiCheckinEvent[]; more: number } {
+  const all = c.events ?? [];
+  return { shown: all.slice(0, max), more: Math.max(0, all.length - max) };
 }
 
 /** How many of a list's calls the user agreed with, of those they rated. */

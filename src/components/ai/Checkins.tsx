@@ -5,12 +5,12 @@ import Link from "next/link";
 import { Check, Loader2, Play, Settings2, X } from "lucide-react";
 import { toast } from "sonner";
 import { aiMessage, useRunAiCheckin } from "@/hooks/useAi";
-import { KIND_HELP, KIND_LABEL, STATE_LABEL, agreement, checkinLine, decisionKicker } from "@/lib/ai-checkins";
+import { KIND_HELP, KIND_LABEL, RUN_KINDS, STATE_LABEL, agreement, checkinLine, decisionKicker, eventsShown } from "@/lib/ai-checkins";
 import { actionLine, pauseLine, teamLine } from "@/lib/ai-autonomy";
 import { whenTime } from "@/components/week/format";
 import { ACCOUNT_DESK } from "@/components/desk/routes";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
-import type { AiActing, AiAutopilotTeam, AiCheckin, AiCheckinKind, AiCheckins, AiDecisionBlock, AiVerdict } from "@/types/ai";
+import type { AiActing, AiAutopilotTeam, AiCheckin, AiCheckinRunKind, AiCheckins, AiDecisionBlock, AiVerdict } from "@/types/ai";
 import { DimeView, ViewLoading } from "./DimeView";
 import dk from "@/components/desk/desk.module.css";
 import s from "./ai.module.css";
@@ -129,6 +129,7 @@ function CheckinRow({ checkin: c, onOpen }: { checkin: AiCheckin; onOpen: (id: n
       <span className={dk.sub} data-state={c.state}>
         {checkinLine(c)}
       </span>
+      <CheckinEvents checkin={c} />
     </>
   );
   if (!open) {
@@ -145,11 +146,26 @@ function CheckinRow({ checkin: c, onOpen }: { checkin: AiCheckin; onOpen: (id: n
   );
 }
 
-const KINDS: AiCheckinKind[] = ["morning", "weekly", "pre_lock", "night"];
+/** What came in that the check-in took: a verdict that changed before a game, a news item. */
+function CheckinEvents({ checkin }: { checkin: AiCheckin }) {
+  const { shown, more } = eventsShown(checkin);
+  if (!shown.length) return null;
+  return (
+    // Spans, not a list: the row is a button when it opens
+    <span className={s.checkinEvents} title="What came in about the roster">
+      {shown.map((e, i) => (
+        <span key={`${e.source}-${e.player_id}-${i}`} className={s.checkinEvent} data-source={e.source}>
+          {e.summary}
+        </span>
+      ))}
+      {more ? <span className={s.checkinEvent}>and {more} more</span> : null}
+    </span>
+  );
+}
 
 function AutopilotTeam({ team, name, acting, running }: { team: AiAutopilotTeam; name: string; acting: AiActing | null; running: boolean }) {
   const run = useRunAiCheckin();
-  const [kind, setKind] = useState<AiCheckinKind | "">("");
+  const [kind, setKind] = useState<AiCheckinRunKind | "">("");
   const next = team.on
     ? team.next
       ? `Next: ${KIND_LABEL[team.next.kind].toLowerCase()}, ${whenTime(team.next.due_at)}`
@@ -174,10 +190,10 @@ function AutopilotTeam({ team, name, acting, running }: { team: AiAutopilotTeam;
           value={kind}
           aria-label="Which check-in to run"
           title={kind ? KIND_HELP[kind] : "By the clock: morning, pre-lock in the hours before the first tip, the night follow-up after it"}
-          onChange={(e) => setKind(e.target.value as AiCheckinKind | "")}
+          onChange={(e) => setKind(e.target.value as AiCheckinRunKind | "")}
         >
           <option value="">By the clock</option>
-          {KINDS.map((k) => (
+          {RUN_KINDS.map((k) => (
             <option key={k} value={k}>
               {KIND_LABEL[k]}
             </option>
