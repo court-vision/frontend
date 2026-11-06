@@ -3,6 +3,8 @@
 import { Check, X } from "lucide-react";
 import { changeLabel, chipState, patchChip, type ChipPatch } from "@/lib/ai-proposals";
 import { monthDay, weekdayTime } from "@/components/week/format";
+import { localizeEtClocks } from "@/lib/local-time";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import { Tray, type TrayDay } from "@/components/week/Tray";
 import type { AiProposalChip, AiProposalMove } from "@/types/ai";
 import dk from "@/components/desk/desk.module.css";
@@ -38,6 +40,7 @@ const STATE_LABEL: Record<"sent" | "dismissed" | "expired", string> = {
 
 export function ProposalChip({ chip: raw, actions }: { chip: AiProposalChip; actions: ChipActions }) {
   const chip = patchChip(raw, actions.patches);
+  const tz = useViewerZone();
   const state = chipState(chip);
   const staged = state === "proposed" && actions.stagedIds.has(chip.proposal_id);
   const when = chip.kind === "transaction" ? "Today" : `${chip.dow} ${monthDay(chip.date)}`;
@@ -68,7 +71,7 @@ export function ProposalChip({ chip: raw, actions }: { chip: AiProposalChip; act
                 {m.name}
                 <span className={s.chipTeam}>
                   {m.from_slot} → {m.to_slot}
-                  {m.note ? ` · ${m.note}` : ""}
+                  {m.note ? ` · ${localizeEtClocks(m.note, chip.date, { tz })}` : ""}
                 </span>
               </li>
             ))}
@@ -131,7 +134,7 @@ export function ProposalChip({ chip: raw, actions }: { chip: AiProposalChip; act
         ) : (
           <span className={s.chipState} data-state={state}>
             {STATE_LABEL[state]}
-            {state === "sent" && chip.sent_at ? ` · ${weekdayTime(chip.sent_at)}` : ""}
+            {state === "sent" && chip.sent_at ? ` · ${weekdayTime(chip.sent_at, { tz, label: true })}` : ""}
           </span>
         )}
       </div>

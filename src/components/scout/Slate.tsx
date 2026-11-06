@@ -10,6 +10,8 @@ import { useNBATeamLiveGameQuery } from "@/hooks/useNBATeam";
 import { apiClient } from "@/lib/api";
 import { userMessage } from "@/lib/api-error";
 import { addDays, clockText, dayName, dow, gameFocus, gameState, gameStatusText, monthDay, periodName, teamInfo, tipText, type Focus } from "@/lib/scout";
+import { etInstant, zoneName } from "@/lib/local-time";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import type { GameDetailData, GameInfo, GameLine, GameScoreSnapshot, InjuredPlayer, NBATeamLiveGameData, TopPerformer } from "@/types/games";
 import type { LivePlayerData } from "@/types/live";
 import type { RankingsPlayer } from "@/types/rankings";
@@ -44,6 +46,7 @@ function Tape({ ticks }: { ticks: Array<{ label: string; value: React.ReactNode;
 const AHEAD = 5;
 
 export function SlateOverview({ today, open, live }: { today: string; open: (focus: Focus) => void; live: LiveCtx }) {
+  const tz = useViewerZone();
   const dates = useMemo(() => [addDays(today, -1), today, ...Array.from({ length: AHEAD }, (_, i) => addDays(today, i + 1))], [today]);
   const results = useQueries({
     queries: dates.map((d) => ({
@@ -61,6 +64,8 @@ export function SlateOverview({ today, open, live }: { today: string; open: (foc
   const liveCount = games.filter((g) => gameState(g.status) === "live").length;
   const finals = games.filter((g) => gameState(g.status) === "final").length;
   const tips = games.map((g) => g.start_time_et).filter((t): t is string => !!t).sort();
+  // Tips arrive in ET and print in the viewer's zone; this names it.
+  const tipZone = zoneName(etInstant(today, tips[0]) ?? undefined, tz);
   const yesterday = byDate[dates[0]];
   const ahead = dates.slice(2);
   return (
@@ -80,13 +85,13 @@ export function SlateOverview({ today, open, live }: { today: string; open: (foc
         ticks={[
           { label: "Tonight", value: tonight.isLoading ? "…" : `${games.length}`, sub: games.length === 1 ? "game" : "games" },
           { label: "Live now", value: <span className={liveCount ? s.live : ""}>{liveCount}</span>, sub: finals ? `${finals} final` : undefined },
-          { label: "First tip", value: tips.length ? `${tipText(tips[0])}` : "—", sub: tips.length ? "ET" : "no tips yet" },
-          { label: "Last tip", value: tips.length ? `${tipText(tips[tips.length - 1])}` : "—", sub: tips.length ? "ET" : undefined },
+          { label: "First tip", value: tips.length ? tipText(tips[0], today, { tz }) : "—", sub: tips.length ? tipZone : "no tips yet" },
+          { label: "Last tip", value: tips.length ? tipText(tips[tips.length - 1], today, { tz }) : "—", sub: tips.length ? tipZone : undefined },
           { label: "On the floor", value: live.leaders ? `${live.leaders.length}` : live.leadersLoading ? "…" : "0", sub: "players with minutes" },
         ]}
       />
 
-      <Block title="Tonight" note={liveCount ? "scores refresh every minute" : games.length ? "tip times in ET" : undefined}>
+      <Block title="Tonight" note={liveCount ? "scores refresh every minute" : games.length ? `tip times in ${tipZone}` : undefined}>
         {tonight.isLoading ? (
           <Skeleton rows={4} className={s.ledgerSkel} />
         ) : tonight.error ? (
@@ -133,7 +138,7 @@ export function SlateOverview({ today, open, live }: { today: string; open: (foc
                   <span className={s.aheadGames}>
                     {q.error ? <span className={dk.error}>{userMessage(q.error, "Couldn't load this night")}</span> : null}
                     {list.map((g) => (
-                      <button key={g.game_id ?? `${g.away_team}@${g.home_team}`} type="button" className={s.aheadChip} onClick={() => open(gameFocus(d, g.game_id, g.away_team, g.home_team))} title={`${g.away_team} at ${g.home_team}${g.start_time_et ? ` · ${tipText(g.start_time_et)} ET` : ""}`}>
+                      <button key={g.game_id ?? `${g.away_team}@${g.home_team}`} type="button" className={s.aheadChip} onClick={() => open(gameFocus(d, g.game_id, g.away_team, g.home_team))} title={`${g.away_team} at ${g.home_team}${g.start_time_et ? ` · ${tipText(g.start_time_et, d, { tz, label: true })}` : ""}`}>
                         <TeamLogo abbrev={g.away_team} size={12} />
                         {g.away_team}
                         <span className={s.dim}>@</span>
@@ -154,6 +159,7 @@ export function SlateOverview({ today, open, live }: { today: string; open: (foc
 }
 
 function ResultLines({ games, date, open }: { games: GameInfo[]; date: string; open: (f: Focus) => void }) {
+  const tz = useViewerZone();
   return (
     <table className={s.table}>
       <tbody>
@@ -179,7 +185,7 @@ function ResultLines({ games, date, open }: { games: GameInfo[]; date: string; o
                 </span>
               </td>
               <td className={homeWon ? s.strong : ""}>{g.home_score ?? "—"}</td>
-              <td className={s.muted}>{gameStatusText(g.status, g.period, g.game_clock, g.start_time_et)}</td>
+              <td className={s.muted}>{gameStatusText(g.status, g.period, g.game_clock, g.start_time_et, g.game_date, tz)}</td>
             </tr>
           );
         })}
@@ -193,11 +199,12 @@ function ResultLines({ games, date, open }: { games: GameInfo[]; date: string; o
 // ---------------------------------------------------------------------------
 
 export function GameCards({ games, date, open, leaders, poolById }: { games: GameInfo[]; date: string; open: (f: Focus) => void; leaders?: LivePlayerData[]; poolById?: Map<number, RankingsPlayer> }) {
+  const tz = useViewerZone();
   return (
     <div className={s.games}>
       {games.map((g) => {
         const state = gameState(g.status);
-        const status = gameStatusText(g.status, g.period, g.game_clock, g.start_time_et);
+        const status = gameStatusText(g.status, g.period, g.game_clock, g.start_time_et, g.game_date, tz);
         const awayLead = g.away_score != null && g.home_score != null ? g.away_score > g.home_score : null;
         const f = gameFocus(date, g.game_id, g.away_team, g.home_team);
         const lines = leaders && g.game_id ? leaders.filter((p) => p.game_id === g.game_id).slice(0, 3) : [];
@@ -378,6 +385,7 @@ function frozenView(data: GameDetailData | null, game: GameInfo): SheetView {
 }
 
 export function GameSheet({ date, gameId, today, open, live }: { date: string; gameId: string; today: string; open: (focus: Focus) => void; live: LiveCtx }) {
+  const tz = useViewerZone();
   const games = useGamesOnDateQuery(date);
   const listed = useMemo(() => {
     const list = games.data?.games ?? [];
@@ -421,7 +429,7 @@ export function GameSheet({ date, gameId, today, open, live }: { date: string; g
     );
   }
   const state = gameState(game.status);
-  const status = gameStatusText(game.status, game.period, game.game_clock, game.start_time_et);
+  const status = gameStatusText(game.status, game.period, game.game_clock, game.start_time_et, game.game_date, tz);
   const awayLead = game.away_score != null && game.home_score != null ? game.away_score > game.home_score : null;
   const periods = view.periods ? Math.max(view.periods.away.length, view.periods.home.length, 4) : 0;
   const lineCount = view.lines.away.length + view.lines.home.length + view.lines.other.length;

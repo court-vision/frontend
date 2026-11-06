@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
+import { localStamp } from "@/lib/local-time";
 import type { Method, TreeNode } from "@/lib/openapi";
 import dk from "@/components/desk/desk.module.css";
 import s from "./dev.module.css";
@@ -198,16 +199,16 @@ function TreeRow({ node, depth }: { node: TreeNode; depth: number }) {
   );
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/** "2026-10-07T23:41:09Z" → "Oct 7, 2026 23:41 UTC". Spelled out by hand so the server and the browser agree. */
-export function stamp(iso: string | null | undefined): string {
+/**
+ * "2026-10-07T23:41:09Z" → "Oct 7, 2026 18:41 CDT" in `tz`. The server renders
+ * these too, so a page passes `useViewerZone("UTC")`: UTC until hydrated
+ * ("Oct 7, 2026 23:41 UTC"), the viewer's zone from then on.
+ */
+export function stamp(iso: string | null | undefined, tz: string = "UTC"): string {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const hh = String(d.getUTCHours()).padStart(2, "0");
-  const mm = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${hh}:${mm} UTC`;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return iso;
+  return localStamp(t, tz);
 }
 
 export function ago(iso: string | null | undefined, now: number = Date.now()): string {

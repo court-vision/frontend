@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { KeyRound, Plus, ShieldCheck } from "lucide-react";
 import { DeskDialog } from "@/components/desk/DeskDialog";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import type { ApiKeyListItem } from "@/types/api-keys";
 import { Block, CopyBtn, Skeleton, ago, stamp } from "./blocks";
 import type { KeysModel } from "./useDevModels";
@@ -29,6 +30,7 @@ const EXPIRIES: Array<{ days: number | null; label: string }> = [
 ];
 
 export function KeysSheet({ model, openPlayground }: { model: KeysModel; openPlayground: () => void }) {
+  const tz = useViewerZone("UTC");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [scopes, setScopes] = useState<string[]>(["read"]);
@@ -162,11 +164,11 @@ export function KeysSheet({ model, openPlayground }: { model: KeysModel; openPla
                       {expired ? <span className={`${dk.chip} ${dk.down}`}>expired</span> : null}
                     </span>
                     <span className={s.keyMeta}>
-                      <span>made {stamp(k.created_at)}</span>
+                      <span>made {stamp(k.created_at, tz)}</span>
                       <span>·</span>
                       <span>last used {ago(k.last_used_at)}</span>
                       <span>·</span>
-                      <span>{k.expires_at ? `expires ${stamp(k.expires_at)}` : "never expires"}</span>
+                      <span>{k.expires_at ? `expires ${stamp(k.expires_at, tz)}` : "never expires"}</span>
                     </span>
                   </div>
                   <div className={s.headActions}>

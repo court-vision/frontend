@@ -10,6 +10,7 @@ import { TeamSwitch } from "@/components/desk/TeamSwitch";
 import type { LineupMode, WeekDay, WeekGrid } from "@/lib/week-grid";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { useDataUpdatedAt } from "@/hooks/useDataUpdatedAt";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import type { BarNotice, TeamOption } from "./WeekPage";
 import { monthDay, periodRange, pts, signed, tip } from "./format";
 import dk from "@/components/desk/desk.module.css";
@@ -82,7 +83,8 @@ interface TapeProps {
   dropCount?: number;
   /** Projected change from the previewed free agent. */
   previewDelta: number | null;
-  tonight: { live: number; toTip: number; nextTip: string | null };
+  /** `nextTip` is an ET wall time on `date`, today's NBA date; it prints in the viewer's zone. */
+  tonight: { live: number; toTip: number; nextTip: string | null; date: string | null };
   /** Today's moves, beside Tonight. */
   today?: React.ReactNode;
   /** The edge's race (replaces the plain edge bar). */
@@ -95,6 +97,7 @@ function Diff({ value, className }: { value: number; className?: string }) {
 }
 
 export function Tape({ grid, stagedDelta, stagedCount, dropCount = 0, previewDelta, tonight, today, edge }: TapeProps) {
+  const tz = useViewerZone();
   const pending = [
     stagedCount > 0 ? `${stagedCount} move${stagedCount === 1 ? "" : "s"}` : "",
     dropCount > 0 ? `${dropCount} drop${dropCount === 1 ? "" : "s"}` : "",
@@ -152,7 +155,7 @@ export function Tape({ grid, stagedDelta, stagedCount, dropCount = 0, previewDel
             </span>
           ) : null}
           <span className={s.tickSub}>
-            {tonight.toTip > 0 ? `${tonight.toTip} to tip${tonight.nextTip ? ` · next ${tip(tonight.nextTip)}` : ""}` : tonight.live ? "" : "no games left"}
+            {tonight.toTip > 0 ? `${tonight.toTip} to tip${tonight.nextTip ? ` · next ${tip(tonight.nextTip, tonight.date, { tz, label: true })}` : ""}` : tonight.live ? "" : "no games left"}
           </span>
         </span>
       </div>

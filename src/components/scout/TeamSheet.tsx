@@ -6,6 +6,7 @@ import { Headshot } from "@/components/desk/Headshot";
 import { TeamLogo } from "@/components/desk/TeamLogo";
 import { useNBATeamLiveGameQuery, useNBATeamRosterQuery, useNBATeamStatsQuery } from "@/hooks/useNBATeam";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import { userMessage } from "@/lib/api-error";
 import { asPercent, dow, fmtDelta, fmtStat, gameFocus, gameState, gameStatusText, monthDay, teamInfo, type Focus } from "@/lib/scout";
 import type { NBATeamRosterPlayer } from "@/types/nba-team";
@@ -313,8 +314,9 @@ function SortBtn({ k, sort, setSort, label }: { k: RosterSort; sort: RosterSort;
 }
 
 function GameBlock({ game, abbrev, open, today }: { game: NBATeamLiveGameData; abbrev: string; open: (f: Focus) => void; today: string }) {
+  const tz = useViewerZone();
   const state = gameState(game.status);
-  const status = gameStatusText(game.status, game.period, game.game_clock, game.start_time_et);
+  const status = gameStatusText(game.status, game.period, game.game_clock, game.start_time_et, game.game_date, tz);
   const periods = Math.max(game.home_periods.length, game.away_periods.length, 4);
   const when = game.is_today ? "tonight" : game.game_date === today ? "today" : game.is_upcoming ? `${dow(game.game_date)} ${monthDay(game.game_date)}` : `${dow(game.game_date)} ${monthDay(game.game_date)}`;
   return (

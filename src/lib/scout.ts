@@ -10,6 +10,7 @@ import type { RankingsPlayer, RankingsScope, RankingsScoring } from "@/types/ran
 import type { ProjectionStats } from "@/types/scout";
 import type { CategoryDef, ScoringFormat } from "@/types/scoring";
 import type { TeamResponseData } from "@/types/team";
+import { localTip, type ClockOpts } from "@/lib/local-time";
 import { NBA_TEAMS, NBA_TEAM_BY_ABBREV, type NBATeamInfo } from "@/lib/nbaTeams";
 import { lastGames } from "@/lib/statWindow";
 
@@ -602,13 +603,9 @@ export function periodName(period: number | null | undefined): string {
   return period === 5 ? "OT" : `${period - 4}OT`;
 }
 
-/** "19:30" → "7:30 PM". */
-export function tipText(hhmm: string | null | undefined): string {
-  if (!hhmm) return "";
-  const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
-  if (!m) return hhmm;
-  const h = Number(m[1]);
-  return `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h >= 12 ? "PM" : "AM"}`;
+/** An ET tip ("19:30") on its NBA date as the viewer's clock: "6:30 PM" in Central (`label`: "6:30 PM CST"). */
+export function tipText(hhmm: string | null | undefined, date?: string | null, opts: Omit<ClockOpts, "compact"> = {}): string {
+  return localTip(hhmm, date, opts);
 }
 
 export type GameState = "scheduled" | "live" | "final";
@@ -634,12 +631,14 @@ export function gameDetailPollMs(data: GameDetailData | null | undefined): numbe
   return whole ? false : 5 * 60 * 1000;
 }
 
-/** What to print beside a game: the tip, the period and clock, or Final. */
+/** What to print beside a game: the tip in the viewer's zone ("6:30 PM CST"), the period and clock, or Final. */
 export function gameStatusText(
   status: string | number | null | undefined,
   period: number | null | undefined,
   clock: string | null | undefined,
-  startEt: string | null | undefined
+  startEt: string | null | undefined,
+  date?: string | null,
+  tz?: string
 ): string {
   const state = gameState(status);
   if (state === "final") return period && period > 4 ? `Final/${periodName(period)}` : "Final";
@@ -648,7 +647,7 @@ export function gameStatusText(
     if (period && period <= 4 && c === "0:00" && period === 2) return "Half";
     return `${periodName(period)} ${c}`.trim() || "Live";
   }
-  return startEt ? `${tipText(startEt)} ET` : "TBD";
+  return startEt ? tipText(startEt, date, { tz, label: true }) : "TBD";
 }
 
 // ---------------------------------------------------------------------------

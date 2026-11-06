@@ -5,6 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { userMessage } from "@/lib/api-error";
 import type { LaneNotify, StreamLanePlan } from "@/types/stream-lane";
 import { Headshot } from "@/components/desk/Headshot";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import { monthDay, pts, shortName, signed, whenTime } from "./format";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
@@ -30,6 +31,7 @@ interface LaneSheetProps {
  */
 export function LaneSheet({ player, container, demo, onClose, load, onStart, starting, error }: LaneSheetProps) {
   const open = player != null;
+  const tz = useViewerZone();
   const [plan, setPlan] = useState<StreamLanePlan | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notify, setNotify] = useState<LaneNotify>("email");
@@ -104,7 +106,7 @@ export function LaneSheet({ player, container, demo, onClose, load, onStart, sta
                 <div className={s.laneSheetSum}>
                   <span className={`${dk.chip} ${proj.gain > 0.05 ? dk.up : dk.flat}`}>{signed(proj.gain)}</span>
                   <span className={dk.sub}>
-                    over keeping {short} · {addsLine} · first decision {whenTime(plan!.first_decision_at)}
+                    over keeping {short} · {addsLine} · first decision {whenTime(plan!.first_decision_at, undefined, { tz, label: true })}
                     {demo ? " · demo: planned in the browser, cruder than the real one" : ""}
                   </span>
                 </div>

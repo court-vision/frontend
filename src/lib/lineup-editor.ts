@@ -9,6 +9,7 @@
  * `LineupState` + `Staged` so a fresh board (new `roster_version`) can drop
  * the staging wholesale.
  */
+import { localTip, type ClockOpts } from "./local-time";
 import { ROSTER_STALE, toApiError } from "./api-error";
 import type {
   LineupMove,
@@ -515,15 +516,13 @@ export function isStale(state: LineupState | null | undefined, error: unknown): 
 // Labels
 // ---------------------------------------------------------------------------
 
-/** "19:30" → "7:30 PM". Anything unparseable is returned as-is. */
-export function formatTipTime(hhmm: string | null | undefined): string {
-  if (!hhmm) return "";
-  const match = /^(\d{1,2}):(\d{2})/.exec(hhmm);
-  if (!match) return hhmm;
-  const h = Number(match[1]);
-  const suffix = h >= 12 ? "PM" : "AM";
-  const hour = h % 12 === 0 ? 12 : h % 12;
-  return `${hour}:${match[2]} ${suffix}`;
+/**
+ * An ET tip ("19:30") as the viewer's clock: "6:30 PM" in Central. `date` is
+ * the board's NBA date (today's when left out). Anything unparseable is
+ * returned as-is.
+ */
+export function formatTipTime(hhmm: string | null | undefined, date?: string | null, opts: ClockOpts = {}): string {
+  return localTip(hhmm, date, opts);
 }
 
 /** "2026-10-20" → "Tue, Oct 20" (calendar date, no timezone shift). */
@@ -538,25 +537,25 @@ export function formatNbaDate(iso: string | null | undefined): string {
   });
 }
 
-/** "vs LAL · 7:30 PM", or "No game". `compact` gives the phone form "vs LAL 7:30P". */
+/** "vs LAL · 6:30 PM" in the viewer's zone, or "No game". `compact` gives the phone form "vs LAL 6:30P". */
 export function gameLabel(
   player: Pick<LineupPlayer, "has_game_today" | "opponent" | "game_time_et">,
-  opts: { compact?: boolean } = {}
+  opts: { compact?: boolean; date?: string | null; tz?: string } = {}
 ): string {
   if (!player.has_game_today) return "No game";
-  const time = formatTipTime(player.game_time_et);
-  const shortTime = opts.compact ? time.replace(" PM", "P").replace(" AM", "A") : time;
-  const parts = [player.opponent, shortTime].filter(Boolean);
+  const time = formatTipTime(player.game_time_et, opts.date, { tz: opts.tz, compact: opts.compact });
+  const parts = [player.opponent, time].filter(Boolean);
   return parts.length ? parts.join(opts.compact ? " " : " · ") : "Game today";
 }
 
-/** Tooltip for the lock icon; null when the player is free to move. */
+/** Tooltip for the lock icon ("Locked — game started 6:30 PM CST"); null when the player is free to move. */
 export function lockLabel(
-  player: Pick<LineupPlayer, "locked" | "lineup_locked" | "game_started" | "game_time_et">
+  player: Pick<LineupPlayer, "locked" | "lineup_locked" | "game_started" | "game_time_et">,
+  opts: { date?: string | null; tz?: string } = {}
 ): string | null {
   if (!player.locked) return null;
   if (player.game_started) {
-    const time = formatTipTime(player.game_time_et);
+    const time = formatTipTime(player.game_time_et, opts.date, { tz: opts.tz, label: true });
     return time ? `Locked — game started ${time}` : "Locked — game started";
   }
   return player.lineup_locked ? "Locked by ESPN" : "Locked";

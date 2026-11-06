@@ -400,6 +400,7 @@ describe("labels", () => {
     expect(formatTipTime("00:05")).toBe("12:05 AM");
     expect(formatTipTime("12:00")).toBe("12:00 PM");
     expect(formatTipTime(null)).toBe("");
+    expect(formatTipTime("19:30", "2026-11-05", { tz: "America/Los_Angeles" })).toBe("4:30 PM");
     expect(formatNbaDate("2026-10-20")).toBe("Tue, Oct 20");
     expect(formatNbaDate(null)).toBe("");
   });
@@ -408,7 +409,8 @@ describe("labels", () => {
     expect(gameLabel(pg)).toBe("vs LAL · 7:30 PM");
     expect(gameLabel(ut1)).toBe("No game");
     expect(lockLabel(pg)).toBeNull();
-    expect(lockLabel(sgLocked)).toBe("Locked — game started 7:30 PM");
+    expect(lockLabel(sgLocked, { date: "2026-10-20" })).toBe("Locked — game started 7:30 PM EDT");
+    expect(lockLabel(sgLocked, { date: "2026-10-20", tz: "America/Chicago" })).toBe("Locked — game started 6:30 PM CDT");
     expect(lockLabel({ ...pg, locked: true, lineup_locked: true })).toBe("Locked by ESPN");
     expect(moveLabel(STATE, { player_id: 6, from_slot_id: BE, to_slot_id: UT })).toBe("P6: BE → UT");
   });
@@ -417,6 +419,7 @@ describe("labels", () => {
 describe("gameLabel compact", () => {
   test("phone form drops the separator and shortens the meridiem", () => {
     expect(gameLabel(pg, { compact: true })).toBe("vs LAL 7:30P");
+    expect(gameLabel(pg, { compact: true, date: "2026-11-05", tz: "America/Chicago" })).toBe("vs LAL 6:30P");
     expect(gameLabel({ has_game_today: true, opponent: "@ BOS", game_time_et: "00:30" }, { compact: true })).toBe("@ BOS 12:30A");
   });
 });

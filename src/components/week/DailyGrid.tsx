@@ -29,6 +29,7 @@ import type { PickupView } from "@/lib/pickups";
 import { LaneGroupRow, LaneRow, type LaneRowModel } from "./LaneRow";
 import type { LineupState } from "@/types/lineup-editor";
 import { Headshot } from "@/components/desk/Headshot";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import { type Cursor, type DropTarget } from "./WeekGrid";
 import { monthDay, oppShort, pts, shortName, signed, tip, weekdayTime } from "./format";
 import dk from "@/components/desk/desk.module.css";
@@ -452,7 +453,8 @@ function PickupRow({
   const pending = pickup.status === "pending";
   // A lane's pickup shows here when its lane has no row (it ended, or the lanes didn't load): say whose it is.
   const forWhom = `${pickup.drop ? `for ${shortName(pickup.drop.name)}` : "into an open spot"}${pickup.lane ? " · stream lane" : ""}`;
-  const first = pending && pickup.notBefore ? `first try ${weekdayTime(pickup.notBefore)}` : null;
+  const tz = useViewerZone();
+  const first = pending && pickup.notBefore ? `first try ${weekdayTime(pickup.notBefore, { tz, label: true })}` : null;
   const title = [
     `${pickup.add.name}${pickup.drop ? `, dropping ${pickup.drop.name}` : ""}`,
     pickup.lane ? "made for a stream lane" : null,
@@ -605,6 +607,7 @@ const SeatPair = memo(function SeatPair({
   const p = seat?.player ?? null;
   const canDrag = dnd && !!p && !locked && !seat?.incoming && !seat?.outgoing;
   const nameRef = useRef<HTMLDivElement | null>(null);
+  const tz = useViewerZone();
   const dragger = useDraggable({
     id: dndId(day, def.key),
     disabled: !canDrag,
@@ -676,7 +679,7 @@ const SeatPair = memo(function SeatPair({
                   <span>{p.team}</span>
                   {cell.opp ? <span>{oppShort(cell.opp)}</span> : null}
                   {cell.state === "live" ? <span style={{ color: "var(--live)" }}>{cell.note}</span> : null}
-                  {cell.state === "upcoming" && cell.note ? <span>{tip(cell.note)}</span> : null}
+                  {cell.state === "upcoming" && cell.note ? <span>{tip(cell.note, cell.date, { tz })}</span> : null}
                   {seat?.incoming ? <span style={{ color: "var(--preview)" }}>FREE AGENT</span> : null}
                   {seat?.shifted ? <span style={{ color: "var(--preview)" }}>MOVES</span> : null}
                   {seat?.outgoing ? <span style={{ color: "var(--down)" }}>DROPPED</span> : null}
@@ -747,6 +750,7 @@ function cellTitle(cell: GridCell): string | undefined {
 
 /** A narrow day: points if the game has started, else the opponent and tip. */
 function CompactValue({ cell }: { cell: GridCell }) {
+  const tz = useViewerZone();
   switch (cell.state) {
     case "none":
       return <span className={s.cellMain} style={{ textAlign: "center", opacity: 0.5 }}>·</span>;
@@ -757,7 +761,7 @@ function CompactValue({ cell }: { cell: GridCell }) {
       return (
         <span className={s.upcoming}>
           <span>{oppShort(cell.opp)}</span>
-          <span className={dk.sub}>{tip(cell.note)}</span>
+          <span className={dk.sub}>{tip(cell.note, cell.date, { tz })}</span>
         </span>
       );
     case "live":
@@ -774,6 +778,7 @@ function CompactValue({ cell }: { cell: GridCell }) {
 
 /** The focused day: the box score so far, or the matchup and projection ahead. */
 function FocusStats({ cell, hasPlayer }: { cell: GridCell; hasPlayer: boolean }) {
+  const tz = useViewerZone();
   if (!hasPlayer) return null;
   if (cell.state === "none") return <span className={s.statNote}>no game</span>;
   if (cell.state === "out") return <span className={s.statNote}>out</span>;
@@ -782,7 +787,7 @@ function FocusStats({ cell, hasPlayer }: { cell: GridCell; hasPlayer: boolean })
     return (
       <span className={s.statRow} style={{ gridTemplateColumns: STAT_TRACKS }}>
         <span className={s.statAhead} style={{ gridColumn: `1 / ${STATS.length + 1}` }}>
-          {cell.opp} · {tip(cell.note)} · projected
+          {cell.opp} · {tip(cell.note, cell.date, { tz })} · projected
         </span>
         <span className={s.statFpts}>{pts(cell.value)}</span>
       </span>

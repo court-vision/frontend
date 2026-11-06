@@ -15,6 +15,7 @@ import type { GameLog } from "@/types/player";
 import { Block, Skeleton, StatTile } from "@/components/scout/blocks";
 import { FormChart } from "@/components/scout/PlayerSheet";
 import { oppShort, pts, tip } from "./format";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import dk from "@/components/desk/desk.module.css";
 import sc from "@/components/scout/scout.module.css";
 import s from "./week.module.css";
@@ -193,6 +194,7 @@ function weekNote(player: SourcePlayer, days: WeekDay[], todayIndex: number | nu
 
 /** His games this week, one cell a day: the score once played, the opponent and tip before. */
 function WeekStrip({ player, days, todayIndex }: { player: SourcePlayer; days: WeekDay[]; todayIndex: number | null }) {
+  const tz = useViewerZone();
   return (
     <div className={s.statsWeek}>
       {days.map((d, i) => {
@@ -202,7 +204,7 @@ function WeekStrip({ player, days, todayIndex }: { player: SourcePlayer; days: W
           <div key={d.date} className={s.statsDay} data-state={state} data-today={i === todayIndex}>
             <span className={s.statsDow}>{d.dow.toUpperCase()}</span>
             <span className={s.statsOpp}>{g ? oppShort(g.opp) || "game" : "·"}</span>
-            <span className={s.statsVal}>{!g ? "" : g.out ? "OUT" : g.status === "scheduled" ? tip(g.time) : pts(g.fpts)}</span>
+            <span className={s.statsVal}>{!g ? "" : g.out ? "OUT" : g.status === "scheduled" ? tip(g.time, d.date, { tz }) : pts(g.fpts)}</span>
           </div>
         );
       })}

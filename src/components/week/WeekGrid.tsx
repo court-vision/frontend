@@ -20,6 +20,7 @@ import { BENCH_SLOT_ID, IR_SLOT_ID, isActiveSlot, slotName } from "@/lib/lineup-
 import { healthOf, type GridCell, type GridRow, type LineupMode, type WeekGrid as Grid } from "@/lib/week-grid";
 import type { LineupPlayer } from "@/types/lineup-editor";
 import { Headshot } from "@/components/desk/Headshot";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import { monthDay, oppShort, pts, signed, tip } from "./format";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
@@ -675,6 +676,7 @@ export const DayCell = memo(function DayCell({
   // A live value that moves flashes once.
   const prev = useRef(cell.value);
   const [flash, setFlash] = useState(0);
+  const tz = useViewerZone();
   useEffect(() => {
     if (cell.state === "live" && prev.current != null && cell.value != null && cell.value !== prev.current) {
       setFlash((f) => f + 1);
@@ -704,7 +706,7 @@ export const DayCell = memo(function DayCell({
         {cell.note}
       </span>
     );
-  else if (cell.state === "upcoming") right = <span>{tip(cell.note)}</span>;
+  else if (cell.state === "upcoming") right = <span>{tip(cell.note, cell.date, { tz })}</span>;
   else if (cell.state === "final" && today) right = <span>F</span>;
 
   return (

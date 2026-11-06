@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, Download, PanelRight, Play, Plus, Save, Trash2, X } from "lucide-react";
 import { DeskDialog } from "@/components/desk/DeskDialog";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import { useDeskPortal } from "@/components/desk/DeskFrame";
 import {
   AGGREGATES,
@@ -53,6 +54,7 @@ import s from "./dev.module.css";
 // ---------------------------------------------------------------------------
 
 export function QueryLedger({ model, canvas, add }: { model: QueryModel; canvas: Canvas; add: (t: SchemaTable) => void }) {
+  const tz = useViewerZone("UTC");
   const [q, setQ] = useState("");
   const [openTables, setOpenTables] = useState<Set<string>>(new Set());
   const groups = useMemo(() => groupSchema(matchTables(q, model.schema)), [q, model.schema]);
@@ -140,7 +142,7 @@ export function QueryLedger({ model, canvas, add }: { model: QueryModel; canvas:
                 <button key={t.table_name} type="button" className={`${s.row} ${s.rowPlain} ${model.savedOpen === t.table_name ? s.rowOn : ""}`} onClick={() => model.openSaved(model.savedOpen === t.table_name ? null : t.table_name)}>
                   <span>
                     <span className={s.tableName}>{t.table_name}</span>
-                    <span className={s.rowSub}>saved {stamp(t.created_at)}</span>
+                    <span className={s.rowSub}>saved {stamp(t.created_at, tz)}</span>
                   </span>
                   <span
                     role="button"
