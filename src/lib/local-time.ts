@@ -87,12 +87,29 @@ function etWall(ms: number): number {
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const HHMM_RE = /^(\d{1,2}):(\d{2})/;
 
+/** A real calendar date ("2026-10-20", not "2026-02-30") as [y, m, d]; null otherwise. */
+function readDate(date: string | null | undefined): [number, number, number] | null {
+  const d = DATE_RE.exec(date ?? "");
+  if (!d) return null;
+  const [y, m, day] = [Number(d[1]), Number(d[2]), Number(d[3])];
+  const back = new Date(Date.UTC(y, m - 1, day));
+  return back.getUTCFullYear() === y && back.getUTCMonth() === m - 1 && back.getUTCDate() === day ? [y, m, day] : null;
+}
+
+/** A wall clock ("19:30") as [h, m], null past 23:59. */
+function readClock(hhmm: string | null | undefined): [number, number] | null {
+  const t = HHMM_RE.exec(hhmm ?? "");
+  if (!t) return null;
+  const [h, m] = [Number(t[1]), Number(t[2])];
+  return h <= 23 && m <= 59 ? [h, m] : null;
+}
+
 /** The instant of an ET wall time ("19:30") on a date ("2026-10-20"); null when either is unreadable. */
 export function etInstant(date: string | null | undefined, hhmm: string | null | undefined): number | null {
-  const d = DATE_RE.exec(date ?? "");
-  const t = HHMM_RE.exec(hhmm ?? "");
+  const d = readDate(date);
+  const t = readClock(hhmm);
   if (!d || !t) return null;
-  const wall = Date.UTC(Number(d[1]), Number(d[2]) - 1, Number(d[3]), Number(t[1]), Number(t[2]));
+  const wall = Date.UTC(d[0], d[1] - 1, d[2], t[0], t[1]);
   // ET is UTC−5 or UTC−4: guess the first, then correct by how far that instant's ET clock is off.
   const guess = wall + 5 * 60 * MINUTE;
   return guess + (wall - etWall(guess));
@@ -146,7 +163,7 @@ export function localClock(ms: number, opts: ClockOpts = {}): string {
  */
 export function localTip(hhmm: string | null | undefined, date?: string | null, opts: ClockOpts = {}): string {
   if (!hhmm) return "";
-  const day = date && DATE_RE.test(date) ? date : getTodayDate();
+  const day = readDate(date) ? date! : getTodayDate();
   const at = etInstant(day, hhmm);
   if (at == null) return hhmm;
   const tz = opts.tz ?? viewerZone();

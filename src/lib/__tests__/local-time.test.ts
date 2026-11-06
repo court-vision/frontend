@@ -23,6 +23,23 @@ describe("viewerZone", () => {
   test("is Eastern with no browser, so server-rendered text reads as it always did", () => {
     expect(viewerZone()).toBe(ET_ZONE);
   });
+
+  test("in a browser it is the browser's zone, and the formatters use it by default", () => {
+    // bun test runs in UTC (unless TZ is set), so this tells the browser's zone from Eastern.
+    // A stand-in window makes this a browser.
+    const g = globalThis as { window?: unknown };
+    const had = "window" in g;
+    const before = g.window;
+    g.window = {};
+    try {
+      const browser = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      expect(viewerZone()).toBe(browser);
+      expect(localTip("19:30", "2026-11-05")).toBe(localTip("19:30", "2026-11-05", { tz: browser }));
+    } finally {
+      if (had) g.window = before;
+      else delete g.window;
+    }
+  });
 });
 
 describe("localTip", () => {
@@ -66,6 +83,11 @@ describe("localTip", () => {
     expect(localTip(null, "2026-11-05", { tz: CHI })).toBe("");
     expect(localTip("", "2026-11-05", { tz: CHI })).toBe("");
     expect(localTip("TBD", "2026-11-05", { tz: CHI })).toBe("TBD");
+    expect(localTip("25:90", "2026-11-05", { tz: CHI })).toBe("25:90");
+    expect(etInstant("2026-11-05", "24:00")).toBeNull();
+    expect(etInstant("2026-02-30", "19:00")).toBeNull();
+    // An impossible date reads on today's, like a missing one.
+    expect(localTip("19:30", "2026-02-30", { tz: CHI })).toBe("6:30 PM");
   });
 
   test("without a date it reads on today's NBA date", () => {

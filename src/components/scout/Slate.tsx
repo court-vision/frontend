@@ -64,8 +64,9 @@ export function SlateOverview({ today, open, live }: { today: string; open: (foc
   const liveCount = games.filter((g) => gameState(g.status) === "live").length;
   const finals = games.filter((g) => gameState(g.status) === "final").length;
   const tips = games.map((g) => g.start_time_et).filter((t): t is string => !!t).sort();
-  // Tips arrive in ET and print in the viewer's zone; this names it.
-  const tipZone = zoneName(etInstant(today, tips[0]) ?? undefined, tz);
+  // Tips arrive in ET and print in the viewer's zone; each tile names it at its own tip (a night can span a clock change).
+  const zoneAt = (hhmm: string | undefined) => zoneName(etInstant(today, hhmm) ?? undefined, tz);
+  const tipZone = zoneAt(tips[0]);
   const yesterday = byDate[dates[0]];
   const ahead = dates.slice(2);
   return (
@@ -86,7 +87,7 @@ export function SlateOverview({ today, open, live }: { today: string; open: (foc
           { label: "Tonight", value: tonight.isLoading ? "…" : `${games.length}`, sub: games.length === 1 ? "game" : "games" },
           { label: "Live now", value: <span className={liveCount ? s.live : ""}>{liveCount}</span>, sub: finals ? `${finals} final` : undefined },
           { label: "First tip", value: tips.length ? tipText(tips[0], today, { tz }) : "—", sub: tips.length ? tipZone : "no tips yet" },
-          { label: "Last tip", value: tips.length ? tipText(tips[tips.length - 1], today, { tz }) : "—", sub: tips.length ? tipZone : undefined },
+          { label: "Last tip", value: tips.length ? tipText(tips[tips.length - 1], today, { tz }) : "—", sub: tips.length ? zoneAt(tips[tips.length - 1]) : undefined },
           { label: "On the floor", value: live.leaders ? `${live.leaders.length}` : live.leadersLoading ? "…" : "0", sub: "players with minutes" },
         ]}
       />
