@@ -69,7 +69,6 @@ export const NOT_OFFERED: Partial<Record<AiAutomationName, Partial<Record<AiLeve
   late_scratch: {
     notify: "Not built yet: an email when news touches a player before his game",
     act: "Not built yet: the late-scratch swap",
-    ai: "Comes with event check-ins (step 6)",
   },
   checkins: { notify: "Check-ins are Dime's own", act: "Check-ins are Dime's own" },
 };
@@ -78,6 +77,9 @@ export const EMAIL_OFF = "Your account's lineup email is off, so no team's lineu
 
 /** A row's note while the autopilot switch holds it at AI (the server's words). */
 export const AUTOPILOT_NOTE = "Autopilot sets these";
+
+/** Late scratches at AI while the server's event check-ins are off (the server's words). */
+export const EVENTS_OFF = "Nothing starts yet: event check-ins are switched off on the server";
 
 // ---------------------------------------------------------------------------
 // Lineup below AI: the tip-off email and auto-lineup
@@ -132,6 +134,8 @@ export interface TableState {
   lineupBelowAi: AiLevel;
   lineupEmail: boolean;
   actingAvailable: boolean;
+  /** The server starts event check-ins (DIME_EVENTS_ENABLED); left out, it does. */
+  eventsAvailable?: boolean;
 }
 
 export function offersAi(row: AiAutomationName): boolean {
@@ -160,6 +164,7 @@ export function tableOf(t: TableState): AiAutomationRow[] {
     if (row !== "checkins" && level === "ai") {
       if (t.autopilot) note = AUTOPILOT_NOTE;
       if (t.paused) note = "Paused: Dime does nothing here until you resume check-ins";
+      else if (row === "late_scratch" && t.eventsAvailable === false) note = EVENTS_OFF;
       else if (!t.actingAvailable) note = "Reviews only: Dime's acting is switched off on the server";
       if (row === "lineup" && !t.lineupEmail) note = `${note ? `${note}. ` : ""}Auto-lineup doesn't run: your account's lineup email is off`;
     }

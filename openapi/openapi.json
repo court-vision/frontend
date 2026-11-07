@@ -453,7 +453,8 @@
                   "morning",
                   "weekly",
                   "pre_lock",
-                  "night"
+                  "night",
+                  "event"
                 ],
                 "type": "string"
               },
@@ -1088,6 +1089,68 @@
         "title": "AiChartSeries",
         "type": "object"
       },
+      "AiCheckinEvent": {
+        "description": "Something that came in about a rostered player that this check-in was told about (the Dime\nautopilot plan, step 6; services/ai/events.py).",
+        "properties": {
+          "news_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "news: the item's id",
+            "title": "News Id"
+          },
+          "player_id": {
+            "description": "NBA player id",
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "received_at": {
+            "format": "date-time",
+            "title": "Received At",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "availability",
+              "news"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "summary": {
+            "description": "The server's line about it, as the brief gave it",
+            "title": "Summary",
+            "type": "string"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "availability: the new verdict (out, doubtful, available)",
+            "title": "Verdict"
+          }
+        },
+        "required": [
+          "source",
+          "player_id",
+          "summary",
+          "received_at",
+          "verdict",
+          "news_id"
+        ],
+        "title": "AiCheckinEvent",
+        "type": "object"
+      },
       "AiCheckinResp": {
         "properties": {
           "data": {
@@ -1191,7 +1254,8 @@
               "morning",
               "weekly",
               "pre_lock",
-              "night"
+              "night",
+              "event"
             ],
             "title": "Kind",
             "type": "string"
@@ -1257,6 +1321,14 @@
             "title": "Due At",
             "type": "string"
           },
+          "events": {
+            "description": "What came in that it was told about: an event check-in's reason, or what a scheduled one picked up",
+            "items": {
+              "$ref": "#/components/schemas/AiCheckinEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
           "finished_at": {
             "anyOf": [
               {
@@ -1270,12 +1342,13 @@
             "title": "Finished At"
           },
           "kind": {
-            "description": "morning, weekly (a matchup's first morning), pre_lock (before the first tip) or night (the next morning's follow-up)",
+            "description": "morning, weekly (a matchup's first morning), pre_lock (before the first tip), night (the next morning's follow-up) or event (news about a rostered player)",
             "enum": [
               "morning",
               "weekly",
               "pre_lock",
-              "night"
+              "night",
+              "event"
             ],
             "title": "Kind",
             "type": "string"
@@ -1346,7 +1419,8 @@
           "changes",
           "agree",
           "disagree",
-          "sent"
+          "sent",
+          "events"
         ],
         "title": "AiCheckinSummary",
         "type": "object"
@@ -5640,6 +5714,118 @@
           "live_adjusted"
         ],
         "title": "CategoryTeamScore",
+        "type": "object"
+      },
+      "CheckinEventsData": {
+        "properties": {
+          "facts": {
+            "title": "Facts",
+            "type": "integer"
+          },
+          "off": {
+            "title": "Off",
+            "type": "boolean"
+          },
+          "recorded": {
+            "title": "Recorded",
+            "type": "integer"
+          },
+          "started": {
+            "items": {
+              "$ref": "#/components/schemas/CheckinStarted"
+            },
+            "title": "Started",
+            "type": "array"
+          },
+          "teams": {
+            "title": "Teams",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "off",
+          "teams",
+          "facts",
+          "recorded",
+          "started"
+        ],
+        "title": "CheckinEventsData",
+        "type": "object"
+      },
+      "CheckinEventsReq": {
+        "description": "Body for POST /v1/internal/jobs/checkins/events: keys only, the facts are read here.",
+        "properties": {
+          "availability": {
+            "items": {
+              "$ref": "#/components/schemas/VerdictChangeIn"
+            },
+            "maxItems": 500,
+            "title": "Availability",
+            "type": "array"
+          },
+          "news": {
+            "description": "nba.news_items ids just stored",
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 500,
+            "title": "News",
+            "type": "array"
+          }
+        },
+        "title": "CheckinEventsReq",
+        "type": "object"
+      },
+      "CheckinEventsResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckinEventsData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "CheckinEventsResp",
         "type": "object"
       },
       "CheckinRunData": {
@@ -16651,6 +16837,199 @@
         "title": "NBATeamStatsResp",
         "type": "object"
       },
+      "NewsItemResp": {
+        "properties": {
+          "attribution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribution"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The blurb (a player's news only)",
+            "title": "Body"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "injury",
+              "availability",
+              "lineup",
+              "transaction",
+              "performance",
+              "rumor",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "news_id": {
+            "title": "News Id",
+            "type": "integer"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/NewsPlayerRef"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The source's time, else when it was fetched",
+            "title": "Published At"
+          },
+          "source": {
+            "description": "espn_injuries, espn_player_news, rotowire_rss or realgm_rss",
+            "title": "Source",
+            "type": "string"
+          },
+          "teams": {
+            "description": "NBA tricodes",
+            "items": {
+              "type": "string"
+            },
+            "title": "Teams",
+            "type": "array"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "news_id",
+          "published_at",
+          "source",
+          "kind",
+          "headline",
+          "body",
+          "attribution",
+          "url",
+          "players",
+          "teams"
+        ],
+        "title": "NewsItemResp",
+        "type": "object"
+      },
+      "NewsListData": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NewsItemResp"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "NewsListData",
+        "type": "object"
+      },
+      "NewsListResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewsListData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "NewsListResp",
+        "type": "object"
+      },
+      "NewsPlayerRef": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "description": "NBA player id",
+            "title": "Player Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "name"
+        ],
+        "title": "NewsPlayerRef",
+        "type": "object"
+      },
       "NotificationPreferenceReq": {
         "description": "Request model for creating/updating notification preferences.",
         "properties": {
@@ -26055,6 +26434,28 @@
         "title": "ValuationPlayer",
         "type": "object"
       },
+      "VerdictChangeIn": {
+        "description": "A verdict the availability pipeline resolved this tick that changed for a game not yet tipped.\nThe backend reads the verdict itself (nba.player_availability).",
+        "properties": {
+          "game_date": {
+            "format": "date",
+            "title": "Game Date",
+            "type": "string"
+          },
+          "player_id": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 2147483647.0,
+            "title": "Player Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "game_date"
+        ],
+        "title": "VerdictChangeIn",
+        "type": "object"
+      },
       "WeekResult": {
         "properties": {
           "categories_lost": {
@@ -29433,6 +29834,53 @@
         "summary": "Reconcile a session with the ESPN draft room's INIT frame",
         "tags": [
           "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/jobs/checkins/events": {
+      "post": {
+        "description": "What came in about players: verdicts that changed for games not yet tipped, news items just\nstored. Each becomes an event on every team Dime runs that rosters the player, and a team with a\nnew one gets a check-in about it (or the scheduled one about to run takes it).\n\nCalled by data-platform's availability pipeline (its late-scratch events, every 2-minute tick that\nhas one) and its news feed (every 5 minutes). Keys only: the verdicts and items are read here. Off\nunless DIME_EVENTS_ENABLED; the check-ins run on here after the response.",
+        "operationId": "checkin_events_v1_internal_jobs_checkins_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinEventsReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinEventsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Checkin Events",
+        "tags": [
+          "internal jobs"
         ]
       }
     },
@@ -33057,6 +33505,123 @@
         ]
       }
     },
+    "/v1/news": {
+      "get": {
+        "description": "The newest NBA news items Court Vision has stored, from ESPN, Rotowire and RealGM: headline, source, attribution, link and the players and teams each is about. No blurb: a player's own news (`/players/{player_id}/news`) carries it.",
+        "operationId": "get_news_v1_news_get",
+        "parameters": [
+          {
+            "description": "Only these kinds",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "enum": [
+                      "injury",
+                      "availability",
+                      "lineup",
+                      "transaction",
+                      "performance",
+                      "rumor",
+                      "other"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only these kinds",
+              "title": "Kind"
+            }
+          },
+          {
+            "description": "An NBA tricode",
+            "in": "query",
+            "name": "team",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[A-Za-z]{2,3}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "An NBA tricode",
+              "title": "Team"
+            }
+          },
+          {
+            "description": "Only items since this time (default the last 24 hours)",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only items since this time (default the last 24 hours)",
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsListResp"
+                }
+              }
+            },
+            "description": "News retrieved"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "League news",
+        "tags": [
+          "News"
+        ]
+      }
+    },
     "/v1/ownership/trending": {
       "get": {
         "description": "Returns players with significant ownership changes over a specified period.\n\nUses velocity-based ranking by default, which measures relative change:\n- 5% \u2192 15% = +200% velocity (breakout player)\n- 60% \u2192 65% = +8% velocity (established player with small uptick)\n\nThis surfaces emerging players better than absolute change alone.",
@@ -33708,6 +34273,80 @@
           }
         },
         "summary": "Get player game log",
+        "tags": [
+          "Players"
+        ]
+      }
+    },
+    "/v1/players/{player_id}/news": {
+      "get": {
+        "description": "The news items about a player, newest first, from ESPN's injury notes and player news, Rotowire and RealGM: source, time, headline, blurb, attribution and link.",
+        "operationId": "get_player_news_v1_players__player_id__news_get",
+        "parameters": [
+          {
+            "description": "NBA player ID",
+            "in": "path",
+            "name": "player_id",
+            "required": true,
+            "schema": {
+              "description": "NBA player ID",
+              "title": "Player Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "How far back",
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "description": "How far back",
+              "maximum": 30,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsListResp"
+                }
+              }
+            },
+            "description": "Player news retrieved successfully"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "Get player news",
         "tags": [
           "Players"
         ]
