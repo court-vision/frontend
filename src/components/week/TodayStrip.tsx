@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
 import { KIND_WORD, moveLine, type RowButton } from "@/lib/daily-actions";
+import { useViewerZone } from "@/hooks/useViewerZone";
+import { localTip, localizeEtClocks } from "@/lib/local-time";
 import type { DailyAction, DailyActionKind } from "@/types/daily-actions";
 import { tip } from "./format";
 import { TickBox, useReducedMotion, useTickHover, type TickOpen } from "./TickBox";
@@ -25,6 +27,8 @@ export interface TodayStripProps {
   hint: string | null;
   /** "Tue 10/20": the day the moves are for. */
   dayLabel: string;
+  /** That day's NBA date: the tips are ET wall times on it, printed in the viewer's zone. */
+  date?: string | null;
   open: TickOpen;
   onOpen: (open: TickOpen) => void;
   onButton: (row: TodayRow) => void;
@@ -58,7 +62,8 @@ const TONE: Record<DailyActionKind, string> = {
  * here sends: everything waits in the tray.
  */
 export function TodayStrip(props: TodayStripProps) {
-  const { status, rows, error, open, onOpen, onButton } = props;
+  const { status, rows, error, open, onOpen, onButton, date } = props;
+  const tz = useViewerZone();
   const reduced = useReducedMotion();
   const [picked, setPicked] = useState(0);
   const [strip, setStrip] = useState<HTMLDivElement | null>(null);
@@ -118,7 +123,7 @@ export function TodayStrip(props: TodayStripProps) {
         <span className={s.todayLine}>
           <span
             className={`${s.todayMove} ${s.todayOpens}`}
-            title={current ? [current.action.title, current.action.detail].filter(Boolean).join(" · ") : error ?? undefined}
+            title={current ? [current.action.title, localizeEtClocks(current.action.detail, date, { tz })].filter(Boolean).join(" · ") : error ?? undefined}
             {...opens}
           >
             <FlipLine text={line} tone={tone} toned={toned} lines={lines} still={reduced} />
@@ -231,7 +236,8 @@ interface BoxProps extends TodayStripProps {
   hover: { onEnter: () => void; onLeave: () => void };
 }
 
-function MovesBox({ status, rows, error, hint, dayLabel, open, onOpen, onButton, onStageAll, stageAllCount, onRetry, container, at, onPick, anchor, reduced, hover }: BoxProps) {
+function MovesBox({ status, rows, error, hint, dayLabel, date, open, onOpen, onButton, onStageAll, stageAllCount, onRetry, container, at, onPick, anchor, reduced, hover }: BoxProps) {
+  const tz = useViewerZone();
   return (
     <TickBox
       anchor={anchor}
@@ -279,9 +285,11 @@ function MovesBox({ status, rows, error, hint, dayLabel, open, onOpen, onButton,
                 <Headshot nbaId={a.player.nba_player_id} name={a.player.name} size={26} />
                 <span className={s.todayText}>
                   <span className={s.todayTitle}>{a.title}</span>
-                  {a.detail || r.button.reason ? <span className={s.todayDetail}>{r.button.reason && r.button.disabled ? r.button.reason : a.detail}</span> : null}
+                  {a.detail || r.button.reason ? <span className={s.todayDetail}>{r.button.reason && r.button.disabled ? r.button.reason : localizeEtClocks(a.detail, date, { tz })}</span> : null}
                 </span>
-                <span className={s.todayTip}>{tip(a.game_time_et)}</span>
+                <span className={s.todayTip} title={a.game_time_et ? localTip(a.game_time_et, date, { tz, label: true }) : undefined}>
+                  {tip(a.game_time_et, date, { tz })}
+                </span>
                 <StageButton row={r} onButton={onButton} wide />
               </div>
             );

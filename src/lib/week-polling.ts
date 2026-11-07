@@ -30,12 +30,15 @@
  * fast from the early tip on: 49 of the season's 156 game days tip before
  * 18:00 ET, 38 before 16:00, hours before most evening games.
  */
+import { etInstant } from "@/lib/local-time";
 import type { LineupState } from "@/types/lineup-editor";
 import type { LiveMatchupData } from "@/types/matchup";
 
 const MINUTE = 60_000;
 
 /** cron-runner's live-stats job writes box scores every 30 s while games are on. */
+export { etInstant };
+
 export const LIVE_FAST = 30_000;
 export const LIVE_SLOW = 5 * MINUTE;
 export const LINEUP_FAST = MINUTE;
@@ -55,33 +58,6 @@ const MIN_WAIT = 5_000;
 export interface Span {
   start: number;
   end: number;
-}
-
-const ET = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  hourCycle: "h23",
-  year: "numeric",
-  month: "numeric",
-  day: "numeric",
-  hour: "numeric",
-  minute: "numeric",
-});
-
-/** The ET wall clock at `ms`, read back as if it were UTC. */
-function etWall(ms: number): number {
-  const p = Object.fromEntries(ET.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
-  return Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour) % 24, Number(p.minute));
-}
-
-/** The instant of an ET wall time ("19:30") on a date ("2026-10-20"); null when either is unreadable. */
-export function etInstant(date: string | null | undefined, hhmm: string | null | undefined): number | null {
-  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date ?? "");
-  const t = /^(\d{1,2}):(\d{2})/.exec(hhmm ?? "");
-  if (!d || !t) return null;
-  const wall = Date.UTC(Number(d[1]), Number(d[2]) - 1, Number(d[3]), Number(t[1]), Number(t[2]));
-  // ET is UTC−5 or UTC−4: guess the first, then correct by how far that instant's ET clock is off.
-  const guess = wall + 5 * 60 * MINUTE;
-  return guess + (wall - etWall(guess));
 }
 
 /** Your players' tips on the board's day (each one locks his spot). */

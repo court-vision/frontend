@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, LayoutDashboard } from "lucide-react";
 import { TeamLogo } from "@/components/desk/TeamLogo";
 import { useGamesOnDateQuery } from "@/hooks/useGames";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import { NBA_TEAMS } from "@/lib/nbaTeams";
 import {
   MARKET_SECTIONS,
@@ -244,6 +245,7 @@ function TeamsLedger({ focus, open, cursor, setCursor, onRows, lens }: LedgerPro
 // ---------------------------------------------------------------------------
 
 function SlateLedger({ focus, open, cursor, setCursor, onRows, today, lens, slateDay, setSlateDay }: LedgerProps) {
+  const tz = useViewerZone();
   const days = useMemo(() => {
     const diff = daysBetween(today, slateDay);
     return slateDates(today, Math.max(3, -diff + 2), Math.max(10, diff + 2));
@@ -318,7 +320,7 @@ function SlateLedger({ focus, open, cursor, setCursor, onRows, today, lens, slat
                         </span>
                         <span className={`${s.rowSub} ${state === "live" ? s.live : ""}`} style={{ textAlign: "right" }}>
                           {state !== "scheduled" ? `${g.away_score ?? 0}–${g.home_score ?? 0} · ` : ""}
-                          {gameStatusText(g.status, g.period, g.game_clock, g.start_time_et)}
+                          {gameStatusText(g.status, g.period, g.game_clock, g.start_time_et, g.game_date, tz)}
                         </span>
                       </button>
                     );

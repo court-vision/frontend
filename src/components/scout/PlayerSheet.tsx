@@ -7,6 +7,7 @@ import { TeamLogo } from "@/components/desk/TeamLogo";
 import { usePlayerPercentilesQuery, usePlayerStatsQuery } from "@/hooks/usePlayer";
 import { usePlayerOwnershipQuery } from "@/hooks/usePlayerOwnership";
 import { usePlayerStatusQuery } from "@/hooks/usePlayerStatus";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import { useEspnMarketLineQuery, usePlayerProfileQuery, usePlayerProjectionQuery, usePlayerTrendsQuery } from "@/hooks/useScout";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
 import { formatCategoryValue } from "@/lib/category-format";
@@ -38,6 +39,7 @@ import {
   teamInfo,
   type PlayerIdentity,
 } from "@/lib/scout";
+import { localDate } from "@/lib/local-time";
 import { windowGames } from "@/lib/statWindow";
 import type { GameLog, PercentileData, PlayerStats } from "@/types/player";
 import type { RankingsPlayer } from "@/types/rankings";
@@ -86,6 +88,12 @@ const PCT_KEYS: Array<{ key: keyof StatLine; pct: keyof PercentileData; label: s
   { key: "fg3Pct", pct: "avg_fg3_pct", label: "3P%" },
 ];
 
+/** A profile snapshot's UTC stamp as the viewer's own date ("2026-11-05"). */
+function profileDate(iso: string, tz: string): string {
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? iso.slice(0, 10) : localDate(t, tz);
+}
+
 function heightText(h: string | null | undefined): string | null {
   if (!h) return null;
   const m = /^(\d+)-(\d+)$/.exec(h);
@@ -105,6 +113,7 @@ export function PlayerSheet(props: PlayerSheetProps) {
   const percentiles = usePlayerPercentilesQuery(id);
   const status = usePlayerStatusQuery(id);
   const ownership = usePlayerOwnershipQuery(id);
+  const tz = useViewerZone();
   // While flipping through the pool with the arrow keys the extras wait until
   // the sheet rests on a player: four requests a flip, not nine. A click, a
   // search pick or a link asks for all of them at once; waiting there only
@@ -437,7 +446,7 @@ export function PlayerSheet(props: PlayerSheetProps) {
             <div className={s.blockEmpty}>No ESPN projection for this season.</div>
           )}
         </Block>
-        <Block title="Profile" note={prof ? `as of ${prof.updated_at.slice(0, 10)}` : undefined}>
+        <Block title="Profile" note={prof ? `as of ${profileDate(prof.updated_at, tz)}` : undefined}>
           {prof ? (
             <KV items={profileItems(prof, age)} />
           ) : profile.isLoading || !settled ? (

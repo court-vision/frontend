@@ -85,6 +85,7 @@ import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
+import { useViewerZone } from "@/hooks/useViewerZone";
 
 const NO_STAGING: Staged = {};
 const MAX_REPLACE_OPTIONS = 80;
@@ -119,6 +120,7 @@ export function WeekTerminal({
   /** Open the market on arrival, in this mode. */
   initialMarket?: MarketMode;
 }) {
+  const tz = useViewerZone();
   const lineup = data.lineup;
   const rawBoards = lineup.boards;
   const todayDay = lineup.todayDay;
@@ -1263,8 +1265,9 @@ export function WeekTerminal({
         const others = (proj.lanes ?? 1) - 1;
         const shared = others > 0 ? `, shared with ${others} other lane${others === 1 ? "" : "s"}` : "";
         const adds = `${proj.adds} add${proj.adds === 1 ? "" : "s"} planned${proj.adds_left != null ? ` of ${proj.adds_left} left${shared}` : ""}`;
-        const next = lane.next_decision_at ? ` · next decision ${whenTime(lane.next_decision_at)}` : "";
-        summary = `${signed(proj.gain)} projected · ${adds} · as of ${whenTime(proj.as_of)}${next} · re-planned before each day`;
+        // One zone label for the line, on its last clock.
+        const next = lane.next_decision_at ? ` · next decision ${whenTime(lane.next_decision_at, undefined, { tz, label: true })}` : "";
+        summary = `${signed(proj.gain)} projected · ${adds} · as of ${whenTime(proj.as_of, undefined, { tz, label: !next })}${next} · re-planned before each day`;
       } else summary = "waiting for its first decision";
       return [
         {
@@ -1285,7 +1288,7 @@ export function WeekTerminal({
         },
       ];
     });
-  }, [openLanes, source, laneCellsById, data.laneBusy, root, requestPool, updateLane]);
+  }, [openLanes, source, laneCellsById, data.laneBusy, root, requestPool, updateLane, tz]);
   const stoppingLane = confirm ? openLanes.find((l) => l.id === confirm.stopLane) ?? null : null;
   // A poll can end the lane under its dialog, which closes without onOpenChange: let go of the
   // confirmation so the desk keys work again.
@@ -1521,13 +1524,14 @@ export function WeekTerminal({
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
   const tonight = useMemo(() => {
-    if (!grid || todayIndex == null) return { live: 0, toTip: 0, nextTip: null };
+    if (!grid || todayIndex == null) return { live: 0, toTip: 0, nextTip: null, date: null };
     const cells = grid.rows.filter((r) => r.player && r.kind !== "incoming").map((r) => r.cells[todayIndex]);
     const tips = cells.filter((c) => c.state === "upcoming" && c.counts && c.note).map((c) => c.note!).sort();
     return {
       live: cells.filter((c) => c.state === "live" && c.counts).length,
       toTip: cells.filter((c) => c.state === "upcoming" && c.counts).length,
       nextTip: tips[0] ?? null,
+      date: grid.days[todayIndex]?.date ?? null,
     };
   }, [grid, todayIndex]);
 
@@ -1625,6 +1629,7 @@ export function WeekTerminal({
                 error={data.actions.error}
                 hint={actionsStale ? "Your lineup changed since these were worked out: reading them again." : actionsData ? streamersHint(actionsData) : null}
                 dayLabel={todayDay != null ? dayLabel(todayDay) : "Today"}
+                date={actionsData?.nba_date ?? null}
                 open={movesTick.open}
                 onOpen={movesTick.onOpen}
                 onButton={onTodayButton}

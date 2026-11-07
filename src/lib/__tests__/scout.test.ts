@@ -316,9 +316,16 @@ describe("games", () => {
     expect(clockText("PT05M23.00S")).toBe("5:23");
     expect(clockText("PT00M09.40S")).toBe("0:09");
     expect(clockText(null)).toBe("");
+    // Tips arrive in ET; with no browser (the server, these tests) they print in ET.
     expect(tipText("19:30")).toBe("7:30 PM");
     expect(tipText("12:00")).toBe("12:00 PM");
-    expect(gameStatusText("scheduled", null, null, "19:30")).toBe("7:30 PM ET");
+    // In a browser they print in the viewer's zone, on the game's own date.
+    expect(tipText("19:30", "2026-11-05", { tz: "America/Chicago" })).toBe("6:30 PM");
+    expect(tipText("19:30", "2026-11-05", { tz: "America/Los_Angeles", label: true })).toBe("4:30 PM PST");
+    expect(gameStatusText("scheduled", null, null, "19:30", "2026-11-05")).toBe("7:30 PM EST");
+    expect(gameStatusText("scheduled", null, null, "19:30", "2026-10-21")).toBe("7:30 PM EDT");
+    expect(gameStatusText("scheduled", null, null, "19:30", "2026-11-05", "America/Denver")).toBe("5:30 PM MST");
+    expect(gameStatusText("scheduled", null, null, null)).toBe("TBD");
     expect(gameStatusText("in_progress", 3, "PT05M23.00S", "19:30")).toBe("Q3 5:23");
     expect(gameStatusText("in_progress", 2, "PT00M00.00S", null)).toBe("Half");
     expect(gameStatusText("final", 4, null, null)).toBe("Final");

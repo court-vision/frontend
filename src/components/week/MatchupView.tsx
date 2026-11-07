@@ -7,6 +7,7 @@ import { Headshot } from "@/components/desk/Headshot";
 import dk from "@/components/desk/desk.module.css";
 import { buildMatchupDay, dayBars, weekBars, type DuelRow, type DuelSide, type MatchupDay, type StatBar } from "@/lib/matchup-day";
 import { healthOf, type StatLine, type WeekGrid, type WeekSource } from "@/lib/week-grid";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import { monthDay, oppShort, pts, tip } from "./format";
 import s from "./week.module.css";
 
@@ -100,20 +101,20 @@ export function MatchupView({ grid, source, day, todayIndex, onDay, onPlayer }: 
           </span>
         </div>
         {active.map((r) => (
-          <Duel key={r.key} row={r} past={md.kind === "past"} onPlayer={onPlayer} />
+          <Duel key={r.key} row={r} past={md.kind === "past"} date={d?.date} onPlayer={onPlayer} />
         ))}
         <TotalRow md={md} />
         {bench.length ? <GroupRow label="Bench" note="games here don't count" /> : null}
         {bench.map((r) => (
-          <Duel key={r.key} row={r} past={md.kind === "past"} onPlayer={onPlayer} />
+          <Duel key={r.key} row={r} past={md.kind === "past"} date={d?.date} onPlayer={onPlayer} />
         ))}
         {ir.length ? <GroupRow label="IR" /> : null}
         {ir.map((r) => (
-          <Duel key={r.key} row={r} past={md.kind === "past"} onPlayer={onPlayer} />
+          <Duel key={r.key} row={r} past={md.kind === "past"} date={d?.date} onPlayer={onPlayer} />
         ))}
         {drop.length ? <GroupRow label="Dropping" note="leaves the roster for the free agent: his games stop counting" tone="var(--down)" /> : null}
         {drop.map((r) => (
-          <Duel key={r.key} row={r} past={md.kind === "past"} onPlayer={onPlayer} />
+          <Duel key={r.key} row={r} past={md.kind === "past"} date={d?.date} onPlayer={onPlayer} />
         ))}
       </div>
 
@@ -196,16 +197,16 @@ function GroupRow({ label, note, tone }: { label: string; note?: string; tone?: 
   );
 }
 
-function Duel({ row, past, onPlayer }: { row: DuelRow; past: boolean; onPlayer?: (id: number) => void }) {
+function Duel({ row, past, date, onPlayer }: { row: DuelRow; past: boolean; date?: string; onPlayer?: (id: number) => void }) {
   return (
     <div className={s.muRow} style={{ gridTemplateColumns: TEMPLATE }} data-group={row.group}>
-      <Side side={row.you} edge={row.edge === "you"} past={past} onPlayer={onPlayer} />
+      <Side side={row.you} edge={row.edge === "you"} past={past} date={date} onPlayer={onPlayer} />
       <span className={s.muSpine}>
         <span className={s.slotChip} data-group={row.group} data-in={row.you?.incoming}>
           {row.slot}
         </span>
       </span>
-      <Side side={row.opp} edge={row.edge === "opp"} past={past} mirror blank={row.group === "drop"} onPlayer={onPlayer} />
+      <Side side={row.opp} edge={row.edge === "opp"} past={past} date={date} mirror blank={row.group === "drop"} onPlayer={onPlayer} />
     </div>
   );
 }
@@ -215,6 +216,7 @@ function Side({
   side,
   edge,
   past,
+  date,
   mirror = false,
   blank: quiet = false,
   onPlayer,
@@ -222,11 +224,14 @@ function Side({
   side: DuelSide | null;
   edge: boolean;
   past: boolean;
+  /** The day's NBA date, which a tip is on. */
+  date?: string;
   mirror?: boolean;
   /** No spot to fill on this side (the drop row's opponent side): leave it unlabelled. */
   blank?: boolean;
   onPlayer?: (id: number) => void;
 }) {
+  const tz = useViewerZone();
   if (!side) {
     const blank = [
       <span key="name" className={s.muName} data-mirror={mirror}>
@@ -257,7 +262,7 @@ function Side({
       ? g.clock ?? "live"
       : g.status === "final"
         ? `final ${oppShort(g.opp)}`.trim()
-        : `${oppShort(g.opp)}${g.time ? ` · ${tip(g.time)}` : ""}`;
+        : `${oppShort(g.opp)}${g.time ? ` · ${tip(g.time, date, { tz })}` : ""}`;
   const name = (
     <span
       key="name"

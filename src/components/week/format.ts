@@ -1,3 +1,5 @@
+import { localDateTime, localTip, localWeekdayTime, type ClockOpts } from "@/lib/local-time";
+
 /** 1795 → "1,795.0"; null → "—". */
 export function pts(n: number | null | undefined): string {
   if (n == null || Number.isNaN(n)) return "—";
@@ -11,13 +13,12 @@ export function signed(n: number): string {
   return `${n > 0 ? "+" : "−"}${abs}`;
 }
 
-/** "19:30" → "7:30P". */
-export function tip(hhmm: string | null | undefined): string {
-  if (!hhmm) return "";
-  const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
-  if (!m) return hhmm;
-  const h = Number(m[1]);
-  return `${h % 12 === 0 ? 12 : h % 12}:${m[2]}${h >= 12 ? "P" : "A"}`;
+/**
+ * An ET tip ("19:30") as the viewer's clock, tight: "6:30P" in Central, "1:30A+1"
+ * where it falls on the viewer's next day. `date` is the game's NBA date.
+ */
+export function tip(hhmm: string | null | undefined, date?: string | null, opts: Omit<ClockOpts, "compact"> = {}): string {
+  return localTip(hhmm, date, { ...opts, compact: true });
 }
 
 /** "vs LAL" → "LAL", "@ LAL" → "@LAL". */
@@ -51,21 +52,21 @@ export function shortName(name: string): string {
   return `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
 }
 
-/** An instant in the viewer's time: "Wed 7:00 PM". */
-export function weekdayTime(iso: string): string {
-  const t = new Date(iso);
-  if (Number.isNaN(t.getTime())) return "";
-  return t.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
+/** An instant in the viewer's time: "Wed 7:00 PM" (with `label`, "Wed 7:00 PM CST"). */
+export function weekdayTime(iso: string, opts: Pick<ClockOpts, "tz" | "label"> = {}): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  return localWeekdayTime(t, opts);
 }
 
 /**
  * An instant in the viewer's time, said so it can't be mistaken for this week's
  * day of the same name: "Wed 7:00 PM" within six days of now, else "Wed Oct 21, 7:00 PM".
  */
-export function whenTime(iso: string, now: number = Date.now()): string {
-  const t = new Date(iso);
-  if (Number.isNaN(t.getTime())) return "";
-  const days = Math.abs(t.getTime() - now) / 86_400_000;
-  if (days < 6) return weekdayTime(iso);
-  return t.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+export function whenTime(iso: string, now: number = Date.now(), opts: Pick<ClockOpts, "tz" | "label"> = {}): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const days = Math.abs(t - now) / 86_400_000;
+  if (days < 6) return localWeekdayTime(t, opts);
+  return localDateTime(t, opts);
 }

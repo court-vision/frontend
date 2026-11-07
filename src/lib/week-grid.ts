@@ -290,8 +290,10 @@ export interface GridCell {
   /** Points (final / live) or the projection (upcoming). */
   value: number | null;
   opp: string | null;
-  /** Tip time or game clock. */
+  /** Tip time ("19:30" ET) or game clock. */
   note: string | null;
+  /** The day's NBA date, which the tip is on (printed in the viewer's zone). */
+  date?: string;
   counts: boolean;
   tag: CellTag;
 }
@@ -641,7 +643,7 @@ export function buildWeekGrid({
     if (!g || offRoster(p, d.index) || offDay) {
       return { state: "none", value: null, opp: null, note: null, counts: false, tag: null };
     }
-    const base = { opp: g.opp, note: g.time, line: g.line ?? null };
+    const base = { opp: g.opp, note: g.time, date: d.date, line: g.line ?? null };
     if (d.kind === "past") {
       // As it stood, only the active spots counted; with no record, every game shows as counted.
       const stood = stoodOn(d.index);
