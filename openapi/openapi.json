@@ -270,12 +270,167 @@
         "title": "AdvancedStatsData",
         "type": "object"
       },
+      "AiAutopilotReq": {
+        "description": "Body for PUT /v1/internal/ai/autopilot/{team_id}.",
+        "properties": {
+          "on": {
+            "description": "true starts (or resumes) the team's check-ins, false pauses them",
+            "title": "On",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "on"
+        ],
+        "title": "AiAutopilotReq",
+        "type": "object"
+      },
+      "AiAutopilotResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiAutopilotTeam"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiAutopilotResp",
+        "type": "object"
+      },
+      "AiAutopilotTeam": {
+        "description": "A team Dime may run check-ins on, and its switch.",
+        "properties": {
+          "active_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was last switched on or resumed",
+            "title": "Active Since"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiCheckinSlot"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The next scheduled check-in, while on"
+          },
+          "on": {
+            "description": "Check-ins run on the schedule",
+            "title": "On",
+            "type": "boolean"
+          },
+          "paused_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused At"
+          },
+          "paused_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "user",
+                  "system"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused By"
+          },
+          "paused_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused Reason"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "team_id",
+          "on",
+          "active_since",
+          "paused_at",
+          "paused_by",
+          "paused_reason",
+          "next"
+        ],
+        "title": "AiAutopilotTeam",
+        "type": "object"
+      },
       "AiBlockPart": {
         "properties": {
           "block": {
             "discriminator": {
               "mapping": {
                 "chart": "#/components/schemas/AiChart",
+                "decision": "#/components/schemas/AiDecisionBlock",
                 "place": "#/components/schemas/AiPlace",
                 "proposal": "#/components/schemas/AiProposal",
                 "table": "#/components/schemas/AiTable"
@@ -294,6 +449,9 @@
               },
               {
                 "$ref": "#/components/schemas/AiPlace"
+              },
+              {
+                "$ref": "#/components/schemas/AiDecisionBlock"
               }
             ],
             "title": "Block"
@@ -448,6 +606,353 @@
         "title": "AiChartSeries",
         "type": "object"
       },
+      "AiCheckinResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiCheckinSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiCheckinResp",
+        "type": "object"
+      },
+      "AiCheckinRunReq": {
+        "description": "Body for POST /v1/internal/ai/checkins: run one now.",
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "morning",
+                  "weekly",
+                  "pre_lock",
+                  "night"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Default: by the clock against today's first tip",
+            "title": "Kind"
+          },
+          "team_id": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 2147483647.0,
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "team_id"
+        ],
+        "title": "AiCheckinRunReq",
+        "type": "object"
+      },
+      "AiCheckinSlot": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "morning",
+              "weekly",
+              "pre_lock",
+              "night"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "date",
+          "due_at"
+        ],
+        "title": "AiCheckinSlot",
+        "type": "object"
+      },
+      "AiCheckinSummary": {
+        "description": "One check-in: a turn Dime started itself, about one fantasy day, in shadow.",
+        "properties": {
+          "agree": {
+            "title": "Agree",
+            "type": "integer"
+          },
+          "changes": {
+            "description": "Of those, the ones that would change an automation's plan or the roster",
+            "title": "Changes",
+            "type": "integer"
+          },
+          "checkin_id": {
+            "title": "Checkin Id",
+            "type": "integer"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its conversation; null when it never ran",
+            "title": "Conversation Id"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "date": {
+            "description": "The fantasy day it is about",
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "decisions": {
+            "description": "Calls it logged, holds included",
+            "title": "Decisions",
+            "type": "integer"
+          },
+          "disagree": {
+            "title": "Disagree",
+            "type": "integer"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "kind": {
+            "description": "morning, weekly (a matchup's first morning), pre_lock (before the first tip) or night (the next morning's follow-up)",
+            "enum": [
+              "morning",
+              "weekly",
+              "pre_lock",
+              "night"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "manual": {
+            "description": "Run from the AI desk rather than on the schedule",
+            "title": "Manual",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it failed, was missed or skipped (e.g. window_closed, budget, daily_cap, AI_TIMEOUT)",
+            "title": "Reason"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "running",
+              "done",
+              "failed",
+              "missed",
+              "skipped"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkin_id",
+          "team_id",
+          "kind",
+          "date",
+          "manual",
+          "state",
+          "reason",
+          "due_at",
+          "started_at",
+          "finished_at",
+          "conversation_id",
+          "title",
+          "cost_usd",
+          "decisions",
+          "changes",
+          "agree",
+          "disagree"
+        ],
+        "title": "AiCheckinSummary",
+        "type": "object"
+      },
+      "AiCheckinsData": {
+        "properties": {
+          "cap_usd": {
+            "description": "The check-ins' monthly budget, apart from the AI desk's",
+            "title": "Cap Usd",
+            "type": "number"
+          },
+          "checkins": {
+            "description": "Newest first",
+            "items": {
+              "$ref": "#/components/schemas/AiCheckinSummary"
+            },
+            "title": "Checkins",
+            "type": "array"
+          },
+          "month_usd": {
+            "description": "This month's check-in spend, every autopilot team",
+            "title": "Month Usd",
+            "type": "number"
+          },
+          "teams": {
+            "description": "The caller's teams Dime may run check-ins on",
+            "items": {
+              "$ref": "#/components/schemas/AiAutopilotTeam"
+            },
+            "title": "Teams",
+            "type": "array"
+          }
+        },
+        "required": [
+          "teams",
+          "checkins",
+          "month_usd",
+          "cap_usd"
+        ],
+        "title": "AiCheckinsData",
+        "type": "object"
+      },
+      "AiCheckinsResp": {
+        "description": "Response for GET /v1/internal/ai/checkins.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiCheckinsData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiCheckinsResp",
+        "type": "object"
+      },
       "AiContext": {
         "description": "Where the user is when they ask. IDs only -- never names from league data,\nso the context adds no prompt-injection surface.",
         "properties": {
@@ -575,6 +1080,17 @@
       },
       "AiConversationDetail": {
         "properties": {
+          "checkin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiCheckinSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The check-in that started it, for a check-in's conversation: its first turn's message is the server's brief, not the user's"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -596,6 +1112,16 @@
           "id": {
             "title": "Id",
             "type": "integer"
+          },
+          "kind": {
+            "default": "chat",
+            "description": "chat (the user's), or a check-in's conversation",
+            "enum": [
+              "chat",
+              "checkin"
+            ],
+            "title": "Kind",
+            "type": "string"
           },
           "team_id": {
             "anyOf": [
@@ -634,11 +1160,13 @@
           "id",
           "title",
           "team_id",
+          "kind",
           "created_at",
           "updated_at",
           "turns",
           "full",
-          "history"
+          "history",
+          "checkin"
         ],
         "title": "AiConversationDetail",
         "type": "object"
@@ -762,6 +1290,16 @@
             "title": "Id",
             "type": "integer"
           },
+          "kind": {
+            "default": "chat",
+            "description": "chat (the user's), or a check-in's conversation",
+            "enum": [
+              "chat",
+              "checkin"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
           "team_id": {
             "anyOf": [
               {
@@ -799,11 +1337,220 @@
           "id",
           "title",
           "team_id",
+          "kind",
           "created_at",
           "updated_at",
           "turns"
         ],
         "title": "AiConversationSummary",
+        "type": "object"
+      },
+      "AiDecisionBlock": {
+        "description": "One call a check-in made (usr.ai_decisions), holds included: shown in its conversation for the user\nto agree or disagree with. A change to the lineup or the roster names the shadow proposal behind it,\nthe chip shown just above it in the same turn.",
+        "properties": {
+          "area": {
+            "enum": [
+              "lineup",
+              "streaming",
+              "adds_drops",
+              "other"
+            ],
+            "title": "Area",
+            "type": "string"
+          },
+          "automation": {
+            "description": "Whose plan it reviewed; none for a move no automation makes",
+            "enum": [
+              "auto_lineup",
+              "stream_lane",
+              "scheduled_pickup",
+              "none"
+            ],
+            "title": "Automation",
+            "type": "string"
+          },
+          "call": {
+            "description": "hold: keep the plan (or do nothing) \u00b7 change: do something else",
+            "enum": [
+              "hold",
+              "change"
+            ],
+            "title": "Call",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "id": {
+            "description": "Unique within its turn, e.g. 'd1'",
+            "title": "Id",
+            "type": "string"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The shadow proposal behind a change",
+            "title": "Proposal Id"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "summary": {
+            "description": "What Dime would do, one line",
+            "title": "Summary",
+            "type": "string"
+          },
+          "type": {
+            "const": "decision",
+            "default": "decision",
+            "title": "Type",
+            "type": "string"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "agree",
+                  "disagree"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The user's call on it; null until they make one",
+            "title": "Verdict"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "decision_id",
+          "area",
+          "automation",
+          "call",
+          "summary",
+          "reason",
+          "proposal_id",
+          "verdict"
+        ],
+        "title": "AiDecisionBlock",
+        "type": "object"
+      },
+      "AiDecisionVerdictData": {
+        "properties": {
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "agree",
+                  "disagree"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          }
+        },
+        "required": [
+          "decision_id",
+          "verdict"
+        ],
+        "title": "AiDecisionVerdictData",
+        "type": "object"
+      },
+      "AiDecisionVerdictReq": {
+        "description": "Body for PUT /v1/internal/ai/decisions/{decision_id}/verdict.",
+        "properties": {
+          "verdict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "agree",
+                  "disagree"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null clears it",
+            "title": "Verdict"
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "AiDecisionVerdictReq",
+        "type": "object"
+      },
+      "AiDecisionVerdictResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiDecisionVerdictData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiDecisionVerdictResp",
         "type": "object"
       },
       "AiFeedbackData": {
@@ -1426,12 +2173,13 @@
             "title": "Sent At"
           },
           "state": {
-            "description": "proposed (can be staged), sent, dismissed, or expired",
+            "description": "proposed (can be staged), sent, dismissed, expired, or shadow (a check-in's: what Dime would have done, never staged or sent)",
             "enum": [
               "proposed",
               "sent",
               "dismissed",
-              "expired"
+              "expired",
+              "shadow"
             ],
             "title": "State",
             "type": "string"
@@ -1610,12 +2358,13 @@
             "title": "Sent At"
           },
           "state": {
-            "description": "proposed (can be staged), sent, dismissed, or expired",
+            "description": "proposed (can be staged), sent, dismissed, expired, or shadow (a check-in's: what Dime would have done, never staged or sent)",
             "enum": [
               "proposed",
               "sent",
               "dismissed",
-              "expired"
+              "expired",
+              "shadow"
             ],
             "title": "State",
             "type": "string"
@@ -3768,6 +4517,128 @@
           "live_adjusted"
         ],
         "title": "CategoryTeamScore",
+        "type": "object"
+      },
+      "CheckinRunData": {
+        "properties": {
+          "missed": {
+            "title": "Missed",
+            "type": "integer"
+          },
+          "off": {
+            "title": "Off",
+            "type": "boolean"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "integer"
+          },
+          "started": {
+            "items": {
+              "$ref": "#/components/schemas/CheckinStarted"
+            },
+            "title": "Started",
+            "type": "array"
+          },
+          "teams": {
+            "title": "Teams",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "off",
+          "teams",
+          "started",
+          "missed",
+          "skipped",
+          "stale"
+        ],
+        "title": "CheckinRunData",
+        "type": "object"
+      },
+      "CheckinRunResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckinRunData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "CheckinRunResp",
+        "type": "object"
+      },
+      "CheckinStarted": {
+        "properties": {
+          "checkin_id": {
+            "title": "Checkin Id",
+            "type": "integer"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "checkin_id",
+          "team_id",
+          "kind",
+          "date"
+        ],
+        "title": "CheckinStarted",
         "type": "object"
       },
       "ConnectionTeamInfo": {
@@ -24608,6 +25479,201 @@
         ]
       }
     },
+    "/v1/internal/ai/autopilot/{team_id}": {
+      "put": {
+        "description": "On starts (or resumes) the team's check-ins; off pauses them. A check-in whose window closed while they were off is not counted as missed.",
+        "operationId": "set_autopilot_v1_internal_ai_autopilot__team_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiAutopilotReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiAutopilotResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Not on the invite list (AI_INVITE_ONLY), or check-ins aren't open for this team (AI_AUTOPILOT_NOT_ALLOWED)"
+          },
+          "404": {
+            "description": "team_id is not one of the caller's teams (TEAM_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED, AI_AUTOPILOT_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Switch Dime's scheduled check-ins on or off for a team",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/checkins": {
+      "get": {
+        "description": "The caller's teams on the check-ins' allowlist with each one's switch and next scheduled check-in, then the check-ins themselves, newest first (with `team_id`, that team's only), each with its decisions' tallies and the user's verdicts. A check-in's conversation opens like any other.",
+        "operationId": "list_checkins_v1_internal_ai_checkins_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "maximum": 2147483647,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiCheckinsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "team_id is not one of the caller's teams (TEAM_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dime's check-ins: the teams it may run them on, and what it ran",
+        "tags": [
+          "AI"
+        ]
+      },
+      "post": {
+        "description": "Starts a check-in on the team now, off the schedule, and returns it `running`; it runs on after the response (poll GET /checkins, then open its conversation). Without `kind` the clock picks: morning (weekly on a matchup's first day), pre_lock in the hours before the first tip, night (yesterday's follow-up) after it. In shadow: nothing is sent to ESPN.",
+        "operationId": "run_checkin_v1_internal_ai_checkins_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiCheckinRunReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiCheckinResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Not on the invite list (AI_INVITE_ONLY), or check-ins aren't open for this team (AI_AUTOPILOT_NOT_ALLOWED)"
+          },
+          "404": {
+            "description": "team_id is not one of the caller's teams (TEAM_NOT_FOUND)"
+          },
+          "409": {
+            "description": "A check-in is already running on this team (AI_CHECKIN_RUNNING)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "The team has had today's check-ins (AI_CHECKIN_DAILY_LIMIT)"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED, AI_AUTOPILOT_DISABLED), or the check-ins' monthly budget is used up (AI_AUTOPILOT_BUDGET_REACHED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Run one of Dime's check-ins now",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
     "/v1/internal/ai/conversations": {
       "get": {
         "operationId": "list_conversations_v1_internal_ai_conversations_get",
@@ -24806,7 +25872,7 @@
     },
     "/v1/internal/ai/conversations/{conversation_id}/turns": {
       "post": {
-        "description": "A `text/event-stream` of the turn as it happens:\n\n- `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note, `step` for the start of each step after the first, when whatever the last status said is done);\n- `text` `{delta}`: the answer's prose, as it is written;\n- `block` (an `AiTable`, `AiChart`, `AiProposal` or `AiPlace`): a table, chart, proposed move or place in the app the server built from the agent's lookups;\n- `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);\n- `done` `{turn_id, outcome, cost_usd, model_calls, duration_ms, spend}`: always last.\n\nText and blocks arrive in the order the user should see them. Lines starting with `:` are keepalives. Errors before the stream starts are ordinary JSON errors.",
+        "description": "A `text/event-stream` of the turn as it happens:\n\n- `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note, `step` for the start of each step after the first, when whatever the last status said is done);\n- `text` `{delta}`: the answer's prose, as it is written;\n- `block` (an `AiTable`, `AiChart`, `AiProposal`, `AiPlace` or, in a check-in, `AiDecisionBlock`): a table, chart, proposed move, place in the app or logged call the server built from the agent's lookups;\n- `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);\n- `done` `{turn_id, outcome, cost_usd, model_calls, duration_ms, spend}`: always last.\n\nText and blocks arrive in the order the user should see them. Lines starting with `:` are keepalives. Errors before the stream starts are ordinary JSON errors.",
         "operationId": "send_turn_v1_internal_ai_conversations__conversation_id__turns_post",
         "parameters": [
           {
@@ -24872,6 +25938,74 @@
           }
         ],
         "summary": "Send the agent a message; the answer streams back",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/decisions/{decision_id}/verdict": {
+      "put": {
+        "description": "The caller's verdict on one decision a check-in logged; null clears it. The measure for whether Dime is ready to act: you agree with most of what it would have done.",
+        "operationId": "decision_verdict_v1_internal_ai_decisions__decision_id__verdict_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Decision Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiDecisionVerdictReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiDecisionVerdictResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such decision for this caller (AI_DECISION_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Agree or disagree with one of Dime's calls",
         "tags": [
           "AI"
         ]
@@ -26790,6 +27924,33 @@
         "summary": "Reconcile a session with the ESPN draft room's INIT frame",
         "tags": [
           "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/jobs/checkins/run": {
+      "post": {
+        "description": "One tick of Dime's check-ins: start what is due on each switched-on team.\n\nCalled by data-platform's dime_checkins pipeline every fifteen minutes (its\nroute gates on whether any team is switched on). Each team gets at most one\ncheck-in a tick, one at a time; a window that closed before its check-in\ncould run is recorded as missed. The check-ins run on here after the\nresponse, as detached turns, so this answers in a second or two.",
+        "operationId": "run_checkins_v1_internal_jobs_checkins_run_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinRunResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Run Checkins",
+        "tags": [
+          "internal jobs"
         ]
       }
     },

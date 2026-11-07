@@ -155,6 +155,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/autopilot/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Switch Dime's scheduled check-ins on or off for a team
+         * @description On starts (or resumes) the team's check-ins; off pauses them. A check-in whose window closed while they were off is not counted as missed.
+         */
+        put: operations["set_autopilot_v1_internal_ai_autopilot__team_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/checkins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dime's check-ins: the teams it may run them on, and what it ran
+         * @description The caller's teams on the check-ins' allowlist with each one's switch and next scheduled check-in, then the check-ins themselves, newest first (with `team_id`, that team's only), each with its decisions' tallies and the user's verdicts. A check-in's conversation opens like any other.
+         */
+        get: operations["list_checkins_v1_internal_ai_checkins_get"];
+        put?: never;
+        /**
+         * Run one of Dime's check-ins now
+         * @description Starts a check-in on the team now, off the schedule, and returns it `running`; it runs on after the response (poll GET /checkins, then open its conversation). Without `kind` the clock picks: morning (weekly on a matchup's first day), pre_lock in the hours before the first tip, night (yesterday's follow-up) after it. In shadow: nothing is sent to ESPN.
+         */
+        post: operations["run_checkin_v1_internal_ai_checkins_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/ai/conversations": {
         parameters: {
             query?: never;
@@ -206,13 +250,33 @@ export interface paths {
          *
          *     - `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note, `step` for the start of each step after the first, when whatever the last status said is done);
          *     - `text` `{delta}`: the answer's prose, as it is written;
-         *     - `block` (an `AiTable`, `AiChart`, `AiProposal` or `AiPlace`): a table, chart, proposed move or place in the app the server built from the agent's lookups;
+         *     - `block` (an `AiTable`, `AiChart`, `AiProposal`, `AiPlace` or, in a check-in, `AiDecisionBlock`): a table, chart, proposed move, place in the app or logged call the server built from the agent's lookups;
          *     - `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);
          *     - `done` `{turn_id, outcome, cost_usd, model_calls, duration_ms, spend}`: always last.
          *
          *     Text and blocks arrive in the order the user should see them. Lines starting with `:` are keepalives. Errors before the stream starts are ordinary JSON errors.
          */
         post: operations["send_turn_v1_internal_ai_conversations__conversation_id__turns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/decisions/{decision_id}/verdict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Agree or disagree with one of Dime's calls
+         * @description The caller's verdict on one decision a check-in logged; null clears it. The measure for whether Dime is ready to act: you agree with most of what it would have done.
+         */
+        put: operations["decision_verdict_v1_internal_ai_decisions__decision_id__verdict_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -866,6 +930,32 @@ export interface paths {
          *     A `league_pending` room (a live room started without a team) links to the ESPN draft this INIT came from and then adopts its league: the league's settings are synced and your team in it is added to your account, as the add-team flow would, and the room takes the league's scoring and roster. `league_adopted` reports it; when ESPN cannot be read `league_adoption_error` says why and the next connect tries again.
          */
         post: operations["sync_draft_init_v1_internal_drafts__session_id__sync_init_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/jobs/checkins/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Checkins
+         * @description One tick of Dime's check-ins: start what is due on each switched-on team.
+         *
+         *     Called by data-platform's dime_checkins pipeline every fifteen minutes (its
+         *     route gates on whether any team is switched on). Each team gets at most one
+         *     check-in a tick, one at a time; a window that closed before its check-in
+         *     could run is recorded as missed. The check-ins run on here after the
+         *     response, as detached turns, so this answers in a second or two.
+         */
+        post: operations["run_checkins_v1_internal_jobs_checkins_run_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2761,10 +2851,58 @@ export interface components {
             /** Usg Pct */
             usg_pct: number | null;
         };
+        /**
+         * AiAutopilotReq
+         * @description Body for PUT /v1/internal/ai/autopilot/{team_id}.
+         */
+        AiAutopilotReq: {
+            /**
+             * On
+             * @description true starts (or resumes) the team's check-ins, false pauses them
+             */
+            on: boolean;
+        };
+        /** AiAutopilotResp */
+        AiAutopilotResp: {
+            data: components["schemas"]["AiAutopilotTeam"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiAutopilotTeam
+         * @description A team Dime may run check-ins on, and its switch.
+         */
+        AiAutopilotTeam: {
+            /**
+             * Active Since
+             * @description When it was last switched on or resumed
+             */
+            active_since: string | null;
+            /** @description The next scheduled check-in, while on */
+            next: components["schemas"]["AiCheckinSlot"] | null;
+            /**
+             * On
+             * @description Check-ins run on the schedule
+             */
+            on: boolean;
+            /** Paused At */
+            paused_at: string | null;
+            /** Paused By */
+            paused_by: ("user" | "system") | null;
+            /** Paused Reason */
+            paused_reason: string | null;
+            /** Team Id */
+            team_id: number;
+        };
         /** AiBlockPart */
         AiBlockPart: {
             /** Block */
-            block: components["schemas"]["AiTable"] | components["schemas"]["AiChart"] | components["schemas"]["AiProposal"] | components["schemas"]["AiPlace"];
+            block: components["schemas"]["AiTable"] | components["schemas"]["AiChart"] | components["schemas"]["AiProposal"] | components["schemas"]["AiPlace"] | components["schemas"]["AiDecisionBlock"];
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -2837,6 +2975,157 @@ export interface components {
              */
             values: (number | null)[];
         };
+        /** AiCheckinResp */
+        AiCheckinResp: {
+            data: components["schemas"]["AiCheckinSummary"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiCheckinRunReq
+         * @description Body for POST /v1/internal/ai/checkins: run one now.
+         */
+        AiCheckinRunReq: {
+            /**
+             * Kind
+             * @description Default: by the clock against today's first tip
+             */
+            kind?: ("morning" | "weekly" | "pre_lock" | "night") | null;
+            /** Team Id */
+            team_id: number;
+        };
+        /** AiCheckinSlot */
+        AiCheckinSlot: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "morning" | "weekly" | "pre_lock" | "night";
+        };
+        /**
+         * AiCheckinSummary
+         * @description One check-in: a turn Dime started itself, about one fantasy day, in shadow.
+         */
+        AiCheckinSummary: {
+            /** Agree */
+            agree: number;
+            /**
+             * Changes
+             * @description Of those, the ones that would change an automation's plan or the roster
+             */
+            changes: number;
+            /** Checkin Id */
+            checkin_id: number;
+            /**
+             * Conversation Id
+             * @description Its conversation; null when it never ran
+             */
+            conversation_id: number | null;
+            /** Cost Usd */
+            cost_usd: number;
+            /**
+             * Date
+             * Format: date
+             * @description The fantasy day it is about
+             */
+            date: string;
+            /**
+             * Decisions
+             * @description Calls it logged, holds included
+             */
+            decisions: number;
+            /** Disagree */
+            disagree: number;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Kind
+             * @description morning, weekly (a matchup's first morning), pre_lock (before the first tip) or night (the next morning's follow-up)
+             * @enum {string}
+             */
+            kind: "morning" | "weekly" | "pre_lock" | "night";
+            /**
+             * Manual
+             * @description Run from the AI desk rather than on the schedule
+             */
+            manual: boolean;
+            /**
+             * Reason
+             * @description Why it failed, was missed or skipped (e.g. window_closed, budget, daily_cap, AI_TIMEOUT)
+             */
+            reason: string | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "running" | "done" | "failed" | "missed" | "skipped";
+            /** Team Id */
+            team_id: number;
+            /** Title */
+            title: string;
+        };
+        /** AiCheckinsData */
+        AiCheckinsData: {
+            /**
+             * Cap Usd
+             * @description The check-ins' monthly budget, apart from the AI desk's
+             */
+            cap_usd: number;
+            /**
+             * Checkins
+             * @description Newest first
+             */
+            checkins: components["schemas"]["AiCheckinSummary"][];
+            /**
+             * Month Usd
+             * @description This month's check-in spend, every autopilot team
+             */
+            month_usd: number;
+            /**
+             * Teams
+             * @description The caller's teams Dime may run check-ins on
+             */
+            teams: components["schemas"]["AiAutopilotTeam"][];
+        };
+        /**
+         * AiCheckinsResp
+         * @description Response for GET /v1/internal/ai/checkins.
+         */
+        AiCheckinsResp: {
+            data: components["schemas"]["AiCheckinsData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /**
          * AiContext
          * @description Where the user is when they ask. IDs only -- never names from league data,
@@ -2892,6 +3181,8 @@ export interface components {
         };
         /** AiConversationDetail */
         AiConversationDetail: {
+            /** @description The check-in that started it, for a check-in's conversation: its first turn's message is the server's brief, not the user's */
+            checkin: components["schemas"]["AiCheckinSummary"] | null;
             /**
              * Created At
              * Format: date-time
@@ -2909,6 +3200,13 @@ export interface components {
             history: components["schemas"]["AiTurnView"][];
             /** Id */
             id: number;
+            /**
+             * Kind
+             * @description chat (the user's), or a check-in's conversation
+             * @default chat
+             * @enum {string}
+             */
+            kind: "chat" | "checkin";
             /** Team Id */
             team_id: number | null;
             /**
@@ -2956,6 +3254,13 @@ export interface components {
             created_at: string;
             /** Id */
             id: number;
+            /**
+             * Kind
+             * @description chat (the user's), or a check-in's conversation
+             * @default chat
+             * @enum {string}
+             */
+            kind: "chat" | "checkin";
             /** Team Id */
             team_id: number | null;
             /**
@@ -2970,6 +3275,89 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * AiDecisionBlock
+         * @description One call a check-in made (usr.ai_decisions), holds included: shown in its conversation for the user
+         *     to agree or disagree with. A change to the lineup or the roster names the shadow proposal behind it,
+         *     the chip shown just above it in the same turn.
+         */
+        AiDecisionBlock: {
+            /**
+             * Area
+             * @enum {string}
+             */
+            area: "lineup" | "streaming" | "adds_drops" | "other";
+            /**
+             * Automation
+             * @description Whose plan it reviewed; none for a move no automation makes
+             * @enum {string}
+             */
+            automation: "auto_lineup" | "stream_lane" | "scheduled_pickup" | "none";
+            /**
+             * Call
+             * @description hold: keep the plan (or do nothing) · change: do something else
+             * @enum {string}
+             */
+            call: "hold" | "change";
+            /** Decision Id */
+            decision_id: number;
+            /**
+             * Id
+             * @description Unique within its turn, e.g. 'd1'
+             */
+            id: string;
+            /**
+             * Proposal Id
+             * @description The shadow proposal behind a change
+             */
+            proposal_id: number | null;
+            /** Reason */
+            reason: string;
+            /**
+             * Summary
+             * @description What Dime would do, one line
+             */
+            summary: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "decision";
+            /**
+             * Verdict
+             * @description The user's call on it; null until they make one
+             */
+            verdict: ("agree" | "disagree") | null;
+        };
+        /** AiDecisionVerdictData */
+        AiDecisionVerdictData: {
+            /** Decision Id */
+            decision_id: number;
+            /** Verdict */
+            verdict: ("agree" | "disagree") | null;
+        };
+        /**
+         * AiDecisionVerdictReq
+         * @description Body for PUT /v1/internal/ai/decisions/{decision_id}/verdict.
+         */
+        AiDecisionVerdictReq: {
+            /**
+             * Verdict
+             * @description null clears it
+             */
+            verdict: ("agree" | "disagree") | null;
+        };
+        /** AiDecisionVerdictResp */
+        AiDecisionVerdictResp: {
+            data: components["schemas"]["AiDecisionVerdictData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /** AiFeedbackData */
         AiFeedbackData: {
@@ -3212,10 +3600,10 @@ export interface components {
             sent_at: string | null;
             /**
              * State
-             * @description proposed (can be staged), sent, dismissed, or expired
+             * @description proposed (can be staged), sent, dismissed, expired, or shadow (a check-in's: what Dime would have done, never staged or sent)
              * @enum {string}
              */
-            state: "proposed" | "sent" | "dismissed" | "expired";
+            state: "proposed" | "sent" | "dismissed" | "expired" | "shadow";
             /**
              * Summary
              * @description One sentence: the move, its day, and what sending does
@@ -3308,10 +3696,10 @@ export interface components {
             sent_at: string | null;
             /**
              * State
-             * @description proposed (can be staged), sent, dismissed, or expired
+             * @description proposed (can be staged), sent, dismissed, expired, or shadow (a check-in's: what Dime would have done, never staged or sent)
              * @enum {string}
              */
-            state: "proposed" | "sent" | "dismissed" | "expired";
+            state: "proposed" | "sent" | "dismissed" | "expired" | "shadow";
             /**
              * Summary
              * @description One sentence: the move, its day, and what sending does
@@ -4154,6 +4542,46 @@ export interface components {
              * @default 0
              */
             wins: number;
+        };
+        /** CheckinRunData */
+        CheckinRunData: {
+            /** Missed */
+            missed: number;
+            /** Off */
+            off: boolean;
+            /** Skipped */
+            skipped: number;
+            /** Stale */
+            stale: number;
+            /** Started */
+            started: components["schemas"]["CheckinStarted"][];
+            /** Teams */
+            teams: number;
+        };
+        /** CheckinRunResp */
+        CheckinRunResp: {
+            data: components["schemas"]["CheckinRunData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** CheckinStarted */
+        CheckinStarted: {
+            /** Checkin Id */
+            checkin_id: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Kind */
+            kind: string;
+            /** Team Id */
+            team_id: number;
         };
         /** ConnectionTeamInfo */
         ConnectionTeamInfo: {
@@ -11764,6 +12192,182 @@ export interface operations {
             };
         };
     };
+    set_autopilot_v1_internal_ai_autopilot__team_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiAutopilotReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiAutopilotResp"];
+                };
+            };
+            /** @description Not on the invite list (AI_INVITE_ONLY), or check-ins aren't open for this team (AI_AUTOPILOT_NOT_ALLOWED) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description team_id is not one of the caller's teams (TEAM_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED, AI_AUTOPILOT_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_checkins_v1_internal_ai_checkins_get: {
+        parameters: {
+            query?: {
+                team_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiCheckinsResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description team_id is not one of the caller's teams (TEAM_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    run_checkin_v1_internal_ai_checkins_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiCheckinRunReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiCheckinResp"];
+                };
+            };
+            /** @description Not on the invite list (AI_INVITE_ONLY), or check-ins aren't open for this team (AI_AUTOPILOT_NOT_ALLOWED) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description team_id is not one of the caller's teams (TEAM_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A check-in is already running on this team (AI_CHECKIN_RUNNING) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The team has had today's check-ins (AI_CHECKIN_DAILY_LIMIT) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED, AI_AUTOPILOT_DISABLED), or the check-ins' monthly budget is used up (AI_AUTOPILOT_BUDGET_REACHED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_conversations_v1_internal_ai_conversations_get: {
         parameters: {
             query?: never;
@@ -12017,6 +12621,62 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    decision_verdict_v1_internal_ai_decisions__decision_id__verdict_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                decision_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiDecisionVerdictReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiDecisionVerdictResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such decision for this caller (AI_DECISION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
             /** @description Turned off (AI_DISABLED) */
             503: {
@@ -13478,6 +14138,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_checkins_v1_internal_jobs_checkins_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinRunResp"];
                 };
             };
         };

@@ -55,10 +55,18 @@ import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
 import type {
+  AiAutopilotResponse,
+  AiAutopilotTeam,
+  AiCheckin,
+  AiCheckinKind,
+  AiCheckinResponse,
+  AiCheckins,
+  AiCheckinsResponse,
   AiConversation,
   AiConversationListResponse,
   AiConversationResponse,
   AiConversationSummary,
+  AiDecisionVerdictResponse,
   AiFeedback,
   AiNote,
   AiNoteCreateRequest,
@@ -73,6 +81,7 @@ import type {
   AiTurnFeedbackResponse,
   AiUsage,
   AiUsageResponse,
+  AiVerdict,
   MoveOutcomeList,
   MoveOutcomeListResponse,
   MoveScope,
@@ -1212,6 +1221,36 @@ class ApiClient {
 
   async deleteAiNote(getToken: GetTokenFn, noteId: number): Promise<void> {
     await fetchJson(`${AI_API}/notes/${noteId}`, { getToken, method: "DELETE" });
+  }
+
+  // ---- Dime's check-ins, in shadow: the teams it runs on, what it ran, and the
+  // user's verdict on each call it logged.
+
+  /** The caller's autopilot teams (switch, next check-in) and their check-ins, newest first. */
+  async getAiCheckins(getToken: GetTokenFn, opts?: RequestOptions): Promise<AiCheckins> {
+    return unwrap(await fetchJson<AiCheckinsResponse>(`${AI_API}/checkins`, { ...opts, getToken }));
+  }
+
+  /** Run a check-in now; without `kind` the clock picks. It comes back running. */
+  async runAiCheckin(getToken: GetTokenFn, teamId: number, kind?: AiCheckinKind): Promise<AiCheckin> {
+    const body = kind ? { team_id: teamId, kind } : { team_id: teamId };
+    return unwrap(await fetchJson<AiCheckinResponse>(`${AI_API}/checkins`, { getToken, method: "POST", body }));
+  }
+
+  /** Switch a team's scheduled check-ins on (or resume them), or pause them. */
+  async setAiAutopilot(getToken: GetTokenFn, teamId: number, on: boolean): Promise<AiAutopilotTeam> {
+    return unwrap(
+      await fetchJson<AiAutopilotResponse>(`${AI_API}/autopilot/${teamId}`, { getToken, method: "PUT", body: { on } })
+    );
+  }
+
+  /** Agree or disagree with one call a check-in logged; null clears it. */
+  async setAiDecisionVerdict(getToken: GetTokenFn, decisionId: number, verdict: AiVerdict | null): Promise<void> {
+    await fetchJson<AiDecisionVerdictResponse>(`${AI_API}/decisions/${decisionId}/verdict`, {
+      getToken,
+      method: "PUT",
+      body: { verdict },
+    });
   }
 
   /** The move ledger: a team's adds and drops (or its whole league's) and what each earned. */
