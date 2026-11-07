@@ -226,6 +226,9 @@ const LANE_REASONS: Record<string, string> = {
   // Dime's lane chips, applied by you (the reason Dime gave is the event's detail)
   paused_by_dime: "you applied Dime's pause",
   stopped_by_dime: "you applied Dime's stop",
+  // Dime's lane chips, sent by Dime itself on a team where streaming acts (autopilot step 5)
+  paused_by_autopilot: "Dime paused it",
+  stopped_by_autopilot: "Dime stopped it",
   matchup_over: "the matchup ended",
   team_not_found: "the team is gone",
   missed: "no decision was made in time",
@@ -244,9 +247,14 @@ export function laneReason(reason: string | null | undefined): string | null {
   return LANE_REASONS[reason] ?? reason.replace(/_/g, " ");
 }
 
-/** A step Dime proposed and you applied: its reason, as the lane's history says it. */
+const DIME_APPLIED = new Set(["dime", "paused_by_dime", "stopped_by_dime"]);
+const DIME_ACTED = new Set(["autopilot", "paused_by_autopilot", "stopped_by_autopilot"]);
+
+/** A step Dime proposed (you applied it, or Dime did on its own): its reason, as the lane's history says it. */
 function dimeSaid(e: Pick<StreamLaneEvent, "reason" | "detail">): string {
-  const dime = e.reason === "dime" || e.reason === "paused_by_dime" || e.reason === "stopped_by_dime";
+  const reason = e.reason ?? "";
+  if (DIME_ACTED.has(reason)) return e.detail ? `. Dime, on its own: ${e.detail}` : " (Dime, on its own)";
+  const dime = DIME_APPLIED.has(reason);
   return dime && e.detail ? `. Dime: ${e.detail}` : dime ? " (Dime's)" : "";
 }
 

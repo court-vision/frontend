@@ -23,6 +23,8 @@ export interface FieldsProps {
   email: string | null;
   disabled?: boolean;
   onOpen: (focus: AccountFocus) => void;
+  /** The account's own settings, when these are a team's over them. */
+  account?: NotificationPreference;
 }
 
 export interface SettingsKind {
@@ -199,7 +201,7 @@ function TeamRow({
       {editing || error ? (
         <div style={{ padding: "4px 12px 10px" }}>
           {error ? <div className={s.formError} style={{ marginBottom: editing ? 8 : 0 }}>{error}</div> : null}
-          {editing ? <Fields prefs={draft} onChange={setDraft} email={model.user?.email ?? null} onOpen={onOpen} disabled={busy != null} /> : null}
+          {editing ? <Fields prefs={draft} onChange={setDraft} email={model.user?.email ?? null} onOpen={onOpen} disabled={busy != null} account={base} /> : null}
         </div>
       ) : null}
     </div>

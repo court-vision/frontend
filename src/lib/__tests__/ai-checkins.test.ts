@@ -22,6 +22,7 @@ function checkin(over: Partial<AiCheckin> = {}): AiCheckin {
     changes: 1,
     agree: 2,
     disagree: 0,
+    sent: 0,
     ...over,
   };
 }
@@ -31,6 +32,7 @@ describe("a check-in's row", () => {
     expect(checkinLine(checkin())).toBe("3 calls · 1 change · 2 agree · $0.41");
     expect(checkinLine(checkin({ agree: 1, disagree: 1 }))).toBe("3 calls · 1 change · 1 agree, 1 disagree · $0.41");
     expect(checkinLine(checkin({ agree: 0, changes: 0 }))).toBe("3 calls · not rated · $0.41");
+    expect(checkinLine(checkin({ sent: 1 }))).toBe("3 calls · 1 change · 1 sent by Dime · 2 agree · $0.41");
   });
 
   test("says why one didn't run, or didn't finish", () => {

@@ -6,7 +6,11 @@ import { toApiError, userMessage } from "@/lib/api-error";
 import type { GetTokenFn } from "@/lib/http";
 import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
 import { VerdictSaves, verdictOf, withVerdict } from "@/lib/ai-checkins";
+import { notificationKeys } from "@/hooks/useNotificationPreferences";
 import type {
+  AiAutopilotAction,
+  AiAutopilotChange,
+  AiFeatures,
   AiBlock,
   AiCheckinKind,
   AiCheckins,
@@ -46,6 +50,7 @@ export const aiKeys = {
   conversation: (userId: string | null | undefined, id: number) => [...aiKeys.user(userId), "conversation", id] as const,
   notes: (userId: string | null | undefined) => [...aiKeys.user(userId), "notes"] as const,
   checkins: (userId: string | null | undefined) => [...aiKeys.user(userId), "checkins"] as const,
+  actions: (userId: string | null | undefined, teamId: number | null) => [...aiKeys.user(userId), "actions", teamId] as const,
   moves: (userId: string | null | undefined, teamId: number, scope: MoveScope) =>
     [...aiKeys.user(userId), "moves", teamId, scope] as const,
 };
@@ -156,7 +161,7 @@ export function useAiComment(conversationId: number | null) {
   });
 }
 
-// ---- Dime's check-ins, in shadow
+// ---- Dime's check-ins
 
 /**
  * The teams Dime runs check-ins on and what it ran. A check-in runs for a few
@@ -190,18 +195,53 @@ export function useRunAiCheckin() {
   });
 }
 
+/**
+ * A team's check-ins, its autopilot switch or some automations' levels. The team comes back with its
+ * table; a lineup level writes the team's notification override, and autopilot turns the features on,
+ * so those are read again.
+ */
 export function useSetAiAutopilot() {
   const { getToken, userId } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ teamId, on }: { teamId: number; on: boolean }) => apiClient.setAiAutopilot(getToken, teamId, on),
-    onSuccess: async (team) => {
+    mutationFn: ({ teamId, change }: { teamId: number; change: AiAutopilotChange }) =>
+      apiClient.setAiAutopilot(getToken, teamId, change),
+    onSuccess: async (team, { change }) => {
       // A poll that read the list before the switch would land after this and show the old state
       await queryClient.cancelQueries({ queryKey: aiKeys.checkins(userId) });
       queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
         d ? { ...d, teams: d.teams.map((t) => (t.team_id === team.team_id ? team : t)) } : d
       );
+      if (change.autopilot != null || change.levels?.lineup != null) {
+        void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+      }
+      if (change.autopilot) void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
     },
+  });
+}
+
+/** The account's AI features: memory and Dime's side of the Draft desk. */
+export function useSetAiFeatures() {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (change: Partial<AiFeatures>) => apiClient.setAiFeatures(getToken, change),
+    onSuccess: (features) => {
+      queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) => (d ? { ...d, features } : d));
+    },
+  });
+}
+
+/** Everything Dime did on its own on a team (all teams with null), newest first. */
+export function useAiActionsQuery(teamId: number | null, enabled = true) {
+  const { getToken, isSignedIn, userId } = useAuth();
+  return useQuery<AiAutopilotAction[]>({
+    queryKey: aiKeys.actions(userId, teamId),
+    queryFn: ({ signal }) => apiClient.getAiActions(getToken, teamId, { signal }),
+    enabled: enabled && isSignedIn === true,
+    staleTime: 60_000,
+    retry: false,
+    meta: { toast: false },
   });
 }
 

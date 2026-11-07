@@ -6,24 +6,26 @@ import { Check, Loader2, Play, Settings2, X } from "lucide-react";
 import { toast } from "sonner";
 import { aiMessage, useRunAiCheckin } from "@/hooks/useAi";
 import { KIND_HELP, KIND_LABEL, STATE_LABEL, agreement, checkinLine, decisionKicker } from "@/lib/ai-checkins";
+import { actionLine, pauseLine, teamLine } from "@/lib/ai-autonomy";
 import { whenTime } from "@/components/week/format";
 import { ACCOUNT_DESK } from "@/components/desk/routes";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
-import type { AiAutopilotTeam, AiCheckin, AiCheckinKind, AiCheckins, AiDecisionBlock, AiVerdict } from "@/types/ai";
+import type { AiActing, AiAutopilotTeam, AiCheckin, AiCheckinKind, AiCheckins, AiDecisionBlock, AiVerdict } from "@/types/ai";
 import { DimeView, ViewLoading } from "./DimeView";
 import dk from "@/components/desk/desk.module.css";
 import s from "./ai.module.css";
 
-/** Where check-ins are switched on and off: settings stay in settings. */
+/** Where the automations, check-ins and autopilot are set: settings stay in settings. */
 const SETTINGS_HREF = `${ACCOUNT_DESK}?v=automation`;
 
 /**
- * Dime's check-ins, in the AI desk's main area (the Dime autopilot plan, step 3):
- * each team Dime may run them on, with its next check-in and Run now, the month's
- * spend and how often the user agrees, then the check-ins themselves. A check-in
- * opens here as its conversation. In shadow: nothing a check-in does is sent; the
- * user marks each call agree or disagree, and that agreement is what decides when
- * Dime may act. The on/off switch is in Account > AI and automation.
+ * Dime's check-ins, in the AI desk's main area (the Dime autopilot plan, steps 3
+ * and 5): each team Dime may run them on, with what is at AI there, its next
+ * check-in and Run now, the month's spend and how often the user agrees, then the
+ * check-ins themselves. A check-in opens here as its conversation. On automations
+ * at AI Dime sends its changes itself; anywhere else a change is a review. The
+ * user marks each call agree or disagree. The automations table and the autopilot
+ * switch are in Account > AI and automation.
  */
 export function CheckinsView({
   data,
@@ -42,6 +44,7 @@ export function CheckinsView({
 }) {
   const checkins = data?.checkins ?? [];
   const autopilot = data?.teams ?? [];
+  const acting = data?.acting ?? null;
   const { agree, rated } = agreement(checkins);
   const anyOn = autopilot.some((t) => t.on);
 
@@ -69,6 +72,7 @@ export function CheckinsView({
                 key={t.team_id}
                 team={t}
                 name={teams.find((x) => x.id === t.team_id)?.name ?? `Team ${t.team_id}`}
+                acting={acting}
                 running={checkins.some((c) => c.team_id === t.team_id && c.state === "running")}
               />
             ))}
@@ -83,12 +87,14 @@ export function CheckinsView({
           {rated ? <span title="Of the calls you've rated in this list">You agree with {agree} of {rated}</span> : null}
           <span className={dk.spacer} />
           <Link href={SETTINGS_HREF} className={dk.link}>
-            <Settings2 size={12} style={{ verticalAlign: -1 }} /> Switch check-ins on or off
+            <Settings2 size={12} style={{ verticalAlign: -1 }} /> Automations and autopilot
           </Link>
         </div>
         {checkins.length === 0 ? (
           <div className={s.rowEmpty}>
-            {anyOn ? "No check-ins yet. Dime runs its first at the next one due, or run one now." : "No check-ins yet. Switch them on and Dime runs its first at the next one due, or run one now."}
+            {anyOn
+              ? "No check-ins yet. Dime runs its first at the next one due, or run one now."
+              : "No check-ins yet. Turn them on (or put an automation at AI) and Dime runs its first at the next one due, or run one now."}
           </div>
         ) : (
           <div className={s.viewList}>
@@ -104,7 +110,7 @@ export function CheckinsView({
   return (
     <DimeView
       label="Check-ins"
-      sub="Turns Dime starts on its own on the teams it runs on, in shadow: it reads what auto-lineup, the lanes and the scheduled pickups will do, logs every call it makes, holds included, and sends nothing. Open one to mark each call agree or disagree."
+      sub="Turns Dime starts on its own on the teams it runs on: it reads what auto-lineup, the lanes and the scheduled pickups will do and logs every call it makes, holds included. On automations at AI it sends its changes itself, within the limits; anywhere else a change is a review, logged and not sent. Open one to mark each call agree or disagree."
     >
       {body}
     </DimeView>
@@ -141,16 +147,14 @@ function CheckinRow({ checkin: c, onOpen }: { checkin: AiCheckin; onOpen: (id: n
 
 const KINDS: AiCheckinKind[] = ["morning", "weekly", "pre_lock", "night"];
 
-function AutopilotTeam({ team, name, running }: { team: AiAutopilotTeam; name: string; running: boolean }) {
+function AutopilotTeam({ team, name, acting, running }: { team: AiAutopilotTeam; name: string; acting: AiActing | null; running: boolean }) {
   const run = useRunAiCheckin();
   const [kind, setKind] = useState<AiCheckinKind | "">("");
   const next = team.on
     ? team.next
       ? `Next: ${KIND_LABEL[team.next.kind].toLowerCase()}, ${whenTime(team.next.due_at)}`
       : "Nothing due until the season's next game day"
-    : team.paused_at
-      ? "Paused: no scheduled check-ins"
-      : "Off: no scheduled check-ins";
+    : `${pauseLine(team) ?? "Off"}. No scheduled check-ins until you resume them`;
   return (
     <div className={s.autopilot}>
       <div className={s.autopilotHead}>
@@ -158,7 +162,12 @@ function AutopilotTeam({ team, name, running }: { team: AiAutopilotTeam; name: s
         <span className={dk.spacer} />
         <span className={`${dk.chip} ${team.on ? dk.up : dk.flat}`}>{team.on ? "On" : team.paused_at ? "Paused" : "Off"}</span>
       </div>
-      <span className={dk.sub}>{next}</span>
+      <Link href={SETTINGS_HREF} className={s.autopilotMode} title="Set the automations and autopilot in Account">
+        {teamLine(team, acting)}
+      </Link>
+      <span className={dk.sub} data-paused-by={team.paused_by ?? undefined}>
+        {next}
+      </span>
       <div className={s.autopilotRun}>
         <select
           className={s.select}
@@ -216,6 +225,7 @@ export function DecisionBlock({
       </div>
       <div className={s.decisionSummary}>{d.summary}</div>
       <div className={s.decisionReason}>{d.reason}</div>
+      {d.action ? <DecisionAction action={d.action} /> : null}
       {onVerdict ? (
         <div className={s.decisionFoot}>
           <button type="button" className={s.verdict} data-verdict="agree" aria-pressed={d.verdict === "agree"} onClick={() => set("agree")}>
@@ -227,6 +237,17 @@ export function DecisionBlock({
           <span className={dk.sub}>{d.verdict ? "Click again to clear" : "Would you have made the same call?"}</span>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** What Dime did about a change on an automation at AI: sent it, or held it back as a chip with the rule that stopped it. */
+function DecisionAction({ action }: { action: NonNullable<AiDecisionBlock["action"]> }) {
+  const { label, text } = actionLine(action);
+  return (
+    <div className={s.decisionAction} data-outcome={action.outcome}>
+      <span className={s.decisionActionLabel}>{label}</span>
+      <span>{text}</span>
     </div>
   );
 }

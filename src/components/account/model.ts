@@ -3,7 +3,7 @@
  * and the demo both implement. The desk's components never fetch: they ask
  * the model, so the demo and the real thing render the same code.
  */
-import type { AiAutopilotTeam } from "@/types/ai";
+import type { AiActing, AiAutopilotChange, AiAutopilotTeam, AiFeatures } from "@/types/ai";
 import type { EspnAccountTeam, ProviderConnection } from "@/types/connections";
 import type { NotificationPreference, NotificationTeamPreference, NotificationTeamPreferenceRequest } from "@/types/notifications";
 import type { LeagueDetail, LeagueInfoRequest, ScoringPreview, TeamResponseData } from "@/types/team";
@@ -52,6 +52,16 @@ export interface AddTeamModel {
   useYahooTeams: (connectionId: number | null, leagueKey: string | null) => Loaded<YahooTeam[]>;
 }
 
+/** Dime on the account: the teams it runs on with their automations, the server's switches, the AI features. */
+export interface DimeState {
+  /** Each team Dime may run on: its check-ins, the autopilot switch and its automations table. */
+  teams: AiAutopilotTeam[];
+  /** Acting's switch and the policy; null from a server without them. */
+  acting: AiActing | null;
+  /** The account's AI features; null without CV AI. */
+  features: AiFeatures | null;
+}
+
 export interface AccountUser {
   name: string | null;
   email: string | null;
@@ -91,11 +101,13 @@ export interface AccountModel extends AddTeamModel {
   saveTeamPrefs: (teamId: number, data: NotificationTeamPreferenceRequest) => Promise<void>;
   clearTeamPrefs: (teamId: number) => Promise<void>;
 
-  // ---- Dime's check-ins (the Dime block of AI and automation)
-  /** The teams Dime may run check-ins on, each with its switch; none without CV AI. A hook: call it unconditionally. */
-  useCheckinTeams: () => Loaded<AiAutopilotTeam[]>;
-  /** Switch Dime's scheduled check-ins on or off for a team. Throws with the refusal. */
-  setCheckins: (teamId: number, on: boolean) => Promise<void>;
+  // ---- Dime (the Dime block of AI and automation)
+  /** Dime's teams, the server's switches and the AI features; nothing without CV AI. A hook: call it unconditionally. */
+  useDime: () => Loaded<DimeState>;
+  /** A team's check-ins, its autopilot switch or some automations' levels. Throws with the refusal. */
+  setDime: (teamId: number, change: AiAutopilotChange) => Promise<AiAutopilotTeam>;
+  /** Turn the account's AI features on or off. Throws with the refusal. */
+  setFeatures: (change: Partial<AiFeatures>) => Promise<void>;
 
   // ---- the account itself
   user: AccountUser | null;

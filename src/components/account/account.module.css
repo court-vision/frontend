@@ -1370,3 +1370,63 @@ button.item:hover:not(:disabled) {
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------- Dime's autopilot (AI and automation) */
+
+.pilot {
+  margin-top: 14px;
+  border: var(--ctl-w, 1px) solid var(--line-2);
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--surface);
+}
+
+.pilot > .toggleRow {
+  padding: 10px 14px;
+}
+
+.pilot[data-paused-by="system"] > .toggleRow {
+  border-left: 3px solid var(--warn);
+  padding-left: 11px;
+}
+
+.pilotGrid {
+  display: flex;
+  flex-direction: column;
+}
+
+.pilotRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pilotRow[data-team] {
+  background: var(--surface-2);
+}
+
+.pilotLabel {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pilotName {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.pilotHeld {
+  color: var(--warn);
+}
+
+.pilotFoot {
+  padding: 9px 14px 11px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-3);
+}

@@ -1,9 +1,10 @@
 /**
  * Dime's check-ins, in words (backend services/ai/checkins.py; the Dime
  * autopilot plan, step 3). A check-in is a turn Dime starts itself on a team it
- * runs on, in shadow: it reads what the automations will do, logs every call it
- * makes (holds included), and sends nothing. The AI desk lists them beside the
- * chats; the user marks each call agree or disagree.
+ * runs on: it reads what the automations will do and logs every call it makes
+ * (holds included). On an automation at AI it sends its changes itself within the
+ * limits (step 5); anywhere else a change is a review, logged and never sent. The
+ * AI desk lists them beside the chats; the user marks each call agree or disagree.
  */
 import type { AiCheckin, AiCheckinKind, AiCheckinState, AiConversation, AiDecisionBlock, AiVerdict } from "@/types/ai";
 
@@ -47,7 +48,7 @@ export function reasonWords(reason: string | null | undefined): string | null {
   return REASONS[reason] ?? reason.replace(/_/g, " ").toLowerCase();
 }
 
-/** The row's second line: "3 calls · 1 change · 2 agree · $0.41", or why it didn't run. */
+/** The row's second line: "3 calls · 1 change · 1 sent by Dime · 2 agree · $0.41", or why it didn't run. */
 export function checkinLine(c: AiCheckin): string {
   if (c.state === "missed" || c.state === "skipped") {
     return `${STATE_LABEL[c.state]}: ${reasonWords(c.reason) ?? "it didn't run"}`;
@@ -57,6 +58,7 @@ export function checkinLine(c: AiCheckin): string {
   if (c.state === "failed") parts.push(`Failed${c.reason ? `: ${reasonWords(c.reason)}` : ""}`);
   parts.push(`${c.decisions} ${c.decisions === 1 ? "call" : "calls"}`);
   if (c.changes) parts.push(`${c.changes} ${c.changes === 1 ? "change" : "changes"}`);
+  if (c.sent) parts.push(`${c.sent} sent by Dime`);
   const rated = c.agree + c.disagree;
   if (rated) parts.push(c.disagree ? `${c.agree} agree, ${c.disagree} disagree` : `${c.agree} agree`);
   else if (c.decisions) parts.push("not rated");

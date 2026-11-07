@@ -135,6 +135,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Everything Dime did on its own
+         * @description The moves Dime's check-ins handled themselves on automations at AI, newest first (with `team_id`, that team's only): each one sent, or held back (blocked by a rule of the policy, refused by ESPN or the route, or failed) and left as a chip, with the automation it counts under, the call Dime logged for it and its check-in's conversation.
+         */
+        get: operations["list_actions_v1_internal_ai_actions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/ai/ask": {
         parameters: {
             query?: never;
@@ -164,8 +184,8 @@ export interface paths {
         };
         get?: never;
         /**
-         * Switch Dime's scheduled check-ins on or off for a team
-         * @description On starts (or resumes) the team's check-ins; off pauses them. A check-in whose window closed while they were off is not counted as missed.
+         * Dime's autopilot on a team: the check-ins, the autopilot switch and the automation levels
+         * @description One of: `checkins` (or step 3's `on`) starts (or resumes) the team's check-ins and false pauses them (a check-in whose window closed while they were off is not counted as missed; resuming also lifts a pause Dime made itself). `autopilot` true puts every automation that offers AI at AI, turns check-ins and the account's AI features on and the team's lineup email and auto-lineup on; false puts back the lineup preferences and check-ins it changed, and the automations the user set at AI count again. `levels` sets automations (lineup, daily_actions, lanes, late_scratch, checkins) to off, notify, act or ai, each to a level it offers (GET /checkins gives every level's availability and why not); lineup's off, notify and act are the team's lineup email and auto-lineup. Changing a level while autopilot is on turns it off and keeps the other automations at AI. `autopilot` and `levels` can't be sent together. Setting up a team that was never switched on leaves its check-ins off unless something turns them on.
          */
         put: operations["set_autopilot_v1_internal_ai_autopilot__team_id__put"];
         post?: never;
@@ -405,6 +425,30 @@ export interface paths {
          * @description Returns one of three kinds. `show`: a Court Vision view, as a terminal or page `target` the client applies. `statmuse`: an NBA stat question no view covers, with a server-built `statmuse_url` the user opens. `cannot`: neither covers it, with `suggestions`. Every ID in a target has been checked, and a fantasy team is always one of the caller's. Shares the daily allowance with /ai/ask and is off unless AI_ENABLED is set.
          */
         post: operations["route_v1_internal_ai_route_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The account's AI features
+         * @description memory (Dime keeps notes and reads them back) and draft_rooms (Dime's side of the Draft desk), for the whole account; both on until the user turns one off.
+         */
+        get: operations["get_ai_settings_v1_internal_ai_settings_get"];
+        /**
+         * Turn the account's AI features on or off
+         * @description Any of memory and draft_rooms; what is left out stays as it is. With memory off, Dime's memory tools answer that it is off and its notes stay as they are (What Dime knows still lists and edits them).
+         */
+        put: operations["set_ai_settings_v1_internal_ai_settings_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2907,15 +2951,204 @@ export interface components {
             usg_pct: number | null;
         };
         /**
+         * AiActing
+         * @description Whether Dime can act on its own at all, and the policy it acts within.
+         */
+        AiActing: {
+            /**
+             * Available
+             * @description DIME_ACTING_ENABLED: off, an automation at AI only reviews
+             */
+            available: boolean;
+            policy: components["schemas"]["AiActingPolicy"];
+            /**
+             * Steering
+             * @description DIME_STEERING_ENABLED: Dime's steering chips exist at all
+             */
+            steering: boolean;
+            /**
+             * Writes
+             * @description ROSTER_WRITES_ENABLED: writes to ESPN are on
+             */
+            writes: boolean;
+        };
+        /**
+         * AiActingPolicy
+         * @description The rules every move Dime sends itself is held to (core/settings.py).
+         */
+        AiActingPolicy: {
+            /** Adds Per Day */
+            adds_per_day: number;
+            /** Adds Per Matchup */
+            adds_per_matchup: number;
+            /**
+             * Adds Reserve
+             * @description Adds this matchup Dime leaves for the user (injuries)
+             */
+            adds_reserve: number;
+            /**
+             * Churn Hours
+             * @description Nor a player added this recently, unless he is out
+             */
+            churn_hours: number;
+            /**
+             * Pause Refused
+             * @description It pauses itself after this many refused writes in a day
+             */
+            pause_refused: number;
+            /**
+             * Pause Same Block
+             * @description ...or this many blocks by the same rule in a day
+             */
+            pause_same_block: number;
+            /**
+             * Protected Top
+             * @description Dime never drops one of the roster's top this many by value
+             */
+            protected_top: number;
+        };
+        /**
+         * AiAutomationRow
+         * @description One automation on the team (services/ai/autonomy.py): off, notify (an email), act (Court Vision does
+         *     it, no AI) or ai (Dime does it).
+         */
+        AiAutomationRow: {
+            /** Label */
+            label: string;
+            /**
+             * Level
+             * @description Its level now (at AI while the autopilot switch is on)
+             * @enum {string}
+             */
+            level: "off" | "notify" | "act" | "ai";
+            /**
+             * Note
+             * @description When the row does less than its level says (paused, acting off on the server, the lineup email off)
+             */
+            note: string | null;
+            /**
+             * Options
+             * @description Every level, in order off, notify, act, ai
+             */
+            options: components["schemas"]["AiLevelOption"][];
+            /**
+             * Row
+             * @enum {string}
+             */
+            row: "lineup" | "daily_actions" | "lanes" | "late_scratch" | "checkins";
+        };
+        /**
+         * AiAutopilotActionItem
+         * @description One move Dime handled on its own (usr.autopilot_actions), as the AI desk's Dime's moves lists it.
+         */
+        AiAutopilotActionItem: {
+            /** Action Id */
+            action_id: number;
+            /**
+             * Adds
+             * @description Players it adds (what Dime's caps count)
+             * @default 0
+             */
+            adds: number;
+            /** At */
+            at: string | null;
+            /** Checkin Id */
+            checkin_id: number | null;
+            /** Checkin Kind */
+            checkin_kind: ("morning" | "weekly" | "pre_lock" | "night") | null;
+            /**
+             * Conversation Id
+             * @description The check-in's conversation, to open it
+             */
+            conversation_id: number | null;
+            /**
+             * Date
+             * Format: date
+             * @description The fantasy day the move is for
+             */
+            date: string;
+            /**
+             * Kind
+             * @description The chip's kind: transaction, scheduled, lineup, steer, lane, cancel_pickup
+             */
+            kind: string;
+            /**
+             * Message
+             * @description What happened, in a sentence
+             */
+            message: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "sent" | "blocked" | "refused" | "failed";
+            /**
+             * Proposal Id
+             * @description The chip; a held-back one can still be sent there
+             */
+            proposal_id: number | null;
+            /**
+             * Row
+             * @description The automation it counts under
+             * @enum {string}
+             */
+            row: "lineup" | "daily_actions" | "lanes" | "late_scratch";
+            /**
+             * Rule
+             * @description The rule that held it back, or the error code
+             */
+            rule: string | null;
+            /**
+             * Summary
+             * @description The call Dime logged for it; null once that is gone
+             */
+            summary: string | null;
+            /** Team Id */
+            team_id: number;
+        };
+        /**
+         * AiAutopilotActionsResp
+         * @description Response for GET /v1/internal/ai/actions.
+         */
+        AiAutopilotActionsResp: {
+            /** Data */
+            data: components["schemas"]["AiAutopilotActionItem"][] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
          * AiAutopilotReq
-         * @description Body for PUT /v1/internal/ai/autopilot/{team_id}.
+         * @description Body for PUT /v1/internal/ai/autopilot/{team_id}: the check-ins, the autopilot switch or the levels;
+         *     what is left out stays as it is.
          */
         AiAutopilotReq: {
             /**
-             * On
-             * @description true starts (or resumes) the team's check-ins, false pauses them
+             * Autopilot
+             * @description The autopilot switch. On puts every automation that offers AI at AI and turns check-ins and the AI features on; off puts back what it changed
              */
-            on: boolean;
+            autopilot?: boolean | null;
+            /**
+             * Checkins
+             * @description true starts (or resumes, a pause Dime made itself included) the team's check-ins, false pauses them
+             */
+            checkins?: boolean | null;
+            /**
+             * Levels
+             * @description Automations to set, to a level each offers. Changing one while autopilot is on turns autopilot off and keeps the rest at AI
+             */
+            levels?: {
+                [key: string]: "off" | "notify" | "act" | "ai";
+            } | null;
+            /**
+             * On
+             * @description The same as checkins (step 3's name for it)
+             */
+            on?: boolean | null;
         };
         /** AiAutopilotResp */
         AiAutopilotResp: {
@@ -2930,7 +3163,7 @@ export interface components {
         };
         /**
          * AiAutopilotTeam
-         * @description A team Dime may run check-ins on, and its switch.
+         * @description A team Dime may run check-ins on: its check-ins, the autopilot switch and its automations table.
          */
         AiAutopilotTeam: {
             /**
@@ -2938,11 +3171,17 @@ export interface components {
              * @description When it was last switched on or resumed
              */
             active_since: string | null;
+            /**
+             * Autopilot
+             * @description The autopilot switch: every automation that offers AI is at AI
+             * @default false
+             */
+            autopilot: boolean;
             /** @description The next scheduled check-in, while on */
             next: components["schemas"]["AiCheckinSlot"] | null;
             /**
              * On
-             * @description Check-ins run on the schedule
+             * @description Check-ins run on the schedule (the Check-ins row at AI)
              */
             on: boolean;
             /** Paused At */
@@ -2951,6 +3190,11 @@ export interface components {
             paused_by: ("user" | "system") | null;
             /** Paused Reason */
             paused_reason: string | null;
+            /**
+             * Rows
+             * @description The automations table, in order
+             */
+            rows: components["schemas"]["AiAutomationRow"][];
             /** Team Id */
             team_id: number;
         };
@@ -3094,7 +3338,7 @@ export interface components {
         };
         /**
          * AiCheckinSummary
-         * @description One check-in: a turn Dime started itself, about one fantasy day, in shadow.
+         * @description One check-in: a turn Dime started itself, about one fantasy day.
          */
         AiCheckinSummary: {
             /** Agree */
@@ -3150,6 +3394,12 @@ export interface components {
              */
             reason: string | null;
             /**
+             * Sent
+             * @description Moves it sent on its own (on automations at AI)
+             * @default 0
+             */
+            sent: number;
+            /**
              * Started At
              * Format: date-time
              */
@@ -3166,6 +3416,7 @@ export interface components {
         };
         /** AiCheckinsData */
         AiCheckinsData: {
+            acting: components["schemas"]["AiActing"] | null;
             /**
              * Cap Usd
              * @description The check-ins' monthly budget, apart from the AI desk's
@@ -3176,6 +3427,8 @@ export interface components {
              * @description Newest first
              */
             checkins: components["schemas"]["AiCheckinSummary"][];
+            /** @description The account's AI features */
+            features: components["schemas"]["AiFeatures"] | null;
             /**
              * Month Usd
              * @description This month's check-in spend, every autopilot team
@@ -3352,12 +3605,39 @@ export interface components {
             updated_at: string;
         };
         /**
+         * AiDecisionAction
+         * @description What Dime did about a change on its own, on automations at AI (the Dime autopilot plan, step 5;
+         *     usr.autopilot_actions). A blocked or refused move is left as a chip.
+         */
+        AiDecisionAction: {
+            /** At */
+            at: string | null;
+            /**
+             * Message
+             * @description What happened, in a sentence
+             */
+            message: string;
+            /**
+             * Outcome
+             * @description sent (it went out) · blocked (a rule of the policy stopped it before anything was sent) · refused (the route or ESPN said no) · failed (ESPN unreachable, credentials, an error)
+             * @enum {string}
+             */
+            outcome: "sent" | "blocked" | "refused" | "failed";
+            /**
+             * Rule
+             * @description The rule that blocked it (cap_day, cap_matchup, reserve, protected, churn, paused, writes_off, ...) or the error code
+             */
+            rule: string | null;
+        };
+        /**
          * AiDecisionBlock
          * @description One call a check-in made (usr.ai_decisions), holds included: shown in its conversation for the user
          *     to agree or disagree with. A change to the lineup or the roster names the shadow proposal behind it,
          *     the chip shown just above it in the same turn.
          */
         AiDecisionBlock: {
+            /** @description What Dime did about it on its own, where its row is at AI; null where the change is a review */
+            action: components["schemas"]["AiDecisionAction"] | null;
             /**
              * Area
              * @enum {string}
@@ -3433,6 +3713,24 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /**
+         * AiFeatures
+         * @description The user's AI features, for the whole account (services/ai/ai_settings.py).
+         */
+        AiFeatures: {
+            /**
+             * Draft Rooms
+             * @description Dime's side of the Draft desk
+             * @default true
+             */
+            draft_rooms: boolean;
+            /**
+             * Memory
+             * @description Dime keeps notes and reads them back
+             * @default true
+             */
+            memory: boolean;
         };
         /** AiFeedbackData */
         AiFeedbackData: {
@@ -3599,6 +3897,24 @@ export interface components {
             switch: boolean;
             /** Value */
             value: number;
+        };
+        /**
+         * AiLevelOption
+         * @description One level of an automation: whether it can be picked, and why not.
+         */
+        AiLevelOption: {
+            /** Available */
+            available: boolean;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "off" | "notify" | "act" | "ai";
+            /**
+             * Reason
+             * @description Why it can't be picked (not built yet, the account's lineup email is off, ...)
+             */
+            reason: string | null;
         };
         /** AiNote */
         AiNote: {
@@ -4020,6 +4336,30 @@ export interface components {
          */
         AiProposalResp: {
             data: components["schemas"]["AiProposalCheckData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiSettingsReq
+         * @description Body for PUT /v1/internal/ai/settings: the features to change; what is left out stays as it is.
+         */
+        AiSettingsReq: {
+            /** Draft Rooms */
+            draft_rooms?: boolean | null;
+            /** Memory */
+            memory?: boolean | null;
+        };
+        /**
+         * AiSettingsResp
+         * @description Response for GET and PUT /v1/internal/ai/settings.
+         */
+        AiSettingsResp: {
+            data: components["schemas"]["AiFeatures"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -12467,6 +12807,59 @@ export interface operations {
             };
         };
     };
+    list_actions_v1_internal_ai_actions_get: {
+        parameters: {
+            query?: {
+                team_id?: number | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiAutopilotActionsResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description team_id is not one of the caller's teams (TEAM_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ask_v1_internal_ai_ask_post: {
         parameters: {
             query?: never;
@@ -12564,14 +12957,19 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description A level the automation doesn't offer, with why (AI_LEVEL_UNAVAILABLE) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nothing to change, autopilot with levels, or an unknown automation or level (AI_AUTOPILOT_INVALID) */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
             /** @description Turned off (AI_DISABLED, AI_AUTOPILOT_DISABLED) */
             503: {
@@ -13441,6 +13839,85 @@ export interface operations {
             };
             /** @description The assistant took too long (AI_TIMEOUT) */
             504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_ai_settings_v1_internal_ai_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSettingsResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    set_ai_settings_v1_internal_ai_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiSettingsReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSettingsResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nothing to change */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

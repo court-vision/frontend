@@ -270,18 +270,436 @@
         "title": "AdvancedStatsData",
         "type": "object"
       },
-      "AiAutopilotReq": {
-        "description": "Body for PUT /v1/internal/ai/autopilot/{team_id}.",
+      "AiActing": {
+        "description": "Whether Dime can act on its own at all, and the policy it acts within.",
         "properties": {
-          "on": {
-            "description": "true starts (or resumes) the team's check-ins, false pauses them",
-            "title": "On",
+          "available": {
+            "description": "DIME_ACTING_ENABLED: off, an automation at AI only reviews",
+            "title": "Available",
+            "type": "boolean"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/AiActingPolicy"
+          },
+          "steering": {
+            "description": "DIME_STEERING_ENABLED: Dime's steering chips exist at all",
+            "title": "Steering",
+            "type": "boolean"
+          },
+          "writes": {
+            "description": "ROSTER_WRITES_ENABLED: writes to ESPN are on",
+            "title": "Writes",
             "type": "boolean"
           }
         },
         "required": [
-          "on"
+          "available",
+          "steering",
+          "writes",
+          "policy"
         ],
+        "title": "AiActing",
+        "type": "object"
+      },
+      "AiActingPolicy": {
+        "description": "The rules every move Dime sends itself is held to (core/settings.py).",
+        "properties": {
+          "adds_per_day": {
+            "title": "Adds Per Day",
+            "type": "integer"
+          },
+          "adds_per_matchup": {
+            "title": "Adds Per Matchup",
+            "type": "integer"
+          },
+          "adds_reserve": {
+            "description": "Adds this matchup Dime leaves for the user (injuries)",
+            "title": "Adds Reserve",
+            "type": "integer"
+          },
+          "churn_hours": {
+            "description": "Nor a player added this recently, unless he is out",
+            "title": "Churn Hours",
+            "type": "integer"
+          },
+          "pause_refused": {
+            "description": "It pauses itself after this many refused writes in a day",
+            "title": "Pause Refused",
+            "type": "integer"
+          },
+          "pause_same_block": {
+            "description": "...or this many blocks by the same rule in a day",
+            "title": "Pause Same Block",
+            "type": "integer"
+          },
+          "protected_top": {
+            "description": "Dime never drops one of the roster's top this many by value",
+            "title": "Protected Top",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "adds_per_day",
+          "adds_per_matchup",
+          "adds_reserve",
+          "protected_top",
+          "churn_hours",
+          "pause_refused",
+          "pause_same_block"
+        ],
+        "title": "AiActingPolicy",
+        "type": "object"
+      },
+      "AiAutomationRow": {
+        "description": "One automation on the team (services/ai/autonomy.py): off, notify (an email), act (Court Vision does\nit, no AI) or ai (Dime does it).",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "level": {
+            "description": "Its level now (at AI while the autopilot switch is on)",
+            "enum": [
+              "off",
+              "notify",
+              "act",
+              "ai"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the row does less than its level says (paused, acting off on the server, the lineup email off)",
+            "title": "Note"
+          },
+          "options": {
+            "description": "Every level, in order off, notify, act, ai",
+            "items": {
+              "$ref": "#/components/schemas/AiLevelOption"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "row": {
+            "enum": [
+              "lineup",
+              "daily_actions",
+              "lanes",
+              "late_scratch",
+              "checkins"
+            ],
+            "title": "Row",
+            "type": "string"
+          }
+        },
+        "required": [
+          "row",
+          "label",
+          "level",
+          "options",
+          "note"
+        ],
+        "title": "AiAutomationRow",
+        "type": "object"
+      },
+      "AiAutopilotActionItem": {
+        "description": "One move Dime handled on its own (usr.autopilot_actions), as the AI desk's Dime's moves lists it.",
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "integer"
+          },
+          "adds": {
+            "default": 0,
+            "description": "Players it adds (what Dime's caps count)",
+            "title": "Adds",
+            "type": "integer"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "checkin_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkin Id"
+          },
+          "checkin_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "morning",
+                  "weekly",
+                  "pre_lock",
+                  "night"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkin Kind"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The check-in's conversation, to open it",
+            "title": "Conversation Id"
+          },
+          "date": {
+            "description": "The fantasy day the move is for",
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "description": "The chip's kind: transaction, scheduled, lineup, steer, lane, cancel_pickup",
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "description": "What happened, in a sentence",
+            "title": "Message",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "sent",
+              "blocked",
+              "refused",
+              "failed"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The chip; a held-back one can still be sent there",
+            "title": "Proposal Id"
+          },
+          "row": {
+            "description": "The automation it counts under",
+            "enum": [
+              "lineup",
+              "daily_actions",
+              "lanes",
+              "late_scratch"
+            ],
+            "title": "Row",
+            "type": "string"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The rule that held it back, or the error code",
+            "title": "Rule"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The call Dime logged for it; null once that is gone",
+            "title": "Summary"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "action_id",
+          "team_id",
+          "row",
+          "kind",
+          "date",
+          "adds",
+          "outcome",
+          "rule",
+          "message",
+          "summary",
+          "checkin_id",
+          "conversation_id",
+          "checkin_kind",
+          "proposal_id",
+          "at"
+        ],
+        "title": "AiAutopilotActionItem",
+        "type": "object"
+      },
+      "AiAutopilotActionsResp": {
+        "description": "Response for GET /v1/internal/ai/actions.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AiAutopilotActionItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiAutopilotActionsResp",
+        "type": "object"
+      },
+      "AiAutopilotReq": {
+        "description": "Body for PUT /v1/internal/ai/autopilot/{team_id}: the check-ins, the autopilot switch or the levels;\nwhat is left out stays as it is.",
+        "properties": {
+          "autopilot": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The autopilot switch. On puts every automation that offers AI at AI and turns check-ins and the AI features on; off puts back what it changed",
+            "title": "Autopilot"
+          },
+          "checkins": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "true starts (or resumes, a pause Dime made itself included) the team's check-ins, false pauses them",
+            "title": "Checkins"
+          },
+          "levels": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "enum": [
+                    "off",
+                    "notify",
+                    "act",
+                    "ai"
+                  ],
+                  "type": "string"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "lineup",
+                    "daily_actions",
+                    "lanes",
+                    "late_scratch",
+                    "checkins"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Automations to set, to a level each offers. Changing one while autopilot is on turns autopilot off and keeps the rest at AI",
+            "title": "Levels"
+          },
+          "on": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The same as checkins (step 3's name for it)",
+            "title": "On"
+          }
+        },
         "title": "AiAutopilotReq",
         "type": "object"
       },
@@ -338,7 +756,7 @@
         "type": "object"
       },
       "AiAutopilotTeam": {
-        "description": "A team Dime may run check-ins on, and its switch.",
+        "description": "A team Dime may run check-ins on: its check-ins, the autopilot switch and its automations table.",
         "properties": {
           "active_since": {
             "anyOf": [
@@ -353,6 +771,12 @@
             "description": "When it was last switched on or resumed",
             "title": "Active Since"
           },
+          "autopilot": {
+            "default": false,
+            "description": "The autopilot switch: every automation that offers AI is at AI",
+            "title": "Autopilot",
+            "type": "boolean"
+          },
           "next": {
             "anyOf": [
               {
@@ -365,7 +789,7 @@
             "description": "The next scheduled check-in, while on"
           },
           "on": {
-            "description": "Check-ins run on the schedule",
+            "description": "Check-ins run on the schedule (the Check-ins row at AI)",
             "title": "On",
             "type": "boolean"
           },
@@ -407,6 +831,14 @@
             ],
             "title": "Paused Reason"
           },
+          "rows": {
+            "description": "The automations table, in order",
+            "items": {
+              "$ref": "#/components/schemas/AiAutomationRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
           "team_id": {
             "title": "Team Id",
             "type": "integer"
@@ -419,7 +851,9 @@
           "paused_at",
           "paused_by",
           "paused_reason",
-          "next"
+          "next",
+          "autopilot",
+          "rows"
         ],
         "title": "AiAutopilotTeam",
         "type": "object"
@@ -772,7 +1206,7 @@
         "type": "object"
       },
       "AiCheckinSummary": {
-        "description": "One check-in: a turn Dime started itself, about one fantasy day, in shadow.",
+        "description": "One check-in: a turn Dime started itself, about one fantasy day.",
         "properties": {
           "agree": {
             "title": "Agree",
@@ -863,6 +1297,12 @@
             "description": "Why it failed, was missed or skipped (e.g. window_closed, budget, daily_cap, AI_TIMEOUT)",
             "title": "Reason"
           },
+          "sent": {
+            "default": 0,
+            "description": "Moves it sent on its own (on automations at AI)",
+            "title": "Sent",
+            "type": "integer"
+          },
           "started_at": {
             "format": "date-time",
             "title": "Started At",
@@ -905,13 +1345,24 @@
           "decisions",
           "changes",
           "agree",
-          "disagree"
+          "disagree",
+          "sent"
         ],
         "title": "AiCheckinSummary",
         "type": "object"
       },
       "AiCheckinsData": {
         "properties": {
+          "acting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiActing"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "cap_usd": {
             "description": "The check-ins' monthly budget, apart from the AI desk's",
             "title": "Cap Usd",
@@ -924,6 +1375,17 @@
             },
             "title": "Checkins",
             "type": "array"
+          },
+          "features": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiFeatures"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The account's AI features"
           },
           "month_usd": {
             "description": "This month's check-in spend, every autopilot team",
@@ -943,7 +1405,9 @@
           "teams",
           "checkins",
           "month_usd",
-          "cap_usd"
+          "cap_usd",
+          "acting",
+          "features"
         ],
         "title": "AiCheckinsData",
         "type": "object"
@@ -1393,9 +1857,73 @@
         "title": "AiConversationSummary",
         "type": "object"
       },
+      "AiDecisionAction": {
+        "description": "What Dime did about a change on its own, on automations at AI (the Dime autopilot plan, step 5;\nusr.autopilot_actions). A blocked or refused move is left as a chip.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "message": {
+            "description": "What happened, in a sentence",
+            "title": "Message",
+            "type": "string"
+          },
+          "outcome": {
+            "description": "sent (it went out) \u00b7 blocked (a rule of the policy stopped it before anything was sent) \u00b7 refused (the route or ESPN said no) \u00b7 failed (ESPN unreachable, credentials, an error)",
+            "enum": [
+              "sent",
+              "blocked",
+              "refused",
+              "failed"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The rule that blocked it (cap_day, cap_matchup, reserve, protected, churn, paused, writes_off, ...) or the error code",
+            "title": "Rule"
+          }
+        },
+        "required": [
+          "outcome",
+          "rule",
+          "message",
+          "at"
+        ],
+        "title": "AiDecisionAction",
+        "type": "object"
+      },
       "AiDecisionBlock": {
         "description": "One call a check-in made (usr.ai_decisions), holds included: shown in its conversation for the user\nto agree or disagree with. A change to the lineup or the roster names the shadow proposal behind it,\nthe chip shown just above it in the same turn.",
         "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiDecisionAction"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What Dime did about it on its own, where its row is at AI; null where the change is a review"
+          },
           "area": {
             "enum": [
               "lineup",
@@ -1489,7 +2017,8 @@
           "summary",
           "reason",
           "proposal_id",
-          "verdict"
+          "verdict",
+          "action"
         ],
         "title": "AiDecisionBlock",
         "type": "object"
@@ -1599,6 +2128,29 @@
           "timestamp"
         ],
         "title": "AiDecisionVerdictResp",
+        "type": "object"
+      },
+      "AiFeatures": {
+        "description": "The user's AI features, for the whole account (services/ai/ai_settings.py).",
+        "properties": {
+          "draft_rooms": {
+            "default": true,
+            "description": "Dime's side of the Draft desk",
+            "title": "Draft Rooms",
+            "type": "boolean"
+          },
+          "memory": {
+            "default": true,
+            "description": "Dime keeps notes and reads them back",
+            "title": "Memory",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "memory",
+          "draft_rooms"
+        ],
+        "title": "AiFeatures",
         "type": "object"
       },
       "AiFeedbackData": {
@@ -1996,6 +2548,44 @@
           "player"
         ],
         "title": "AiLaneDay",
+        "type": "object"
+      },
+      "AiLevelOption": {
+        "description": "One level of an automation: whether it can be picked, and why not.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "level": {
+            "enum": [
+              "off",
+              "notify",
+              "act",
+              "ai"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it can't be picked (not built yet, the account's lineup email is off, ...)",
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "level",
+          "available",
+          "reason"
+        ],
+        "title": "AiLevelOption",
         "type": "object"
       },
       "AiNote": {
@@ -3053,6 +3643,88 @@
           "timestamp"
         ],
         "title": "AiProposalResp",
+        "type": "object"
+      },
+      "AiSettingsReq": {
+        "description": "Body for PUT /v1/internal/ai/settings: the features to change; what is left out stays as it is.",
+        "properties": {
+          "draft_rooms": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Rooms"
+          },
+          "memory": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory"
+          }
+        },
+        "title": "AiSettingsReq",
+        "type": "object"
+      },
+      "AiSettingsResp": {
+        "description": "Response for GET and PUT /v1/internal/ai/settings.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiFeatures"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiSettingsResp",
         "type": "object"
       },
       "AiSteerAction": {
@@ -26113,6 +26785,84 @@
         ]
       }
     },
+    "/v1/internal/ai/actions": {
+      "get": {
+        "description": "The moves Dime's check-ins handled themselves on automations at AI, newest first (with `team_id`, that team's only): each one sent, or held back (blocked by a rule of the policy, refused by ESPN or the route, or failed) and left as a chip, with the automation it counts under, the call Dime logged for it and its check-in's conversation.",
+        "operationId": "list_actions_v1_internal_ai_actions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "maximum": 2147483647,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiAutopilotActionsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "team_id is not one of the caller's teams (TEAM_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Everything Dime did on its own",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
     "/v1/internal/ai/ask": {
       "post": {
         "description": "Answers by looking players up through Court Vision's own services; every number in the answer comes from one of those lookups, listed in `tool_calls`. Each caller has a daily allowance of questions, and the route is off unless AI_ENABLED is set.",
@@ -26167,7 +26917,7 @@
     },
     "/v1/internal/ai/autopilot/{team_id}": {
       "put": {
-        "description": "On starts (or resumes) the team's check-ins; off pauses them. A check-in whose window closed while they were off is not counted as missed.",
+        "description": "One of: `checkins` (or step 3's `on`) starts (or resumes) the team's check-ins and false pauses them (a check-in whose window closed while they were off is not counted as missed; resuming also lifts a pause Dime made itself). `autopilot` true puts every automation that offers AI at AI, turns check-ins and the account's AI features on and the team's lineup email and auto-lineup on; false puts back the lineup preferences and check-ins it changed, and the automations the user set at AI count again. `levels` sets automations (lineup, daily_actions, lanes, late_scratch, checkins) to off, notify, act or ai, each to a level it offers (GET /checkins gives every level's availability and why not); lineup's off, notify and act are the team's lineup email and auto-lineup. Changing a level while autopilot is on turns it off and keeps the other automations at AI. `autopilot` and `levels` can't be sent together. Setting up a team that was never switched on leaves its check-ins off unless something turns them on.",
         "operationId": "set_autopilot_v1_internal_ai_autopilot__team_id__put",
         "parameters": [
           {
@@ -26209,15 +26959,11 @@
           "404": {
             "description": "team_id is not one of the caller's teams (TEAM_NOT_FOUND)"
           },
+          "409": {
+            "description": "A level the automation doesn't offer, with why (AI_LEVEL_UNAVAILABLE)"
+          },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
+            "description": "Nothing to change, autopilot with levels, or an unknown automation or level (AI_AUTOPILOT_INVALID)"
           },
           "503": {
             "description": "Turned off (AI_DISABLED, AI_AUTOPILOT_DISABLED)"
@@ -26228,7 +26974,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Switch Dime's scheduled check-ins on or off for a team",
+        "summary": "Dime's autopilot on a team: the check-ins, the autopilot switch and the automation levels",
         "tags": [
           "AI"
         ]
@@ -27179,6 +27925,83 @@
           }
         ],
         "summary": "Route a question to the place that answers it",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/settings": {
+      "get": {
+        "description": "memory (Dime keeps notes and reads them back) and draft_rooms (Dime's side of the Draft desk), for the whole account; both on until the user turns one off.",
+        "operationId": "get_ai_settings_v1_internal_ai_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiSettingsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The account's AI features",
+        "tags": [
+          "AI"
+        ]
+      },
+      "put": {
+        "description": "Any of memory and draft_rooms; what is left out stays as it is. With memory off, Dime's memory tools answer that it is off and its notes stay as they are (What Dime knows still lists and edits them).",
+        "operationId": "set_ai_settings_v1_internal_ai_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiSettingsReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiSettingsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "422": {
+            "description": "Nothing to change"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Turn the account's AI features on or off",
         "tags": [
           "AI"
         ]
