@@ -344,7 +344,7 @@ function Writing({ what }: { what: string }) {
 function NoteLink({ note }: { note: DimeDraftNote }) {
   if (note.conversation_id == null) return null;
   return (
-    <Link href={`${AI_DESK}?c=${note.conversation_id}`} className={dk.link} title="Open the note's conversation in the AI desk, to ask a follow-up">
+    <Link href={`${AI_DESK}?v=drafts&c=${note.conversation_id}`} className={dk.link} title="Open the note's conversation in the AI desk, to ask a follow-up">
       Follow up
     </Link>
   );
