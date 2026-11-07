@@ -4,13 +4,13 @@
  * Yahoo account nobody has checked, and lineup alerts half set up. Every
  * write lands in memory. Nothing here is real.
  */
-import type { AiActing, AiAutonomy, AiAutopilotChange, AiAutopilotTeam } from "@/types/ai";
+import type { AiActing, AiAutomationName, AiAutopilotChange, AiAutopilotTeam, AiFeatures, AiLevel } from "@/types/ai";
 import type { EspnAccountTeam, ProviderConnection } from "@/types/connections";
 import type { NotificationPreference, NotificationTeamPreference } from "@/types/notifications";
 import type { LeagueDetail, LeagueSummary, TeamResponseData } from "@/types/team";
 import type { YahooLeague, YahooTeam } from "@/types/yahoo";
 import type { Capabilities } from "./account";
-import { effectiveOf } from "./ai-autonomy";
+import { AI_ROWS, ROW_LABEL, LEVEL_LABEL, lineupLevel, lineupPrefs, offersAi, tableOf } from "./ai-autonomy";
 
 export const DEMO_NOW = Date.parse("2026-10-09T15:00:00Z");
 const h = (hours: number) => new Date(DEMO_NOW - hours * 3600_000).toISOString();
@@ -229,7 +229,7 @@ export const DEMO_TEAM_PREFS: NotificationTeamPreference[] = [
 
 export const DEMO_USER = { name: "Demo Manager", email: "demo@courtvision.dev", imageUrl: null as string | null };
 
-// ---- Dime: one team it runs check-ins on, every change kept in memory
+// ---- Dime: one team it runs on, every change kept in memory
 
 /** The server's switches and policy, as a server with acting on would send them. */
 export const DEMO_ACTING: AiActing = {
@@ -239,40 +239,127 @@ export const DEMO_ACTING: AiActing = {
   policy: { adds_per_day: 2, adds_per_matchup: 5, adds_reserve: 1, protected_top: 6, churn_hours: 48, pause_refused: 2, pause_same_block: 2 },
 };
 
-/** The demo's first team, in suggest with adds and drops kept in shadow; its next check-in is tomorrow morning. */
-export function demoDimeTeams(now: number = Date.now()): AiAutopilotTeam[] {
-  const date = new Date(now + 86_400_000).toISOString().slice(0, 10);
-  const own: AiAutonomy["own"] = { lineup: null, streaming: null, adds_drops: "shadow" };
+export const DEMO_FEATURES: AiFeatures = { memory: true, draft_rooms: true };
+
+type LineupOverride = { lineup_alerts_enabled: boolean | null; auto_lineup_enabled: boolean | null };
+
+/** What usr.autopilot holds for a demo team. */
+export interface DemoDime {
+  team_id: number;
+  ai_rows: AiAutomationName[];
+  autopilot: boolean;
+  paused_at: string | null;
+  paused_by: "user" | "system" | null;
+  active_since: string;
+  /** What the autopilot switch changed when it came on: the team's lineup override, whether check-ins were on. */
+  restore: { lineup: LineupOverride; checkins_on: boolean } | null;
+}
+
+/** The demo's first team: daily actions at AI, check-ins on. */
+export function demoDime(now: number = Date.now()): DemoDime[] {
   return [
     {
       team_id: DEMO_TEAMS[0].team_id,
-      on: true,
-      active_since: new Date(now - 7 * 86_400_000).toISOString(),
+      ai_rows: ["daily_actions"],
+      autopilot: false,
       paused_at: null,
       paused_by: null,
-      paused_reason: null,
-      next: { kind: "morning", date, due_at: `${date}T14:00:00Z` },
-      autonomy: { mode: "suggest", own, effective: effectiveOf("suggest", own, false, DEMO_ACTING.available) },
+      active_since: new Date(now - 7 * 86_400_000).toISOString(),
+      restore: null,
     },
   ];
 }
 
-/** A change to a demo team, as the server would answer it: switching off pauses it (yours), on resumes it. */
-export function demoDimeChange(t: AiAutopilotTeam, change: AiAutopilotChange, canAct: boolean, now: number = Date.now()): AiAutopilotTeam {
-  const on = change.on ?? t.on;
-  const pause =
-    on === t.on
-      ? { paused_at: t.paused_at, paused_by: t.paused_by, paused_reason: t.paused_reason }
-      : on
-        ? { paused_at: null, paused_by: null, paused_reason: null }
-        : { paused_at: new Date(now).toISOString(), paused_by: "user" as const, paused_reason: null };
-  const mode = change.mode ?? t.autonomy.mode;
-  const own = { ...t.autonomy.own, ...(change.own ?? {}) };
+/** The team as GET /ai/checkins would send it, its lineup row read from the demo's preferences. */
+export function demoDimeTeam(
+  d: DemoDime,
+  prefs: NotificationPreference,
+  override: NotificationTeamPreference | undefined,
+  now: number = Date.now()
+): AiAutopilotTeam {
+  const date = new Date(now + 86_400_000).toISOString().slice(0, 10);
+  const on = d.paused_at == null;
+  const pick = <K extends keyof LineupOverride>(k: K) => override?.[k] ?? prefs[k];
   return {
-    ...t,
+    team_id: d.team_id,
     on,
-    ...pause,
-    active_since: on && !t.on ? new Date(now).toISOString() : t.active_since,
-    autonomy: { mode, own, effective: effectiveOf(mode, own, !on, canAct) },
+    active_since: d.active_since,
+    paused_at: d.paused_at,
+    paused_by: d.paused_by,
+    paused_reason: null,
+    next: on ? { kind: "morning", date, due_at: `${date}T14:00:00Z` } : null,
+    autopilot: d.autopilot,
+    rows: tableOf({
+      aiRows: d.ai_rows,
+      autopilot: d.autopilot,
+      paused: !on,
+      pausedBy: d.paused_by,
+      lineupBelowAi: prefs.lineup_alerts_enabled
+        ? lineupLevel({ lineup_alerts_enabled: !!pick("lineup_alerts_enabled"), auto_lineup_enabled: !!pick("auto_lineup_enabled") })
+        : "off",
+      lineupEmail: prefs.lineup_alerts_enabled,
+      actingAvailable: DEMO_ACTING.available,
+    }),
   };
+}
+
+/**
+ * A change to a demo team, as the server would make it (services/ai/levels.py): the new row,
+ * and the lineup override to write when the change touches it. Throws the server's refusal for a
+ * level the row doesn't offer.
+ */
+export function demoDimeChange(
+  d: DemoDime,
+  team: AiAutopilotTeam,
+  override: LineupOverride,
+  change: AiAutopilotChange,
+  now: number = Date.now()
+): { dime: DemoDime; lineup: LineupOverride | null } {
+  const levels = Object.entries(change.levels ?? {}) as Array<[AiAutomationName, AiLevel]>;
+  for (const [row, level] of levels) {
+    const option = team.rows.find((r) => r.row === row)?.options.find((o) => o.level === level);
+    if (option && !option.available) throw new Error(`${ROW_LABEL[row]} can't be ${LEVEL_LABEL[level]}: ${option.reason}`);
+  }
+  let rows = new Set(d.ai_rows);
+  let autopilot = d.autopilot;
+  let restore = d.restore;
+  let checkins = change.checkins;
+  let lineup: LineupOverride | null = null;
+  const fill = lineupPrefs("ai");
+  if (change.autopilot === true && !autopilot) {
+    restore = { lineup: override, checkins_on: d.paused_at == null };
+    autopilot = true;
+    lineup = fill;
+    checkins = true;
+  } else if (change.autopilot === false && autopilot) {
+    autopilot = false;
+    if (restore) {
+      const unchanged = override.lineup_alerts_enabled === fill.lineup_alerts_enabled && override.auto_lineup_enabled === fill.auto_lineup_enabled;
+      if (!rows.has("lineup") && unchanged) lineup = restore.lineup;
+      if (!restore.checkins_on && rows.size === 0 && checkins == null) checkins = false;
+    }
+    restore = null;
+  }
+  if (levels.length) {
+    if (autopilot) {
+      rows = new Set(AI_ROWS.filter(offersAi));
+      autopilot = false;
+      restore = null;
+    }
+    for (const [row, level] of levels) {
+      if (row === "checkins") {
+        checkins = level === "ai";
+        continue;
+      }
+      if (level === "ai") {
+        rows.add(row);
+        checkins = checkins ?? true;
+      } else rows.delete(row);
+      if (row === "lineup") lineup = lineupPrefs(level);
+    }
+  }
+  let pause = { paused_at: d.paused_at, paused_by: d.paused_by, active_since: d.active_since };
+  if (checkins === true && d.paused_at != null) pause = { paused_at: null, paused_by: null, active_since: new Date(now).toISOString() };
+  else if (checkins === false && d.paused_at == null) pause = { ...pause, paused_at: new Date(now).toISOString(), paused_by: "user" };
+  return { dime: { ...d, ...pause, ai_rows: AI_ROWS.filter((r) => rows.has(r)), autopilot, restore }, lineup };
 }

@@ -43,7 +43,7 @@ const STATE_LABEL: Record<"sent" | "dismissed" | "expired" | "shadow", string> =
   sent: "Sent",
   dismissed: "Dismissed",
   expired: "Expired",
-  shadow: "Logged in shadow, not sent",
+  shadow: "A review: logged, not sent",
 };
 
 export function ProposalChip({ chip: raw, actions }: { chip: AiProposalChip; actions: ChipActions }) {

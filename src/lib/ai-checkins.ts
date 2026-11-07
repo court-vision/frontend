@@ -1,9 +1,10 @@
 /**
  * Dime's check-ins, in words (backend services/ai/checkins.py; the Dime
  * autopilot plan, step 3). A check-in is a turn Dime starts itself on a team it
- * runs on, in shadow: it reads what the automations will do, logs every call it
- * makes (holds included), and sends nothing. The AI desk lists them beside the
- * chats; the user marks each call agree or disagree.
+ * runs on: it reads what the automations will do and logs every call it makes
+ * (holds included). On an automation at AI it sends its changes itself within the
+ * limits (step 5); anywhere else a change is a review, logged and never sent. The
+ * AI desk lists them beside the chats; the user marks each call agree or disagree.
  */
 import type { AiCheckin, AiCheckinKind, AiCheckinState, AiConversation, AiDecisionBlock, AiVerdict } from "@/types/ai";
 

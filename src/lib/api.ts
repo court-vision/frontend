@@ -56,6 +56,8 @@ import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
 import type {
+  AiAutopilotAction,
+  AiAutopilotActionsResponse,
   AiAutopilotResponse,
   AiAutopilotChange,
   AiAutopilotTeam,
@@ -69,6 +71,7 @@ import type {
   AiConversationResponse,
   AiConversationSummary,
   AiDecisionVerdictResponse,
+  AiFeatures,
   AiFeedback,
   AiNote,
   AiNoteCreateRequest,
@@ -79,6 +82,7 @@ import type {
   AiProposalChip,
   AiProposalDismissResponse,
   AiProposalResponse,
+  AiSettingsResponse,
   AiTurnCommentResponse,
   AiTurnFeedbackResponse,
   AiUsage,
@@ -1260,7 +1264,7 @@ class ApiClient {
     await fetchJson(`${AI_API}/notes/${noteId}`, { getToken, method: "DELETE" });
   }
 
-  // ---- Dime's check-ins, in shadow: the teams it runs on, what it ran, and the
+  // ---- Dime's check-ins: the teams it runs on, what it ran, and the
   // user's verdict on each call it logged.
 
   /** The caller's autopilot teams (switch, next check-in) and their check-ins, newest first. */
@@ -1274,11 +1278,25 @@ class ApiClient {
     return unwrap(await fetchJson<AiCheckinResponse>(`${AI_API}/checkins`, { getToken, method: "POST", body }));
   }
 
-  /** A team's autopilot: switch its check-ins on (or resume them) or pause them, and set how much Dime may do. */
+  /**
+   * A team's autopilot: its check-ins on (or resumed) or paused, the autopilot switch, or some
+   * automations' levels. A level the row doesn't offer is a 409 with the reason.
+   */
   async setAiAutopilot(getToken: GetTokenFn, teamId: number, change: AiAutopilotChange): Promise<AiAutopilotTeam> {
     return unwrap(
       await fetchJson<AiAutopilotResponse>(`${AI_API}/autopilot/${teamId}`, { getToken, method: "PUT", body: change })
     );
+  }
+
+  /** Everything Dime did on its own, newest first: one team's, or every team's with null. */
+  async getAiActions(getToken: GetTokenFn, teamId: number | null, opts?: RequestOptions): Promise<AiAutopilotAction[]> {
+    const q = teamId != null ? `?team_id=${teamId}` : "";
+    return unwrap(await fetchJson<AiAutopilotActionsResponse>(`${AI_API}/actions${q}`, { ...opts, getToken }));
+  }
+
+  /** Turn the account's AI features on or off; returns them as they now stand. */
+  async setAiFeatures(getToken: GetTokenFn, change: Partial<AiFeatures>): Promise<AiFeatures> {
+    return unwrap(await fetchJson<AiSettingsResponse>(`${AI_API}/settings`, { getToken, method: "PUT", body: change }));
   }
 
   /** Agree or disagree with one call a check-in logged; null clears it. */

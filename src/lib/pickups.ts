@@ -84,7 +84,7 @@ const REASONS: Record<string, string> = {
   dime_acting_off: "Dime's acting is switched off",
   dime_paused: "Dime is paused on this team",
   dime_not_allowed: "the team isn't open to Dime",
-  dime_not_acting: "Dime no longer makes adds and drops itself here",
+  dime_not_acting: "daily actions aren't at AI on this team any more",
   dime_reserve: "it would have used the add Dime keeps for you",
 };
 
