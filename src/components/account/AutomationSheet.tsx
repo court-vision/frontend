@@ -19,7 +19,8 @@ const ACCOUNT_HELP: Record<string, string> = {
     "Notify is the tip-off email. Act also sets the lineup before tip-off: bench players with a game move into spots held by players without one. Healthy starters stay, IR is untouched, and the email says what changed.",
   daily_actions: "The Week desk's IR moves and the day's pickup and drop. Its email and Court Vision making the moves aren't built yet.",
   lanes: "Your stream lanes run as you set them in the Week desk.",
-  late_scratch: "News and late scratches before a player's game. Its email and the late-scratch swap aren't built yet.",
+  late_scratch:
+    "News and late scratches before a player's game. Its email and the late-scratch swap aren't built yet; at AI, on a team Dime runs, an event check-in answers them before the game locks.",
 };
 
 /** Off, Notify or Act for each automation: the account's, or a team's own over it. */

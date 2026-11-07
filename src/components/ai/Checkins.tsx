@@ -110,7 +110,7 @@ export function CheckinsView({
   return (
     <DimeView
       label="Check-ins"
-      sub="Turns Dime starts on its own on the teams it runs on: it reads what auto-lineup, the lanes and the scheduled pickups will do and logs every call it makes, holds included. On automations at AI it sends its changes itself, within the limits; anywhere else a change is a review, logged and not sent. Open one to mark each call agree or disagree."
+      sub="Turns Dime starts on its own on the teams it runs on, on its schedule and, with Late scratches at AI, when news comes in about a rostered player. It reads what auto-lineup, the lanes and the scheduled pickups will do and logs every call it makes, holds included. On automations at AI it sends its changes itself, within the limits; anywhere else a change is a review, logged and not sent. Open one to mark each call agree or disagree."
     >
       {body}
     </DimeView>

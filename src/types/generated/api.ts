@@ -3121,7 +3121,7 @@ export interface components {
             /** Checkin Id */
             checkin_id: number | null;
             /** Checkin Kind */
-            checkin_kind: ("morning" | "weekly" | "pre_lock" | "night") | null;
+            checkin_kind: ("morning" | "weekly" | "pre_lock" | "night" | "event") | null;
             /**
              * Conversation Id
              * @description The check-in's conversation, to open it

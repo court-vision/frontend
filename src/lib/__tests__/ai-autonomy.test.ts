@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { DEMO_PREFS, DEMO_TEAM_PREFS, demoDime, demoDimeChange, demoDimeTeam } from "../account-demo";
 import {
   EMAIL_OFF,
+  EVENTS_OFF,
   accountOptions,
   actionLine,
   aiRowsLine,
@@ -93,11 +94,13 @@ describe("a team's table", () => {
 
   test("the switch puts every row that offers AI at AI, and says so", () => {
     const rows = tableOf(state({ autopilot: true }));
-    expect(rows.map((r) => r.level)).toEqual(["ai", "ai", "ai", "off", "ai"]);
+    expect(rows.map((r) => r.level)).toEqual(["ai", "ai", "ai", "ai", "ai"]);
     expect(rows[0].note).toBe("Autopilot sets these");
-    // Late scratches can't be at AI until event check-ins
+    // Late scratches at AI are event check-ins (step 6); their notify and act aren't built
     const late = rows.find((r) => r.row === "late_scratch")!;
-    expect(late.options.find((o) => o.level === "ai")?.reason).toBe("Comes with event check-ins (step 6)");
+    expect(late.options.map((o) => o.available)).toEqual([true, false, false, true]);
+    expect(late.note).toBe("Autopilot sets these");
+    expect(levels(state({ aiRows: ["late_scratch"] })).late_scratch).toBe("ai");
   });
 
   test("notes say why a row at AI does less", () => {
@@ -107,6 +110,10 @@ describe("a team's table", () => {
     expect(tableOf(state({ aiRows: ["lineup"], actingAvailable: false }))[0].note).toBe(
       "Reviews only: Dime's acting is switched off on the server"
     );
+    // Late scratches at AI do nothing while the server's event check-ins are off
+    const eventsOff = tableOf(state({ aiRows: ["lineup", "late_scratch"], eventsAvailable: false }));
+    expect(eventsOff[3].note).toBe(EVENTS_OFF);
+    expect(eventsOff[0].note).toBeNull();
     const noEmail = tableOf(state({ aiRows: ["lineup"], lineupEmail: false }))[0];
     expect(noEmail.note).toBe("Auto-lineup doesn't run: your account's lineup email is off");
     expect(noEmail.options.map((o) => o.available)).toEqual([true, false, false, false]);
@@ -123,7 +130,9 @@ describe("a team's table", () => {
     expect(aiRowsLine(team(state({ aiRows: ["lineup", "lanes"] })))).toBe("lineup and stream lanes");
     const on = { available: true };
     expect(teamLine(team(state()), on)).toBe("Dime reviews and logs; nothing is at AI");
-    expect(teamLine(team(state({ autopilot: true })), on)).toBe("Autopilot: lineup, daily actions and stream lanes");
+    expect(teamLine(team(state({ autopilot: true })), on)).toBe(
+      "Autopilot: lineup, daily actions, stream lanes and late scratches and news"
+    );
     expect(teamLine(team(state({ aiRows: ["daily_actions"], paused: true })), on)).toBe("At AI: daily actions, paused");
     expect(teamLine(team(state({ aiRows: ["daily_actions"] })), { available: false })).toBe(
       "At AI: daily actions, reviews only (acting is off on the server)"
@@ -160,7 +169,7 @@ describe("the demo's Dime", () => {
     expect([off.dime.autopilot, off.dime.ai_rows, off.lineup]).toEqual([false, ["daily_actions"], override]);
 
     const changed = demoDimeChange(on.dime, read(on.dime), lineupPrefs("ai"), { levels: { lanes: "act" } }, NOW);
-    expect([changed.dime.autopilot, changed.dime.ai_rows]).toEqual([false, ["lineup", "daily_actions"]]);
+    expect([changed.dime.autopilot, changed.dime.ai_rows]).toEqual([false, ["lineup", "daily_actions", "late_scratch"]]);
   });
 
   test("pausing check-ins leaves the switch on; a level the row can't do is refused", () => {

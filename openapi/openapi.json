@@ -453,7 +453,8 @@
                   "morning",
                   "weekly",
                   "pre_lock",
-                  "night"
+                  "night",
+                  "event"
                 ],
                 "type": "string"
               },
