@@ -1701,10 +1701,11 @@
           },
           "kind": {
             "default": "chat",
-            "description": "chat (the user's), or a check-in's conversation",
+            "description": "chat (the user's), a check-in's conversation, or one of Dime's notes in a draft room",
             "enum": [
               "chat",
-              "checkin"
+              "checkin",
+              "draft"
             ],
             "title": "Kind",
             "type": "string"
@@ -1878,10 +1879,11 @@
           },
           "kind": {
             "default": "chat",
-            "description": "chat (the user's), or a check-in's conversation",
+            "description": "chat (the user's), a check-in's conversation, or one of Dime's notes in a draft room",
             "enum": [
               "chat",
-              "checkin"
+              "checkin",
+              "draft"
             ],
             "title": "Kind",
             "type": "string"
@@ -7162,6 +7164,616 @@
         "title": "DeleteLineupResp",
         "type": "object"
       },
+      "DimeDraftDesk": {
+        "properties": {
+          "enabled": {
+            "description": "DIME_DRAFT_ENABLED (and AI_ENABLED) on the server",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "rooms": {
+            "description": "The room with the newest note first",
+            "items": {
+              "$ref": "#/components/schemas/DimeDraftDeskRoom"
+            },
+            "title": "Rooms",
+            "type": "array"
+          },
+          "switched_off": {
+            "description": "The account's Dime in draft rooms switch is off (its notes still list)",
+            "title": "Switched Off",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "switched_off",
+          "rooms"
+        ],
+        "title": "DimeDraftDesk",
+        "type": "object"
+      },
+      "DimeDraftDeskResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DimeDraftDesk"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DimeDraftDeskResp",
+        "type": "object"
+      },
+      "DimeDraftDeskRoom": {
+        "description": "One of the user's draft rooms, with the notes Dime wrote in it.",
+        "properties": {
+          "kind": {
+            "description": "live, manual, mock or import",
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_at": {
+            "description": "When its newest note was started",
+            "format": "date-time",
+            "title": "Last At",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The user's own label for the room",
+            "title": "Name"
+          },
+          "notes": {
+            "description": "Newest first",
+            "items": {
+              "$ref": "#/components/schemas/DimeDraftNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "room_id": {
+            "title": "Room Id",
+            "type": "integer"
+          },
+          "status": {
+            "description": "active, completed or abandoned",
+            "title": "Status",
+            "type": "string"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          }
+        },
+        "required": [
+          "room_id",
+          "name",
+          "kind",
+          "status",
+          "team_id",
+          "last_at",
+          "notes"
+        ],
+        "title": "DimeDraftDeskRoom",
+        "type": "object"
+      },
+      "DimeDraftNote": {
+        "description": "One note Dime wrote in the room: its words (`text`, null while it runs), the board's numbers\nthe server read for it (`facts`), and what it set or made.",
+        "properties": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opens in the AI desk",
+            "title": "Conversation Id"
+          },
+          "cost_usd": {
+            "default": 0.0,
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "facts": {
+            "additionalProperties": true,
+            "description": "pick: pick, picks_until, on_clock, gone_before (the pick `gone` is about), top (three recommendations: name, position, score, availability, reason...), gone (who won't last), punts, roster, needs. recap: grade, place, seats, value_over_slot, by_dime. plan: none",
+            "title": "Facts",
+            "type": "object"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "for_pick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A pick note: the user's overall pick it is about",
+            "title": "For Pick"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "plan",
+              "pick",
+              "recap"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A plan note: the plan it set",
+            "title": "Plan"
+          },
+          "punts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A plan note: the room's punts it set",
+            "title": "Punts"
+          },
+          "punts_before": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A plan note: the room's punts before it",
+            "title": "Punts Before"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it failed",
+            "title": "Reason"
+          },
+          "seat": {
+            "default": false,
+            "description": "A pick Dime made itself, holding the user's seat in a mock",
+            "title": "Seat",
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "took": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A seat note: the pick it recorded (overall_pick, round, player_id, name, position, team, reason)",
+            "title": "Took"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "for_pick",
+          "seat",
+          "state",
+          "reason",
+          "facts",
+          "text",
+          "plan",
+          "punts",
+          "punts_before",
+          "took",
+          "conversation_id",
+          "cost_usd",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "DimeDraftNote",
+        "type": "object"
+      },
+      "DimeDraftNoteReq": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "plan",
+              "pick",
+              "recap"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "DimeDraftNoteReq",
+        "type": "object"
+      },
+      "DimeDraftNoteResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DimeDraftNote"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DimeDraftNoteResp",
+        "type": "object"
+      },
+      "DimeDraftRoom": {
+        "properties": {
+          "available": {
+            "description": "enabled, the caller is on the AI desk's list, and their Dime in draft rooms switch is on: the room shows Dime",
+            "title": "Available",
+            "type": "boolean"
+          },
+          "can_seat": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dime can hold the user's seat here (a mock following nothing)",
+            "title": "Can Seat"
+          },
+          "enabled": {
+            "description": "DIME_DRAFT_ENABLED (and AI_ENABLED) on the server",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "lead": {
+            "description": "The room asks for a pick note once the user's pick is this many picks away",
+            "title": "Lead",
+            "type": "integer"
+          },
+          "notes": {
+            "description": "Newest first",
+            "items": {
+              "$ref": "#/components/schemas/DimeDraftNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "notes_on": {
+            "description": "A note when each of the user's picks is near",
+            "title": "Notes On",
+            "type": "boolean"
+          },
+          "running": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The note being written now",
+            "title": "Running"
+          },
+          "seat": {
+            "$ref": "#/components/schemas/DimeDraftSeat"
+          },
+          "seat_blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it can't, in a line",
+            "title": "Seat Blocker"
+          },
+          "switched_off": {
+            "default": false,
+            "description": "enabled and on the list, but the account's Dime in draft rooms switch (Account, AI and automation) is off",
+            "title": "Switched Off",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "available",
+          "switched_off",
+          "lead",
+          "notes_on",
+          "seat",
+          "can_seat",
+          "seat_blocker",
+          "running",
+          "notes"
+        ],
+        "title": "DimeDraftRoom",
+        "type": "object"
+      },
+      "DimeDraftRoomReq": {
+        "properties": {
+          "notes": {
+            "description": "A note when each of the user's picks is near",
+            "title": "Notes",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "notes"
+        ],
+        "title": "DimeDraftRoomReq",
+        "type": "object"
+      },
+      "DimeDraftRoomResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DimeDraftRoom"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DimeDraftRoomResp",
+        "type": "object"
+      },
+      "DimeDraftSeat": {
+        "properties": {
+          "live": {
+            "default": false,
+            "description": "Its loop is still running (one whose process died reads false)",
+            "title": "Live",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it last stopped: done, stopped, pick_failed, cap_blocked, pool_exhausted, blocked, or an error code",
+            "title": "Reason"
+          },
+          "state": {
+            "enum": [
+              "off",
+              "drafting",
+              "stopping"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "reason",
+          "live"
+        ],
+        "title": "DimeDraftSeat",
+        "type": "object"
+      },
+      "DimeDraftSeatReq": {
+        "properties": {
+          "on": {
+            "description": "true: Dime drafts the user's seat to the end; false: hand it back after this pick",
+            "title": "On",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "on"
+        ],
+        "title": "DimeDraftSeatReq",
+        "type": "object"
+      },
       "DraftBoardMeta": {
         "properties": {
           "available": {
@@ -8858,7 +9470,8 @@
               "espn_sync",
               "import",
               "keeper",
-              "mock"
+              "mock",
+              "dime"
             ],
             "title": "Source",
             "type": "string"
@@ -21709,7 +22322,8 @@
               "espn_sync",
               "import",
               "keeper",
-              "mock"
+              "mock",
+              "dime"
             ],
             "title": "Source",
             "type": "string"
@@ -27844,6 +28458,39 @@
         ]
       }
     },
+    "/v1/internal/ai/draft-notes": {
+      "get": {
+        "description": "Every plan, pick note and recap Dime wrote in the caller's draft rooms (the newest 300), grouped by room: the room with the newest note first, each room's notes newest first. Listed whether or not Dime is on in draft rooms now; `enabled` and `switched_off` say whether new ones can be asked for. Each note's `conversation_id` opens it on the AI desk.",
+        "operationId": "get_desk_notes_v1_internal_ai_draft_notes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimeDraftDeskResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the AI desk's invite list (AI_INVITE_ONLY)"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dime's notes across the caller's draft rooms, for the AI desk's Draft notes view",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
     "/v1/internal/ai/notes": {
       "get": {
         "description": "The notes the agent keeps between conversations, newest first: with `team_id`, that team's and the ones about the caller; without, every one. `include_retired` adds the revised and forgotten ones.",
@@ -29471,6 +30118,268 @@
           }
         ],
         "summary": "Get the draft board for a session",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/drafts/{session_id}/dime": {
+      "get": {
+        "description": "What Dime has written in the room, newest first (a plan, a note at each of the user's picks, a recap; each with the board's numbers the server read for it in `facts`), whether a note is being written now, the switch for a note whenever the user's pick is `lead` picks away or nearer, and whether Dime holds the user's seat in a mock. Never refuses for a switched-off server or a user off the AI desk's list: `available` says whether the room shows Dime at all, and `switched_off` that the account turned Dime in draft rooms off (Account, AI and automation).",
+        "operationId": "get_dime_v1_internal_drafts__session_id__dime_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimeDraftRoomResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dime in a draft room: its notes, the notes switch and the mock seat",
+        "tags": [
+          "Drafts"
+        ]
+      },
+      "put": {
+        "description": "With `notes` on, the room asks Dime for a note whenever the user's pick is `lead` picks away or nearer, one per pick. Each note is a turn on the AI desk's budget.",
+        "operationId": "set_dime_v1_internal_drafts__session_id__dime_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DimeDraftRoomReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimeDraftRoomResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the AI desk's invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND)"
+          },
+          "409": {
+            "description": "The account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED, AI_DRAFT_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Switch Dime's note at each of the user's picks on or off",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/drafts/{session_id}/dime/notes": {
+      "post": {
+        "description": "Starts the note and returns it `running`; it is written after the response (poll the GET, or open its conversation). `plan` sets the plan the draft is played to: its concessions become the room's punts, and in a real draft on a team the plan is saved to the team's notes. `pick` is about the user's coming pick, read off the room's board; one per pick, so asking again returns the one already written. `recap` reads the room's recap and, in a real draft, saves what the season starts from and league-mates' habits to Dime's notes.",
+        "operationId": "ask_dime_v1_internal_drafts__session_id__dime_notes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DimeDraftNoteReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimeDraftNoteResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the AI desk's invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND)"
+          },
+          "409": {
+            "description": "A note is already being written (AI_DRAFT_BUSY), the draft is finished (AI_DRAFT_FINISHED), no pick of the user's is left (AI_DRAFT_NO_PICK), nothing has been drafted yet (AI_DRAFT_NO_PICKS), or the account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "The AI desk's monthly budget is used up"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED, AI_DRAFT_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask Dime for a note in the room: a plan, a note at the user's pick, or a recap",
+        "tags": [
+          "Drafts"
+        ]
+      }
+    },
+    "/v1/internal/drafts/{session_id}/dime/seat": {
+      "post": {
+        "description": "`on`: Dime drafts the user's seat to the end of the mock: the autopicker runs the other seats to the user's turn, Dime makes the pick (recorded `dime`, with its reason as a note), and so on. Mock rooms following nothing only; a live ESPN draft stays the user's to pick in. `off`: Dime hands the seat back after the pick it is making. Each pick is a turn on the AI desk's budget.",
+        "operationId": "set_seat_v1_internal_drafts__session_id__dime_seat_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DimeDraftSeatReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimeDraftRoomResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the AI desk's invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND)"
+          },
+          "409": {
+            "description": "Not a room Dime can draft in: not a mock, linked to an ESPN lobby, finished, no seat or shape set (AI_DRAFT_NO_SEAT), or the account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED, AI_DRAFT_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Hand Dime the user's seat in a mock, or take it back",
         "tags": [
           "Drafts"
         ]

@@ -182,7 +182,19 @@ function Features({
       />
       <Toggle
         label="Dime in draft rooms"
-        help={features.draft_rooms ? "Dime's section of the Draft desk." : "The Draft desk's Dime section is hidden."}
+        help={
+          features.draft_rooms ? (
+            <>
+              A Dime section in every draft room: a plan that sets the room&apos;s punts, a note as each of your picks comes up, your seat in a mock, and a recap. Its notes are in{" "}
+              <Link href={`${AI_DESK}?v=drafts`}>Draft notes</Link> on the AI desk.
+            </>
+          ) : (
+            <>
+              Draft rooms show no Dime section, and Dime holding a mock seat hands it back before its next pick. Its notes stay in{" "}
+              <Link href={`${AI_DESK}?v=drafts`}>Draft notes</Link>.
+            </>
+          )
+        }
         checked={features.draft_rooms}
         disabled={pending}
         onChange={(draft_rooms) => change({ draft_rooms }, draft_rooms ? "Dime is back in draft rooms" : "Dime is out of draft rooms")}
