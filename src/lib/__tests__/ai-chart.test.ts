@@ -35,6 +35,7 @@ describe("words and values", () => {
   test("sources are named in words, unknown tools as they are", () => {
     expect(sourcesOf(["get_game_log", "get_matchup"])).toBe("box scores, your matchup");
     expect(sourcesOf(["get_new_thing"])).toBe("get_new_thing");
+    expect(sourcesOf(["get_league", "get_league_activity"])).toBe("your league, league moves");
   });
 
   test("values keep integers, round the rest to two decimals and show a gap as a dash", () => {

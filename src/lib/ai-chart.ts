@@ -22,6 +22,10 @@ export const SOURCES: Record<string, string> = {
   get_draft_room: "your draft room",
   get_draft_rooms: "your draft rooms",
   search_players: "player search",
+  get_move_outcomes: "how moves went",
+  get_league: "your league",
+  get_league_activity: "league moves",
+  get_draft_board: "the draft board",
 };
 
 export function sourcesOf(tools: readonly string[]): string {
