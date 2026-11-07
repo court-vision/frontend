@@ -105,7 +105,11 @@ export function useDeleteAiConversation() {
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: aiKeys.conversation(userId, id) });
       void queryClient.invalidateQueries({ queryKey: aiKeys.conversations(userId) });
-      // A deleted check-in conversation leaves its check-in without one to open
+      // A deleted check-in conversation leaves its check-in without one to open (the server sets it
+      // to null): unlinked here at once, then read again
+      queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
+        d ? { ...d, checkins: d.checkins.map((c) => (c.conversation_id === id ? { ...c, conversation_id: null } : c)) } : d
+      );
       void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
     },
   });
