@@ -5,6 +5,7 @@ import { useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { create } from "zustand";
+import { useAiCheckinsQuery, useAiUsageQuery, useSetAiAutopilot } from "@/hooks/useAi";
 import { useConnectEspnMutation, useConnectionsQuery, useDeleteConnectionMutation, useEspnAccountTeamsQuery, useVerifyConnectionMutation } from "@/hooks/useConnections";
 import {
   useDeleteTeamPreferenceMutation,
@@ -32,6 +33,7 @@ import {
   demoLeagueDetail,
 } from "@/lib/account-demo";
 import { useUIStore } from "@/stores/useUIStore";
+import type { AiAutopilotTeam } from "@/types/ai";
 import type { EspnAccountTeam, ProviderConnection } from "@/types/connections";
 import type { NotificationPreference, NotificationTeamPreference, NotificationTeamPreferenceRequest } from "@/types/notifications";
 import type { LeagueDetail, LeagueInfoRequest, TeamResponseData } from "@/types/team";
@@ -57,6 +59,18 @@ const useLiveYahooLeagues = (connectionId: number | null): Loaded<YahooLeague[]>
 const useLiveYahooTeams = (connectionId: number | null, leagueKey: string | null): Loaded<YahooTeam[]> => loaded(useYahooTeams(connectionId, leagueKey));
 const useLivePrefs = (): Loaded<NotificationPreference> => loaded(useNotificationPreferencesQuery());
 const useLiveTeamPrefs = (): Loaded<NotificationTeamPreference[]> => loaded(useTeamNotificationPreferencesQuery());
+
+/** The teams Dime may run check-ins on: asked for only with CV AI, which they need. */
+function useLiveCheckinTeams(): Loaded<AiAutopilotTeam[]> {
+  const usage = useAiUsageQuery();
+  const q = useAiCheckinsQuery(usage.data?.access === true);
+  return {
+    data: q.data?.teams ?? null,
+    loading: q.isLoading,
+    error: q.error ? userMessage(q.error) : null,
+    refetch: () => void q.refetch(),
+  };
+}
 
 /** The add-team flow's needs, from the API. The Week desk uses this on its own. */
 export function useLiveAddTeam(): AddTeamModel {
@@ -137,6 +151,7 @@ export function useLiveAccount(): AccountModel {
   const savePrefs = useUpdateNotificationPreferencesMutation();
   const saveTeamPrefs = useUpsertTeamPreferenceMutation();
   const clearTeamPrefs = useDeleteTeamPreferenceMutation();
+  const setAutopilot = useSetAiAutopilot();
 
   let status: ModelStatus = "ready";
   let message: string | null = null;
@@ -159,6 +174,7 @@ export function useLiveAccount(): AccountModel {
   const savePrefsAsync = savePrefs.mutateAsync;
   const saveTeamPrefsAsync = saveTeamPrefs.mutateAsync;
   const clearTeamPrefsAsync = clearTeamPrefs.mutateAsync;
+  const setAutopilotAsync = setAutopilot.mutateAsync;
 
   /** The update route wants the whole league_info back; blanks keep what is stored. */
   const updateTeam = useCallback(
@@ -234,6 +250,10 @@ export function useLiveAccount(): AccountModel {
     clearTeamPrefs: async (teamId) => {
       await clearTeamPrefsAsync(teamId);
     },
+    useCheckinTeams: useLiveCheckinTeams,
+    setCheckins: async (teamId, on) => {
+      await setAutopilotAsync({ teamId, on });
+    },
     user: isSignedIn
       ? {
           name: user?.fullName ?? user?.firstName ?? null,
@@ -250,6 +270,9 @@ export function useLiveAccount(): AccountModel {
 // ---------------------------------------------------------------------------
 // Demo: a made-up account, every write in memory
 // ---------------------------------------------------------------------------
+
+const NO_CHECKIN_TEAMS: Loaded<AiAutopilotTeam[]> = { data: [], loading: false, error: null, refetch: () => {} };
+const useDemoCheckinTeams = (): Loaded<AiAutopilotTeam[]> => NO_CHECKIN_TEAMS;
 
 interface DemoState {
   teams: TeamResponseData[];
@@ -510,6 +533,9 @@ export function useDemoAccount(): AccountModel {
       }));
       toast.success("Back to the account's settings (demo)");
     },
+    // Dime runs check-ins only on teams set up for it, and the demo has none
+    useCheckinTeams: useDemoCheckinTeams,
+    setCheckins: async () => {},
     user: DEMO_USER,
     signOut: () => toast.info("Demo: nothing to sign out of"),
     openProfile: null,

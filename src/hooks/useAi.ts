@@ -247,7 +247,7 @@ export function useAiDecisionVerdict(conversationId: number | null) {
   });
 }
 
-// ---- Dime's notes ("What Dime knows") and the move ledger ("How moves went")
+// ---- Dime's notes (its Memory view) and the move ledger (Move results)
 
 /** Every note Dime keeps for the user, live ones first; with `includeRetired`, the retired ones too. */
 export function useAiNotesQuery(enabled: boolean, includeRetired: boolean) {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AiPage } from "@/components/ai/AiPage";
+import { aiLocation } from "@/lib/ai-desk";
 
 export const metadata: Metadata = {
   title: "AI",
@@ -13,6 +14,6 @@ export default async function Page({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const c = typeof params.c === "string" ? Number(params.c) : NaN;
-  return <AiPage initialConversation={Number.isInteger(c) && c > 0 ? c : null} />;
+  const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : null);
+  return <AiPage initial={aiLocation(one(params.v), one(params.c))} />;
 }

@@ -75,6 +75,15 @@ export function agreement(checkins: readonly AiCheckin[]): { agree: number; rate
   return { agree, rated };
 }
 
+/** The calls in finished check-ins the user hasn't marked yet. */
+export function unrated(checkins: readonly AiCheckin[]): number {
+  let n = 0;
+  for (const c of checkins) {
+    if (c.state === "done" || c.state === "failed") n += Math.max(0, c.decisions - c.agree - c.disagree);
+  }
+  return n;
+}
+
 export const AREA_LABEL: Record<AiDecisionBlock["area"], string> = {
   lineup: "Lineup",
   streaming: "Streaming",

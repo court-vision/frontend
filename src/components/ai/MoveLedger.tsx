@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { DeskDialog } from "@/components/desk/DeskDialog";
 import { SCOUT_DESK } from "@/components/desk/routes";
 import { SegRail } from "@/components/desk/SegRail";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
@@ -21,6 +20,7 @@ import {
 } from "@/lib/dime";
 import { focusToSearch } from "@/lib/scout";
 import type { MoveOutcome, MoveOutcomePlayer, MoveScope, MoveWindowName } from "@/types/ai";
+import { DimeView, ViewLoading } from "./DimeView";
 import dk from "@/components/desk/desk.module.css";
 import s from "./ai.module.css";
 
@@ -35,77 +35,47 @@ function shortDate(iso: string): string {
 }
 
 /**
- * "How moves went": the move ledger for one team (or its whole league). Every
- * add and drop read off the nightly rosters, who made it, and what it earned in
- * the box scores with the league's scoring over the day it counted, the rest of
- * that matchup and two weeks. What Dime reads with `get_move_outcomes`.
+ * Move results ("how moves went"), in the AI desk's main area: the move ledger
+ * for one team (or its whole league). Every add and drop read off the nightly
+ * rosters, who made it, and what it earned in the box scores with the league's
+ * scoring over the day it counted, the rest of that matchup and two weeks. What
+ * Dime reads with `get_move_outcomes`.
  */
-export function MoveLedgerDialog({
-  open,
-  onOpenChange,
-  teams,
-  teamId,
-  onTeam,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  teams: DeskTeam[];
-  teamId: number | null;
-  onTeam: (id: number) => void;
-}) {
+export function MoveResults({ teams, teamId, teamSwitch }: { teams: DeskTeam[]; teamId: number | null; teamSwitch: React.ReactNode }) {
   const [scope, setScope] = useState<MoveScope>("team");
-  // No team picked yet (the desk's selection is empty): read the first one, the
-  // one the team picker shows, rather than saying there are no teams.
-  const team = teamId ?? teams[0]?.id ?? null;
-  const ledger = useMoveOutcomesQuery(team, scope, open);
+  const ledger = useMoveOutcomesQuery(teamId, scope, true);
   const data = ledger.data;
   const espnOnly = ledger.isError && toApiError(ledger.error).code === "MOVE_LEDGER_NOT_FOUND";
   const fmt = data?.format ?? "points";
 
   return (
-    <DeskDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      wide
-      title="How moves went"
-      description={
+    <DimeView
+      label="Move results"
+      sub={
         fmt === "categories"
           ? "Adds and drops, newest first, read off the rosters each night, and how the added player did against the dropped one in your league's categories: the day it counted, the rest of that matchup, and two weeks."
           : "Adds and drops, newest first, read off the rosters each night, and what each earned with your league's scoring: the added player's points minus the dropped one's, for the day it counted, the rest of that matchup, and two weeks."
       }
-      cancelLabel="Close"
+      tools={
+        <>
+          {teams.length ? teamSwitch : null}
+          <SegRail label="Whose moves" active={scope}>
+            {SCOPES.map((sc) => {
+              const on = scope === sc.id;
+              return (
+                <button key={sc.id} type="button" role="radio" aria-checked={on} className={`${dk.seg} ${on ? dk.segOn : ""}`} onClick={() => setScope(sc.id)}>
+                  <span className={dk.segLabel}>{sc.label}</span>
+                </button>
+              );
+            })}
+          </SegRail>
+        </>
+      }
     >
-      <div className={s.noteFormRow}>
-        {teams.length > 1 ? (
-          <select className={s.select} aria-label="Team" value={team ?? ""} onChange={(e) => onTeam(Number(e.target.value))}>
-            {teams.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        ) : null}
-        <span className={dk.spacer} />
-        <SegRail label="Whose moves" active={scope}>
-          {SCOPES.map((sc) => {
-            const on = scope === sc.id;
-            return (
-              <button key={sc.id} type="button" role="radio" aria-checked={on} className={`${dk.seg} ${on ? dk.segOn : ""}`} onClick={() => setScope(sc.id)}>
-                <span className={dk.segLabel}>{sc.label}</span>
-              </button>
-            );
-          })}
-        </SegRail>
-      </div>
-
-      {team == null ? (
+      {teamId == null ? (
         <div className={s.rowEmpty}>Add a team to see how its moves went.</div>
       ) : ledger.isLoading ? (
-        <div className={s.noteList} aria-busy>
-          <span className={dk.skel} style={{ width: "70%" }} />
-          <span className={dk.skel} style={{ width: "90%" }} />
-          <span className={dk.skel} style={{ width: "50%" }} />
-        </div>
+        <ViewLoading />
       ) : espnOnly ? (
         <div className={s.rowEmpty}>Moves are tracked for ESPN teams for now.</div>
       ) : ledger.isError ? (
@@ -137,7 +107,7 @@ export function MoveLedgerDialog({
           ) : null}
         </>
       )}
-    </DeskDialog>
+    </DimeView>
   );
 }
 

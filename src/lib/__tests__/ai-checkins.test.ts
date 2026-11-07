@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { VerdictSaves, agreement, checkinLine, decisionKicker, reasonWords, verdictOf, withVerdict } from "../ai-checkins";
+import { VerdictSaves, agreement, checkinLine, decisionKicker, reasonWords, unrated, verdictOf, withVerdict } from "../ai-checkins";
 import { chipState, stageProblem } from "../ai-proposals";
 import type { AiCheckin, AiConversation, AiProposalChip } from "@/types/ai";
 
@@ -47,6 +47,11 @@ describe("a check-in's row", () => {
 
   test("agreement counts only the rated calls", () => {
     expect(agreement([checkin(), checkin({ agree: 1, disagree: 2 }), checkin({ agree: 0 })])).toEqual({ agree: 3, rated: 5 });
+  });
+
+  test("counts the calls left to mark in finished check-ins", () => {
+    expect(unrated([checkin(), checkin({ agree: 0 }), checkin({ state: "running", decisions: 2, agree: 0 })])).toBe(4);
+    expect(unrated([checkin({ state: "failed", decisions: 1, agree: 0 }), checkin({ state: "missed", decisions: 0, agree: 0 })])).toBe(1);
   });
 });
 
