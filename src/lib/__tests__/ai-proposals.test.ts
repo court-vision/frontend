@@ -42,6 +42,9 @@ function chip(over: Partial<AiProposalChip> = {}): AiProposalChip {
     scoring: "points",
     expires_at: "2026-10-21T23:00:00Z",
     sent_at: null,
+    steer: null,
+    lane: null,
+    pickup: null,
     ...over,
   };
 }

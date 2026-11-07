@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { aiKeys, aiMessage } from "@/hooks/useAi";
 import { lineupKeys, useTeamLineupQuery } from "@/hooks/useLineupEditor";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
-import { useSchedulePickupMutation } from "@/hooks/useScheduledPickups";
+import { pickupKeys, useSchedulePickupMutation } from "@/hooks/useScheduledPickups";
+import { laneKeys } from "@/hooks/useStreamLanes";
+import { holdKeys } from "@/hooks/useTeamHolds";
 import {
   chipState,
   dropChipOf,
@@ -59,6 +61,10 @@ export interface ChipTray {
   stage: (chip: AiProposalChip) => void;
   unstage: (proposalId: number) => void;
   dismiss: (chip: AiProposalChip) => void;
+  /** Apply one of Dime's steering chips through the Week desk's route for it (never the tray). */
+  apply: (chip: AiProposalChip) => void;
+  /** The steering chip being applied, while that request is out. */
+  applying: number | null;
   /** The Week desk's tray's callbacks: a column's add / drop, a lone drop, a lineup move (its whole chip), a day, everything. */
   cancelSwap: (day: number) => void;
   undrop: (playerId: number) => void;
@@ -182,6 +188,61 @@ export function useChipTray(conversationId: number | null): ChipTray {
         });
     },
     [getToken, patch, reread, unstage]
+  );
+
+  // Dime's steering chips change no ESPN roster, so they skip the tray: Apply calls the Week desk's own
+  // route for the chip (the holds route, the lane routes, the pickup's cancel) with its proposal_id, and
+  // the server checks it is this very chip, still proposed, before anything changes
+  const [applying, setApplying] = useState<number | null>(null);
+  const apply = useCallback(
+    (chip: AiProposalChip) => {
+      const id = chip.proposal_id;
+      const team = chip.team_id;
+      setApplying(id);
+      void (async () => {
+        try {
+          let done = "Applied";
+          if (chip.kind === "steer") {
+            const holds = await apiClient.applyHolds(getToken, team, id);
+            queryClient.setQueryData(holdKeys.team(team), holds);
+            done = "Applied: auto-lineup and the lanes plan with it now";
+          } else if (chip.kind === "lane" && chip.lane) {
+            const a = chip.lane;
+            if (a.op === "start") {
+              done = (await apiClient.startStreamLane(getToken, team, { player_id: a.holder.espn_id, proposal_id: id })).message;
+            } else if (a.op === "stop" && a.lane_id != null) {
+              done = (await apiClient.stopStreamLane(getToken, team, a.lane_id, id)).message;
+            } else if (a.lane_id != null) {
+              done = (await apiClient.updateStreamLane(getToken, team, a.lane_id, { status: a.op === "pause" ? "paused" : "active", proposal_id: id })).message;
+            }
+          } else if (chip.kind === "cancel_pickup" && chip.pickup) {
+            await apiClient.cancelPickup(getToken, team, chip.pickup.pickup_id, id);
+            done = `Pickup of ${chip.pickup.add.name} cancelled`;
+          } else {
+            throw new Error("This chip can't be applied here");
+          }
+          patch(id, { state: "sent", sent_at: new Date().toISOString() });
+          toast.success(done);
+        } catch (err) {
+          const e = toApiError(err);
+          const state = (e.data as { state?: string } | undefined)?.state;
+          if (e.code === "AI_PROPOSAL_NOT_PENDING" && (state === "sent" || state === "dismissed" || state === "expired")) {
+            patch(id, { state, sent_at: state === "sent" ? new Date().toISOString() : null });
+            toast.info(e.message);
+          } else {
+            toast.error(aiMessage(err, "Dime's change couldn't be applied"));
+          }
+          reread();
+        } finally {
+          setApplying(null);
+          // A lane, a pickup or a hold changed: what shows them is read again
+          void queryClient.invalidateQueries({ queryKey: laneKeys.team(team) });
+          void queryClient.invalidateQueries({ queryKey: pickupKeys.team(team) });
+          void queryClient.invalidateQueries({ queryKey: holdKeys.team(team) });
+        }
+      })();
+    },
+    [getToken, queryClient, patch, reread]
   );
 
   const cancelSwap = useCallback((day: number) => setStaged((s) => (swapChipOf(s, day) ? withoutStaged(s, swapChipOf(s, day)!.chip.proposal_id) : s)), []);
@@ -334,6 +395,8 @@ export function useChipTray(conversationId: number | null): ChipTray {
     stage,
     unstage,
     dismiss,
+    apply,
+    applying,
     cancelSwap,
     undrop,
     unstageMove,

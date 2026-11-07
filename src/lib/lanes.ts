@@ -223,6 +223,9 @@ const LANE_REASONS: Record<string, string> = {
   provider_not_supported: "this league's rosters can't be changed from here",
   paused_by_user: "you paused it",
   stopped: "you stopped it",
+  // Dime's lane chips, applied by you (the reason Dime gave is the event's detail)
+  paused_by_dime: "you applied Dime's pause",
+  stopped_by_dime: "you applied Dime's stop",
   matchup_over: "the matchup ended",
   team_not_found: "the team is gone",
   missed: "no decision was made in time",
@@ -241,13 +244,19 @@ export function laneReason(reason: string | null | undefined): string | null {
   return LANE_REASONS[reason] ?? reason.replace(/_/g, " ");
 }
 
+/** A step Dime proposed and you applied: its reason, as the lane's history says it. */
+function dimeSaid(e: Pick<StreamLaneEvent, "reason" | "detail">): string {
+  const dime = e.reason === "dime" || e.reason === "paused_by_dime" || e.reason === "stopped_by_dime";
+  return dime && e.detail ? `. Dime: ${e.detail}` : dime ? " (Dime's)" : "";
+}
+
 /** One line of a lane's history. */
 export function eventLine(e: StreamLaneEvent, dayLabel: (date: string) => string): string {
   const day = e.nba_date ? `${dayLabel(e.nba_date)}: ` : "";
   const why = e.reason && WHY[e.reason] ? ` (${WHY[e.reason]})` : "";
   switch (e.action) {
     case "started":
-      return `Started${e.nba_date ? `, from ${dayLabel(e.nba_date)}` : ""}`;
+      return `Started${e.nba_date ? `, from ${dayLabel(e.nba_date)}` : ""}${dimeSaid(e)}`;
     case "switch": {
       const outcome =
         e.pickup_status === "executed" ? "picked up" : e.pickup_status === "pending" || !e.pickup_status ? "picking up" : "tried to pick up";
@@ -258,11 +267,11 @@ export function eventLine(e: StreamLaneEvent, dayLabel: (date: string) => string
     case "blocked":
       return `${day}couldn't act: ${laneReason(e.reason) ?? "unknown"}`;
     case "paused":
-      return `Paused: ${laneReason(e.reason) ?? "unknown"}`;
+      return `Paused: ${laneReason(e.reason) ?? "unknown"}${dimeSaid(e)}`;
     case "resumed":
-      return "Resumed";
+      return `Resumed${dimeSaid(e)}`;
     case "ended":
-      return `Ended: ${laneReason(e.reason) ?? "unknown"}`;
+      return `Ended: ${laneReason(e.reason) ?? "unknown"}${dimeSaid(e)}`;
   }
 }
 

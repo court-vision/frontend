@@ -1708,6 +1708,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/teams/{team_id}/holds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Holds
+         * @description The team's live holds (today's or later, not cleared), by first day, each with what it
+         *     does and Dime's reason.
+         */
+        get: operations["list_holds_v1_internal_teams__team_id__holds_get"];
+        put?: never;
+        /**
+         * Apply Holds
+         * @description Apply a `steer` chip from the AI desk: its holds are set (each with the chip's reason)
+         *     and the holds it clears are cleared, in one transaction, and the chip is marked sent.
+         *     Returns the team's live holds then. 404 AI_PROPOSAL_NOT_FOUND (not the caller's, or not
+         *     this team's); 409 AI_PROPOSAL_NOT_PENDING (already applied, dismissed, expired, or a
+         *     check-in's shadow); 422 AI_PROPOSAL_MISMATCH (not a steer chip); 409 AI_STEERING_OFF.
+         */
+        post: operations["apply_holds_v1_internal_teams__team_id__holds_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/holds/{hold_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Clear Hold
+         * @description Clear one of the team's holds: from now on nothing reads it. Clearing one already cleared
+         *     or past its last day changes nothing. 404 HOLD_NOT_FOUND when it isn't this team's.
+         */
+        delete: operations["clear_hold_v1_internal_teams__team_id__holds__hold_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/teams/{team_id}/insights": {
         parameters: {
             query?: never;
@@ -1943,6 +1993,10 @@ export interface paths {
          * @description Cancel a pending pickup. 404 when it is not this team's; 409 SCHEDULED_PICKUP_NOT_PENDING
          *     when it already ran (or was cancelled); 409 SCHEDULED_PICKUP_IN_PROGRESS while an attempt is
          *     making it — its outcome follows in a few minutes, and a deferred pickup can be cancelled again.
+         *
+         *     `proposal_id`: Dime's cancel_pickup chip for this pickup (the Dime autopilot plan, step 4),
+         *     checked first (409 AI_PROPOSAL_NOT_PENDING, 422 AI_PROPOSAL_MISMATCH, 409 AI_STEERING_OFF) and
+         *     marked sent once the pickup is cancelled.
          */
         delete: operations["cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete"];
         options?: never;
@@ -2053,6 +2107,7 @@ export interface paths {
          * @description Stop a lane. A pickup it scheduled that hasn't run is cancelled with it; the player
          *     holding the spot stays on the roster. 409 STREAM_LANE_BUSY while that pickup is being
          *     made (try again in a few minutes); 404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.
+         *     `proposal_id`: Dime's stop chip for this lane, applied (see below).
          */
         delete: operations["stop_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__delete"];
         options?: never;
@@ -2910,6 +2965,26 @@ export interface components {
             kind: "block";
         };
         /**
+         * AiCancelPickupAction
+         * @description A cancel_pickup chip: applied with `DELETE /teams/{team_id}/pickups/{pickup_id}` and its proposal_id.
+         */
+        AiCancelPickupAction: {
+            add: components["schemas"]["AiProposalPlayer"];
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            drop: components["schemas"]["AiProposalPlayer"] | null;
+            /**
+             * Lane Id
+             * @description The stream lane that scheduled it, if one did
+             */
+            lane_id: number | null;
+            /** Pickup Id */
+            pickup_id: number;
+        };
+        /**
          * AiChart
          * @description A bar or line chart the server built from the agent's tool results; the model never types its values.
          */
@@ -3388,6 +3463,143 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /**
+         * AiHoldChange
+         * @description One hold a steer chip sets (usr.team_holds once applied).
+         */
+        AiHoldChange: {
+            /**
+             * Effect
+             * @description What it does, in a line
+             */
+            effect: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "keep" | "block" | "override" | "pin";
+            player: components["schemas"]["AiProposalPlayer"];
+            /**
+             * Share
+             * @description override only: the share of his usual value (0 = he misses)
+             */
+            share: number | null;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+        };
+        /**
+         * AiHoldCleared
+         * @description A live hold a steer chip clears.
+         */
+        AiHoldCleared: {
+            /**
+             * Effect
+             * @description What it does, in a line
+             */
+            effect: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /** Hold Id */
+            hold_id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "keep" | "block" | "override" | "pin";
+            player: components["schemas"]["AiProposalPlayer"];
+            /**
+             * Reason
+             * @description Why it was set
+             */
+            reason: string;
+            /**
+             * Share
+             * @description override only: the share of his usual value (0 = he misses)
+             */
+            share: number | null;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+        };
+        /**
+         * AiLaneAction
+         * @description A lane chip: `op` start (`POST /teams/{team_id}/stream-lanes` with `holder.espn_id` as player_id),
+         *     pause or resume (`PATCH .../stream-lanes/{lane_id}`), stop (`DELETE .../stream-lanes/{lane_id}`),
+         *     each with its proposal_id.
+         */
+        AiLaneAction: {
+            /** Adds */
+            adds: number | null;
+            /** Adds Left */
+            adds_left: number | null;
+            /**
+             * Days
+             * @description start: who would hold the spot each day
+             */
+            days: components["schemas"]["AiLaneDay"][];
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** First Decision At */
+            first_decision_at: string | null;
+            /**
+             * Gain
+             * @description start: the projected gain over holding
+             */
+            gain: number | null;
+            /** Hold Value */
+            hold_value: number | null;
+            /** @description Who holds the spot (a start: whose spot it streams) */
+            holder: components["schemas"]["AiProposalPlayer"];
+            /**
+             * Lane Id
+             * @description The lane; none for a start
+             */
+            lane_id: number | null;
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "start" | "pause" | "resume" | "stop";
+            /**
+             * Status
+             * @description pause, resume, stop: the lane's status when proposed
+             */
+            status: string | null;
+            /** Value */
+            value: number | null;
+        };
+        /** AiLaneDay */
+        AiLaneDay: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            player: components["schemas"]["AiProposalPlayer"];
+            /**
+             * Switch
+             * @default false
+             */
+            switch: boolean;
+            /** Value */
+            value: number;
+        };
         /** AiNote */
         AiNote: {
             /**
@@ -3573,12 +3785,14 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "transaction" | "scheduled" | "lineup";
+            kind: "transaction" | "scheduled" | "lineup" | "steer" | "lane" | "cancel_pickup";
+            lane: components["schemas"]["AiLaneAction"] | null;
             /**
              * Moves
              * @description A lineup chip's slot moves; empty otherwise
              */
             moves: components["schemas"]["AiProposalMove"][];
+            pickup: components["schemas"]["AiCancelPickupAction"] | null;
             /** Proposal Id */
             proposal_id: number;
             /**
@@ -3604,6 +3818,7 @@ export interface components {
              * @enum {string}
              */
             state: "proposed" | "sent" | "dismissed" | "expired" | "shadow";
+            steer: components["schemas"]["AiSteerAction"] | null;
             /**
              * Summary
              * @description One sentence: the move, its day, and what sending does
@@ -3634,6 +3849,10 @@ export interface components {
          *     (`kind` transaction: `add` / `drop`, today), the scheduled pickup (`kind` scheduled: `add` / `drop`,
          *     a later day) or the lineup write (`kind` lineup: `moves`, one day's board, today's or a later
          *     day's, written at once). Never executed from here.
+         *
+         *     Dime's steering chips (`kind` steer, lane, cancel_pickup) change no ESPN roster, so they are
+         *     never staged: the AI desk applies one with a button through the Week desk's own route for it
+         *     (`steer`, `lane` or `pickup` says which, and what it does), with `proposal_id`.
          */
         AiProposalChip: {
             add: components["schemas"]["AiProposalPlayer"] | null;
@@ -3669,12 +3888,14 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "transaction" | "scheduled" | "lineup";
+            kind: "transaction" | "scheduled" | "lineup" | "steer" | "lane" | "cancel_pickup";
+            lane: components["schemas"]["AiLaneAction"] | null;
             /**
              * Moves
              * @description A lineup chip's slot moves; empty otherwise
              */
             moves: components["schemas"]["AiProposalMove"][];
+            pickup: components["schemas"]["AiCancelPickupAction"] | null;
             /** Proposal Id */
             proposal_id: number;
             /**
@@ -3700,6 +3921,7 @@ export interface components {
              * @enum {string}
              */
             state: "proposed" | "sent" | "dismissed" | "expired" | "shadow";
+            steer: components["schemas"]["AiSteerAction"] | null;
             /**
              * Summary
              * @description One sentence: the move, its day, and what sending does
@@ -3805,6 +4027,22 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /**
+         * AiSteerAction
+         * @description A steer chip: applied with `POST /teams/{team_id}/holds` and its proposal_id.
+         */
+        AiSteerAction: {
+            /**
+             * Clear
+             * @default []
+             */
+            clear: components["schemas"]["AiHoldCleared"][];
+            /**
+             * Holds
+             * @default []
+             */
+            holds: components["schemas"]["AiHoldChange"][];
         };
         /**
          * AiTable
@@ -4154,6 +4392,11 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /** ApplyHoldsReq */
+        ApplyHoldsReq: {
+            /** Proposal Id */
+            proposal_id: number;
         };
         /** ApplyLineupMovesData */
         ApplyLineupMovesData: {
@@ -11118,11 +11361,15 @@ export interface components {
             notify?: "email" | "desk";
             /** Player Id */
             player_id: number;
+            /** Proposal Id */
+            proposal_id?: number | null;
         };
         /** StreamLaneUpdateReq */
         StreamLaneUpdateReq: {
             /** Notify */
             notify?: ("email" | "desk") | null;
+            /** Proposal Id */
+            proposal_id?: number | null;
             /** Status */
             status?: ("active" | "paused") | null;
         };
@@ -11353,6 +11600,93 @@ export interface components {
         TeamGetResp: {
             /** Data */
             data: components["schemas"]["TeamResponse"][] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** TeamHold */
+        TeamHold: {
+            /**
+             * Applied By
+             * @enum {string}
+             */
+            applied_by: "user" | "dime";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Effect
+             * @description What it does, in a line
+             */
+            effect: string;
+            /**
+             * Ends On
+             * Format: date
+             * @description Its last day; it is read through this day and never after
+             */
+            ends_on: string;
+            /** Hold Id */
+            hold_id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "keep" | "block" | "override" | "pin";
+            player: components["schemas"]["TeamHoldPlayer"];
+            /**
+             * Proposal Id
+             * @description The steer chip it was made from
+             */
+            proposal_id: number | null;
+            /**
+             * Reason
+             * @description Why Dime set it
+             */
+            reason: string;
+            /**
+             * Share
+             * @description override only: the share of his usual value (0 = he misses)
+             */
+            share: number | null;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+        };
+        /** TeamHoldPlayer */
+        TeamHoldPlayer: {
+            /** Espn Id */
+            espn_id: number;
+            /** Name */
+            name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
+            /** Team */
+            team: string | null;
+        };
+        /** TeamHoldsData */
+        TeamHoldsData: {
+            /**
+             * Enabled
+             * @description Dime's steering is on: off, no hold steers anything and none is listed
+             */
+            enabled: boolean;
+            /**
+             * Holds
+             * @default []
+             */
+            holds: components["schemas"]["TeamHold"][];
+        };
+        /** TeamHoldsResp */
+        TeamHoldsResp: {
+            data: components["schemas"]["TeamHoldsData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -15342,6 +15676,104 @@ export interface operations {
             };
         };
     };
+    list_holds_v1_internal_teams__team_id__holds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamHoldsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_holds_v1_internal_teams__team_id__holds_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyHoldsReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamHoldsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_hold_v1_internal_teams__team_id__holds__hold_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hold_id: number;
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamHoldsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_team_insights_v1_internal_teams__team_id__insights_get: {
         parameters: {
             query?: never;
@@ -15716,7 +16148,9 @@ export interface operations {
     };
     cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                proposal_id?: number | null;
+            };
             header?: never;
             path: {
                 pickup_id: number;
@@ -15884,7 +16318,9 @@ export interface operations {
     };
     stop_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                proposal_id?: number | null;
+            };
             header?: never;
             path: {
                 lane_id: number;
