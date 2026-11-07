@@ -303,6 +303,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/draft-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dime's notes across the caller's draft rooms, for the AI desk's Draft notes view
+         * @description Every plan, pick note and recap Dime wrote in the caller's draft rooms (the newest 300), grouped by room: the room with the newest note first, each room's notes newest first. Listed whether or not Dime is on in draft rooms now; `enabled` and `switched_off` say whether new ones can be asked for. Each note's `conversation_id` opens it on the AI desk.
+         */
+        get: operations["get_desk_notes_v1_internal_ai_draft_notes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/ai/notes": {
         parameters: {
             query?: never;
@@ -837,7 +857,7 @@ export interface paths {
         };
         /**
          * Dime in a draft room: its notes, the notes switch and the mock seat
-         * @description What Dime has written in the room, newest first (a plan, a note at each of the user's picks, a recap; each with the board's numbers the server read for it in `facts`), whether a note is being written now, the switch for a note whenever the user's pick is `lead` picks away or nearer, and whether Dime holds the user's seat in a mock. Never refuses for a switched-off server or a user off the AI desk's list: `available` says whether the room shows Dime at all.
+         * @description What Dime has written in the room, newest first (a plan, a note at each of the user's picks, a recap; each with the board's numbers the server read for it in `facts`), whether a note is being written now, the switch for a note whenever the user's pick is `lead` picks away or nearer, and whether Dime holds the user's seat in a mock. Never refuses for a switched-off server or a user off the AI desk's list: `available` says whether the room shows Dime at all, and `switched_off` that the account turned Dime in draft rooms off (Account, AI and automation).
          */
         get: operations["get_dime_v1_internal_drafts__session_id__dime_get"];
         /**
@@ -5718,6 +5738,71 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** DimeDraftDesk */
+        DimeDraftDesk: {
+            /**
+             * Enabled
+             * @description DIME_DRAFT_ENABLED (and AI_ENABLED) on the server
+             */
+            enabled: boolean;
+            /**
+             * Rooms
+             * @description The room with the newest note first
+             */
+            rooms: components["schemas"]["DimeDraftDeskRoom"][];
+            /**
+             * Switched Off
+             * @description The account's Dime in draft rooms switch is off (its notes still list)
+             */
+            switched_off: boolean;
+        };
+        /** DimeDraftDeskResp */
+        DimeDraftDeskResp: {
+            data: components["schemas"]["DimeDraftDesk"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * DimeDraftDeskRoom
+         * @description One of the user's draft rooms, with the notes Dime wrote in it.
+         */
+        DimeDraftDeskRoom: {
+            /**
+             * Kind
+             * @description live, manual, mock or import
+             */
+            kind: string;
+            /**
+             * Last At
+             * Format: date-time
+             * @description When its newest note was started
+             */
+            last_at: string;
+            /**
+             * Name
+             * @description The user's own label for the room
+             */
+            name: string | null;
+            /**
+             * Notes
+             * @description Newest first
+             */
+            notes: components["schemas"]["DimeDraftNote"][];
+            /** Room Id */
+            room_id: number;
+            /**
+             * Status
+             * @description active, completed or abandoned
+             */
+            status: string;
+            /** Team Id */
+            team_id: number | null;
+        };
         /**
          * DimeDraftNote
          * @description One note Dime wrote in the room: its words (`text`, null while it runs), the board's numbers
@@ -5824,7 +5909,7 @@ export interface components {
         DimeDraftRoom: {
             /**
              * Available
-             * @description enabled, and the caller is on the AI desk's list: the room shows Dime
+             * @description enabled, the caller is on the AI desk's list, and their Dime in draft rooms switch is on: the room shows Dime
              */
             available: boolean;
             /**
@@ -5863,6 +5948,12 @@ export interface components {
              * @description Why it can't, in a line
              */
             seat_blocker: string | null;
+            /**
+             * Switched Off
+             * @description enabled and on the list, but the account's Dime in draft rooms switch (Account, AI and automation) is off
+             * @default false
+             */
+            switched_off: boolean;
         };
         /** DimeDraftRoomReq */
         DimeDraftRoomReq: {
@@ -13898,6 +13989,40 @@ export interface operations {
             };
         };
     };
+    get_desk_notes_v1_internal_ai_draft_notes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimeDraftDeskResp"];
+                };
+            };
+            /** @description The caller is not on the AI desk's invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_notes_v1_internal_ai_notes_get: {
         parameters: {
             query?: {
@@ -15201,6 +15326,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description The account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -15257,7 +15389,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description A note is already being written (AI_DRAFT_BUSY), the draft is finished (AI_DRAFT_FINISHED), no pick of the user's is left (AI_DRAFT_NO_PICK), or nothing has been drafted yet (AI_DRAFT_NO_PICKS) */
+            /** @description A note is already being written (AI_DRAFT_BUSY), the draft is finished (AI_DRAFT_FINISHED), no pick of the user's is left (AI_DRAFT_NO_PICK), nothing has been drafted yet (AI_DRAFT_NO_PICKS), or the account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -15327,7 +15459,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Not a room Dime can draft in: not a mock, linked to an ESPN lobby, finished, no seat or shape set (AI_DRAFT_NO_SEAT) */
+            /** @description Not a room Dime can draft in: not a mock, linked to an ESPN lobby, finished, no seat or shape set (AI_DRAFT_NO_SEAT), or the account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF) */
             409: {
                 headers: {
                     [name: string]: unknown;

@@ -993,6 +993,19 @@
   color: var(--down);
 }
 
+.dimeEmpty {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.dimeLink {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .dimeText {
   color: var(--text-2);
 }

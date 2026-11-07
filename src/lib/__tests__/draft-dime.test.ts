@@ -4,10 +4,12 @@
  */
 import { describe, expect, test } from "bun:test";
 import {
+  deskRoomLabel,
   failedLine,
   latestPlan,
   noteForPick,
   noteLabel,
+  notePreview,
   pickFacts,
   pickToAsk,
   puntLine,
@@ -44,6 +46,7 @@ const note = (over: Partial<DimeDraftNote>): DimeDraftNote => ({
 const room = (over: Partial<DimeDraftRoom> = {}): DimeDraftRoom => ({
   enabled: true,
   available: true,
+  switched_off: false,
   lead: 2,
   notes_on: true,
   seat: { state: "off", reason: null, live: false },
@@ -185,6 +188,7 @@ describe("the seat", () => {
 
   test("why it came back", () => {
     expect(seatReason({ state: "off", reason: "done", live: false })).toContain("to the end");
+    expect(seatReason({ state: "off", reason: "switched_off", live: false })).toContain("switched off");
     expect(seatReason({ state: "off", reason: "AI_MONTHLY_BUDGET_REACHED", live: false })).toContain("ai monthly budget reached");
     expect(seatReason({ state: "drafting", reason: "done", live: true })).toBeNull();
     expect(seatReason({ state: "off", reason: null, live: false })).toBeNull();
@@ -207,5 +211,22 @@ describe("reading again", () => {
     expect(roomSignature(done)).toBe(roomSignature(room({ notes: [note({})] })));
     expect(roomSignature(done)).not.toBe(roomSignature(room({ notes: [note({})], seat: { state: "drafting", reason: null, live: true } })));
     expect(roomSignature(null)).toBe("");
+  });
+});
+
+describe("the AI desk's Draft notes", () => {
+  test("a room is named by the user's label, or by its kind", () => {
+    expect(deskRoomLabel({ name: "Atlas mock", kind: "mock", room_id: 4 })).toBe("Atlas mock");
+    expect(deskRoomLabel({ name: "  ", kind: "mock", room_id: 4 })).toBe("Mock draft 4");
+    expect(deskRoomLabel({ name: null, kind: "live", room_id: 9 })).toBe("Draft 9");
+  });
+
+  test("a note's line is its first paragraph, plain and cut", () => {
+    expect(notePreview(null)).toBeNull();
+    expect(notePreview("**Take Mock 001.** He fits the punt.\n\nRunner-up: Mock 004.")).toBe("Take Mock 001. He fits the punt.");
+    expect(notePreview("- First bullet\n- Second")).toBe("First bullet");
+    const long = notePreview("x".repeat(300), 20);
+    expect(long).toHaveLength(20);
+    expect(long?.endsWith("…")).toBe(true);
   });
 });

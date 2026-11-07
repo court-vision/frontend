@@ -4,7 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
 import { shouldPoll } from "@/lib/draft-dime";
 import { draftKeys } from "@/hooks/useDrafts";
-import type { DimeDraftNote, DimeDraftNoteKind, DimeDraftRoom } from "@/types/draft";
+import type { DimeDraftDesk, DimeDraftNote, DimeDraftNoteKind, DimeDraftRoom } from "@/types/draft";
 
 /** Keyed by the Clerk user too: another account on the same page never sees the last one's notes. */
 export const dimeDraftKey = (userId: string | null | undefined, sessionId: number) =>
@@ -30,6 +30,24 @@ export function useDimeDraftQuery(sessionId: number | null, enabled: boolean) {
   });
 }
 
+export const dimeDraftNotesKey = (userId: string | null | undefined) => [...draftKeys.all, "dime", userId ?? "signed-out", "desk"] as const;
+
+/**
+ * The AI desk's Draft notes: every room's notes in one read, read again every
+ * 5 seconds while one is being written. The room's own writes refresh it too.
+ */
+export function useDimeDraftNotesQuery(enabled: boolean) {
+  const { getToken, isSignedIn, userId } = useAuth();
+  return useQuery<DimeDraftDesk>({
+    queryKey: dimeDraftNotesKey(userId),
+    queryFn: ({ signal }) => apiClient.getDimeDraftNotes(getToken, { signal }),
+    enabled: enabled && isSignedIn === true,
+    staleTime: 30_000,
+    refetchInterval: (query) => (query.state.data?.rooms.some((r) => r.notes.some((n) => n.state === "running")) ? 5_000 : false),
+    retry: false,
+  });
+}
+
 function useDimeWrite<TVars, TResult>(sessionId: number, fn: (vars: TVars) => Promise<TResult>, apply: (d: DimeDraftRoom, r: TResult) => DimeDraftRoom) {
   const { userId } = useAuth();
   const queryClient = useQueryClient();
@@ -40,6 +58,7 @@ function useDimeWrite<TVars, TResult>(sessionId: number, fn: (vars: TVars) => Pr
     onSuccess: (result) => {
       queryClient.setQueryData<DimeDraftRoom>(dimeDraftKey(userId, sessionId), (d) => (d ? apply(d, result) : d));
       void queryClient.invalidateQueries({ queryKey: dimeDraftKey(userId, sessionId) });
+      void queryClient.invalidateQueries({ queryKey: dimeDraftNotesKey(userId) });
     },
   });
 }

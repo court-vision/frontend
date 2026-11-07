@@ -7164,6 +7164,154 @@
         "title": "DeleteLineupResp",
         "type": "object"
       },
+      "DimeDraftDesk": {
+        "properties": {
+          "enabled": {
+            "description": "DIME_DRAFT_ENABLED (and AI_ENABLED) on the server",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "rooms": {
+            "description": "The room with the newest note first",
+            "items": {
+              "$ref": "#/components/schemas/DimeDraftDeskRoom"
+            },
+            "title": "Rooms",
+            "type": "array"
+          },
+          "switched_off": {
+            "description": "The account's Dime in draft rooms switch is off (its notes still list)",
+            "title": "Switched Off",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "switched_off",
+          "rooms"
+        ],
+        "title": "DimeDraftDesk",
+        "type": "object"
+      },
+      "DimeDraftDeskResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DimeDraftDesk"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DimeDraftDeskResp",
+        "type": "object"
+      },
+      "DimeDraftDeskRoom": {
+        "description": "One of the user's draft rooms, with the notes Dime wrote in it.",
+        "properties": {
+          "kind": {
+            "description": "live, manual, mock or import",
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_at": {
+            "description": "When its newest note was started",
+            "format": "date-time",
+            "title": "Last At",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The user's own label for the room",
+            "title": "Name"
+          },
+          "notes": {
+            "description": "Newest first",
+            "items": {
+              "$ref": "#/components/schemas/DimeDraftNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "room_id": {
+            "title": "Room Id",
+            "type": "integer"
+          },
+          "status": {
+            "description": "active, completed or abandoned",
+            "title": "Status",
+            "type": "string"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          }
+        },
+        "required": [
+          "room_id",
+          "name",
+          "kind",
+          "status",
+          "team_id",
+          "last_at",
+          "notes"
+        ],
+        "title": "DimeDraftDeskRoom",
+        "type": "object"
+      },
       "DimeDraftNote": {
         "description": "One note Dime wrote in the room: its words (`text`, null while it runs), the board's numbers\nthe server read for it (`facts`), and what it set or made.",
         "properties": {
@@ -7420,7 +7568,7 @@
       "DimeDraftRoom": {
         "properties": {
           "available": {
-            "description": "enabled, and the caller is on the AI desk's list: the room shows Dime",
+            "description": "enabled, the caller is on the AI desk's list, and their Dime in draft rooms switch is on: the room shows Dime",
             "title": "Available",
             "type": "boolean"
           },
@@ -7485,11 +7633,18 @@
             ],
             "description": "Why it can't, in a line",
             "title": "Seat Blocker"
+          },
+          "switched_off": {
+            "default": false,
+            "description": "enabled and on the list, but the account's Dime in draft rooms switch (Account, AI and automation) is off",
+            "title": "Switched Off",
+            "type": "boolean"
           }
         },
         "required": [
           "enabled",
           "available",
+          "switched_off",
           "lead",
           "notes_on",
           "seat",
@@ -28303,6 +28458,39 @@
         ]
       }
     },
+    "/v1/internal/ai/draft-notes": {
+      "get": {
+        "description": "Every plan, pick note and recap Dime wrote in the caller's draft rooms (the newest 300), grouped by room: the room with the newest note first, each room's notes newest first. Listed whether or not Dime is on in draft rooms now; `enabled` and `switched_off` say whether new ones can be asked for. Each note's `conversation_id` opens it on the AI desk.",
+        "operationId": "get_desk_notes_v1_internal_ai_draft_notes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimeDraftDeskResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the AI desk's invite list (AI_INVITE_ONLY)"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dime's notes across the caller's draft rooms, for the AI desk's Draft notes view",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
     "/v1/internal/ai/notes": {
       "get": {
         "description": "The notes the agent keeps between conversations, newest first: with `team_id`, that team's and the ones about the caller; without, every one. `include_retired` adds the revised and forgotten ones.",
@@ -29937,7 +30125,7 @@
     },
     "/v1/internal/drafts/{session_id}/dime": {
       "get": {
-        "description": "What Dime has written in the room, newest first (a plan, a note at each of the user's picks, a recap; each with the board's numbers the server read for it in `facts`), whether a note is being written now, the switch for a note whenever the user's pick is `lead` picks away or nearer, and whether Dime holds the user's seat in a mock. Never refuses for a switched-off server or a user off the AI desk's list: `available` says whether the room shows Dime at all.",
+        "description": "What Dime has written in the room, newest first (a plan, a note at each of the user's picks, a recap; each with the board's numbers the server read for it in `facts`), whether a note is being written now, the switch for a note whenever the user's pick is `lead` picks away or nearer, and whether Dime holds the user's seat in a mock. Never refuses for a switched-off server or a user off the AI desk's list: `available` says whether the room shows Dime at all, and `switched_off` that the account turned Dime in draft rooms off (Account, AI and automation).",
         "operationId": "get_dime_v1_internal_drafts__session_id__dime_get",
         "parameters": [
           {
@@ -30026,6 +30214,9 @@
           "404": {
             "description": "No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND)"
           },
+          "409": {
+            "description": "The account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF)"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -30094,7 +30285,7 @@
             "description": "No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND)"
           },
           "409": {
-            "description": "A note is already being written (AI_DRAFT_BUSY), the draft is finished (AI_DRAFT_FINISHED), no pick of the user's is left (AI_DRAFT_NO_PICK), or nothing has been drafted yet (AI_DRAFT_NO_PICKS)"
+            "description": "A note is already being written (AI_DRAFT_BUSY), the draft is finished (AI_DRAFT_FINISHED), no pick of the user's is left (AI_DRAFT_NO_PICK), nothing has been drafted yet (AI_DRAFT_NO_PICKS), or the account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF)"
           },
           "422": {
             "content": {
@@ -30167,7 +30358,7 @@
             "description": "No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND)"
           },
           "409": {
-            "description": "Not a room Dime can draft in: not a mock, linked to an ESPN lobby, finished, no seat or shape set (AI_DRAFT_NO_SEAT)"
+            "description": "Not a room Dime can draft in: not a mock, linked to an ESPN lobby, finished, no seat or shape set (AI_DRAFT_NO_SEAT), or the account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF)"
           },
           "422": {
             "content": {

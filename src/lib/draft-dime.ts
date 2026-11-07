@@ -7,7 +7,8 @@
  * notes switch, the seat), so nothing here decides for the user: it only says
  * which note is about which pick, and when the switch should ask.
  */
-import type { DimeDraftNote, DimeDraftRoom, DraftSession } from "@/types/draft";
+import { prose } from "@/lib/ai-prose";
+import type { DimeDraftDeskRoom, DimeDraftNote, DimeDraftRoom, DraftSession } from "@/types/draft";
 
 /** One of the three recommendations a pick note was written beside. */
 export interface DimePickTop {
@@ -147,6 +148,7 @@ const SEAT_REASON: Record<string, string> = {
   cap_blocked: "Every player left would break a position cap, so the seat is yours again",
   pool_exhausted: "Nobody is left to draft",
   blocked: "The room can't be drafted from the seat any more",
+  switched_off: "Dime in draft rooms was switched off, so the seat is yours again",
 };
 
 /** Why the seat last came back to the user, in a line; null when nothing worth saying. */
@@ -180,4 +182,21 @@ export function failedLine(note: Pick<DimeDraftNote, "state" | "reason">): strin
 export function puntLine(punts: readonly string[] | null | undefined, labels: Record<string, string> = {}): string {
   if (!punts || punts.length === 0) return "no punts";
   return `punt ${punts.map((p) => labels[p] ?? p.toUpperCase()).join(", ")}`;
+}
+
+/** A room in the AI desk's Draft notes, as its head names it: the user's label, or what kind of room. */
+export function deskRoomLabel(room: Pick<DimeDraftDeskRoom, "name" | "kind" | "room_id">): string {
+  const name = room.name?.trim();
+  if (name) return name;
+  return room.kind === "mock" ? `Mock draft ${room.room_id}` : `Draft ${room.room_id}`;
+}
+
+/** A note's first paragraph (or first bullet) as plain text, cut to `max`: its line in Draft notes. */
+export function notePreview(text: string | null | undefined, max = 240): string | null {
+  if (!text) return null;
+  const first = prose(text)[0];
+  if (!first) return null;
+  const line = (first.kind === "p" ? first.spans : (first.items[0] ?? [])).map((sp) => sp.text).join("").trim();
+  if (!line) return null;
+  return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line;
 }

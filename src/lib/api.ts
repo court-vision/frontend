@@ -194,6 +194,8 @@ import type {
   RecapPick,
   RecapSeat,
   RecapStanding,
+  DimeDraftDesk,
+  DimeDraftDeskResponse,
   DimeDraftNote,
   DimeDraftNoteKind,
   DimeDraftNoteResponse,
@@ -1199,6 +1201,11 @@ class ApiClient {
     return unwrap(
       await fetchJson<DimeDraftNoteResponse>(`${DRAFTS_API}/${sessionId}/dime/notes`, { getToken, method: "POST", body: { kind } })
     );
+  }
+
+  /** What Dime wrote across the user's draft rooms, by room (the AI desk's Draft notes). */
+  async getDimeDraftNotes(getToken: GetTokenFn, opts?: RequestOptions): Promise<DimeDraftDesk> {
+    return unwrap(await fetchJson<DimeDraftDeskResponse>(`${AI_API}/draft-notes`, { ...opts, getToken }));
   }
 
   /** Hand Dime the user's seat in a mock (it drafts to the end), or take it back after the pick it is making. */

@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
 import dk from "@/components/desk/desk.module.css";
-import { AI_DESK } from "@/components/desk/routes";
+import { ACCOUNT_DESK, AI_DESK } from "@/components/desk/routes";
 import { aiMessage } from "@/hooks/useAi";
 import { useAskDimeDraft, useDimeDraftQuery, useSetDimeDraftNotes, useSetDimeDraftSeat } from "@/hooks/useDimeDraft";
 import { draftKeys } from "@/hooks/useDrafts";
@@ -31,6 +31,8 @@ import { shortName, signed } from "./format";
 import type { RoomModel } from "./model";
 import s from "./draft.module.css";
 
+const AUTOMATION_SETTINGS = `${ACCOUNT_DESK}?v=automation`;
+
 // ---------------------------------------------------------------------------
 // The room's side of Dime: the view, the writes, and the two things the room
 // does on its own (asking for a pick note while the switch is on, and reading
@@ -39,6 +41,8 @@ import s from "./draft.module.css";
 
 export interface RoomDime {
   room: DimeDraftRoom | null;
+  /** The account switched Dime in draft rooms off: the rail says where to turn it back on, and nothing else. */
+  switchedOff: boolean;
   /** Dime holds the user's seat and its loop is running: the room's own pick controls stand down. */
   drafting: boolean;
   ask: (kind: DimeDraftNoteKind) => void;
@@ -105,6 +109,7 @@ export function useRoomDime(model: RoomModel, session: DraftSession): RoomDime {
 
   return {
     room,
+    switchedOff: query.data?.switched_off === true,
     drafting: seatBusy(room),
     ask: (kind) => ask(kind),
     asking: askM.isPending,
@@ -143,7 +148,7 @@ export function DimeRail({ dime, session, board, onFocus, onRestorePunts, updati
     () => Object.fromEntries((board?.meta?.category_need ?? []).map((n) => [n.key, n.label])),
     [board?.meta?.category_need]
   );
-  if (!room) return null;
+  if (!room) return dime.switchedOff ? <SwitchedOff /> : null;
 
   const completed = session.status === "completed";
   const writing = room.running != null || dime.asking;
@@ -304,6 +309,27 @@ function samePunts(a: readonly string[] | null | undefined, b: readonly string[]
   const x = [...(a ?? [])].sort();
   const y = [...(b ?? [])].sort();
   return x.length === y.length && x.every((v, i) => v === y[i]);
+}
+
+/** Dime in draft rooms is off for the account: one line saying where it comes back on. */
+function SwitchedOff() {
+  return (
+    <section className={s.section} aria-label="Dime">
+      <div className={s.sectionHead}>
+        <span className={dk.label}>Dime</span>
+        <span className={dk.sub}>off</span>
+      </div>
+      <div className={`${s.sectionBody} ${s.dime}`}>
+        <p className={s.dimeEmpty}>
+          Dime in draft rooms is off. Turn it on in{" "}
+          <Link href={AUTOMATION_SETTINGS} className={s.dimeLink}>
+            Account, AI and automation
+          </Link>
+          .
+        </p>
+      </div>
+    </section>
+  );
 }
 
 function Writing({ what }: { what: string }) {
