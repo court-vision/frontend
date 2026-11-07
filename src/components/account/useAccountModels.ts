@@ -5,6 +5,7 @@ import { useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { create } from "zustand";
+import { useAiCheckinsQuery, useAiUsageQuery, useSetAiAutopilot } from "@/hooks/useAi";
 import { useConnectEspnMutation, useConnectionsQuery, useDeleteConnectionMutation, useEspnAccountTeamsQuery, useVerifyConnectionMutation } from "@/hooks/useConnections";
 import {
   useDeleteTeamPreferenceMutation,
@@ -13,7 +14,6 @@ import {
   useUpdateNotificationPreferencesMutation,
   useUpsertTeamPreferenceMutation,
 } from "@/hooks/useNotificationPreferences";
-import { useAiCheckinsQuery, useSetAiAutopilot } from "@/hooks/useAi";
 import { useSeason } from "@/hooks/useSeason";
 import { teamsKeys, useAddTeamMutation, useDeleteTeamMutation, useSyncTeamLeagueMutation, useTeamLeagueQuery, useTeamsQuery, useUpdateTeamMutation } from "@/hooks/useTeams";
 import { useYahooLeagues, useYahooTeams } from "@/hooks/useYahoo";
@@ -23,7 +23,6 @@ import { scoringLabel } from "@/lib/category-format";
 import { seasonLabel } from "@/lib/account";
 import {
   DEMO_ACCOUNT_TEAMS,
-  DEMO_ACTING,
   DEMO_CONNECTIONS,
   DEMO_PREFS,
   DEMO_TEAMS,
@@ -31,8 +30,6 @@ import {
   DEMO_USER,
   DEMO_YAHOO_LEAGUES,
   DEMO_YAHOO_TEAMS,
-  demoDimeChange,
-  demoDimeTeams,
   demoLeagueDetail,
 } from "@/lib/account-demo";
 import { useUIStore } from "@/stores/useUIStore";
@@ -41,7 +38,7 @@ import type { EspnAccountTeam, ProviderConnection } from "@/types/connections";
 import type { NotificationPreference, NotificationTeamPreference, NotificationTeamPreferenceRequest } from "@/types/notifications";
 import type { LeagueDetail, LeagueInfoRequest, TeamResponseData } from "@/types/team";
 import type { YahooLeague, YahooTeam } from "@/types/yahoo";
-import type { AccountModel, AddTeamModel, DimeState, Loaded, ModelStatus } from "./model";
+import type { AccountModel, AddTeamModel, Loaded, ModelStatus } from "./model";
 
 function loaded<T>(q: UseQueryResult<T | null>): Loaded<NonNullable<T>> {
   return {
@@ -63,19 +60,16 @@ const useLiveYahooTeams = (connectionId: number | null, leagueKey: string | null
 const useLivePrefs = (): Loaded<NotificationPreference> => loaded(useNotificationPreferencesQuery());
 const useLiveTeamPrefs = (): Loaded<NotificationTeamPreference[]> => loaded(useTeamNotificationPreferencesQuery());
 
-/** The check-ins' teams and acting's switches, out of the AI desk's check-ins read. */
-function useLiveDime(): Loaded<DimeState> {
-  const q = useAiCheckinsQuery(true);
-  const { data, isLoading, error, refetch } = q;
-  return useMemo(
-    () => ({
-      data: data ? { teams: data.teams, acting: data.acting ?? null } : null,
-      loading: isLoading,
-      error: error ? userMessage(error) : null,
-      refetch: () => void refetch(),
-    }),
-    [data, isLoading, error, refetch]
-  );
+/** The teams Dime may run check-ins on: asked for only with CV AI, which they need. */
+function useLiveCheckinTeams(): Loaded<AiAutopilotTeam[]> {
+  const usage = useAiUsageQuery();
+  const q = useAiCheckinsQuery(usage.data?.access === true);
+  return {
+    data: q.data?.teams ?? null,
+    loading: q.isLoading,
+    error: q.error ? userMessage(q.error) : null,
+    refetch: () => void q.refetch(),
+  };
 }
 
 /** The add-team flow's needs, from the API. The Week desk uses this on its own. */
@@ -256,9 +250,9 @@ export function useLiveAccount(): AccountModel {
     clearTeamPrefs: async (teamId) => {
       await clearTeamPrefsAsync(teamId);
     },
-    useDime: useLiveDime,
-    setDime: async (teamId, change) => {
-      await setAutopilotAsync({ teamId, ...change });
+    useCheckinTeams: useLiveCheckinTeams,
+    setCheckins: async (teamId, on) => {
+      await setAutopilotAsync({ teamId, on });
     },
     user: isSignedIn
       ? {
@@ -277,13 +271,15 @@ export function useLiveAccount(): AccountModel {
 // Demo: a made-up account, every write in memory
 // ---------------------------------------------------------------------------
 
+const NO_CHECKIN_TEAMS: Loaded<AiAutopilotTeam[]> = { data: [], loading: false, error: null, refetch: () => {} };
+const useDemoCheckinTeams = (): Loaded<AiAutopilotTeam[]> => NO_CHECKIN_TEAMS;
+
 interface DemoState {
   teams: TeamResponseData[];
   connections: ProviderConnection[];
   accountTeams: EspnAccountTeam[];
   prefs: NotificationPreference;
   teamPrefs: NotificationTeamPreference[];
-  dime: AiAutopilotTeam[];
   selectedTeamId: number | null;
   nextTeamId: number;
   set: (patch: Partial<DemoState> | ((s: DemoState) => Partial<DemoState>)) => void;
@@ -295,7 +291,6 @@ const useDemoStore = create<DemoState>()((set) => ({
   accountTeams: DEMO_ACCOUNT_TEAMS,
   prefs: DEMO_PREFS,
   teamPrefs: DEMO_TEAM_PREFS,
-  dime: demoDimeTeams(),
   selectedTeamId: 1,
   nextTeamId: 4,
   set: (patch) => set(patch),
@@ -318,10 +313,6 @@ const useDemoYahooTeams = (connectionId: number | null, leagueKey: string | null
   useMemo(() => ready(connectionId != null && leagueKey ? (DEMO_YAHOO_TEAMS[leagueKey] ?? []) : []), [connectionId, leagueKey]);
 const useDemoPrefs = (): Loaded<NotificationPreference> => ready(useDemoStore((s) => s.prefs));
 const useDemoTeamPrefs = (): Loaded<NotificationTeamPreference[]> => ready(useDemoStore((s) => s.teamPrefs));
-const useDemoDime = (): Loaded<DimeState> => {
-  const teams = useDemoStore((s) => s.dime);
-  return useMemo(() => ready<DimeState>({ teams, acting: DEMO_ACTING }), [teams]);
-};
 
 /** A connected ESPN account's teams, with one of them now tracked. */
 function trackOnAccount(list: EspnAccountTeam[], leagueId: number, teamName: string, teamId: number): EspnAccountTeam[] {
@@ -542,11 +533,9 @@ export function useDemoAccount(): AccountModel {
       }));
       toast.success("Back to the account's settings (demo)");
     },
-    useDime: useDemoDime,
-    setDime: async (teamId, change) => {
-      await wait(250);
-      set((s) => ({ dime: s.dime.map((t) => (t.team_id === teamId ? demoDimeChange(t, change, DEMO_ACTING.available) : t)) }));
-    },
+    // Dime runs check-ins only on teams set up for it, and the demo has none
+    useCheckinTeams: useDemoCheckinTeams,
+    setCheckins: async () => {},
     user: DEMO_USER,
     signOut: () => toast.info("Demo: nothing to sign out of"),
     openProfile: null,

@@ -1,6 +1,7 @@
 /*
- * The AI desk: conversations on the left, the open one on the right with the
- * composer docked under it. Desk tokens only (desk.module.css), so every theme
+ * The AI desk: Dime's views and the conversations on the left, the open one
+ * (or one of Dime's views) on the right, with the composer docked under a
+ * conversation. Desk tokens only (desk.module.css), so every theme
  * carries over.
  */
 
@@ -842,7 +843,8 @@
 }
 
 @media (max-width: 639.98px) {
-  .column {
+  .column,
+  .view {
     padding: 16px 16px 24px;
   }
 
@@ -967,19 +969,16 @@
   backdrop-filter: none;
 }
 
-/* ---------------------------------------------------------------- Dime: its notes and the move ledger */
+/* ---------------------------------------------------------------- the side list's Dime section */
 
-.dime {
+.listSection {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 0 12px;
-  border-top: 1px solid var(--line);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
 }
-.dimeHead {
-  padding: 0 14px 4px;
-}
-.dimeLink {
+.navRow {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -993,12 +992,79 @@
   text-align: left;
   cursor: pointer;
 }
-.dimeLink:hover {
+.navRow:hover {
   background: var(--hover);
 }
-.dimeLink:focus-visible {
+.navRow:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
+}
+.navRow[aria-current="page"] {
+  background: var(--accent-soft);
+}
+.navRow[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 0 calc(2px * var(--round, 1)) calc(2px * var(--round, 1)) 0;
+  background: var(--accent);
+}
+.navCount {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: calc(9px * var(--round, 1));
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------- Dime's views in the main area */
+
+.view {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 18px 22px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.viewHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 16px;
+}
+.viewSub {
+  flex: 1 1 320px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.viewTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.viewList {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--surface);
+  overflow: hidden;
+}
+.viewList > .row + .row {
+  border-top: 1px solid var(--line);
+}
+.viewList > .row {
+  padding: 10px 14px;
 }
 
 .select,
@@ -1200,38 +1266,6 @@
 
 /* ---------------------------------------------------------------- Dime's check-ins, in shadow */
 
-.listTabs {
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: calc(6px * var(--round, 1));
-  background: var(--surface-2);
-}
-.listTab {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 24px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: calc(5px * var(--round, 1));
-  background: transparent;
-  color: var(--text-2);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.listTab[aria-selected="true"] {
-  background: var(--raised);
-  color: var(--text);
-  font-weight: 600;
-  box-shadow: 0 0 0 1px var(--line);
-}
-.listTab:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
 /* A check-in that has nothing to open (running, missed, skipped) */
 .rowStatic {
   cursor: default;
@@ -1247,11 +1281,15 @@
   color: var(--warn);
 }
 
+.teamCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+}
 .autopilot {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 2px 10px 10px;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: calc(8px * var(--round, 1));
@@ -1299,51 +1337,12 @@
   font-size: 12px;
 }
 
-.switch {
-  position: relative;
-  flex-shrink: 0;
-  width: 34px;
-  height: 20px;
-  border-radius: calc(10px * var(--round, 1));
-  border: 0;
-  background: var(--line-2);
-  cursor: pointer;
-  transition: background 120ms ease-out;
-}
-.switch::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  transition: transform 120ms ease-out;
-}
-.switch[aria-checked="true"] {
-  background: var(--accent);
-}
-.switch[aria-checked="true"]::after {
-  transform: translateX(14px);
-}
-.switch:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.switch:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
 .checkinMeta {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 2px 10px;
-  padding: 0 14px 8px;
-  font-size: 11.5px;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 12px;
   color: var(--text-3);
 }
 

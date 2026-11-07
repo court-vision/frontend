@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { agreement, checkinLine, decisionKicker, reasonWords, verdictOf, withVerdict } from "../ai-checkins";
+import { VerdictSaves, agreement, checkinLine, decisionKicker, reasonWords, unrated, verdictOf, withVerdict } from "../ai-checkins";
 import { chipState, stageProblem } from "../ai-proposals";
 import type { AiCheckin, AiConversation, AiProposalChip } from "@/types/ai";
 
@@ -50,6 +50,11 @@ describe("a check-in's row", () => {
   test("agreement counts only the rated calls", () => {
     expect(agreement([checkin(), checkin({ agree: 1, disagree: 2 }), checkin({ agree: 0 })])).toEqual({ agree: 3, rated: 5 });
   });
+
+  test("counts the calls left to mark in finished check-ins", () => {
+    expect(unrated([checkin(), checkin({ agree: 0 }), checkin({ state: "running", decisions: 2, agree: 0 })])).toBe(4);
+    expect(unrated([checkin({ state: "failed", decisions: 1, agree: 0 }), checkin({ state: "missed", decisions: 0, agree: 0 })])).toBe(1);
+  });
 });
 
 describe("a decision", () => {
@@ -84,6 +89,31 @@ describe("a verdict in a cached conversation", () => {
     expect(verdictOf(rolledBack, 1)).toBeNull();
     expect(verdictOf(rolledBack, 2)).toBe("disagree");
     expect(verdictOf(conv, 1)).toBeNull(); // the original is untouched
+  });
+});
+
+describe("verdict saves in flight", () => {
+  test("an older save failing after a newer one on the same call puts nothing back", () => {
+    const saves = new VerdictSaves();
+    const agree = saves.start(1);
+    const disagree = saves.start(1);
+    expect(saves.settle()).toBe(false); // Disagree saved
+    expect(saves.isNewest(1, agree)).toBe(false); // Agree fails: Disagree stays
+    expect(saves.isNewest(1, disagree)).toBe(true);
+    expect(saves.settle()).toBe(true); // nothing left in flight: read the conversation again
+  });
+
+  test("saves on two calls each stay the newest on their own call", () => {
+    const saves = new VerdictSaves();
+    const one = saves.start(1);
+    const two = saves.start(2);
+    expect(saves.isNewest(1, one)).toBe(true);
+    expect(saves.isNewest(2, two)).toBe(true);
+    saves.settle();
+    expect(saves.settle()).toBe(true);
+    // Numbers keep counting, so a save from before can never pass for a later one
+    expect(saves.isNewest(1, saves.start(1))).toBe(true);
+    expect(saves.isNewest(1, one)).toBe(false);
   });
 });
 

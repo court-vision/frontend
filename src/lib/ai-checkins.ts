@@ -76,6 +76,15 @@ export function agreement(checkins: readonly AiCheckin[]): { agree: number; rate
   return { agree, rated };
 }
 
+/** The calls in finished check-ins the user hasn't marked yet. */
+export function unrated(checkins: readonly AiCheckin[]): number {
+  let n = 0;
+  for (const c of checkins) {
+    if (c.state === "done" || c.state === "failed") n += Math.max(0, c.decisions - c.agree - c.disagree);
+  }
+  return n;
+}
+
 export const AREA_LABEL: Record<AiDecisionBlock["area"], string> = {
   lineup: "Lineup",
   streaming: "Streaming",
@@ -110,6 +119,36 @@ export function verdictOf(c: AiConversation, decisionId: number): AiVerdict | nu
     }
   }
   return undefined;
+}
+
+/**
+ * The verdict saves in flight. A save that fails puts its call back only while it is still the
+ * newest save on that call, so Agree then Disagree, with Agree failing last, keeps Disagree. When
+ * the last save ends, the stored conversation is read again to settle what was kept.
+ */
+export class VerdictSaves {
+  private newest = new Map<number, number>();
+  private count = 0;
+  private inFlight = 0;
+
+  /** A save on `decisionId` starts: its number, for `isNewest`. */
+  start(decisionId: number): number {
+    this.count += 1;
+    this.inFlight += 1;
+    this.newest.set(decisionId, this.count);
+    return this.count;
+  }
+
+  isNewest(decisionId: number, save: number): boolean {
+    return this.newest.get(decisionId) === save;
+  }
+
+  /** A save ended, saved or not: true once none is left in flight. */
+  settle(): boolean {
+    this.inFlight = Math.max(0, this.inFlight - 1);
+    if (this.inFlight === 0) this.newest.clear();
+    return this.inFlight === 0;
+  }
 }
 
 /** The conversation with one decision's verdict set, every other part as it was. */
