@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { BookOpen, LayoutList, Loader2, Plus, Repeat, Trash2 } from "lucide-react";
+import { BookOpen, ChevronLeft, ClipboardCheck, LayoutList, Loader2, Plus, Repeat, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { DeskDialog } from "@/components/desk/DeskDialog";
@@ -26,16 +26,18 @@ import {
 } from "@/hooks/useAi";
 import { useChipTray } from "@/hooks/useAiProposals";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
+import { unrated } from "@/lib/ai-checkins";
+import { VIEW_LABEL, aiLocation, aiSearch, showsConversation, type AiLocation, type AiView } from "@/lib/ai-desk";
 import { draftKey } from "@/lib/ai-drafts";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { teamName, teamTag } from "@/lib/account";
 import { useUIStore } from "@/stores/useUIStore";
 import type { AiCheckins, AiConversationSummary, AiFeedback, AiVerdict } from "@/types/ai";
-import { CheckinList } from "./Checkins";
+import { CheckinsView } from "./Checkins";
 import { ChipTray, type ChipActions } from "./Chips";
 import { Composer, type ComposerHandle } from "./Composer";
-import { DimeNotesDialog } from "./DimeNotes";
-import { MoveLedgerDialog } from "./MoveLedger";
+import { DimeMemory } from "./DimeNotes";
+import { MoveResults } from "./MoveLedger";
 import { Thread } from "./Thread";
 import dk from "@/components/desk/desk.module.css";
 import s from "./ai.module.css";
@@ -43,8 +45,8 @@ import s from "./ai.module.css";
 const KEYS: Array<[string, string]> = [
   ["/", "write"],
   ["N", "new conversation"],
-  ["K", "what Dime knows"],
-  ["M", "how moves went"],
+  ["K", "memory"],
+  ["M", "move results"],
   ["T", "theme"],
 ];
 
@@ -57,7 +59,7 @@ const EXAMPLES = [
   "Find me a pickup for tonight and set it up.",
 ];
 
-export function AiPage({ initialConversation }: { initialConversation: number | null }) {
+export function AiPage({ initial }: { initial: AiLocation }) {
   const { isLoaded, isSignedIn } = useAuth();
   const usage = useAiUsageQuery();
   const access = usage.data?.access === true;
@@ -121,15 +123,16 @@ export function AiPage({ initialConversation }: { initialConversation: number | 
       </div>
     );
   }
-  return <AiDesk initialConversation={initialConversation} monthUsd={usage.data?.month_usd ?? 0} capUsd={usage.data?.cap_usd ?? 0} />;
+  return <AiDesk initial={initial} monthUsd={usage.data?.month_usd ?? 0} capUsd={usage.data?.cap_usd ?? 0} />;
 }
 
-function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation: number | null; monthUsd: number; capUsd: number }) {
+function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: number; capUsd: number }) {
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
-  const [current, setCurrent] = useState<number | null>(initialConversation);
+  const [loc, setLoc] = useState<AiLocation>(initial);
+  const current = loc.conversation;
+  const inConversation = showsConversation(loc);
   const [pane, setPane] = useState<"list" | "thread">("thread");
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [dimeView, setDimeView] = useState<"notes" | "moves" | null>(null);
   const router = useRouter();
   const toggleTheme = useDeskTheme((st) => st.toggle);
   const composer = useRef<ComposerHandle>(null);
@@ -138,9 +141,6 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
   const list = useAiConversationsQuery(true);
   const detail = useAiConversationQuery(current, true);
   const checkins = useAiCheckinsQuery(true);
-  // The side list shows the chats or Dime's check-ins (when Dime runs any on the user's teams)
-  const [listView, setListView] = useState<"chats" | "checkins">("chats");
-  const hasCheckins = (checkins.data?.teams.length ?? 0) > 0 || (checkins.data?.checkins.length ?? 0) > 0;
   const verdict = useAiDecisionVerdict(current);
   const create = useCreateAiConversation();
   const remove = useDeleteAiConversation();
@@ -171,40 +171,44 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
     [selected.teams]
   );
 
-  // ---- URL: ?c=<id> is the open conversation
+  // ---- URL: ?v= is one of Dime's views, ?c= the open conversation (src/lib/ai-desk.ts)
 
-  const go = useCallback((id: number | null, mode: "push" | "replace" = "push") => {
-    setCurrent(id);
+  const go = useCallback((next: AiLocation, mode: "push" | "replace" = "push") => {
+    setLoc(next);
     setPane("thread");
-    const url = id != null ? `${AI_DESK}?c=${id}` : AI_DESK;
+    const url = `${AI_DESK}${aiSearch(next)}`;
     if (`${window.location.pathname}${window.location.search}` === url) return;
     if (mode === "push") window.history.pushState(null, "", url);
     else window.history.replaceState(null, "", url);
   }, []);
+  const openChat = useCallback((id: number | null, mode: "push" | "replace" = "push") => go({ view: "chat", conversation: id }, mode), [go]);
+  const openView = useCallback((view: Exclude<AiView, "chat">) => go({ view, conversation: null }), [go]);
 
   useEffect(() => {
     const onPop = () => {
-      const c = Number(new URLSearchParams(window.location.search).get("c"));
-      setCurrent(Number.isInteger(c) && c > 0 ? c : null);
+      const q = new URLSearchParams(window.location.search);
+      setLoc(aiLocation(q.get("v"), q.get("c")));
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  // A conversation that's gone (deleted elsewhere, someone else's) falls back to a new one
+  // A conversation that's gone (deleted elsewhere, someone else's) falls back to where it was opened from
   const missing = detail.isError && toApiError(detail.error).status === 404;
   useEffect(() => {
-    if (missing) go(null, "replace");
-  }, [missing, go]);
+    if (missing) go({ view: loc.view === "checkins" ? "checkins" : "chat", conversation: null }, "replace");
+  }, [missing, go, loc.view]);
 
   // ---- the live turn: shown until the stored copy of it arrives
 
-  const conversation = current != null ? detail.data : undefined;
+  const conversation = current != null && detail.data?.id === current ? detail.data : undefined;
   const isCheckin = conversation?.kind === "checkin";
-  // Opening a check-in (a link, back and forward) shows the check-ins beside it
+  // A check-in opens with Dime's Check-ins selected, a chat under Conversations, however it was linked
   useEffect(() => {
-    if (isCheckin) setListView("checkins");
-  }, [isCheckin, current]);
+    if (!conversation || !inConversation) return;
+    if (isCheckin && loc.view === "chat") go({ view: "checkins", conversation: conversation.id }, "replace");
+    else if (!isCheckin && loc.view === "checkins") go({ view: "chat", conversation: conversation.id }, "replace");
+  }, [conversation, isCheckin, inConversation, loc.view, go]);
   const turns = useMemo(() => conversation?.history ?? [], [conversation]);
   const liveHere = live && live.conversationId === current ? live : null;
   const stored = liveHere?.done?.turn_id != null && turns.some((t) => t.id === liveHere.done!.turn_id);
@@ -218,7 +222,7 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
   useEffect(() => {
     const el = threadEl.current;
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
-  }, [turns.length, showLive?.parts, showLive?.status, current]);
+  }, [turns.length, showLive?.parts, showLive?.status, current, inConversation]);
 
   // ---- sending
 
@@ -233,7 +237,7 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
           composer.current?.fill(message);
           return;
         }
-        go(id, "replace");
+        openChat(id, "replace");
       }
       pinned.current = true;
       const ok = await send(id, message);
@@ -242,7 +246,7 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
         composer.current?.fill(message);
       }
     },
-    [current, create, selected.teamId, go, send]
+    [current, create, selected.teamId, openChat, send]
   );
 
   const onVote = useCallback(
@@ -272,9 +276,9 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
   );
 
   const newConversation = useCallback(() => {
-    go(null);
+    openChat(null);
     setTimeout(() => composer.current?.focus(), 0);
-  }, [go]);
+  }, [openChat]);
 
   // ---- keys
 
@@ -287,23 +291,25 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
       if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target) || (e.target as HTMLElement | null)?.closest?.('[role="dialog"]')) return;
       if (e.key === "/") {
         e.preventDefault();
-        composer.current?.focus();
+        // On one of Dime's lists there is no composer: start a conversation to write in
+        if (inConversation) composer.current?.focus();
+        else newConversation();
       } else if (e.key === "n" || e.key === "N") {
         e.preventDefault();
         newConversation();
       } else if (e.key === "k" || e.key === "K") {
         e.preventDefault();
-        setDimeView("notes");
+        openView("memory");
       } else if (e.key === "m" || e.key === "M") {
         e.preventDefault();
-        setDimeView("moves");
+        openView("results");
       } else if (e.key === "t" || e.key === "T") {
         toggleTheme();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [newConversation, toggleTheme]);
+  }, [inConversation, newConversation, openView, toggleTheme]);
 
   // ---- rendering
 
@@ -312,7 +318,12 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
   const pinnedTeam = conversation?.team_id != null ? selected.teams.find((t) => t.team_id === conversation.team_id) : undefined;
   const loadingThread = current != null && detail.isLoading;
   const full = conversation?.full === true;
-  const title = conversation?.title ?? (current == null ? "New conversation" : "");
+  const title = inConversation ? (conversation?.title ?? (current == null ? "New conversation" : "")) : VIEW_LABEL[loc.view as Exclude<AiView, "chat">];
+  const teamSwitch = (teamId: number | null) => (
+    <TeamSwitch teams={teams} teamId={teamId} onTeam={setSelectedTeam} onAdd={() => router.push(`${ACCOUNT_DESK}?add=1`)} container={root} />
+  );
+  // Dime's views read one team: the desk's, or the first while none is picked (what the switch shows)
+  const viewTeam = selected.teamId ?? teams[0]?.id ?? null;
 
   let banner: React.ReactNode = null;
   if (full) {
@@ -334,9 +345,90 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
     banner = (
       <>
         <span className={dk.sub}>About</span>
-        <TeamSwitch teams={teams} teamId={selected.teamId} onTeam={setSelectedTeam} onAdd={() => router.push(`${ACCOUNT_DESK}?add=1`)} container={root} />
+        {teamSwitch(selected.teamId)}
       </>
     );
+  }
+
+  let main: React.ReactNode;
+  if (inConversation) {
+    main = (
+      <>
+        <div
+          ref={threadEl}
+          className={s.thread}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+          }}
+        >
+          <div className={s.column}>
+            {loadingThread ? (
+              <div className={s.turn} aria-busy>
+                <span className={dk.skel} style={{ width: "40%", alignSelf: "flex-end" }} />
+                <span className={dk.skel} style={{ width: "90%" }} />
+                <span className={dk.skel} style={{ width: "70%" }} />
+              </div>
+            ) : turns.length === 0 && !showLive ? (
+              <Empty onPick={(q) => void onSend(q)} disabled={running} />
+            ) : (
+              <Thread
+                turns={turns}
+                live={showLive}
+                chips={chipActions}
+                onVote={onVote}
+                onComment={onComment}
+                checkin={isCheckin}
+                onVerdict={isCheckin ? onVerdict : undefined}
+              />
+            )}
+          </div>
+        </div>
+        <ChipTray
+          days={tray.days}
+          blocked={tray.blocked}
+          sendingDay={tray.sendingDay}
+          onCancelSwap={tray.cancelSwap}
+          onUndrop={tray.undrop}
+          onUnstageMove={tray.unstageMove}
+          onDiscardDay={tray.discardDay}
+          onDiscardAll={tray.discardAll}
+          onSend={tray.sendDays}
+        />
+        <Composer
+          ref={composer}
+          disabled={full}
+          busy={running || create.isPending}
+          placeholder={
+            running
+              ? "Answering…"
+              : current == null
+                ? "Ask about your team, a player, or the free-agent pool"
+                : isCheckin
+                  ? "Ask Dime about this check-in"
+                  : "Ask a follow-up"
+          }
+          banner={banner}
+          draftKey={draftKey(userId, current)}
+          onSend={(m) => void onSend(m)}
+        />
+      </>
+    );
+  } else if (loc.view === "checkins") {
+    main = (
+      <CheckinsView
+        data={checkins.data}
+        loading={checkins.isLoading}
+        error={checkins.error}
+        onRetry={() => void checkins.refetch()}
+        teams={teams}
+        onOpen={(id) => go({ view: "checkins", conversation: id })}
+      />
+    );
+  } else if (loc.view === "memory") {
+    main = <DimeMemory teams={teams} teamId={viewTeam} teamSwitch={teamSwitch(viewTeam)} />;
+  } else {
+    main = <MoveResults teams={teams} teamId={viewTeam} teamSwitch={teamSwitch(viewTeam)} />;
   }
 
   return (
@@ -349,11 +441,16 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
           </span>
         }
       >
-        <button type="button" className={`${dk.iconBtn} ${s.listToggle}`} aria-label={pane === "list" ? "Show the conversation" : "Show conversations"} onClick={() => setPane((p) => (p === "list" ? "thread" : "list"))}>
+        <button type="button" className={`${dk.iconBtn} ${s.listToggle}`} aria-label={pane === "list" ? "Back" : "Show conversations and Dime"} onClick={() => setPane((p) => (p === "list" ? "thread" : "list"))}>
           <LayoutList size={14} />
         </button>
+        {loc.view === "checkins" && current != null ? (
+          <button type="button" className={dk.ghost} title="Back to the check-ins" onClick={() => openView("checkins")}>
+            <ChevronLeft size={14} /> Check-ins
+          </button>
+        ) : null}
         <span style={{ fontWeight: 600, maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
-        {pinnedTeam ? <span className={dk.sub}>{teamName(pinnedTeam)}</span> : null}
+        {inConversation && pinnedTeam ? <span className={dk.sub}>{teamName(pinnedTeam)}</span> : null}
         {current != null ? (
           <button type="button" className={dk.iconBtn} aria-label="Delete this conversation" title="Delete this conversation" disabled={running || tray.busy} onClick={() => setConfirmDelete(true)}>
             <Trash2 size={14} />
@@ -362,99 +459,21 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
       </DeskBar>
 
       <div className={s.body} data-pane={pane}>
-        <ConversationList
+        <SideList
+          loc={loc}
           conversations={conversations}
           loading={list.isLoading}
-          current={current}
-          onOpen={(id) => go(id)}
+          onOpen={(id) => openChat(id)}
           onNew={newConversation}
-          onDime={setDimeView}
-          view={hasCheckins ? listView : "chats"}
-          onView={hasCheckins ? setListView : undefined}
+          onView={openView}
           checkins={checkins.data}
-          checkinsLoading={checkins.isLoading}
-          teams={teams}
         />
-
-        <div className={s.main}>
-          <div
-            ref={threadEl}
-            className={s.thread}
-            onScroll={(e) => {
-              const el = e.currentTarget;
-              pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-            }}
-          >
-            <div className={s.column}>
-              {loadingThread ? (
-                <div className={s.turn} aria-busy>
-                  <span className={dk.skel} style={{ width: "40%", alignSelf: "flex-end" }} />
-                  <span className={dk.skel} style={{ width: "90%" }} />
-                  <span className={dk.skel} style={{ width: "70%" }} />
-                </div>
-              ) : turns.length === 0 && !showLive ? (
-                <Empty onPick={(q) => void onSend(q)} disabled={running} />
-              ) : (
-                <Thread
-                  turns={turns}
-                  live={showLive}
-                  chips={chipActions}
-                  onVote={onVote}
-                  onComment={onComment}
-                  checkin={isCheckin}
-                  onVerdict={isCheckin ? onVerdict : undefined}
-                />
-              )}
-            </div>
-          </div>
-          <ChipTray
-            days={tray.days}
-            blocked={tray.blocked}
-            sendingDay={tray.sendingDay}
-            onCancelSwap={tray.cancelSwap}
-            onUndrop={tray.undrop}
-            onUnstageMove={tray.unstageMove}
-            onDiscardDay={tray.discardDay}
-            onDiscardAll={tray.discardAll}
-            onSend={tray.sendDays}
-          />
-          <Composer
-            ref={composer}
-            disabled={full}
-            busy={running || create.isPending}
-            placeholder={
-              running
-                ? "Answering…"
-                : current == null
-                  ? "Ask about your team, a player, or the free-agent pool"
-                  : isCheckin
-                    ? "Ask Dime about this check-in"
-                    : "Ask a follow-up"
-            }
-            banner={banner}
-            draftKey={draftKey(userId, current)}
-            onSend={(m) => void onSend(m)}
-          />
-        </div>
+        <div className={s.main}>{main}</div>
       </div>
 
       <DeskStatus keys={KEYS}>
         <span>Opus 5.5 · answers from Court Vision&apos;s lookups</span>
       </DeskStatus>
-
-      <DimeNotesDialog
-        open={dimeView === "notes"}
-        onOpenChange={(o) => setDimeView(o ? "notes" : null)}
-        teams={teams}
-        teamId={conversation?.team_id ?? selected.teamId}
-      />
-      <MoveLedgerDialog
-        open={dimeView === "moves"}
-        onOpenChange={(o) => setDimeView(o ? "moves" : null)}
-        teams={teams}
-        teamId={selected.teamId}
-        onTeam={setSelectedTeam}
-      />
 
       <DeskDialog
         open={confirmDelete}
@@ -471,7 +490,8 @@ function AiDesk({ initialConversation, monthUsd, capUsd }: { initialConversation
               remove.mutate(current, {
                 onSuccess: () => {
                   setConfirmDelete(false);
-                  go(null, "replace");
+                  // A deleted check-in's conversation goes back to the check-ins; a chat to a new one
+                  go({ view: loc.view === "checkins" ? "checkins" : "chat", conversation: null }, "replace");
                 },
                 onError: (err) => toast.error(userMessage(err, "Couldn't delete it")),
               });
@@ -504,68 +524,66 @@ function Empty({ onPick, disabled }: { onPick: (q: string) => void; disabled: bo
   );
 }
 
-function ConversationList({
+/**
+ * The side list: Dime's views on top (its check-ins, its memory, how moves went),
+ * each rendered in the main area, then the conversations, which are the chats.
+ * Both show always: memory and move results exist without any check-ins.
+ */
+function SideList({
+  loc,
   conversations,
   loading,
-  current,
   onOpen,
   onNew,
-  onDime,
-  view,
   onView,
   checkins,
-  checkinsLoading,
-  teams,
 }: {
+  loc: AiLocation;
   conversations: AiConversationSummary[];
   loading: boolean;
-  current: number | null;
   onOpen: (id: number) => void;
   onNew: () => void;
-  onDime: (view: "notes" | "moves") => void;
-  view: "chats" | "checkins";
-  /** Absent when Dime runs no check-ins on the user's teams: the list is the chats alone. */
-  onView?: (view: "chats" | "checkins") => void;
+  onView: (view: Exclude<AiView, "chat">) => void;
   checkins: AiCheckins | undefined;
-  checkinsLoading: boolean;
-  teams: DeskTeam[];
 }) {
   const running = checkins?.checkins.some((c) => c.state === "running") ?? false;
+  const toRate = unrated(checkins?.checkins ?? []);
+  const nav = (view: Exclude<AiView, "chat">, icon: React.ReactNode, extra?: React.ReactNode) => (
+    <button type="button" className={s.navRow} aria-current={loc.view === view ? "page" : undefined} onClick={() => onView(view)}>
+      {icon}
+      <span>{VIEW_LABEL[view]}</span>
+      <span className={dk.spacer} />
+      {extra}
+    </button>
+  );
   return (
-    <nav className={s.list} aria-label="Conversations">
-      <div className={s.listHead}>
-        {onView ? (
-          <div className={s.listTabs} role="tablist" aria-label="Show">
-            <button type="button" role="tab" aria-selected={view === "chats"} className={s.listTab} onClick={() => onView("chats")}>
-              Chats
-            </button>
-            <button type="button" role="tab" aria-selected={view === "checkins"} className={s.listTab} onClick={() => onView("checkins")}>
-              Check-ins
-              {running ? <Loader2 size={11} className={dk.spin} aria-label="One is running" /> : null}
-            </button>
-          </div>
-        ) : (
-          <span className={dk.label}>Conversations</span>
+    <nav className={s.list} aria-label="Conversations and Dime">
+      <div className={s.listSection}>
+        <div className={s.listHead}>
+          <span className={dk.label}>Dime</span>
+        </div>
+        {nav(
+          "checkins",
+          <ClipboardCheck size={13} />,
+          running ? (
+            <Loader2 size={12} className={dk.spin} aria-label="One is running" />
+          ) : toRate ? (
+            <span className={s.navCount} title={`${toRate} ${toRate === 1 ? "call" : "calls"} to mark agree or disagree`}>
+              {toRate}
+            </span>
+          ) : null
         )}
+        {nav("memory", <BookOpen size={13} />)}
+        {nav("results", <Repeat size={13} />)}
+      </div>
+      <div className={s.listHead}>
+        <span className={dk.label}>Conversations</span>
         <span className={dk.spacer} />
         <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={onNew}>
           <Plus size={13} /> New
         </button>
       </div>
-      {view === "checkins" ? (
-        <CheckinList data={checkins} loading={checkinsLoading} teams={teams} current={current} onOpen={onOpen} />
-      ) : (
-        <ConversationRows conversations={conversations} loading={loading} current={current} onOpen={onOpen} />
-      )}
-      <div className={s.dime}>
-        <span className={`${dk.label} ${s.dimeHead}`}>Dime</span>
-        <button type="button" className={s.dimeLink} onClick={() => onDime("notes")}>
-          <BookOpen size={13} /> What Dime knows
-        </button>
-        <button type="button" className={s.dimeLink} onClick={() => onDime("moves")}>
-          <Repeat size={13} /> How moves went
-        </button>
-      </div>
+      <ConversationRows conversations={conversations} loading={loading} current={loc.view === "chat" ? loc.conversation : null} onOpen={onOpen} />
     </nav>
   );
 }

@@ -3,6 +3,7 @@
  * and the demo both implement. The desk's components never fetch: they ask
  * the model, so the demo and the real thing render the same code.
  */
+import type { AiAutopilotTeam } from "@/types/ai";
 import type { EspnAccountTeam, ProviderConnection } from "@/types/connections";
 import type { NotificationPreference, NotificationTeamPreference, NotificationTeamPreferenceRequest } from "@/types/notifications";
 import type { LeagueDetail, LeagueInfoRequest, ScoringPreview, TeamResponseData } from "@/types/team";
@@ -89,6 +90,12 @@ export interface AccountModel extends AddTeamModel {
   /** Writes only the fields sent; a null hands that field back to the account's. */
   saveTeamPrefs: (teamId: number, data: NotificationTeamPreferenceRequest) => Promise<void>;
   clearTeamPrefs: (teamId: number) => Promise<void>;
+
+  // ---- Dime's check-ins (the Dime block of AI and automation)
+  /** The teams Dime may run check-ins on, each with its switch; none without CV AI. A hook: call it unconditionally. */
+  useCheckinTeams: () => Loaded<AiAutopilotTeam[]>;
+  /** Switch Dime's scheduled check-ins on or off for a team. Throws with the refusal. */
+  setCheckins: (teamId: number, on: boolean) => Promise<void>;
 
   // ---- the account itself
   user: AccountUser | null;
