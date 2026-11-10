@@ -50,6 +50,7 @@ import type {
   ScheduleWeeksData,
 } from "@/types/lineup";
 import type { RankingsMeta, RankingsParams, RankingsPlayer, RankingsResult } from "@/types/rankings";
+import type { TeamHolds, TeamHoldsResponse } from "@/types/team-hold";
 import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actions";
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
@@ -393,8 +394,10 @@ class ApiClient {
   }
 
   /** Cancel a pending pickup; 409 SCHEDULED_PICKUP_NOT_PENDING once it has run. */
-  async cancelPickup(getToken: GetTokenFn, teamId: number, pickupId: number): Promise<ScheduledPickup> {
-    const env = await fetchJson<ScheduledPickupResponse>(`${TEAMS_API}/${teamId}/pickups/${pickupId}`, {
+  async cancelPickup(getToken: GetTokenFn, teamId: number, pickupId: number, proposalId?: number): Promise<ScheduledPickup> {
+    // `proposalId`: Dime's cancel_pickup chip being applied (the server checks it is this pickup's, and marks it sent)
+    const q = proposalId != null ? `?proposal_id=${proposalId}` : "";
+    const env = await fetchJson<ScheduledPickupResponse>(`${TEAMS_API}/${teamId}/pickups/${pickupId}${q}`, {
       getToken,
       method: "DELETE",
     });
@@ -467,12 +470,45 @@ class ApiClient {
   }
 
   /** Stop a lane (its pending pickup goes too); 409 STREAM_LANE_BUSY while that pickup is being made. */
-  async stopStreamLane(getToken: GetTokenFn, teamId: number, laneId: number): Promise<{ lane: StreamLane; message: string }> {
-    const env = await fetchJson<StreamLaneResponse>(`${TEAMS_API}/${teamId}/stream-lanes/${laneId}`, {
+  async stopStreamLane(
+    getToken: GetTokenFn,
+    teamId: number,
+    laneId: number,
+    proposalId?: number
+  ): Promise<{ lane: StreamLane; message: string }> {
+    // `proposalId`: Dime's stop chip for this lane (start and pause / resume carry it in their bodies)
+    const q = proposalId != null ? `?proposal_id=${proposalId}` : "";
+    const env = await fetchJson<StreamLaneResponse>(`${TEAMS_API}/${teamId}/stream-lanes/${laneId}${q}`, {
       getToken,
       method: "DELETE",
     });
     return { lane: unwrap(env), message: env.message };
+  }
+
+  /** Dime's live holds on the team (none while its steering is off), by first day. */
+  async getTeamHolds(getToken: GetTokenFn, teamId: number, opts?: RequestOptions): Promise<TeamHolds> {
+    const env = await fetchJson<TeamHoldsResponse>(`${TEAMS_API}/${teamId}/holds`, { ...opts, getToken });
+    return unwrap(env, { enabled: false, holds: [] });
+  }
+
+  /**
+   * Apply Dime's steer chip: its holds are set and its clears done, and the chip is
+   * marked sent. 409 AI_PROPOSAL_NOT_PENDING once applied (or dismissed, expired),
+   * 409 AI_STEERING_OFF while steering is switched off. Returns the holds then.
+   */
+  async applyHolds(getToken: GetTokenFn, teamId: number, proposalId: number): Promise<TeamHolds> {
+    const env = await fetchJson<TeamHoldsResponse>(`${TEAMS_API}/${teamId}/holds`, {
+      getToken,
+      method: "POST",
+      body: { proposal_id: proposalId },
+    });
+    return unwrap(env, { enabled: true, holds: [] });
+  }
+
+  /** Clear one of Dime's holds: nothing reads it from now on. Returns the holds then. */
+  async clearHold(getToken: GetTokenFn, teamId: number, holdId: number): Promise<TeamHolds> {
+    const env = await fetchJson<TeamHoldsResponse>(`${TEAMS_API}/${teamId}/holds/${holdId}`, { getToken, method: "DELETE" });
+    return unwrap(env, { enabled: true, holds: [] });
   }
 
   // Matchups API

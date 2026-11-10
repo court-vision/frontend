@@ -1701,6 +1701,9 @@ export function WeekTerminal({
             onCancelPickup={data.cancelPickup}
             cancelling={data.cancelling}
             lanes={laneModels}
+            holds={data.holds}
+            onClearHold={data.clearHold}
+            clearingHold={data.clearingHold}
           />
         ) : (
           <WeekGrid

@@ -470,6 +470,54 @@
         "title": "AiBlockPart",
         "type": "object"
       },
+      "AiCancelPickupAction": {
+        "description": "A cancel_pickup chip: applied with `DELETE /teams/{team_id}/pickups/{pickup_id}` and its proposal_id.",
+        "properties": {
+          "add": {
+            "$ref": "#/components/schemas/AiProposalPlayer"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "drop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiProposalPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lane_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The stream lane that scheduled it, if one did",
+            "title": "Lane Id"
+          },
+          "pickup_id": {
+            "title": "Pickup Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pickup_id",
+          "date",
+          "add",
+          "drop",
+          "lane_id"
+        ],
+        "title": "AiCancelPickupAction",
+        "type": "object"
+      },
       "AiChart": {
         "description": "A bar or line chart the server built from the agent's tool results; the model never types its values.",
         "properties": {
@@ -1660,6 +1708,296 @@
         "title": "AiFeedbackResp",
         "type": "object"
       },
+      "AiHoldChange": {
+        "description": "One hold a steer chip sets (usr.team_holds once applied).",
+        "properties": {
+          "effect": {
+            "description": "What it does, in a line",
+            "title": "Effect",
+            "type": "string"
+          },
+          "ends_on": {
+            "format": "date",
+            "title": "Ends On",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "keep",
+              "block",
+              "override",
+              "pin"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "player": {
+            "$ref": "#/components/schemas/AiProposalPlayer"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "override only: the share of his usual value (0 = he misses)",
+            "title": "Share"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "player",
+          "share",
+          "starts_on",
+          "ends_on",
+          "effect"
+        ],
+        "title": "AiHoldChange",
+        "type": "object"
+      },
+      "AiHoldCleared": {
+        "description": "A live hold a steer chip clears.",
+        "properties": {
+          "effect": {
+            "description": "What it does, in a line",
+            "title": "Effect",
+            "type": "string"
+          },
+          "ends_on": {
+            "format": "date",
+            "title": "Ends On",
+            "type": "string"
+          },
+          "hold_id": {
+            "title": "Hold Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "keep",
+              "block",
+              "override",
+              "pin"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "player": {
+            "$ref": "#/components/schemas/AiProposalPlayer"
+          },
+          "reason": {
+            "description": "Why it was set",
+            "title": "Reason",
+            "type": "string"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "override only: the share of his usual value (0 = he misses)",
+            "title": "Share"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "player",
+          "share",
+          "starts_on",
+          "ends_on",
+          "effect",
+          "hold_id",
+          "reason"
+        ],
+        "title": "AiHoldCleared",
+        "type": "object"
+      },
+      "AiLaneAction": {
+        "description": "A lane chip: `op` start (`POST /teams/{team_id}/stream-lanes` with `holder.espn_id` as player_id),\npause or resume (`PATCH .../stream-lanes/{lane_id}`), stop (`DELETE .../stream-lanes/{lane_id}`),\neach with its proposal_id.",
+        "properties": {
+          "adds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adds"
+          },
+          "adds_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adds Left"
+          },
+          "days": {
+            "description": "start: who would hold the spot each day",
+            "items": {
+              "$ref": "#/components/schemas/AiLaneDay"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "first_decision_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Decision At"
+          },
+          "gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "start: the projected gain over holding",
+            "title": "Gain"
+          },
+          "hold_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hold Value"
+          },
+          "holder": {
+            "$ref": "#/components/schemas/AiProposalPlayer",
+            "description": "Who holds the spot (a start: whose spot it streams)"
+          },
+          "lane_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The lane; none for a start",
+            "title": "Lane Id"
+          },
+          "op": {
+            "enum": [
+              "start",
+              "pause",
+              "resume",
+              "stop"
+            ],
+            "title": "Op",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "pause, resume, stop: the lane's status when proposed",
+            "title": "Status"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "op",
+          "lane_id",
+          "holder",
+          "status",
+          "end_date",
+          "gain",
+          "adds",
+          "value",
+          "hold_value",
+          "adds_left",
+          "first_decision_at",
+          "days"
+        ],
+        "title": "AiLaneAction",
+        "type": "object"
+      },
+      "AiLaneDay": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "player": {
+            "$ref": "#/components/schemas/AiProposalPlayer"
+          },
+          "switch": {
+            "default": false,
+            "title": "Switch",
+            "type": "boolean"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "value",
+          "switch",
+          "player"
+        ],
+        "title": "AiLaneDay",
+        "type": "object"
+      },
       "AiNote": {
         "properties": {
           "author": {
@@ -2121,10 +2459,23 @@
             "enum": [
               "transaction",
               "scheduled",
-              "lineup"
+              "lineup",
+              "steer",
+              "lane",
+              "cancel_pickup"
             ],
             "title": "Kind",
             "type": "string"
+          },
+          "lane": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiLaneAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "moves": {
             "description": "A lineup chip's slot moves; empty otherwise",
@@ -2133,6 +2484,16 @@
             },
             "title": "Moves",
             "type": "array"
+          },
+          "pickup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiCancelPickupAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "proposal_id": {
             "title": "Proposal Id",
@@ -2184,6 +2545,16 @@
             "title": "State",
             "type": "string"
           },
+          "steer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiSteerAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "summary": {
             "description": "One sentence: the move, its day, and what sending does",
             "title": "Summary",
@@ -2218,6 +2589,9 @@
           "scoring",
           "expires_at",
           "sent_at",
+          "steer",
+          "lane",
+          "pickup",
           "type",
           "id"
         ],
@@ -2246,7 +2620,7 @@
         "type": "object"
       },
       "AiProposalChip": {
-        "description": "A move the agent proposed and the server checked: the chip the AI desk shows. Staged, it goes\ninto the Week desk's tray (rendered in the AI desk) and is sent by its slider through the Week\ndesk's own write with `proposal_id` on the request, which marks it sent: the roster transaction\n(`kind` transaction: `add` / `drop`, today), the scheduled pickup (`kind` scheduled: `add` / `drop`,\na later day) or the lineup write (`kind` lineup: `moves`, one day's board, today's or a later\nday's, written at once). Never executed from here.",
+        "description": "A move the agent proposed and the server checked: the chip the AI desk shows. Staged, it goes\ninto the Week desk's tray (rendered in the AI desk) and is sent by its slider through the Week\ndesk's own write with `proposal_id` on the request, which marks it sent: the roster transaction\n(`kind` transaction: `add` / `drop`, today), the scheduled pickup (`kind` scheduled: `add` / `drop`,\na later day) or the lineup write (`kind` lineup: `moves`, one day's board, today's or a later\nday's, written at once). Never executed from here.\n\nDime's steering chips (`kind` steer, lane, cancel_pickup) change no ESPN roster, so they are\nnever staged: the AI desk applies one with a button through the Week desk's own route for it\n(`steer`, `lane` or `pickup` says which, and what it does), with `proposal_id`.",
         "properties": {
           "add": {
             "anyOf": [
@@ -2306,10 +2680,23 @@
             "enum": [
               "transaction",
               "scheduled",
-              "lineup"
+              "lineup",
+              "steer",
+              "lane",
+              "cancel_pickup"
             ],
             "title": "Kind",
             "type": "string"
+          },
+          "lane": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiLaneAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "moves": {
             "description": "A lineup chip's slot moves; empty otherwise",
@@ -2318,6 +2705,16 @@
             },
             "title": "Moves",
             "type": "array"
+          },
+          "pickup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiCancelPickupAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "proposal_id": {
             "title": "Proposal Id",
@@ -2369,6 +2766,16 @@
             "title": "State",
             "type": "string"
           },
+          "steer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiSteerAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "summary": {
             "description": "One sentence: the move, its day, and what sending does",
             "title": "Summary",
@@ -2396,7 +2803,10 @@
           "change",
           "scoring",
           "expires_at",
-          "sent_at"
+          "sent_at",
+          "steer",
+          "lane",
+          "pickup"
         ],
         "title": "AiProposalChip",
         "type": "object"
@@ -2643,6 +3053,33 @@
           "timestamp"
         ],
         "title": "AiProposalResp",
+        "type": "object"
+      },
+      "AiSteerAction": {
+        "description": "A steer chip: applied with `POST /teams/{team_id}/holds` and its proposal_id.",
+        "properties": {
+          "clear": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AiHoldCleared"
+            },
+            "title": "Clear",
+            "type": "array"
+          },
+          "holds": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AiHoldChange"
+            },
+            "title": "Holds",
+            "type": "array"
+          }
+        },
+        "required": [
+          "holds",
+          "clear"
+        ],
+        "title": "AiSteerAction",
         "type": "object"
       },
       "AiTable": {
@@ -3557,6 +3994,20 @@
           "timestamp"
         ],
         "title": "AppMapUploadResp",
+        "type": "object"
+      },
+      "ApplyHoldsReq": {
+        "properties": {
+          "proposal_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Proposal Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "proposal_id"
+        ],
+        "title": "ApplyHoldsReq",
         "type": "object"
       },
       "ApplyLineupMovesData": {
@@ -23066,6 +23517,18 @@
             "exclusiveMinimum": 0.0,
             "title": "Player Id",
             "type": "integer"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
           }
         },
         "required": [
@@ -23090,6 +23553,18 @@
               }
             ],
             "title": "Notify"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
           },
           "status": {
             "anyOf": [
@@ -23733,6 +24208,217 @@
           "timestamp"
         ],
         "title": "TeamGetResp",
+        "type": "object"
+      },
+      "TeamHold": {
+        "properties": {
+          "applied_by": {
+            "enum": [
+              "user",
+              "dime"
+            ],
+            "title": "Applied By",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What it does, in a line",
+            "title": "Effect",
+            "type": "string"
+          },
+          "ends_on": {
+            "description": "Its last day; it is read through this day and never after",
+            "format": "date",
+            "title": "Ends On",
+            "type": "string"
+          },
+          "hold_id": {
+            "title": "Hold Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "keep",
+              "block",
+              "override",
+              "pin"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "player": {
+            "$ref": "#/components/schemas/TeamHoldPlayer"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The steer chip it was made from",
+            "title": "Proposal Id"
+          },
+          "reason": {
+            "description": "Why Dime set it",
+            "title": "Reason",
+            "type": "string"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "override only: the share of his usual value (0 = he misses)",
+            "title": "Share"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hold_id",
+          "kind",
+          "player",
+          "share",
+          "starts_on",
+          "ends_on",
+          "reason",
+          "effect",
+          "applied_by",
+          "proposal_id",
+          "created_at"
+        ],
+        "title": "TeamHold",
+        "type": "object"
+      },
+      "TeamHoldPlayer": {
+        "properties": {
+          "espn_id": {
+            "title": "Espn Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          }
+        },
+        "required": [
+          "espn_id",
+          "nba_player_id",
+          "name",
+          "team"
+        ],
+        "title": "TeamHoldPlayer",
+        "type": "object"
+      },
+      "TeamHoldsData": {
+        "properties": {
+          "enabled": {
+            "description": "Dime's steering is on: off, no hold steers anything and none is listed",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "holds": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TeamHold"
+            },
+            "title": "Holds",
+            "type": "array"
+          }
+        },
+        "required": [
+          "enabled",
+          "holds"
+        ],
+        "title": "TeamHoldsData",
+        "type": "object"
+      },
+      "TeamHoldsResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TeamHoldsData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "TeamHoldsResp",
         "type": "object"
       },
       "TeamInsightsData": {
@@ -29739,6 +30425,167 @@
         ]
       }
     },
+    "/v1/internal/teams/{team_id}/holds": {
+      "get": {
+        "description": "The team's live holds (today's or later, not cleared), by first day, each with what it\ndoes and Dime's reason.",
+        "operationId": "list_holds_v1_internal_teams__team_id__holds_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamHoldsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Holds",
+        "tags": [
+          "holds"
+        ]
+      },
+      "post": {
+        "description": "Apply a `steer` chip from the AI desk: its holds are set (each with the chip's reason)\nand the holds it clears are cleared, in one transaction, and the chip is marked sent.\nReturns the team's live holds then. 404 AI_PROPOSAL_NOT_FOUND (not the caller's, or not\nthis team's); 409 AI_PROPOSAL_NOT_PENDING (already applied, dismissed, expired, or a\ncheck-in's shadow); 422 AI_PROPOSAL_MISMATCH (not a steer chip); 409 AI_STEERING_OFF.",
+        "operationId": "apply_holds_v1_internal_teams__team_id__holds_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyHoldsReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamHoldsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apply Holds",
+        "tags": [
+          "holds"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/holds/{hold_id}": {
+      "delete": {
+        "description": "Clear one of the team's holds: from now on nothing reads it. Clearing one already cleared\nor past its last day changes nothing. 404 HOLD_NOT_FOUND when it isn't this team's.",
+        "operationId": "clear_hold_v1_internal_teams__team_id__holds__hold_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "hold_id",
+            "required": true,
+            "schema": {
+              "title": "Hold Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamHoldsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Clear Hold",
+        "tags": [
+          "holds"
+        ]
+      }
+    },
     "/v1/internal/teams/{team_id}/insights": {
       "get": {
         "operationId": "get_team_insights_v1_internal_teams__team_id__insights_get",
@@ -30468,7 +31315,7 @@
     },
     "/v1/internal/teams/{team_id}/pickups/{pickup_id}": {
       "delete": {
-        "description": "Cancel a pending pickup. 404 when it is not this team's; 409 SCHEDULED_PICKUP_NOT_PENDING\nwhen it already ran (or was cancelled); 409 SCHEDULED_PICKUP_IN_PROGRESS while an attempt is\nmaking it \u2014 its outcome follows in a few minutes, and a deferred pickup can be cancelled again.",
+        "description": "Cancel a pending pickup. 404 when it is not this team's; 409 SCHEDULED_PICKUP_NOT_PENDING\nwhen it already ran (or was cancelled); 409 SCHEDULED_PICKUP_IN_PROGRESS while an attempt is\nmaking it \u2014 its outcome follows in a few minutes, and a deferred pickup can be cancelled again.\n\n`proposal_id`: Dime's cancel_pickup chip for this pickup (the Dime autopilot plan, step 4),\nchecked first (409 AI_PROPOSAL_NOT_PENDING, 422 AI_PROPOSAL_MISMATCH, 409 AI_STEERING_OFF) and\nmarked sent once the pickup is cancelled.",
         "operationId": "cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete",
         "parameters": [
           {
@@ -30487,6 +31334,23 @@
             "schema": {
               "title": "Team Id",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "proposal_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Proposal Id"
             }
           }
         ],
@@ -30745,7 +31609,7 @@
     },
     "/v1/internal/teams/{team_id}/stream-lanes/{lane_id}": {
       "delete": {
-        "description": "Stop a lane. A pickup it scheduled that hasn't run is cancelled with it; the player\nholding the spot stays on the roster. 409 STREAM_LANE_BUSY while that pickup is being\nmade (try again in a few minutes); 404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.",
+        "description": "Stop a lane. A pickup it scheduled that hasn't run is cancelled with it; the player\nholding the spot stays on the roster. 409 STREAM_LANE_BUSY while that pickup is being\nmade (try again in a few minutes); 404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.\n`proposal_id`: Dime's stop chip for this lane, applied (see below).",
         "operationId": "stop_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__delete",
         "parameters": [
           {
@@ -30764,6 +31628,23 @@
             "schema": {
               "title": "Team Id",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "proposal_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Proposal Id"
             }
           }
         ],

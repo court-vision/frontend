@@ -26,6 +26,8 @@ import {
   type WeekGrid as Grid,
 } from "@/lib/week-grid";
 import type { PickupView } from "@/lib/pickups";
+import { daySpan, holdDays, holdTag } from "@/lib/steering";
+import type { TeamHold } from "@/types/team-hold";
 import { LaneGroupRow, LaneRow, type LaneRowModel } from "./LaneRow";
 import type { LineupState } from "@/types/lineup-editor";
 import { Headshot } from "@/components/desk/Headshot";
@@ -70,6 +72,11 @@ interface DailyGridProps {
   lanes?: ReadonlyArray<LaneRowModel>;
   /** The pickup being cancelled, while that request is out. */
   cancelling?: number | null;
+  /** Dime's holds (keep, block, override, pin): a row each under the pickups, marking the days each covers. */
+  holds?: ReadonlyArray<TeamHold>;
+  onClearHold?: (holdId: number) => void;
+  /** The hold being cleared, while that request is out. */
+  clearingHold?: number | null;
 }
 
 /** The focused day's box score, in this order (FPTS follows). */
@@ -86,6 +93,7 @@ const STATS: Array<{ key: string; label: string; get: (l: StatLine) => string }>
   { key: "tov", label: "TO", get: (l) => String(l.tov) },
 ];
 const NO_LANES: ReadonlyArray<LaneRowModel> = [];
+const NO_HOLDS: ReadonlyArray<TeamHold> = [];
 // Eleven equal cells, the ten stats and FPTS, so the spacing is even.
 const STAT_CELL = 34;
 const STAT_TRACKS = `repeat(${STATS.length + 1}, minmax(0, 1fr))`;
@@ -120,6 +128,9 @@ export function DailyGrid({
   onCancelPickup,
   cancelling = null,
   lanes = NO_LANES,
+  holds = NO_HOLDS,
+  onClearHold,
+  clearingHold = null,
 }: DailyGridProps) {
   const { slots, seats, asItStood } = grid.lineups;
   const days = grid.days;
@@ -320,7 +331,7 @@ export function DailyGrid({
           </div>
 
           {/* The stream lanes and scheduled pickups lead, like a calendar's all-day lane: a preview below never moves them. */}
-          {pickups.length || lanes.length ? (
+          {pickups.length || lanes.length || holds.length ? (
             <div className={s.pickupLane}>
               {lanes.map((lane, i) => (
                 <Fragment key={lane.lane.id}>
@@ -355,6 +366,33 @@ export function DailyGrid({
                 />
               ))}
               </>
+              ) : null}
+              {holds.length ? (
+                <>
+                  <div className={s.groupRow} role="presentation">
+                    <div className={s.groupLabel}>
+                      <span className={dk.label} style={{ color: "var(--accent)" }}>
+                        Dime
+                      </span>
+                    </div>
+                    <div className={s.groupFill}>
+                      <span className={dk.sub} style={{ paddingLeft: 10 }}>
+                        holds auto-lineup and the lanes plan with · your own moves are never held · × clears one
+                      </span>
+                    </div>
+                  </div>
+                  {holds.map((h) => (
+                    <HoldRow
+                      key={h.hold_id}
+                      hold={h}
+                      days={days}
+                      focusDay={focusDay}
+                      todayIndex={todayIndex}
+                      clearing={clearingHold === h.hold_id}
+                      onClear={onClearHold}
+                    />
+                  ))}
+                </>
               ) : null}
             </div>
           ) : null}
@@ -552,6 +590,90 @@ function PickupRow({
                   ) : (
                     cancel ?? status
                   )
+                ) : null}
+              </div>
+            </Fragment>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// One of Dime's holds: its player on the days it covers, with what it does and why
+// ---------------------------------------------------------------------------
+
+function HoldRow({
+  hold,
+  days,
+  focusDay,
+  todayIndex,
+  clearing,
+  onClear,
+}: {
+  hold: TeamHold;
+  days: Grid["days"];
+  focusDay: number | null;
+  todayIndex: number | null;
+  clearing: boolean;
+  onClear?: (holdId: number) => void;
+}) {
+  const covered = new Set(holdDays(hold, days.map((d) => d.date)));
+  const first = Math.min(...covered);
+  const title = `${hold.effect} · ${daySpan(hold.starts_on, hold.ends_on)} · Dime: ${hold.reason}`;
+  const clear = onClear ? (
+    <button
+      type="button"
+      className={s.pickupCancel}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClear(hold.hold_id);
+      }}
+      disabled={clearing}
+      aria-label={`Clear the ${hold.kind} hold on ${hold.player.name}`}
+      title="Clear this hold: auto-lineup and the lanes stop reading it"
+    >
+      <X size={12} />
+    </button>
+  ) : null;
+  return (
+    <div className={s.row} role="row" data-group="hold" data-kind={hold.kind} title={title}>
+      <div className={s.slotCell} role="rowheader">
+        <span className={s.slotChip} data-group="hold">
+          {holdTag(hold.kind, hold.share)}
+        </span>
+      </div>
+      {covered.size === 0 ? (
+        // Its days are another week's: one line across the days.
+        <div className={s.pickupSpan} role="gridcell">
+          <span className={s.holdName}>{hold.player.name}</span>
+          <span className={dk.sub}>
+            {daySpan(hold.starts_on, hold.ends_on)} · {hold.reason}
+          </span>
+          {clearing ? <span className={s.pickupStatus}>CLEARING</span> : null}
+          {clear}
+        </div>
+      ) : (
+        days.map((d, i) => {
+          const focused = i === focusDay;
+          const on = covered.has(i);
+          return (
+            <Fragment key={d.date}>
+              <div className={s.holdCell} role="gridcell" data-on={on} data-today={d.index === todayIndex}>
+                {on ? (
+                  <span className={s.who}>
+                    <span className={s.holdName}>{focused || i === first ? hold.player.name : shortName(hold.player.name)}</span>
+                    {focused ? <span className={s.seatSub}>{hold.reason}</span> : null}
+                  </span>
+                ) : null}
+              </div>
+              <div className={focused ? s.pickupStat : s.pickupValue} role="gridcell" data-today={d.index === todayIndex}>
+                {on && (focused || i === first) ? (
+                  <>
+                    {focused ? <span className={s.pickupNote}>{hold.effect}</span> : null}
+                    {clearing ? <span className={s.pickupStatus}>CLEARING</span> : clear}
+                  </>
                 ) : null}
               </div>
             </Fragment>

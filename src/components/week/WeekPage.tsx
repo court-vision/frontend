@@ -15,6 +15,8 @@ import {
 } from "@/hooks/useMatchup";
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { useCancelPickupMutation, useSchedulePickupMutation, useScheduledPickupsQuery } from "@/hooks/useScheduledPickups";
+import { useClearHoldMutation, useTeamHoldsQuery } from "@/hooks/useTeamHolds";
+import type { TeamHold } from "@/types/team-hold";
 import {
   useStartStreamLaneMutation,
   useStopStreamLaneMutation,
@@ -165,11 +167,19 @@ export interface TerminalData {
   stopLane: (laneId: number) => Promise<"ok" | "refused">;
   /** A lane change (pause, resume, notify, stop) while that request is out. */
   laneBusy: boolean;
+  /** Dime's holds (ESPN teams, while its steering is on): one player over some days each, with its reason. */
+  holds: readonly TeamHold[];
+  clearHold: (holdId: number) => void;
+  /** The hold being cleared, while that request is out. */
+  clearingHold: number | null;
   /** Today's moves (ESPN teams); null where there are none to read. */
   actions: TodayActions | null;
   /** The matchup's nightly score snapshots (the edge's race); null while there is no week to ask about. */
   history: { points: DailyScorePoint[] | null; loading: boolean } | null;
 }
+
+/** The demo has no Dime to set holds. */
+const NO_HOLDS: readonly TeamHold[] = [];
 
 /** The demo's status line watches no query (and a signed-out desk has none to watch). */
 const NOTHING_WATCHED: readonly QueryKey[] = [];
@@ -397,6 +407,9 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     updateLane,
     stopLane,
     laneBusy: false,
+    holds: NO_HOLDS,
+    clearHold: () => {},
+    clearingHold: null,
     actions: { data: actions, loading: false, error: null, refetch: () => {} },
     history: { points: demoScoreHistory(source), loading: false },
   };
@@ -510,6 +523,8 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const pickupSchedule = useSchedulePickupMutation(teamId ?? 0);
   const pickupCancel = useCancelPickupMutation(teamId ?? 0);
   const lanes = useStreamLanesQuery(selected.provider === "espn" ? teamId : null);
+  const holds = useTeamHoldsQuery(selected.provider === "espn" ? teamId : null);
+  const holdClear = useClearHoldMutation(teamId ?? 0);
   const laneStart = useStartStreamLaneMutation(teamId ?? 0);
   const laneUpdate = useUpdateStreamLaneMutation(teamId ?? 0);
   const laneStop = useStopStreamLaneMutation(teamId ?? 0);
@@ -578,6 +593,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     [periodOf, scheduleAsync]
   );
   const cancelMutate = pickupCancel.mutate;
+  const clearHoldMutate = holdClear.mutate;
   const planLane = useCallback(
     (playerId: number) => (teamId == null ? Promise.reject(new Error("No team")) : apiClient.planStreamLane(getToken, teamId, playerId)),
     [getToken, teamId]
@@ -684,6 +700,9 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     updateLane: (laneId, body) => updateLaneMutate({ laneId, body }),
     stopLane,
     laneBusy: laneUpdate.isPending || laneStop.isPending,
+    holds: holds.data.holds,
+    clearHold: (holdId) => clearHoldMutate(holdId),
+    clearingHold: holdClear.isPending ? holdClear.variables ?? null : null,
     actions:
       selected.provider === "espn"
         ? {
