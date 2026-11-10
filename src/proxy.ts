@@ -70,7 +70,20 @@ const withClerk = clerkMiddleware(async (auth, req) => {
     await auth.protect();
   }
   return pageResponse(req);
-});
+}, clerkOptions());
+
+/**
+ * A server started with Clerk's public signing key (CLERK_JWT_KEY) checks a
+ * session's token with it, without calling Clerk. @clerk/nextjs 7 doesn't read
+ * that variable itself (only its error messages name it), so it's passed here. The app map's crawl runs
+ * on it: it has only a placeholder secret key, so without the key every
+ * signed-in Draft and Account load was sent to sign-in (secret-key-invalid).
+ * Unset, Clerk checks the token with its secret key as before.
+ */
+function clerkOptions() {
+  const jwtKey = process.env.CLERK_JWT_KEY;
+  return jwtKey ? { jwtKey } : {};
+}
 
 export default function proxy(req: NextRequest, event: NextFetchEvent) {
   if (usesClerk(req)) return withClerk(req, event);
