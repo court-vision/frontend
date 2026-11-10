@@ -30,7 +30,7 @@ import { execSync } from "node:child_process";
 import { appendFileSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
-import { chromium, type Browser, type BrowserContext, type Cookie, type Page, type Request } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Cookie, type Page, type Request, type Response as PageResponse } from "playwright";
 import { ALL_DESKS } from "@/components/desk/routes";
 import {
   controlsOf, fingerprint, fresh, INPUTS, parseSnapshot, parts, prune, render, searchable, structure, within,
@@ -489,6 +489,8 @@ async function explore(browser: Browser, seed: Seed) {
     const { page, settle } = await newPage(ctx);
     /** The fingerprint of what the page shows now, null when unknown. */
     let at: string | null = null;
+    /** The response the last load ended on, for why a signed-in load landed on sign-in. */
+    let landed: PageResponse | null = null;
     const look = async () => {
       const tree = await snapshot(page);
       at = fingerprintOf(page.url(), tree);
@@ -497,7 +499,7 @@ async function explore(browser: Browser, seed: Seed) {
     const open = async (trail: Act[]) => {
       work.loads++;
       if (seed.signedIn) await session(ctx);
-      await page.goto(BASE + seed.url, { waitUntil: "load", timeout: 60_000 });
+      landed = await page.goto(BASE + seed.url, { waitUntil: "load", timeout: 60_000 });
       await settle();
       for (const c of trail) {
         await act(page, c, 4000);
@@ -528,6 +530,11 @@ async function explore(browser: Browser, seed: Seed) {
         try {
           if (job.action === "front") {
             const { tree, fp } = await open([]);
+            // Signed in and sent to sign-in: the desk lost the session, and the sign-in form is none of its screens
+            if (seed.signedIn && SIGN_IN.test(new URL(page.url()).pathname)) {
+              finding("signed in, sent to sign-in", seed.desk, `${new URL(seed.url, BASE).pathname}: ${await redirects(landed)}`);
+              continue;
+            }
             const known = byFingerprint.get(fp);
             if (known) {
               // A link seed for a screen clicks already reached
@@ -603,6 +610,26 @@ async function explore(browser: Browser, seed: Seed) {
 }
 
 const firstLine = (e: unknown) => String(e).split("\n")[0].slice(0, 100);
+
+const SIGN_IN = /^\/sign-(?:in|up)\b/;
+
+/**
+ * The loads a navigation went through, each with what Clerk's middleware said
+ * of the session there (its x-clerk-auth-status and -reason headers):
+ * "/draft 307 (signed-out, session-token-expired) → /sign-in 200 (signed-out)".
+ * Paths only: a handshake's query carries a token.
+ */
+async function redirects(res: PageResponse | null): Promise<string> {
+  const hops: string[] = [];
+  for (let req = res?.request() ?? null; req; req = req.redirectedFrom()) {
+    const r = req === res?.request() ? res : await req.response();
+    const h = r?.headers() ?? {};
+    const why = [h["x-clerk-auth-status"], h["x-clerk-auth-reason"]].filter(Boolean).join(", ");
+    const u = new URL(req.url());
+    hops.unshift(`${u.origin === BASE ? "" : u.host}${u.pathname} ${r?.status() ?? "?"}${why ? ` (${why})` : ""}`);
+  }
+  return hops.join(" → ") || "no response";
+}
 
 /**
  * Why a step gave up, from Playwright's call log: covered by another element
