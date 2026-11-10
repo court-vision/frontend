@@ -3,11 +3,11 @@
 import { useMemo, useState } from "react";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { DeskDialog } from "@/components/desk/DeskDialog";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
 import { aiMessage, useAiNotesQuery, useCreateAiNote, useDeleteAiNote, useEditAiNote } from "@/hooks/useAi";
 import { groupNotes, isDue, kindLabel, NOTE_KINDS, NOTE_MAX, retiredLabel } from "@/lib/dime";
 import type { AiNote, AiNoteKind } from "@/types/ai";
+import { DimeView, ViewLoading } from "./DimeView";
 import dk from "@/components/desk/desk.module.css";
 import s from "./ai.module.css";
 
@@ -21,37 +21,31 @@ function shortDate(iso: string): string {
 }
 
 /**
- * "What Dime knows": the notes the agent keeps between conversations, about the
- * user and on each team. The user can add their own (Dime follows them and
- * can't change them), edit any (an edit makes the note the user's), and delete
- * any. Retired notes stay readable with who retired them.
+ * Memory ("what Dime knows"), in the AI desk's main area: the notes the agent
+ * keeps between conversations, about the user and on each team. The team switch
+ * shows that team's notes beside the ones about the user, and new notes go on it.
+ * The user can add their own (Dime follows them and can't change them), edit any
+ * (an edit makes the note the user's), and delete any. Retired notes stay
+ * readable with who retired them.
  */
-export function DimeNotesDialog({
-  open,
-  onOpenChange,
-  teams,
-  teamId,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  teams: DeskTeam[];
-  teamId: number | null;
-}) {
+export function DimeMemory({ teams, teamId, teamSwitch }: { teams: DeskTeam[]; teamId: number | null; teamSwitch: React.ReactNode }) {
   const [showRetired, setShowRetired] = useState(false);
-  const notes = useAiNotesQuery(open, showRetired);
+  const notes = useAiNotesQuery(true, showRetired);
   const today = todayEt();
-  const groups = useMemo(() => groupNotes(notes.data ?? [], teams.map((t) => t.id)), [notes.data, teams]);
+  // Notes about the user, then the team's; with no team at all, every note
+  const shown = useMemo(
+    () => (notes.data ?? []).filter((n) => teamId == null || n.team_id == null || n.team_id === teamId),
+    [notes.data, teamId]
+  );
+  const groups = useMemo(() => groupNotes(shown, teams.map((t) => t.id)), [shown, teams]);
   const teamLabel = (id: number | null) => (id == null ? "About you" : (teams.find((t) => t.id === id)?.name ?? `Team ${id}`));
-  const live = (notes.data ?? []).filter((n) => n.retired_on == null).length;
+  const live = shown.filter((n) => n.retired_on == null).length;
 
   return (
-    <DeskDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      wide
-      title="What Dime knows"
-      description="Notes Dime keeps between conversations: your plans, its reads on players and your league, and lessons from how moves went. Your own notes outrank its own: Dime follows them and can't change them. Editing one of Dime's makes it yours."
-      cancelLabel="Close"
+    <DimeView
+      label="Memory"
+      sub="Notes Dime keeps between conversations: your plans, its reads on players and your league, and lessons from how moves went. Your own notes outrank its own: Dime follows them and can't change them. Editing one of Dime's makes it yours."
+      tools={teams.length ? teamSwitch : null}
     >
       <NoteForm teams={teams} teamId={teamId} />
       <div className={s.noteBar}>
@@ -63,10 +57,7 @@ export function DimeNotesDialog({
         </label>
       </div>
       {notes.isLoading ? (
-        <div className={s.noteList} aria-busy>
-          <span className={dk.skel} style={{ width: "80%" }} />
-          <span className={dk.skel} style={{ width: "60%" }} />
-        </div>
+        <ViewLoading />
       ) : notes.isError ? (
         <div className={s.rowEmpty}>{aiMessage(notes.error, "Couldn't read the notes")}</div>
       ) : groups.length === 0 ? (
@@ -83,13 +74,19 @@ export function DimeNotesDialog({
           ))}
         </div>
       )}
-    </DeskDialog>
+    </DimeView>
   );
 }
 
 function NoteForm({ teams, teamId }: { teams: DeskTeam[]; teamId: number | null }) {
   const [kind, setKind] = useState<AiNoteKind>("preference");
   const [about, setAbout] = useState<string>(teamId != null ? String(teamId) : "");
+  // A new note goes on the team the view shows; the user can still pick another (or none)
+  const [shownTeam, setShownTeam] = useState(teamId);
+  if (shownTeam !== teamId) {
+    setShownTeam(teamId);
+    setAbout(teamId != null ? String(teamId) : "");
+  }
   const [recheck, setRecheck] = useState("");
   const [text, setText] = useState("");
   const create = useCreateAiNote();

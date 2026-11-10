@@ -38,12 +38,34 @@ export type AiProposalCheck = S["AiProposalCheckData"];
 export type AiProposalResponse = S["AiProposalResp"];
 export type AiProposalDismissResponse = S["AiProposalDismissResp"];
 export type AiPlace = S["AiPlace"];
-/** What a block part carries: a table, a chart, a chip or a place in the app. */
-export type AiBlock = AiTable | AiChart | AiProposal | AiPlace;
+/** One call a check-in logged (holds included), for the user to agree or disagree with. */
+export type AiDecisionBlock = S["AiDecisionBlock"];
+export type AiVerdict = NonNullable<AiDecisionBlock["verdict"]>;
+/** What a block part carries: a table, a chart, a chip, a place in the app or a check-in's call. */
+export type AiBlock = AiTable | AiChart | AiProposal | AiPlace | AiDecisionBlock;
 export type AiPart = S["AiTextPart"] | S["AiBlockPart"];
 export type AiTurnFeedbackResponse = S["AiTurnFeedbackResp"];
 export type AiTurnCommentResponse = S["AiTurnCommentResp"];
 export type AiFeedback = "up" | "down";
+
+/**
+ * Dime's check-ins (`/v1/internal/ai/checkins`; the Dime autopilot plan, step 3):
+ * turns Dime starts itself on a team it runs on, in shadow. Each is about one
+ * fantasy day (morning, weekly on a matchup's first day, pre_lock before the
+ * first tip, night the next morning) and has its own conversation (`kind`
+ * checkin) whose first message is the server's brief. Its proposals are
+ * `shadow` (never staged or sent) and its calls are decision blocks the user
+ * marks agree or disagree.
+ */
+export type AiCheckin = S["AiCheckinSummary"];
+export type AiCheckinKind = AiCheckin["kind"];
+export type AiCheckinState = AiCheckin["state"];
+export type AiAutopilotTeam = S["AiAutopilotTeam"];
+export type AiCheckins = S["AiCheckinsData"];
+export type AiCheckinsResponse = S["AiCheckinsResp"];
+export type AiCheckinResponse = S["AiCheckinResp"];
+export type AiAutopilotResponse = S["AiAutopilotResp"];
+export type AiDecisionVerdictResponse = S["AiDecisionVerdictResp"];
 
 /**
  * Dime's notes (`/v1/internal/ai/notes`): what the agent keeps between

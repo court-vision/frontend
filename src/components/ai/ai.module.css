@@ -1,6 +1,7 @@
 /*
- * The AI desk: conversations on the left, the open one on the right with the
- * composer docked under it. Desk tokens only (desk.module.css), so every theme
+ * The AI desk: Dime's views and the conversations on the left, the open one
+ * (or one of Dime's views) on the right, with the composer docked under a
+ * conversation. Desk tokens only (desk.module.css), so every theme
  * carries over.
  */
 
@@ -842,7 +843,8 @@
 }
 
 @media (max-width: 639.98px) {
-  .column {
+  .column,
+  .view {
     padding: 16px 16px 24px;
   }
 
@@ -967,19 +969,16 @@
   backdrop-filter: none;
 }
 
-/* ---------------------------------------------------------------- Dime: its notes and the move ledger */
+/* ---------------------------------------------------------------- the side list's Dime section */
 
-.dime {
+.listSection {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 0 12px;
-  border-top: 1px solid var(--line);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
 }
-.dimeHead {
-  padding: 0 14px 4px;
-}
-.dimeLink {
+.navRow {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -993,12 +992,79 @@
   text-align: left;
   cursor: pointer;
 }
-.dimeLink:hover {
+.navRow:hover {
   background: var(--hover);
 }
-.dimeLink:focus-visible {
+.navRow:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
+}
+.navRow[aria-current="page"] {
+  background: var(--accent-soft);
+}
+.navRow[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 0 calc(2px * var(--round, 1)) calc(2px * var(--round, 1)) 0;
+  background: var(--accent);
+}
+.navCount {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: calc(9px * var(--round, 1));
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------- Dime's views in the main area */
+
+.view {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 18px 22px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.viewHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 16px;
+}
+.viewSub {
+  flex: 1 1 320px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.viewTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.viewList {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--surface);
+  overflow: hidden;
+}
+.viewList > .row + .row {
+  border-top: 1px solid var(--line);
+}
+.viewList > .row {
+  padding: 10px 14px;
 }
 
 .select,
@@ -1196,4 +1262,175 @@
     width: 100%;
     justify-content: space-between;
   }
+}
+
+/* ---------------------------------------------------------------- Dime's check-ins, in shadow */
+
+/* A check-in that has nothing to open (running, missed, skipped) */
+.rowStatic {
+  cursor: default;
+}
+.rowStatic:hover {
+  background: transparent;
+}
+.row [data-state="failed"] {
+  color: var(--down);
+}
+.row [data-state="missed"],
+.row [data-state="skipped"] {
+  color: var(--warn);
+}
+
+.teamCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+}
+.autopilot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--raised);
+}
+.autopilotHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.autopilotName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.autopilotRun {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.autopilotRun .select {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  font-size: 12px;
+}
+
+.checkinMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* The check-in's opening message is the server's brief: folded away, readable on demand */
+.brief {
+  align-self: stretch;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.brief summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.brief summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.briefText {
+  margin-top: 8px;
+  padding: 9px 12px;
+  border-left: 2px solid var(--line-2);
+  color: var(--text-2);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.decision {
+  display: grid;
+  gap: 6px;
+  max-width: 560px;
+  padding: 10px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-2);
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--surface);
+}
+.decision[data-call="change"] {
+  border-left-color: var(--accent);
+}
+.decisionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.decisionCall {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.decisionCall[data-call="change"] {
+  color: var(--accent);
+}
+.decisionSummary {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.decisionReason {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.decisionFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+}
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: calc(5px * var(--round, 1));
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.verdict:hover {
+  background: var(--hover);
+}
+.verdict:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.verdict[data-verdict="agree"][aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--up) 55%, var(--line-2));
+  background: color-mix(in srgb, var(--up) 14%, transparent);
+  color: var(--up);
+}
+.verdict[data-verdict="disagree"][aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--down) 55%, var(--line-2));
+  background: color-mix(in srgb, var(--down) 14%, transparent);
+  color: var(--down);
+}
+
+.chip[data-state="shadow"] {
+  border-style: dashed;
 }
