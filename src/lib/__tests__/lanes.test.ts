@@ -257,6 +257,27 @@ describe("in words", () => {
     expect(eventLine(event("ended", null, { reason: "stopped" }), label)).toBe("Ended: you stopped it");
   });
 
+  test("a step Dime proposed and you applied carries Dime's reason", () => {
+    const why = "Holder sits the back-to-back";
+    expect(eventLine(event("started", DATES[1], { reason: "dime", detail: why }), label)).toBe(`Started, from Tue. Dime: ${why}`);
+    expect(eventLine(event("paused", null, { reason: "paused_by_dime", detail: why }), label)).toBe(
+      `Paused: you applied Dime's pause. Dime: ${why}`
+    );
+    expect(eventLine(event("resumed", null, { reason: "dime", detail: null }), label)).toBe("Resumed (Dime's)");
+    // Dime sending its own chip, on a team where streaming acts
+    expect(eventLine(event("ended", null, { reason: "stopped_by_autopilot", detail: why }), label)).toBe(
+      `Ended: Dime stopped it. Dime, on its own: ${why}`
+    );
+    expect(eventLine(event("started", DATES[1], { reason: "autopilot", detail: null }), label)).toBe(
+      "Started, from Tue (Dime, on its own)"
+    );
+    expect(eventLine(event("ended", null, { reason: "stopped_by_dime", detail: why }), label)).toBe(
+      `Ended: you applied Dime's stop. Dime: ${why}`
+    );
+    // The user's own steps say nothing of Dime
+    expect(eventLine(event("resumed", null, {}), label)).toBe("Resumed");
+  });
+
   test("reasons", () => {
     expect(laneReason("can_write:not_team_owner")).toBe("ESPN won't take changes for this team right now");
     expect(laneReason("something_new")).toBe("something new");

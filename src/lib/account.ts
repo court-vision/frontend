@@ -73,7 +73,9 @@ export type PrefField = keyof NotificationPreference;
  * The two kinds of setting, each on its own sheet. They share one stored
  * preference (the account's, and a team's own over it), so each sheet reads
  * the whole set and writes only its own fields: a team's own notification
- * settings and its own automation settings come and go apart.
+ * settings and its own automation settings come and go apart. One field is on
+ * both: the tip-off email is Lineup's Notify, so AI and automation's Lineup
+ * level (Off, Notify, Act) writes it with auto-lineup.
  */
 export const NOTIFICATION_FIELDS = [
   "lineup_alerts_enabled",
@@ -84,11 +86,11 @@ export const NOTIFICATION_FIELDS = [
   "alert_injured_active",
 ] as const satisfies readonly PrefField[];
 
-export const AUTOMATION_FIELDS = ["auto_lineup_enabled"] as const satisfies readonly PrefField[];
+export const AUTOMATION_FIELDS = ["lineup_alerts_enabled", "auto_lineup_enabled"] as const satisfies readonly PrefField[];
 
 export type PrefFields = readonly PrefField[];
 
-const PREF_FIELDS: PrefFields = [...NOTIFICATION_FIELDS, ...AUTOMATION_FIELDS];
+const PREF_FIELDS: PrefFields = [...new Set<PrefField>([...NOTIFICATION_FIELDS, ...AUTOMATION_FIELDS])];
 
 /** The team's own settings over the account's, field by field, as one complete set. */
 export function effectivePrefs(base: NotificationPreference, override: NotificationTeamPreference | null | undefined): NotificationPreference {
@@ -142,9 +144,10 @@ export function notificationSummary(prefs: NotificationPreference): string {
   return `on · ${alertMinutes(prefs)} min before${prefs.email ? ` · ${prefs.email}` : ""}`;
 }
 
+/** A team's automations in a line: Lineup's level, the only one with a choice below AI. */
 export function automationSummary(prefs: NotificationPreference): string {
-  if (setsLineup(prefs)) return `sets the lineup · ${alertMinutes(prefs)} min before`;
-  return prefs.auto_lineup_enabled ? "on, waiting for the tip-off email" : "off";
+  if (setsLineup(prefs)) return `lineup: act, sets it ${alertMinutes(prefs)} min before`;
+  return prefs.lineup_alerts_enabled ? `lineup: notify, the email ${alertMinutes(prefs)} min before` : "lineup: off";
 }
 
 // ---------------------------------------------------------------------------

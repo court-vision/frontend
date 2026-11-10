@@ -135,6 +135,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Everything Dime did on its own
+         * @description The moves Dime's check-ins handled themselves on automations at AI, newest first (with `team_id`, that team's only): each one sent, or held back (blocked by a rule of the policy, refused by ESPN or the route, or failed) and left as a chip, with the automation it counts under, the call Dime logged for it and its check-in's conversation.
+         */
+        get: operations["list_actions_v1_internal_ai_actions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/ai/ask": {
         parameters: {
             query?: never;
@@ -149,6 +169,50 @@ export interface paths {
          * @description Answers by looking players up through Court Vision's own services; every number in the answer comes from one of those lookups, listed in `tool_calls`. Each caller has a daily allowance of questions, and the route is off unless AI_ENABLED is set.
          */
         post: operations["ask_v1_internal_ai_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/autopilot/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Dime's autopilot on a team: the check-ins, the autopilot switch and the automation levels
+         * @description One of: `checkins` (or step 3's `on`) starts (or resumes) the team's check-ins and false pauses them (a check-in whose window closed while they were off is not counted as missed; resuming also lifts a pause Dime made itself). `autopilot` true puts every automation that offers AI at AI, turns check-ins and the account's AI features on and the team's lineup email and auto-lineup on; false puts back the lineup preferences and check-ins it changed, and the automations the user set at AI count again. `levels` sets automations (lineup, daily_actions, lanes, late_scratch, checkins) to off, notify, act or ai, each to a level it offers (GET /checkins gives every level's availability and why not); lineup's off, notify and act are the team's lineup email and auto-lineup. Changing a level while autopilot is on turns it off and keeps the other automations at AI. `autopilot` and `levels` can't be sent together. Setting up a team that was never switched on leaves its check-ins off unless something turns them on.
+         */
+        put: operations["set_autopilot_v1_internal_ai_autopilot__team_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/checkins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dime's check-ins: the teams it may run them on, and what it ran
+         * @description The caller's teams on the check-ins' allowlist with each one's switch and next scheduled check-in, then the check-ins themselves, newest first (with `team_id`, that team's only), each with its decisions' tallies and the user's verdicts. A check-in's conversation opens like any other.
+         */
+        get: operations["list_checkins_v1_internal_ai_checkins_get"];
+        put?: never;
+        /**
+         * Run one of Dime's check-ins now
+         * @description Starts a check-in on the team now, off the schedule, and returns it `running`; it runs on after the response (poll GET /checkins, then open its conversation). Without `kind` the clock picks: morning (weekly on a matchup's first day), pre_lock in the hours before the first tip, night (yesterday's follow-up) after it. In shadow: nothing is sent to ESPN.
+         */
+        post: operations["run_checkin_v1_internal_ai_checkins_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -206,13 +270,53 @@ export interface paths {
          *
          *     - `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note, `step` for the start of each step after the first, when whatever the last status said is done);
          *     - `text` `{delta}`: the answer's prose, as it is written;
-         *     - `block` (an `AiTable`, `AiChart`, `AiProposal` or `AiPlace`): a table, chart, proposed move or place in the app the server built from the agent's lookups;
+         *     - `block` (an `AiTable`, `AiChart`, `AiProposal`, `AiPlace` or, in a check-in, `AiDecisionBlock`): a table, chart, proposed move, place in the app or logged call the server built from the agent's lookups;
          *     - `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);
          *     - `done` `{turn_id, outcome, cost_usd, model_calls, duration_ms, spend}`: always last.
          *
          *     Text and blocks arrive in the order the user should see them. Lines starting with `:` are keepalives. Errors before the stream starts are ordinary JSON errors.
          */
         post: operations["send_turn_v1_internal_ai_conversations__conversation_id__turns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/decisions/{decision_id}/verdict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Agree or disagree with one of Dime's calls
+         * @description The caller's verdict on one decision a check-in logged; null clears it. The measure for whether Dime is ready to act: you agree with most of what it would have done.
+         */
+        put: operations["decision_verdict_v1_internal_ai_decisions__decision_id__verdict_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/draft-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dime's notes across the caller's draft rooms, for the AI desk's Draft notes view
+         * @description Every plan, pick note and recap Dime wrote in the caller's draft rooms (the newest 300), grouped by room: the room with the newest note first, each room's notes newest first. Listed whether or not Dime is on in draft rooms now; `enabled` and `switched_off` say whether new ones can be asked for. Each note's `conversation_id` opens it on the AI desk.
+         */
+        get: operations["get_desk_notes_v1_internal_ai_draft_notes_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -341,6 +445,30 @@ export interface paths {
          * @description Returns one of three kinds. `show`: a Court Vision view, as a terminal or page `target` the client applies. `statmuse`: an NBA stat question no view covers, with a server-built `statmuse_url` the user opens. `cannot`: neither covers it, with `suggestions`. Every ID in a target has been checked, and a fantasy team is always one of the caller's. Shares the daily allowance with /ai/ask and is off unless AI_ENABLED is set.
          */
         post: operations["route_v1_internal_ai_route_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The account's AI features
+         * @description memory (Dime keeps notes and reads them back) and draft_rooms (Dime's side of the Draft desk), for the whole account; both on until the user turns one off.
+         */
+        get: operations["get_ai_settings_v1_internal_ai_settings_get"];
+        /**
+         * Turn the account's AI features on or off
+         * @description Any of memory and draft_rooms; what is left out stays as it is. With memory off, Dime's memory tools answer that it is off and its notes stay as they are (What Dime knows still lists and edits them).
+         */
+        put: operations["set_ai_settings_v1_internal_ai_settings_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -720,6 +848,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/drafts/{session_id}/dime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dime in a draft room: its notes, the notes switch and the mock seat
+         * @description What Dime has written in the room, newest first (a plan, a note at each of the user's picks, a recap; each with the board's numbers the server read for it in `facts`), whether a note is being written now, the switch for a note whenever the user's pick is `lead` picks away or nearer, and whether Dime holds the user's seat in a mock. Never refuses for a switched-off server or a user off the AI desk's list: `available` says whether the room shows Dime at all, and `switched_off` that the account turned Dime in draft rooms off (Account, AI and automation).
+         */
+        get: operations["get_dime_v1_internal_drafts__session_id__dime_get"];
+        /**
+         * Switch Dime's note at each of the user's picks on or off
+         * @description With `notes` on, the room asks Dime for a note whenever the user's pick is `lead` picks away or nearer, one per pick. Each note is a turn on the AI desk's budget.
+         */
+        put: operations["set_dime_v1_internal_drafts__session_id__dime_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/drafts/{session_id}/dime/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Dime for a note in the room: a plan, a note at the user's pick, or a recap
+         * @description Starts the note and returns it `running`; it is written after the response (poll the GET, or open its conversation). `plan` sets the plan the draft is played to: its concessions become the room's punts, and in a real draft on a team the plan is saved to the team's notes. `pick` is about the user's coming pick, read off the room's board; one per pick, so asking again returns the one already written. `recap` reads the room's recap and, in a real draft, saves what the season starts from and league-mates' habits to Dime's notes.
+         */
+        post: operations["ask_dime_v1_internal_drafts__session_id__dime_notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/drafts/{session_id}/dime/seat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hand Dime the user's seat in a mock, or take it back
+         * @description `on`: Dime drafts the user's seat to the end of the mock: the autopicker runs the other seats to the user's turn, Dime makes the pick (recorded `dime`, with its reason as a note), and so on. Mock rooms following nothing only; a live ESPN draft stays the user's to pick in. `off`: Dime hands the seat back after the pick it is making. Each pick is a turn on the AI desk's budget.
+         */
+        post: operations["set_seat_v1_internal_drafts__session_id__dime_seat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/drafts/{session_id}/import": {
         parameters: {
             query?: never;
@@ -866,6 +1058,58 @@ export interface paths {
          *     A `league_pending` room (a live room started without a team) links to the ESPN draft this INIT came from and then adopts its league: the league's settings are synced and your team in it is added to your account, as the add-team flow would, and the room takes the league's scoring and roster. `league_adopted` reports it; when ESPN cannot be read `league_adoption_error` says why and the next connect tries again.
          */
         post: operations["sync_draft_init_v1_internal_drafts__session_id__sync_init_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/jobs/checkins/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Checkin Events
+         * @description What came in about players: verdicts that changed for games not yet tipped, news items just
+         *     stored. Each becomes an event on every team Dime runs that rosters the player, and a team with a
+         *     new one gets a check-in about it (or the scheduled one about to run takes it).
+         *
+         *     Called by data-platform's availability pipeline (its late-scratch events, every 2-minute tick that
+         *     has one) and its news feed (every 5 minutes). Keys only: the verdicts and items are read here. Off
+         *     unless DIME_EVENTS_ENABLED; the check-ins run on here after the response.
+         */
+        post: operations["checkin_events_v1_internal_jobs_checkins_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/jobs/checkins/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Checkins
+         * @description One tick of Dime's check-ins: start what is due on each switched-on team.
+         *
+         *     Called by data-platform's dime_checkins pipeline every fifteen minutes (its
+         *     route gates on whether any team is switched on). Each team gets at most one
+         *     check-in a tick, one at a time; a window that closed before its check-in
+         *     could run is recorded as missed. The check-ins run on here after the
+         *     response, as detached turns, so this answers in a second or two.
+         */
+        post: operations["run_checkins_v1_internal_jobs_checkins_run_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1618,6 +1862,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/teams/{team_id}/holds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Holds
+         * @description The team's live holds (today's or later, not cleared), by first day, each with what it
+         *     does and Dime's reason.
+         */
+        get: operations["list_holds_v1_internal_teams__team_id__holds_get"];
+        put?: never;
+        /**
+         * Apply Holds
+         * @description Apply a `steer` chip from the AI desk: its holds are set (each with the chip's reason)
+         *     and the holds it clears are cleared, in one transaction, and the chip is marked sent.
+         *     Returns the team's live holds then. 404 AI_PROPOSAL_NOT_FOUND (not the caller's, or not
+         *     this team's); 409 AI_PROPOSAL_NOT_PENDING (already applied, dismissed, expired, or a
+         *     check-in's shadow); 422 AI_PROPOSAL_MISMATCH (not a steer chip); 409 AI_STEERING_OFF.
+         */
+        post: operations["apply_holds_v1_internal_teams__team_id__holds_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/holds/{hold_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Clear Hold
+         * @description Clear one of the team's holds: from now on nothing reads it. Clearing one already cleared
+         *     or past its last day changes nothing. 404 HOLD_NOT_FOUND when it isn't this team's.
+         */
+        delete: operations["clear_hold_v1_internal_teams__team_id__holds__hold_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/teams/{team_id}/insights": {
         parameters: {
             query?: never;
@@ -1853,6 +2147,10 @@ export interface paths {
          * @description Cancel a pending pickup. 404 when it is not this team's; 409 SCHEDULED_PICKUP_NOT_PENDING
          *     when it already ran (or was cancelled); 409 SCHEDULED_PICKUP_IN_PROGRESS while an attempt is
          *     making it — its outcome follows in a few minutes, and a deferred pickup can be cancelled again.
+         *
+         *     `proposal_id`: Dime's cancel_pickup chip for this pickup (the Dime autopilot plan, step 4),
+         *     checked first (409 AI_PROPOSAL_NOT_PENDING, 422 AI_PROPOSAL_MISMATCH, 409 AI_STEERING_OFF) and
+         *     marked sent once the pickup is cancelled.
          */
         delete: operations["cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete"];
         options?: never;
@@ -1963,6 +2261,7 @@ export interface paths {
          * @description Stop a lane. A pickup it scheduled that hasn't run is cancelled with it; the player
          *     holding the spot stays on the roster. 409 STREAM_LANE_BUSY while that pickup is being
          *     made (try again in a few minutes); 404 STREAM_LANE_NOT_FOUND; 409 STREAM_LANE_ENDED.
+         *     `proposal_id`: Dime's stop chip for this lane, applied (see below).
          */
         delete: operations["stop_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__delete"];
         options?: never;
@@ -2205,6 +2504,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * League news
+         * @description The newest NBA news items Court Vision has stored, from ESPN, Rotowire and RealGM: headline, source, attribution, link and the players and teams each is about. No blurb: a player's own news (`/players/{player_id}/news`) carries it.
+         */
+        get: operations["get_news_v1_news_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ownership/trending": {
         parameters: {
             query?: never;
@@ -2323,6 +2642,26 @@ export interface paths {
          * @description Retrieve the recent game log for a player showing box scores for each game.
          */
         get: operations["get_player_games_v1_players__player_id__games_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/players/{player_id}/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get player news
+         * @description The news items about a player, newest first, from ESPN's injury notes and player news, Rotowire and RealGM: source, time, headline, blurb, attribution and link.
+         */
+        get: operations["get_player_news_v1_players__player_id__news_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2761,15 +3100,283 @@ export interface components {
             /** Usg Pct */
             usg_pct: number | null;
         };
+        /**
+         * AiActing
+         * @description Whether Dime can act on its own at all, and the policy it acts within.
+         */
+        AiActing: {
+            /**
+             * Available
+             * @description DIME_ACTING_ENABLED: off, an automation at AI only reviews
+             */
+            available: boolean;
+            policy: components["schemas"]["AiActingPolicy"];
+            /**
+             * Steering
+             * @description DIME_STEERING_ENABLED: Dime's steering chips exist at all
+             */
+            steering: boolean;
+            /**
+             * Writes
+             * @description ROSTER_WRITES_ENABLED: writes to ESPN are on
+             */
+            writes: boolean;
+        };
+        /**
+         * AiActingPolicy
+         * @description The rules every move Dime sends itself is held to (core/settings.py).
+         */
+        AiActingPolicy: {
+            /** Adds Per Day */
+            adds_per_day: number;
+            /** Adds Per Matchup */
+            adds_per_matchup: number;
+            /**
+             * Adds Reserve
+             * @description Adds this matchup Dime leaves for the user (injuries)
+             */
+            adds_reserve: number;
+            /**
+             * Churn Hours
+             * @description Nor a player added this recently, unless he is out
+             */
+            churn_hours: number;
+            /**
+             * Pause Refused
+             * @description It pauses itself after this many refused writes in a day
+             */
+            pause_refused: number;
+            /**
+             * Pause Same Block
+             * @description ...or this many blocks by the same rule in a day
+             */
+            pause_same_block: number;
+            /**
+             * Protected Top
+             * @description Dime never drops one of the roster's top this many by value
+             */
+            protected_top: number;
+        };
+        /**
+         * AiAutomationRow
+         * @description One automation on the team (services/ai/autonomy.py): off, notify (an email), act (Court Vision does
+         *     it, no AI) or ai (Dime does it).
+         */
+        AiAutomationRow: {
+            /** Label */
+            label: string;
+            /**
+             * Level
+             * @description Its level now (at AI while the autopilot switch is on)
+             * @enum {string}
+             */
+            level: "off" | "notify" | "act" | "ai";
+            /**
+             * Note
+             * @description When the row does less than its level says (paused, acting off on the server, the lineup email off)
+             */
+            note: string | null;
+            /**
+             * Options
+             * @description Every level, in order off, notify, act, ai
+             */
+            options: components["schemas"]["AiLevelOption"][];
+            /**
+             * Row
+             * @enum {string}
+             */
+            row: "lineup" | "daily_actions" | "lanes" | "late_scratch" | "checkins";
+        };
+        /**
+         * AiAutopilotActionItem
+         * @description One move Dime handled on its own (usr.autopilot_actions), as the AI desk's Dime's moves lists it.
+         */
+        AiAutopilotActionItem: {
+            /** Action Id */
+            action_id: number;
+            /**
+             * Adds
+             * @description Players it adds (what Dime's caps count)
+             * @default 0
+             */
+            adds: number;
+            /** At */
+            at: string | null;
+            /** Checkin Id */
+            checkin_id: number | null;
+            /** Checkin Kind */
+            checkin_kind: ("morning" | "weekly" | "pre_lock" | "night" | "event") | null;
+            /**
+             * Conversation Id
+             * @description The check-in's conversation, to open it
+             */
+            conversation_id: number | null;
+            /**
+             * Date
+             * Format: date
+             * @description The fantasy day the move is for
+             */
+            date: string;
+            /**
+             * Kind
+             * @description The chip's kind: transaction, scheduled, lineup, steer, lane, cancel_pickup
+             */
+            kind: string;
+            /**
+             * Message
+             * @description What happened, in a sentence
+             */
+            message: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "sent" | "blocked" | "refused" | "failed";
+            /**
+             * Proposal Id
+             * @description The chip; a held-back one can still be sent there
+             */
+            proposal_id: number | null;
+            /**
+             * Row
+             * @description The automation it counts under
+             * @enum {string}
+             */
+            row: "lineup" | "daily_actions" | "lanes" | "late_scratch";
+            /**
+             * Rule
+             * @description The rule that held it back, or the error code
+             */
+            rule: string | null;
+            /**
+             * Summary
+             * @description The call Dime logged for it; null once that is gone
+             */
+            summary: string | null;
+            /** Team Id */
+            team_id: number;
+        };
+        /**
+         * AiAutopilotActionsResp
+         * @description Response for GET /v1/internal/ai/actions.
+         */
+        AiAutopilotActionsResp: {
+            /** Data */
+            data: components["schemas"]["AiAutopilotActionItem"][] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiAutopilotReq
+         * @description Body for PUT /v1/internal/ai/autopilot/{team_id}: the check-ins, the autopilot switch or the levels;
+         *     what is left out stays as it is.
+         */
+        AiAutopilotReq: {
+            /**
+             * Autopilot
+             * @description The autopilot switch. On puts every automation that offers AI at AI and turns check-ins and the AI features on; off puts back what it changed
+             */
+            autopilot?: boolean | null;
+            /**
+             * Checkins
+             * @description true starts (or resumes, a pause Dime made itself included) the team's check-ins, false pauses them
+             */
+            checkins?: boolean | null;
+            /**
+             * Levels
+             * @description Automations to set, to a level each offers. Changing one while autopilot is on turns autopilot off and keeps the rest at AI
+             */
+            levels?: {
+                [key: string]: "off" | "notify" | "act" | "ai";
+            } | null;
+            /**
+             * On
+             * @description The same as checkins (step 3's name for it)
+             */
+            on?: boolean | null;
+        };
+        /** AiAutopilotResp */
+        AiAutopilotResp: {
+            data: components["schemas"]["AiAutopilotTeam"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiAutopilotTeam
+         * @description A team Dime may run check-ins on: its check-ins, the autopilot switch and its automations table.
+         */
+        AiAutopilotTeam: {
+            /**
+             * Active Since
+             * @description When it was last switched on or resumed
+             */
+            active_since: string | null;
+            /**
+             * Autopilot
+             * @description The autopilot switch: every automation that offers AI is at AI
+             * @default false
+             */
+            autopilot: boolean;
+            /** @description The next scheduled check-in, while on */
+            next: components["schemas"]["AiCheckinSlot"] | null;
+            /**
+             * On
+             * @description Check-ins run on the schedule (the Check-ins row at AI)
+             */
+            on: boolean;
+            /** Paused At */
+            paused_at: string | null;
+            /** Paused By */
+            paused_by: ("user" | "system") | null;
+            /** Paused Reason */
+            paused_reason: string | null;
+            /**
+             * Rows
+             * @description The automations table, in order
+             */
+            rows: components["schemas"]["AiAutomationRow"][];
+            /** Team Id */
+            team_id: number;
+        };
         /** AiBlockPart */
         AiBlockPart: {
             /** Block */
-            block: components["schemas"]["AiTable"] | components["schemas"]["AiChart"] | components["schemas"]["AiProposal"] | components["schemas"]["AiPlace"];
+            block: components["schemas"]["AiTable"] | components["schemas"]["AiChart"] | components["schemas"]["AiProposal"] | components["schemas"]["AiPlace"] | components["schemas"]["AiDecisionBlock"];
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
             kind: "block";
+        };
+        /**
+         * AiCancelPickupAction
+         * @description A cancel_pickup chip: applied with `DELETE /teams/{team_id}/pickups/{pickup_id}` and its proposal_id.
+         */
+        AiCancelPickupAction: {
+            add: components["schemas"]["AiProposalPlayer"];
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            drop: components["schemas"]["AiProposalPlayer"] | null;
+            /**
+             * Lane Id
+             * @description The stream lane that scheduled it, if one did
+             */
+            lane_id: number | null;
+            /** Pickup Id */
+            pickup_id: number;
         };
         /**
          * AiChart
@@ -2838,6 +3445,208 @@ export interface components {
             values: (number | null)[];
         };
         /**
+         * AiCheckinEvent
+         * @description Something that came in about a rostered player that this check-in was told about (the Dime
+         *     autopilot plan, step 6; services/ai/events.py).
+         */
+        AiCheckinEvent: {
+            /**
+             * News Id
+             * @description news: the item's id
+             */
+            news_id: number | null;
+            /**
+             * Player Id
+             * @description NBA player id
+             */
+            player_id: number;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "availability" | "news";
+            /**
+             * Summary
+             * @description The server's line about it, as the brief gave it
+             */
+            summary: string;
+            /**
+             * Verdict
+             * @description availability: the new verdict (out, doubtful, available)
+             */
+            verdict: string | null;
+        };
+        /** AiCheckinResp */
+        AiCheckinResp: {
+            data: components["schemas"]["AiCheckinSummary"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiCheckinRunReq
+         * @description Body for POST /v1/internal/ai/checkins: run one now.
+         */
+        AiCheckinRunReq: {
+            /**
+             * Kind
+             * @description Default: by the clock against today's first tip
+             */
+            kind?: ("morning" | "weekly" | "pre_lock" | "night") | null;
+            /** Team Id */
+            team_id: number;
+        };
+        /** AiCheckinSlot */
+        AiCheckinSlot: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "morning" | "weekly" | "pre_lock" | "night" | "event";
+        };
+        /**
+         * AiCheckinSummary
+         * @description One check-in: a turn Dime started itself, about one fantasy day.
+         */
+        AiCheckinSummary: {
+            /** Agree */
+            agree: number;
+            /**
+             * Changes
+             * @description Of those, the ones that would change an automation's plan or the roster
+             */
+            changes: number;
+            /** Checkin Id */
+            checkin_id: number;
+            /**
+             * Conversation Id
+             * @description Its conversation; null when it never ran
+             */
+            conversation_id: number | null;
+            /** Cost Usd */
+            cost_usd: number;
+            /**
+             * Date
+             * Format: date
+             * @description The fantasy day it is about
+             */
+            date: string;
+            /**
+             * Decisions
+             * @description Calls it logged, holds included
+             */
+            decisions: number;
+            /** Disagree */
+            disagree: number;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /**
+             * Events
+             * @description What came in that it was told about: an event check-in's reason, or what a scheduled one picked up
+             */
+            events: components["schemas"]["AiCheckinEvent"][];
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Kind
+             * @description morning, weekly (a matchup's first morning), pre_lock (before the first tip), night (the next morning's follow-up) or event (news about a rostered player)
+             * @enum {string}
+             */
+            kind: "morning" | "weekly" | "pre_lock" | "night" | "event";
+            /**
+             * Manual
+             * @description Run from the AI desk rather than on the schedule
+             */
+            manual: boolean;
+            /**
+             * Reason
+             * @description Why it failed, was missed or skipped (e.g. window_closed, budget, daily_cap, AI_TIMEOUT)
+             */
+            reason: string | null;
+            /**
+             * Sent
+             * @description Moves it sent on its own (on automations at AI)
+             * @default 0
+             */
+            sent: number;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "running" | "done" | "failed" | "missed" | "skipped";
+            /** Team Id */
+            team_id: number;
+            /** Title */
+            title: string;
+        };
+        /** AiCheckinsData */
+        AiCheckinsData: {
+            acting: components["schemas"]["AiActing"] | null;
+            /**
+             * Cap Usd
+             * @description The check-ins' monthly budget, apart from the AI desk's
+             */
+            cap_usd: number;
+            /**
+             * Checkins
+             * @description Newest first
+             */
+            checkins: components["schemas"]["AiCheckinSummary"][];
+            /** @description The account's AI features */
+            features: components["schemas"]["AiFeatures"] | null;
+            /**
+             * Month Usd
+             * @description This month's check-in spend, every autopilot team
+             */
+            month_usd: number;
+            /**
+             * Teams
+             * @description The caller's teams Dime may run check-ins on
+             */
+            teams: components["schemas"]["AiAutopilotTeam"][];
+        };
+        /**
+         * AiCheckinsResp
+         * @description Response for GET /v1/internal/ai/checkins.
+         */
+        AiCheckinsResp: {
+            data: components["schemas"]["AiCheckinsData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
          * AiContext
          * @description Where the user is when they ask. IDs only -- never names from league data,
          *     so the context adds no prompt-injection surface.
@@ -2892,6 +3701,8 @@ export interface components {
         };
         /** AiConversationDetail */
         AiConversationDetail: {
+            /** @description The check-in that started it, for a check-in's conversation: its first turn's message is the server's brief, not the user's */
+            checkin: components["schemas"]["AiCheckinSummary"] | null;
             /**
              * Created At
              * Format: date-time
@@ -2909,6 +3720,13 @@ export interface components {
             history: components["schemas"]["AiTurnView"][];
             /** Id */
             id: number;
+            /**
+             * Kind
+             * @description chat (the user's), a check-in's conversation, or one of Dime's notes in a draft room
+             * @default chat
+             * @enum {string}
+             */
+            kind: "chat" | "checkin" | "draft";
             /** Team Id */
             team_id: number | null;
             /**
@@ -2956,6 +3774,13 @@ export interface components {
             created_at: string;
             /** Id */
             id: number;
+            /**
+             * Kind
+             * @description chat (the user's), a check-in's conversation, or one of Dime's notes in a draft room
+             * @default chat
+             * @enum {string}
+             */
+            kind: "chat" | "checkin" | "draft";
             /** Team Id */
             team_id: number | null;
             /**
@@ -2970,6 +3795,134 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * AiDecisionAction
+         * @description What Dime did about a change on its own, on automations at AI (the Dime autopilot plan, step 5;
+         *     usr.autopilot_actions). A blocked or refused move is left as a chip.
+         */
+        AiDecisionAction: {
+            /** At */
+            at: string | null;
+            /**
+             * Message
+             * @description What happened, in a sentence
+             */
+            message: string;
+            /**
+             * Outcome
+             * @description sent (it went out) · blocked (a rule of the policy stopped it before anything was sent) · refused (the route or ESPN said no) · failed (ESPN unreachable, credentials, an error)
+             * @enum {string}
+             */
+            outcome: "sent" | "blocked" | "refused" | "failed";
+            /**
+             * Rule
+             * @description The rule that blocked it (cap_day, cap_matchup, reserve, protected, churn, paused, writes_off, ...) or the error code
+             */
+            rule: string | null;
+        };
+        /**
+         * AiDecisionBlock
+         * @description One call a check-in made (usr.ai_decisions), holds included: shown in its conversation for the user
+         *     to agree or disagree with. A change to the lineup or the roster names the shadow proposal behind it,
+         *     the chip shown just above it in the same turn.
+         */
+        AiDecisionBlock: {
+            /** @description What Dime did about it on its own, where its row is at AI; null where the change is a review */
+            action: components["schemas"]["AiDecisionAction"] | null;
+            /**
+             * Area
+             * @enum {string}
+             */
+            area: "lineup" | "streaming" | "adds_drops" | "other";
+            /**
+             * Automation
+             * @description Whose plan it reviewed; none for a move no automation makes
+             * @enum {string}
+             */
+            automation: "auto_lineup" | "stream_lane" | "scheduled_pickup" | "none";
+            /**
+             * Call
+             * @description hold: keep the plan (or do nothing) · change: do something else
+             * @enum {string}
+             */
+            call: "hold" | "change";
+            /** Decision Id */
+            decision_id: number;
+            /**
+             * Id
+             * @description Unique within its turn, e.g. 'd1'
+             */
+            id: string;
+            /**
+             * Proposal Id
+             * @description The shadow proposal behind a change
+             */
+            proposal_id: number | null;
+            /** Reason */
+            reason: string;
+            /**
+             * Summary
+             * @description What Dime would do, one line
+             */
+            summary: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "decision";
+            /**
+             * Verdict
+             * @description The user's call on it; null until they make one
+             */
+            verdict: ("agree" | "disagree") | null;
+        };
+        /** AiDecisionVerdictData */
+        AiDecisionVerdictData: {
+            /** Decision Id */
+            decision_id: number;
+            /** Verdict */
+            verdict: ("agree" | "disagree") | null;
+        };
+        /**
+         * AiDecisionVerdictReq
+         * @description Body for PUT /v1/internal/ai/decisions/{decision_id}/verdict.
+         */
+        AiDecisionVerdictReq: {
+            /**
+             * Verdict
+             * @description null clears it
+             */
+            verdict: ("agree" | "disagree") | null;
+        };
+        /** AiDecisionVerdictResp */
+        AiDecisionVerdictResp: {
+            data: components["schemas"]["AiDecisionVerdictData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiFeatures
+         * @description The user's AI features, for the whole account (services/ai/ai_settings.py).
+         */
+        AiFeatures: {
+            /**
+             * Draft Rooms
+             * @description Dime's side of the Draft desk
+             * @default true
+             */
+            draft_rooms: boolean;
+            /**
+             * Memory
+             * @description Dime keeps notes and reads them back
+             * @default true
+             */
+            memory: boolean;
         };
         /** AiFeedbackData */
         AiFeedbackData: {
@@ -2999,6 +3952,161 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /**
+         * AiHoldChange
+         * @description One hold a steer chip sets (usr.team_holds once applied).
+         */
+        AiHoldChange: {
+            /**
+             * Effect
+             * @description What it does, in a line
+             */
+            effect: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "keep" | "block" | "override" | "pin";
+            player: components["schemas"]["AiProposalPlayer"];
+            /**
+             * Share
+             * @description override only: the share of his usual value (0 = he misses)
+             */
+            share: number | null;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+        };
+        /**
+         * AiHoldCleared
+         * @description A live hold a steer chip clears.
+         */
+        AiHoldCleared: {
+            /**
+             * Effect
+             * @description What it does, in a line
+             */
+            effect: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /** Hold Id */
+            hold_id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "keep" | "block" | "override" | "pin";
+            player: components["schemas"]["AiProposalPlayer"];
+            /**
+             * Reason
+             * @description Why it was set
+             */
+            reason: string;
+            /**
+             * Share
+             * @description override only: the share of his usual value (0 = he misses)
+             */
+            share: number | null;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+        };
+        /**
+         * AiLaneAction
+         * @description A lane chip: `op` start (`POST /teams/{team_id}/stream-lanes` with `holder.espn_id` as player_id),
+         *     pause or resume (`PATCH .../stream-lanes/{lane_id}`), stop (`DELETE .../stream-lanes/{lane_id}`),
+         *     each with its proposal_id.
+         */
+        AiLaneAction: {
+            /** Adds */
+            adds: number | null;
+            /** Adds Left */
+            adds_left: number | null;
+            /**
+             * Days
+             * @description start: who would hold the spot each day
+             */
+            days: components["schemas"]["AiLaneDay"][];
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** First Decision At */
+            first_decision_at: string | null;
+            /**
+             * Gain
+             * @description start: the projected gain over holding
+             */
+            gain: number | null;
+            /** Hold Value */
+            hold_value: number | null;
+            /** @description Who holds the spot (a start: whose spot it streams) */
+            holder: components["schemas"]["AiProposalPlayer"];
+            /**
+             * Lane Id
+             * @description The lane; none for a start
+             */
+            lane_id: number | null;
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "start" | "pause" | "resume" | "stop";
+            /**
+             * Status
+             * @description pause, resume, stop: the lane's status when proposed
+             */
+            status: string | null;
+            /** Value */
+            value: number | null;
+        };
+        /** AiLaneDay */
+        AiLaneDay: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            player: components["schemas"]["AiProposalPlayer"];
+            /**
+             * Switch
+             * @default false
+             */
+            switch: boolean;
+            /** Value */
+            value: number;
+        };
+        /**
+         * AiLevelOption
+         * @description One level of an automation: whether it can be picked, and why not.
+         */
+        AiLevelOption: {
+            /** Available */
+            available: boolean;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "off" | "notify" | "act" | "ai";
+            /**
+             * Reason
+             * @description Why it can't be picked (not built yet, the account's lineup email is off, ...)
+             */
+            reason: string | null;
         };
         /** AiNote */
         AiNote: {
@@ -3185,12 +4293,14 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "transaction" | "scheduled" | "lineup";
+            kind: "transaction" | "scheduled" | "lineup" | "steer" | "lane" | "cancel_pickup";
+            lane: components["schemas"]["AiLaneAction"] | null;
             /**
              * Moves
              * @description A lineup chip's slot moves; empty otherwise
              */
             moves: components["schemas"]["AiProposalMove"][];
+            pickup: components["schemas"]["AiCancelPickupAction"] | null;
             /** Proposal Id */
             proposal_id: number;
             /**
@@ -3212,10 +4322,11 @@ export interface components {
             sent_at: string | null;
             /**
              * State
-             * @description proposed (can be staged), sent, dismissed, or expired
+             * @description proposed (can be staged), sent, dismissed, expired, or shadow (a check-in's: what Dime would have done, never staged or sent)
              * @enum {string}
              */
-            state: "proposed" | "sent" | "dismissed" | "expired";
+            state: "proposed" | "sent" | "dismissed" | "expired" | "shadow";
+            steer: components["schemas"]["AiSteerAction"] | null;
             /**
              * Summary
              * @description One sentence: the move, its day, and what sending does
@@ -3246,6 +4357,10 @@ export interface components {
          *     (`kind` transaction: `add` / `drop`, today), the scheduled pickup (`kind` scheduled: `add` / `drop`,
          *     a later day) or the lineup write (`kind` lineup: `moves`, one day's board, today's or a later
          *     day's, written at once). Never executed from here.
+         *
+         *     Dime's steering chips (`kind` steer, lane, cancel_pickup) change no ESPN roster, so they are
+         *     never staged: the AI desk applies one with a button through the Week desk's own route for it
+         *     (`steer`, `lane` or `pickup` says which, and what it does), with `proposal_id`.
          */
         AiProposalChip: {
             add: components["schemas"]["AiProposalPlayer"] | null;
@@ -3281,12 +4396,14 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "transaction" | "scheduled" | "lineup";
+            kind: "transaction" | "scheduled" | "lineup" | "steer" | "lane" | "cancel_pickup";
+            lane: components["schemas"]["AiLaneAction"] | null;
             /**
              * Moves
              * @description A lineup chip's slot moves; empty otherwise
              */
             moves: components["schemas"]["AiProposalMove"][];
+            pickup: components["schemas"]["AiCancelPickupAction"] | null;
             /** Proposal Id */
             proposal_id: number;
             /**
@@ -3308,10 +4425,11 @@ export interface components {
             sent_at: string | null;
             /**
              * State
-             * @description proposed (can be staged), sent, dismissed, or expired
+             * @description proposed (can be staged), sent, dismissed, expired, or shadow (a check-in's: what Dime would have done, never staged or sent)
              * @enum {string}
              */
-            state: "proposed" | "sent" | "dismissed" | "expired";
+            state: "proposed" | "sent" | "dismissed" | "expired" | "shadow";
+            steer: components["schemas"]["AiSteerAction"] | null;
             /**
              * Summary
              * @description One sentence: the move, its day, and what sending does
@@ -3417,6 +4535,46 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /**
+         * AiSettingsReq
+         * @description Body for PUT /v1/internal/ai/settings: the features to change; what is left out stays as it is.
+         */
+        AiSettingsReq: {
+            /** Draft Rooms */
+            draft_rooms?: boolean | null;
+            /** Memory */
+            memory?: boolean | null;
+        };
+        /**
+         * AiSettingsResp
+         * @description Response for GET and PUT /v1/internal/ai/settings.
+         */
+        AiSettingsResp: {
+            data: components["schemas"]["AiFeatures"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiSteerAction
+         * @description A steer chip: applied with `POST /teams/{team_id}/holds` and its proposal_id.
+         */
+        AiSteerAction: {
+            /**
+             * Clear
+             * @default []
+             */
+            clear: components["schemas"]["AiHoldCleared"][];
+            /**
+             * Holds
+             * @default []
+             */
+            holds: components["schemas"]["AiHoldChange"][];
         };
         /**
          * AiTable
@@ -3766,6 +4924,11 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /** ApplyHoldsReq */
+        ApplyHoldsReq: {
+            /** Proposal Id */
+            proposal_id: number;
         };
         /** ApplyLineupMovesData */
         ApplyLineupMovesData: {
@@ -4155,6 +5318,83 @@ export interface components {
              */
             wins: number;
         };
+        /** CheckinEventsData */
+        CheckinEventsData: {
+            /** Facts */
+            facts: number;
+            /** Off */
+            off: boolean;
+            /** Recorded */
+            recorded: number;
+            /** Started */
+            started: components["schemas"]["CheckinStarted"][];
+            /** Teams */
+            teams: number;
+        };
+        /**
+         * CheckinEventsReq
+         * @description Body for POST /v1/internal/jobs/checkins/events: keys only, the facts are read here.
+         */
+        CheckinEventsReq: {
+            /** Availability */
+            availability?: components["schemas"]["VerdictChangeIn"][];
+            /**
+             * News
+             * @description nba.news_items ids just stored
+             */
+            news?: number[];
+        };
+        /** CheckinEventsResp */
+        CheckinEventsResp: {
+            data: components["schemas"]["CheckinEventsData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** CheckinRunData */
+        CheckinRunData: {
+            /** Missed */
+            missed: number;
+            /** Off */
+            off: boolean;
+            /** Skipped */
+            skipped: number;
+            /** Stale */
+            stale: number;
+            /** Started */
+            started: components["schemas"]["CheckinStarted"][];
+            /** Teams */
+            teams: number;
+        };
+        /** CheckinRunResp */
+        CheckinRunResp: {
+            data: components["schemas"]["CheckinRunData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** CheckinStarted */
+        CheckinStarted: {
+            /** Checkin Id */
+            checkin_id: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Kind */
+            kind: string;
+            /** Team Id */
+            team_id: number;
+        };
         /** ConnectionTeamInfo */
         ConnectionTeamInfo: {
             /** League Id */
@@ -4497,6 +5737,269 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /** DimeDraftDesk */
+        DimeDraftDesk: {
+            /**
+             * Enabled
+             * @description DIME_DRAFT_ENABLED (and AI_ENABLED) on the server
+             */
+            enabled: boolean;
+            /**
+             * Rooms
+             * @description The room with the newest note first
+             */
+            rooms: components["schemas"]["DimeDraftDeskRoom"][];
+            /**
+             * Switched Off
+             * @description The account's Dime in draft rooms switch is off (its notes still list)
+             */
+            switched_off: boolean;
+        };
+        /** DimeDraftDeskResp */
+        DimeDraftDeskResp: {
+            data: components["schemas"]["DimeDraftDesk"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * DimeDraftDeskRoom
+         * @description One of the user's draft rooms, with the notes Dime wrote in it.
+         */
+        DimeDraftDeskRoom: {
+            /**
+             * Kind
+             * @description live, manual, mock or import
+             */
+            kind: string;
+            /**
+             * Last At
+             * Format: date-time
+             * @description When its newest note was started
+             */
+            last_at: string;
+            /**
+             * Name
+             * @description The user's own label for the room
+             */
+            name: string | null;
+            /**
+             * Notes
+             * @description Newest first
+             */
+            notes: components["schemas"]["DimeDraftNote"][];
+            /** Room Id */
+            room_id: number;
+            /**
+             * Status
+             * @description active, completed or abandoned
+             */
+            status: string;
+            /** Team Id */
+            team_id: number | null;
+        };
+        /**
+         * DimeDraftNote
+         * @description One note Dime wrote in the room: its words (`text`, null while it runs), the board's numbers
+         *     the server read for it (`facts`), and what it set or made.
+         */
+        DimeDraftNote: {
+            /**
+             * Conversation Id
+             * @description Opens in the AI desk
+             */
+            conversation_id: number | null;
+            /**
+             * Cost Usd
+             * @default 0
+             */
+            cost_usd: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Facts
+             * @description pick: pick, picks_until, on_clock, gone_before (the pick `gone` is about), top (three recommendations: name, position, score, availability, reason...), gone (who won't last), punts, roster, needs. recap: grade, place, seats, value_over_slot, by_dime. plan: none
+             */
+            facts: {
+                [key: string]: unknown;
+            };
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * For Pick
+             * @description A pick note: the user's overall pick it is about
+             */
+            for_pick: number | null;
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "plan" | "pick" | "recap";
+            /**
+             * Plan
+             * @description A plan note: the plan it set
+             */
+            plan: string | null;
+            /**
+             * Punts
+             * @description A plan note: the room's punts it set
+             */
+            punts: string[] | null;
+            /**
+             * Punts Before
+             * @description A plan note: the room's punts before it
+             */
+            punts_before: string[] | null;
+            /**
+             * Reason
+             * @description Why it failed
+             */
+            reason: string | null;
+            /**
+             * Seat
+             * @description A pick Dime made itself, holding the user's seat in a mock
+             * @default false
+             */
+            seat: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "running" | "done" | "failed";
+            /** Text */
+            text: string | null;
+            /**
+             * Took
+             * @description A seat note: the pick it recorded (overall_pick, round, player_id, name, position, team, reason)
+             */
+            took: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** DimeDraftNoteReq */
+        DimeDraftNoteReq: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "plan" | "pick" | "recap";
+        };
+        /** DimeDraftNoteResp */
+        DimeDraftNoteResp: {
+            data: components["schemas"]["DimeDraftNote"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** DimeDraftRoom */
+        DimeDraftRoom: {
+            /**
+             * Available
+             * @description enabled, the caller is on the AI desk's list, and their Dime in draft rooms switch is on: the room shows Dime
+             */
+            available: boolean;
+            /**
+             * Can Seat
+             * @description Dime can hold the user's seat here (a mock following nothing)
+             */
+            can_seat: boolean | null;
+            /**
+             * Enabled
+             * @description DIME_DRAFT_ENABLED (and AI_ENABLED) on the server
+             */
+            enabled: boolean;
+            /**
+             * Lead
+             * @description The room asks for a pick note once the user's pick is this many picks away
+             */
+            lead: number;
+            /**
+             * Notes
+             * @description Newest first
+             */
+            notes: components["schemas"]["DimeDraftNote"][];
+            /**
+             * Notes On
+             * @description A note when each of the user's picks is near
+             */
+            notes_on: boolean;
+            /**
+             * Running
+             * @description The note being written now
+             */
+            running: number | null;
+            seat: components["schemas"]["DimeDraftSeat"];
+            /**
+             * Seat Blocker
+             * @description Why it can't, in a line
+             */
+            seat_blocker: string | null;
+            /**
+             * Switched Off
+             * @description enabled and on the list, but the account's Dime in draft rooms switch (Account, AI and automation) is off
+             * @default false
+             */
+            switched_off: boolean;
+        };
+        /** DimeDraftRoomReq */
+        DimeDraftRoomReq: {
+            /**
+             * Notes
+             * @description A note when each of the user's picks is near
+             */
+            notes: boolean;
+        };
+        /** DimeDraftRoomResp */
+        DimeDraftRoomResp: {
+            data: components["schemas"]["DimeDraftRoom"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** DimeDraftSeat */
+        DimeDraftSeat: {
+            /**
+             * Live
+             * @description Its loop is still running (one whose process died reads false)
+             * @default false
+             */
+            live: boolean;
+            /**
+             * Reason
+             * @description Why it last stopped: done, stopped, pick_failed, cap_blocked, pool_exhausted, blocked, or an error code
+             */
+            reason: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "off" | "drafting" | "stopping";
+        };
+        /** DimeDraftSeatReq */
+        DimeDraftSeatReq: {
+            /**
+             * On
+             * @description true: Dime drafts the user's seat to the end; false: hand it back after this pick
+             */
+            on: boolean;
         };
         /** DraftBoardMeta */
         DraftBoardMeta: {
@@ -5234,7 +6737,7 @@ export interface components {
              * @default manual
              * @enum {string}
              */
-            source: "manual" | "espn_sync" | "import" | "keeper" | "mock";
+            source: "manual" | "espn_sync" | "import" | "keeper" | "mock" | "dime";
         };
         /**
          * DraftPickResponse
@@ -8079,6 +9582,70 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** NewsItemResp */
+        NewsItemResp: {
+            /** Attribution */
+            attribution: string | null;
+            /**
+             * Body
+             * @description The blurb (a player's news only)
+             */
+            body: string | null;
+            /** Headline */
+            headline: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "injury" | "availability" | "lineup" | "transaction" | "performance" | "rumor" | "other";
+            /** News Id */
+            news_id: number;
+            /** Players */
+            players: components["schemas"]["NewsPlayerRef"][];
+            /**
+             * Published At
+             * @description The source's time, else when it was fetched
+             */
+            published_at: string | null;
+            /**
+             * Source
+             * @description espn_injuries, espn_player_news, rotowire_rss or realgm_rss
+             */
+            source: string;
+            /**
+             * Teams
+             * @description NBA tricodes
+             */
+            teams: string[];
+            /** Url */
+            url: string | null;
+        };
+        /** NewsListData */
+        NewsListData: {
+            /** Items */
+            items: components["schemas"]["NewsItemResp"][];
+        };
+        /** NewsListResp */
+        NewsListResp: {
+            data: components["schemas"]["NewsListData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** NewsPlayerRef */
+        NewsPlayerRef: {
+            /** Name */
+            name: string;
+            /**
+             * Player Id
+             * @description NBA player id
+             */
+            player_id: number;
+        };
         /**
          * NotificationPreferenceReq
          * @description Request model for creating/updating notification preferences.
@@ -9721,7 +11288,7 @@ export interface components {
              * Source
              * @enum {string}
              */
-            source: "manual" | "espn_sync" | "import" | "keeper" | "mock";
+            source: "manual" | "espn_sync" | "import" | "keeper" | "mock" | "dime";
             /**
              * Surplus Cv
              * @description cv_rank − overall_pick; positive = taken later than his rank
@@ -10690,11 +12257,15 @@ export interface components {
             notify?: "email" | "desk";
             /** Player Id */
             player_id: number;
+            /** Proposal Id */
+            proposal_id?: number | null;
         };
         /** StreamLaneUpdateReq */
         StreamLaneUpdateReq: {
             /** Notify */
             notify?: ("email" | "desk") | null;
+            /** Proposal Id */
+            proposal_id?: number | null;
             /** Status */
             status?: ("active" | "paused") | null;
         };
@@ -10925,6 +12496,93 @@ export interface components {
         TeamGetResp: {
             /** Data */
             data: components["schemas"]["TeamResponse"][] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** TeamHold */
+        TeamHold: {
+            /**
+             * Applied By
+             * @enum {string}
+             */
+            applied_by: "user" | "dime";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Effect
+             * @description What it does, in a line
+             */
+            effect: string;
+            /**
+             * Ends On
+             * Format: date
+             * @description Its last day; it is read through this day and never after
+             */
+            ends_on: string;
+            /** Hold Id */
+            hold_id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "keep" | "block" | "override" | "pin";
+            player: components["schemas"]["TeamHoldPlayer"];
+            /**
+             * Proposal Id
+             * @description The steer chip it was made from
+             */
+            proposal_id: number | null;
+            /**
+             * Reason
+             * @description Why Dime set it
+             */
+            reason: string;
+            /**
+             * Share
+             * @description override only: the share of his usual value (0 = he misses)
+             */
+            share: number | null;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+        };
+        /** TeamHoldPlayer */
+        TeamHoldPlayer: {
+            /** Espn Id */
+            espn_id: number;
+            /** Name */
+            name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
+            /** Team */
+            team: string | null;
+        };
+        /** TeamHoldsData */
+        TeamHoldsData: {
+            /**
+             * Enabled
+             * @description Dime's steering is on: off, no hold steers anything and none is listed
+             */
+            enabled: boolean;
+            /**
+             * Holds
+             * @default []
+             */
+            holds: components["schemas"]["TeamHold"][];
+        };
+        /** TeamHoldsResp */
+        TeamHoldsResp: {
+            data: components["schemas"]["TeamHoldsData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -11306,6 +12964,20 @@ export interface components {
              * @description Current NBA team tricode, for his schedule around the fantasy playoffs
              */
             team?: string | null;
+        };
+        /**
+         * VerdictChangeIn
+         * @description A verdict the availability pipeline resolved this tick that changed for a game not yet tipped.
+         *     The backend reads the verdict itself (nba.player_availability).
+         */
+        VerdictChangeIn: {
+            /**
+             * Game Date
+             * Format: date
+             */
+            game_date: string;
+            /** Player Id */
+            player_id: number;
         };
         /** WeekResult */
         WeekResult: {
@@ -11705,6 +13377,59 @@ export interface operations {
             };
         };
     };
+    list_actions_v1_internal_ai_actions_get: {
+        parameters: {
+            query?: {
+                team_id?: number | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiAutopilotActionsResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description team_id is not one of the caller's teams (TEAM_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ask_v1_internal_ai_ask_post: {
         parameters: {
             query?: never;
@@ -11757,6 +13482,187 @@ export interface operations {
             };
             /** @description The assistant took too long (AI_TIMEOUT) */
             504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    set_autopilot_v1_internal_ai_autopilot__team_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiAutopilotReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiAutopilotResp"];
+                };
+            };
+            /** @description Not on the invite list (AI_INVITE_ONLY), or check-ins aren't open for this team (AI_AUTOPILOT_NOT_ALLOWED) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description team_id is not one of the caller's teams (TEAM_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A level the automation doesn't offer, with why (AI_LEVEL_UNAVAILABLE) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nothing to change, autopilot with levels, or an unknown automation or level (AI_AUTOPILOT_INVALID) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED, AI_AUTOPILOT_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_checkins_v1_internal_ai_checkins_get: {
+        parameters: {
+            query?: {
+                team_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiCheckinsResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description team_id is not one of the caller's teams (TEAM_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    run_checkin_v1_internal_ai_checkins_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiCheckinRunReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiCheckinResp"];
+                };
+            };
+            /** @description Not on the invite list (AI_INVITE_ONLY), or check-ins aren't open for this team (AI_AUTOPILOT_NOT_ALLOWED) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description team_id is not one of the caller's teams (TEAM_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A check-in is already running on this team (AI_CHECKIN_RUNNING) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The team has had today's check-ins (AI_CHECKIN_DAILY_LIMIT) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED, AI_AUTOPILOT_DISABLED), or the check-ins' monthly budget is used up (AI_AUTOPILOT_BUDGET_REACHED) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12013,6 +13919,96 @@ export interface operations {
             };
             /** @description The caller's monthly budget is used up (AI_USER_BUDGET_REACHED) */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    decision_verdict_v1_internal_ai_decisions__decision_id__verdict_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                decision_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiDecisionVerdictReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiDecisionVerdictResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such decision for this caller (AI_DECISION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_desk_notes_v1_internal_ai_draft_notes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimeDraftDeskResp"];
+                };
+            };
+            /** @description The caller is not on the AI desk's invite list (AI_INVITE_ONLY) */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12447,6 +14443,85 @@ export interface operations {
             };
             /** @description The assistant took too long (AI_TIMEOUT) */
             504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_ai_settings_v1_internal_ai_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSettingsResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    set_ai_settings_v1_internal_ai_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiSettingsReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSettingsResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nothing to change */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13175,6 +15250,240 @@ export interface operations {
             };
         };
     };
+    get_dime_v1_internal_drafts__session_id__dime_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimeDraftRoomResp"];
+                };
+            };
+            /** @description No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_dime_v1_internal_drafts__session_id__dime_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DimeDraftRoomReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimeDraftRoomResp"];
+                };
+            };
+            /** @description The caller is not on the AI desk's invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED, AI_DRAFT_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ask_dime_v1_internal_drafts__session_id__dime_notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DimeDraftNoteReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimeDraftNoteResp"];
+                };
+            };
+            /** @description The caller is not on the AI desk's invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A note is already being written (AI_DRAFT_BUSY), the draft is finished (AI_DRAFT_FINISHED), no pick of the user's is left (AI_DRAFT_NO_PICK), nothing has been drafted yet (AI_DRAFT_NO_PICKS), or the account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The AI desk's monthly budget is used up */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Turned off (AI_DISABLED, AI_DRAFT_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    set_seat_v1_internal_drafts__session_id__dime_seat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DimeDraftSeatReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimeDraftRoomResp"];
+                };
+            };
+            /** @description The caller is not on the AI desk's invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a room Dime can draft in: not a mock, linked to an ESPN lobby, finished, no seat or shape set (AI_DRAFT_NO_SEAT), or the account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED, AI_DRAFT_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     import_draft_v1_internal_drafts__session_id__import_post: {
         parameters: {
             query?: never;
@@ -13478,6 +15787,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    checkin_events_v1_internal_jobs_checkins_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinEventsReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinEventsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_checkins_v1_internal_jobs_checkins_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinRunResp"];
                 };
             };
         };
@@ -14662,6 +17024,104 @@ export interface operations {
             };
         };
     };
+    list_holds_v1_internal_teams__team_id__holds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamHoldsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_holds_v1_internal_teams__team_id__holds_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyHoldsReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamHoldsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_hold_v1_internal_teams__team_id__holds__hold_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hold_id: number;
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamHoldsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_team_insights_v1_internal_teams__team_id__insights_get: {
         parameters: {
             query?: never;
@@ -15036,7 +17496,9 @@ export interface operations {
     };
     cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                proposal_id?: number | null;
+            };
             header?: never;
             path: {
                 pickup_id: number;
@@ -15204,7 +17666,9 @@ export interface operations {
     };
     stop_stream_lane_v1_internal_teams__team_id__stream_lanes__lane_id__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                proposal_id?: number | null;
+            };
             header?: never;
             path: {
                 lane_id: number;
@@ -15567,6 +18031,50 @@ export interface operations {
             };
         };
     };
+    get_news_v1_news_get: {
+        parameters: {
+            query?: {
+                /** @description Only these kinds */
+                kind?: ("injury" | "availability" | "lineup" | "transaction" | "performance" | "rumor" | "other")[] | null;
+                /** @description An NBA tricode */
+                team?: string | null;
+                /** @description Only items since this time (default the last 24 hours) */
+                since?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description News retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsListResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_ownership_trending_v1_ownership_trending_get: {
         parameters: {
             query?: {
@@ -15846,6 +18354,49 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_player_news_v1_players__player_id__news_get: {
+        parameters: {
+            query?: {
+                /** @description How far back */
+                days?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description NBA player ID */
+                player_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Player news retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsListResp"];
+                };
             };
             /** @description Validation Error */
             422: {

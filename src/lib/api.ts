@@ -50,15 +50,28 @@ import type {
   ScheduleWeeksData,
 } from "@/types/lineup";
 import type { RankingsMeta, RankingsParams, RankingsPlayer, RankingsResult } from "@/types/rankings";
+import type { TeamHolds, TeamHoldsResponse } from "@/types/team-hold";
 import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actions";
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
 import type {
+  AiAutopilotAction,
+  AiAutopilotActionsResponse,
+  AiAutopilotResponse,
+  AiAutopilotChange,
+  AiAutopilotTeam,
+  AiCheckin,
+  AiCheckinRunKind,
+  AiCheckinResponse,
+  AiCheckins,
+  AiCheckinsResponse,
   AiConversation,
   AiConversationListResponse,
   AiConversationResponse,
   AiConversationSummary,
+  AiDecisionVerdictResponse,
+  AiFeatures,
   AiFeedback,
   AiNote,
   AiNoteCreateRequest,
@@ -69,10 +82,12 @@ import type {
   AiProposalChip,
   AiProposalDismissResponse,
   AiProposalResponse,
+  AiSettingsResponse,
   AiTurnCommentResponse,
   AiTurnFeedbackResponse,
   AiUsage,
   AiUsageResponse,
+  AiVerdict,
   MoveOutcomeList,
   MoveOutcomeListResponse,
   MoveScope,
@@ -179,6 +194,13 @@ import type {
   RecapPick,
   RecapSeat,
   RecapStanding,
+  DimeDraftDesk,
+  DimeDraftDeskResponse,
+  DimeDraftNote,
+  DimeDraftNoteKind,
+  DimeDraftNoteResponse,
+  DimeDraftRoom,
+  DimeDraftRoomResponse,
 } from "@/types/draft";
 
 /** The lineup optimiser runs a genetic algorithm; give it well beyond the default 15 s. */
@@ -384,8 +406,10 @@ class ApiClient {
   }
 
   /** Cancel a pending pickup; 409 SCHEDULED_PICKUP_NOT_PENDING once it has run. */
-  async cancelPickup(getToken: GetTokenFn, teamId: number, pickupId: number): Promise<ScheduledPickup> {
-    const env = await fetchJson<ScheduledPickupResponse>(`${TEAMS_API}/${teamId}/pickups/${pickupId}`, {
+  async cancelPickup(getToken: GetTokenFn, teamId: number, pickupId: number, proposalId?: number): Promise<ScheduledPickup> {
+    // `proposalId`: Dime's cancel_pickup chip being applied (the server checks it is this pickup's, and marks it sent)
+    const q = proposalId != null ? `?proposal_id=${proposalId}` : "";
+    const env = await fetchJson<ScheduledPickupResponse>(`${TEAMS_API}/${teamId}/pickups/${pickupId}${q}`, {
       getToken,
       method: "DELETE",
     });
@@ -458,12 +482,45 @@ class ApiClient {
   }
 
   /** Stop a lane (its pending pickup goes too); 409 STREAM_LANE_BUSY while that pickup is being made. */
-  async stopStreamLane(getToken: GetTokenFn, teamId: number, laneId: number): Promise<{ lane: StreamLane; message: string }> {
-    const env = await fetchJson<StreamLaneResponse>(`${TEAMS_API}/${teamId}/stream-lanes/${laneId}`, {
+  async stopStreamLane(
+    getToken: GetTokenFn,
+    teamId: number,
+    laneId: number,
+    proposalId?: number
+  ): Promise<{ lane: StreamLane; message: string }> {
+    // `proposalId`: Dime's stop chip for this lane (start and pause / resume carry it in their bodies)
+    const q = proposalId != null ? `?proposal_id=${proposalId}` : "";
+    const env = await fetchJson<StreamLaneResponse>(`${TEAMS_API}/${teamId}/stream-lanes/${laneId}${q}`, {
       getToken,
       method: "DELETE",
     });
     return { lane: unwrap(env), message: env.message };
+  }
+
+  /** Dime's live holds on the team (none while its steering is off), by first day. */
+  async getTeamHolds(getToken: GetTokenFn, teamId: number, opts?: RequestOptions): Promise<TeamHolds> {
+    const env = await fetchJson<TeamHoldsResponse>(`${TEAMS_API}/${teamId}/holds`, { ...opts, getToken });
+    return unwrap(env, { enabled: false, holds: [] });
+  }
+
+  /**
+   * Apply Dime's steer chip: its holds are set and its clears done, and the chip is
+   * marked sent. 409 AI_PROPOSAL_NOT_PENDING once applied (or dismissed, expired),
+   * 409 AI_STEERING_OFF while steering is switched off. Returns the holds then.
+   */
+  async applyHolds(getToken: GetTokenFn, teamId: number, proposalId: number): Promise<TeamHolds> {
+    const env = await fetchJson<TeamHoldsResponse>(`${TEAMS_API}/${teamId}/holds`, {
+      getToken,
+      method: "POST",
+      body: { proposal_id: proposalId },
+    });
+    return unwrap(env, { enabled: true, holds: [] });
+  }
+
+  /** Clear one of Dime's holds: nothing reads it from now on. Returns the holds then. */
+  async clearHold(getToken: GetTokenFn, teamId: number, holdId: number): Promise<TeamHolds> {
+    const env = await fetchJson<TeamHoldsResponse>(`${TEAMS_API}/${teamId}/holds/${holdId}`, { getToken, method: "DELETE" });
+    return unwrap(env, { enabled: true, holds: [] });
   }
 
   // Matchups API
@@ -1124,6 +1181,40 @@ class ApiClient {
     return unwrap(env);
   }
 
+  // ---- Dime in a draft room (the Dime autopilot plan, step 7): its notes, the
+  // switch for a note at each of the user's picks, and the user's seat in a mock.
+
+  /** What Dime wrote in the room and its switches. Never refuses for a server or user without Dime: `available` says. */
+  async getDimeDraft(getToken: GetTokenFn, sessionId: number, opts?: RequestOptions): Promise<DimeDraftRoom> {
+    return unwrap(await fetchJson<DimeDraftRoomResponse>(`${DRAFTS_API}/${sessionId}/dime`, { ...opts, getToken }));
+  }
+
+  /** A note whenever the user's pick is near, on or off. */
+  async setDimeDraftNotes(getToken: GetTokenFn, sessionId: number, notes: boolean): Promise<DimeDraftRoom> {
+    return unwrap(
+      await fetchJson<DimeDraftRoomResponse>(`${DRAFTS_API}/${sessionId}/dime`, { getToken, method: "PUT", body: { notes } })
+    );
+  }
+
+  /** Ask for a plan, a note at the coming pick, or a recap. It comes back running (or the pick's note already written). */
+  async askDimeDraft(getToken: GetTokenFn, sessionId: number, kind: DimeDraftNoteKind): Promise<DimeDraftNote> {
+    return unwrap(
+      await fetchJson<DimeDraftNoteResponse>(`${DRAFTS_API}/${sessionId}/dime/notes`, { getToken, method: "POST", body: { kind } })
+    );
+  }
+
+  /** What Dime wrote across the user's draft rooms, by room (the AI desk's Draft notes). */
+  async getDimeDraftNotes(getToken: GetTokenFn, opts?: RequestOptions): Promise<DimeDraftDesk> {
+    return unwrap(await fetchJson<DimeDraftDeskResponse>(`${AI_API}/draft-notes`, { ...opts, getToken }));
+  }
+
+  /** Hand Dime the user's seat in a mock (it drafts to the end), or take it back after the pick it is making. */
+  async setDimeDraftSeat(getToken: GetTokenFn, sessionId: number, on: boolean): Promise<DimeDraftRoom> {
+    return unwrap(
+      await fetchJson<DimeDraftRoomResponse>(`${DRAFTS_API}/${sessionId}/dime/seat`, { getToken, method: "POST", body: { on } })
+    );
+  }
+
   // ---- The AI desk (/v1/internal/ai): conversations with the agent. A turn
   // itself streams, so it goes through `streamTurn` (lib/ai-stream), not here.
 
@@ -1212,6 +1303,50 @@ class ApiClient {
 
   async deleteAiNote(getToken: GetTokenFn, noteId: number): Promise<void> {
     await fetchJson(`${AI_API}/notes/${noteId}`, { getToken, method: "DELETE" });
+  }
+
+  // ---- Dime's check-ins: the teams it runs on, what it ran, and the
+  // user's verdict on each call it logged.
+
+  /** The caller's autopilot teams (switch, next check-in) and their check-ins, newest first. */
+  async getAiCheckins(getToken: GetTokenFn, opts?: RequestOptions): Promise<AiCheckins> {
+    return unwrap(await fetchJson<AiCheckinsResponse>(`${AI_API}/checkins`, { ...opts, getToken }));
+  }
+
+  /** Run a check-in now; without `kind` the clock picks. It comes back running. */
+  async runAiCheckin(getToken: GetTokenFn, teamId: number, kind?: AiCheckinRunKind): Promise<AiCheckin> {
+    const body = kind ? { team_id: teamId, kind } : { team_id: teamId };
+    return unwrap(await fetchJson<AiCheckinResponse>(`${AI_API}/checkins`, { getToken, method: "POST", body }));
+  }
+
+  /**
+   * A team's autopilot: its check-ins on (or resumed) or paused, the autopilot switch, or some
+   * automations' levels. A level the row doesn't offer is a 409 with the reason.
+   */
+  async setAiAutopilot(getToken: GetTokenFn, teamId: number, change: AiAutopilotChange): Promise<AiAutopilotTeam> {
+    return unwrap(
+      await fetchJson<AiAutopilotResponse>(`${AI_API}/autopilot/${teamId}`, { getToken, method: "PUT", body: change })
+    );
+  }
+
+  /** Everything Dime did on its own, newest first: one team's, or every team's with null. */
+  async getAiActions(getToken: GetTokenFn, teamId: number | null, opts?: RequestOptions): Promise<AiAutopilotAction[]> {
+    const q = teamId != null ? `?team_id=${teamId}` : "";
+    return unwrap(await fetchJson<AiAutopilotActionsResponse>(`${AI_API}/actions${q}`, { ...opts, getToken }));
+  }
+
+  /** Turn the account's AI features on or off; returns them as they now stand. */
+  async setAiFeatures(getToken: GetTokenFn, change: Partial<AiFeatures>): Promise<AiFeatures> {
+    return unwrap(await fetchJson<AiSettingsResponse>(`${AI_API}/settings`, { getToken, method: "PUT", body: change }));
+  }
+
+  /** Agree or disagree with one call a check-in logged; null clears it. */
+  async setAiDecisionVerdict(getToken: GetTokenFn, decisionId: number, verdict: AiVerdict | null): Promise<void> {
+    await fetchJson<AiDecisionVerdictResponse>(`${AI_API}/decisions/${decisionId}/verdict`, {
+      getToken,
+      method: "PUT",
+      body: { verdict },
+    });
   }
 
   /** The move ledger: a team's adds and drops (or its whole league's) and what each earned. */

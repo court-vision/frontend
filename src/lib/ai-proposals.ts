@@ -43,6 +43,7 @@ export const STATE_WORDS: Record<Exclude<AiProposalState, "proposed">, string> =
   sent: "This move was already sent.",
   dismissed: "This chip was dismissed.",
   expired: "This chip expired: the day it was for has started.",
+  shadow: "A check-in logged this as a review, what Dime would have done: it can't be sent.",
 };
 
 /** The chip's state as of `now`: a proposed chip past its expiry reads as expired, whatever the stored copy says. */

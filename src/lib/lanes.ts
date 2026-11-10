@@ -223,6 +223,12 @@ const LANE_REASONS: Record<string, string> = {
   provider_not_supported: "this league's rosters can't be changed from here",
   paused_by_user: "you paused it",
   stopped: "you stopped it",
+  // Dime's lane chips, applied by you (the reason Dime gave is the event's detail)
+  paused_by_dime: "you applied Dime's pause",
+  stopped_by_dime: "you applied Dime's stop",
+  // Dime's lane chips, sent by Dime itself on a team where streaming acts (autopilot step 5)
+  paused_by_autopilot: "Dime paused it",
+  stopped_by_autopilot: "Dime stopped it",
   matchup_over: "the matchup ended",
   team_not_found: "the team is gone",
   missed: "no decision was made in time",
@@ -241,13 +247,24 @@ export function laneReason(reason: string | null | undefined): string | null {
   return LANE_REASONS[reason] ?? reason.replace(/_/g, " ");
 }
 
+const DIME_APPLIED = new Set(["dime", "paused_by_dime", "stopped_by_dime"]);
+const DIME_ACTED = new Set(["autopilot", "paused_by_autopilot", "stopped_by_autopilot"]);
+
+/** A step Dime proposed (you applied it, or Dime did on its own): its reason, as the lane's history says it. */
+function dimeSaid(e: Pick<StreamLaneEvent, "reason" | "detail">): string {
+  const reason = e.reason ?? "";
+  if (DIME_ACTED.has(reason)) return e.detail ? `. Dime, on its own: ${e.detail}` : " (Dime, on its own)";
+  const dime = DIME_APPLIED.has(reason);
+  return dime && e.detail ? `. Dime: ${e.detail}` : dime ? " (Dime's)" : "";
+}
+
 /** One line of a lane's history. */
 export function eventLine(e: StreamLaneEvent, dayLabel: (date: string) => string): string {
   const day = e.nba_date ? `${dayLabel(e.nba_date)}: ` : "";
   const why = e.reason && WHY[e.reason] ? ` (${WHY[e.reason]})` : "";
   switch (e.action) {
     case "started":
-      return `Started${e.nba_date ? `, from ${dayLabel(e.nba_date)}` : ""}`;
+      return `Started${e.nba_date ? `, from ${dayLabel(e.nba_date)}` : ""}${dimeSaid(e)}`;
     case "switch": {
       const outcome =
         e.pickup_status === "executed" ? "picked up" : e.pickup_status === "pending" || !e.pickup_status ? "picking up" : "tried to pick up";
@@ -258,11 +275,11 @@ export function eventLine(e: StreamLaneEvent, dayLabel: (date: string) => string
     case "blocked":
       return `${day}couldn't act: ${laneReason(e.reason) ?? "unknown"}`;
     case "paused":
-      return `Paused: ${laneReason(e.reason) ?? "unknown"}`;
+      return `Paused: ${laneReason(e.reason) ?? "unknown"}${dimeSaid(e)}`;
     case "resumed":
-      return "Resumed";
+      return `Resumed${dimeSaid(e)}`;
     case "ended":
-      return `Ended: ${laneReason(e.reason) ?? "unknown"}`;
+      return `Ended: ${laneReason(e.reason) ?? "unknown"}${dimeSaid(e)}`;
   }
 }
 

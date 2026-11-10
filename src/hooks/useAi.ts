@@ -5,8 +5,15 @@ import { apiClient } from "@/lib/api";
 import { toApiError, userMessage } from "@/lib/api-error";
 import type { GetTokenFn } from "@/lib/http";
 import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
+import { VerdictSaves, verdictOf, withVerdict } from "@/lib/ai-checkins";
+import { notificationKeys } from "@/hooks/useNotificationPreferences";
 import type {
+  AiAutopilotAction,
+  AiAutopilotChange,
+  AiFeatures,
   AiBlock,
+  AiCheckinRunKind,
+  AiCheckins,
   AiConversation,
   AiConversationSummary,
   AiFeedback,
@@ -14,6 +21,7 @@ import type {
   AiNoteCreateRequest,
   AiNoteEditRequest,
   AiUsage,
+  AiVerdict,
   MoveOutcomeList,
   MoveScope,
 } from "@/types/ai";
@@ -41,6 +49,8 @@ export const aiKeys = {
   conversations: (userId: string | null | undefined) => [...aiKeys.user(userId), "conversations"] as const,
   conversation: (userId: string | null | undefined, id: number) => [...aiKeys.user(userId), "conversation", id] as const,
   notes: (userId: string | null | undefined) => [...aiKeys.user(userId), "notes"] as const,
+  checkins: (userId: string | null | undefined) => [...aiKeys.user(userId), "checkins"] as const,
+  actions: (userId: string | null | undefined, teamId: number | null) => [...aiKeys.user(userId), "actions", teamId] as const,
   moves: (userId: string | null | undefined, teamId: number, scope: MoveScope) =>
     [...aiKeys.user(userId), "moves", teamId, scope] as const,
 };
@@ -100,6 +110,12 @@ export function useDeleteAiConversation() {
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: aiKeys.conversation(userId, id) });
       void queryClient.invalidateQueries({ queryKey: aiKeys.conversations(userId) });
+      // A deleted check-in conversation leaves its check-in without one to open (the server sets it
+      // to null): unlinked here at once, then read again
+      queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
+        d ? { ...d, checkins: d.checkins.map((c) => (c.conversation_id === id ? { ...c, conversation_id: null } : c)) } : d
+      );
+      void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
     },
   });
 }
@@ -145,7 +161,133 @@ export function useAiComment(conversationId: number | null) {
   });
 }
 
-// ---- Dime's notes ("What Dime knows") and the move ledger ("How moves went")
+// ---- Dime's check-ins
+
+/**
+ * The teams Dime runs check-ins on and what it ran. A check-in runs for a few
+ * minutes after it starts, so the list is read every 15 seconds while one is
+ * running, and every 5 minutes otherwise (the schedule starts them on its own).
+ */
+export function useAiCheckinsQuery(enabled: boolean) {
+  const { getToken, isSignedIn, userId } = useAuth();
+  return useQuery<AiCheckins>({
+    queryKey: aiKeys.checkins(userId),
+    queryFn: ({ signal }) => apiClient.getAiCheckins(getToken, { signal }),
+    enabled: enabled && isSignedIn === true,
+    staleTime: 15_000,
+    refetchInterval: (query) => (query.state.data?.checkins.some((c) => c.state === "running") ? 15_000 : 5 * 60_000),
+    retry: false,
+    meta: { toast: false },
+  });
+}
+
+export function useRunAiCheckin() {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, kind }: { teamId: number; kind?: AiCheckinRunKind }) => apiClient.runAiCheckin(getToken, teamId, kind),
+    onSuccess: (checkin) => {
+      queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
+        d ? { ...d, checkins: [checkin, ...d.checkins.filter((c) => c.checkin_id !== checkin.checkin_id)] } : d
+      );
+      void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
+    },
+  });
+}
+
+/**
+ * A team's check-ins, its autopilot switch or some automations' levels. The team comes back with its
+ * table; a lineup level writes the team's notification override, and autopilot turns the features on,
+ * so those are read again.
+ */
+export function useSetAiAutopilot() {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, change }: { teamId: number; change: AiAutopilotChange }) =>
+      apiClient.setAiAutopilot(getToken, teamId, change),
+    onSuccess: async (team, { change }) => {
+      // A poll that read the list before the switch would land after this and show the old state
+      await queryClient.cancelQueries({ queryKey: aiKeys.checkins(userId) });
+      queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
+        d ? { ...d, teams: d.teams.map((t) => (t.team_id === team.team_id ? team : t)) } : d
+      );
+      if (change.autopilot != null || change.levels?.lineup != null) {
+        void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+      }
+      if (change.autopilot) void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
+    },
+  });
+}
+
+/** The account's AI features: memory and Dime's side of the Draft desk. */
+export function useSetAiFeatures() {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (change: Partial<AiFeatures>) => apiClient.setAiFeatures(getToken, change),
+    onSuccess: (features) => {
+      queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) => (d ? { ...d, features } : d));
+    },
+  });
+}
+
+/** Everything Dime did on its own on a team (all teams with null), newest first. */
+export function useAiActionsQuery(teamId: number | null, enabled = true) {
+  const { getToken, isSignedIn, userId } = useAuth();
+  return useQuery<AiAutopilotAction[]>({
+    queryKey: aiKeys.actions(userId, teamId),
+    queryFn: ({ signal }) => apiClient.getAiActions(getToken, teamId, { signal }),
+    enabled: enabled && isSignedIn === true,
+    staleTime: 60_000,
+    retry: false,
+    meta: { toast: false },
+  });
+}
+
+// Shared by every verdict control, so a save started in one conversation is still counted after
+// the user opens another
+const verdictSaves = new VerdictSaves();
+
+/**
+ * Agree / disagree with one of a check-in's calls: shown at once, and if the save fails only that
+ * call goes back to what it was (another call rated meanwhile keeps its own, saved or not), in the
+ * conversation it was rated in, and only while no newer save on that call has started.
+ */
+export function useAiDecisionVerdict(conversationId: number | null) {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ decisionId, verdict }: { decisionId: number; verdict: AiVerdict | null }) =>
+      apiClient.setAiDecisionVerdict(getToken, decisionId, verdict),
+    onMutate: async ({ decisionId, verdict }) => {
+      const save = verdictSaves.start(decisionId);
+      if (conversationId == null) return { save, key: null, previous: undefined };
+      const key = aiKeys.conversation(userId, conversationId);
+      // A read of the conversation already on its way would land after this and show the old verdict
+      await queryClient.cancelQueries({ queryKey: key });
+      const before = queryClient.getQueryData<AiConversation>(key);
+      const previous = before ? verdictOf(before, decisionId) : undefined;
+      if (before) queryClient.setQueryData<AiConversation>(key, withVerdict(before, decisionId, verdict));
+      return { save, key, previous };
+    },
+    onError: (_err, { decisionId }, ctx) => {
+      const previous = ctx?.previous;
+      if (!ctx?.key || previous === undefined || !verdictSaves.isNewest(decisionId, ctx.save)) return;
+      queryClient.setQueryData<AiConversation>(ctx.key, (c) => (c ? withVerdict(c, decisionId, previous) : c));
+    },
+    onSettled: () => {
+      // The inbox's agree / disagree tallies
+      void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
+      // Once no save is in flight, the stored conversations say which verdicts were kept
+      if (verdictSaves.settle()) {
+        void queryClient.invalidateQueries({ queryKey: [...aiKeys.user(userId), "conversation"] });
+      }
+    },
+  });
+}
+
+// ---- Dime's notes (its Memory view) and the move ledger (Move results)
 
 /** Every note Dime keeps for the user, live ones first; with `includeRetired`, the retired ones too. */
 export function useAiNotesQuery(enabled: boolean, includeRetired: boolean) {

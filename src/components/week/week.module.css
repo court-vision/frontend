@@ -2178,6 +2178,54 @@ button.marketRow:hover {
   text-decoration: line-through;
 }
 
+/* ---------------------------------------------------------------- Dime's holds */
+
+/* A hold: its player on the days it covers, in the accent (Dime's), the reason in the row's title. */
+.slotChip[data-group="hold"] {
+  border-style: dotted;
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 9.5px;
+}
+
+.row[data-group="hold"] {
+  min-height: 34px;
+}
+
+.holdCell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 8px;
+  border-left: 1px solid var(--line-2);
+}
+
+.holdCell[data-today="true"] {
+  background: var(--today);
+}
+
+.holdCell[data-on="true"] {
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg));
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.holdName {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row[data-group="hold"][data-kind="block"] .holdName {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
 .pickupCancel {
   display: inline-flex;
   align-items: center;

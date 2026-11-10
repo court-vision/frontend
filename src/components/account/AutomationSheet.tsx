@@ -1,30 +1,54 @@
 "use client";
 
-import Link from "next/link";
-import { Bell, MessagesSquare } from "lucide-react";
-import { AUTOMATION_FIELDS, automationSummary, type AccountFocus } from "@/lib/account";
-import { AI_DESK } from "@/components/desk/routes";
+import { Bell } from "lucide-react";
+import { automationSummary, AUTOMATION_FIELDS, type AccountFocus } from "@/lib/account";
+import { ACCOUNT_LEVELS, accountOptions, belowAi, lineupPrefs, ROW_LABEL } from "@/lib/ai-autonomy";
+import type { AiAutomationName } from "@/types/ai";
 import type { AccountModel } from "./model";
-import { Block, Toggle } from "./blocks";
+import { DimeAutopilot } from "./DimeAutopilot";
+import { LevelRail } from "./LevelRail";
 import { AccountSettings, TeamSettings, type FieldsProps, type SettingsKind } from "./SettingsBlocks";
 import dk from "@/components/desk/desk.module.css";
 import s from "./account.module.css";
 
-function AutomationFields({ prefs, onChange, disabled, onOpen }: FieldsProps) {
-  const waiting = !prefs.lineup_alerts_enabled;
+/** The automations the account's table lists: AI and check-ins are per team, in the Dime block. */
+const ACCOUNT_ROWS: AiAutomationName[] = ["lineup", "daily_actions", "lanes", "late_scratch"];
+
+const ACCOUNT_HELP: Record<string, string> = {
+  lineup:
+    "Notify is the tip-off email. Act also sets the lineup before tip-off: bench players with a game move into spots held by players without one. Healthy starters stay, IR is untouched, and the email says what changed.",
+  daily_actions: "The Week desk's IR moves and the day's pickup and drop. Its email and Court Vision making the moves aren't built yet.",
+  lanes: "Your stream lanes run as you set them in the Week desk.",
+  late_scratch:
+    "News and late scratches before a player's game. Its email and the late-scratch swap aren't built yet; at AI, on a team Dime runs, an event check-in answers them before the game locks.",
+};
+
+/** Off, Notify or Act for each automation: the account's, or a team's own over it. */
+function AutomationFields({ prefs, onChange, disabled, onOpen, account }: FieldsProps) {
+  // A team's own Notify and Act need the account's lineup email: the pipeline skips everyone without it
+  const accountEmail = account ? account.lineup_alerts_enabled : true;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <Toggle
-        label="Set the lineup for me"
-        help="Before tip-off, bench players with a game move into spots held by players without one. Healthy starters stay, IR is untouched, and the tip-off email says what changed."
-        checked={prefs.auto_lineup_enabled}
-        // Waiting on the email, it can still be turned off, just not on.
-        disabled={disabled || (waiting && !prefs.auto_lineup_enabled)}
-        onChange={(v) => onChange({ ...prefs, auto_lineup_enabled: v })}
-      />
-      {waiting ? (
-        <div className={s.row2} style={{ padding: "2px 0 6px" }}>
-          <span className={s.fieldHint}>It runs with the tip-off email, at the email&apos;s time, so it waits until that email is on.</span>
+    <div className={s.pilotGrid} role="group" aria-label="Automations">
+      {ACCOUNT_ROWS.map((row) => (
+        <div key={row} className={s.pilotRow}>
+          <div className={s.pilotLabel}>
+            <span className={s.pilotName}>{ROW_LABEL[row]}</span>
+            <span className={s.fieldHint}>{ACCOUNT_HELP[row]}</span>
+          </div>
+          <LevelRail
+            label={ROW_LABEL[row]}
+            options={accountOptions(row, accountEmail)}
+            value={belowAi(row, prefs)}
+            disabled={disabled}
+            onPick={(level) => {
+              if (row === "lineup" && ACCOUNT_LEVELS.includes(level)) onChange({ ...prefs, ...lineupPrefs(level) });
+            }}
+          />
+        </div>
+      ))}
+      {!accountEmail ? (
+        <div className={s.row2} style={{ padding: "6px 14px 8px" }}>
+          <span className={s.fieldHint}>The account&apos;s Lineup is off, so no team&apos;s lineup runs. Set it to Notify or Act above, or turn the tip-off email on.</span>
           <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={() => onOpen({ kind: "alerts" })}>
             <Bell size={12} /> Open notifications
           </button>
@@ -41,30 +65,22 @@ const AUTOMATION: SettingsKind = {
   own: "own setting",
 };
 
-/** AI and automation: what Court Vision does on your teams by itself, and where Dime fits. */
+/** AI and automation: what Court Vision does on your teams by itself, and what Dime does there. */
 export function AutomationSheet({ model, onOpen }: { model: AccountModel; onOpen: (focus: AccountFocus) => void }) {
   return (
     <div className={s.sheetInner}>
       <header className={s.head}>
         <div className={s.headBody}>
           <span className={s.headTitle}>AI and automation</span>
-          <span className={s.headSub}>What Court Vision does on your teams without asking each time. One setting for the account; any team can have its own.</span>
+          <span className={s.headSub}>
+            What Court Vision does on your teams without asking each time: Off, Notify (an email says what is due) or Act (Court Vision does it). One setting for the account; any team can have its own. On teams Dime runs on, each automation can also be at AI.
+          </span>
         </div>
       </header>
 
       <AccountSettings model={model} kind={AUTOMATION} onOpen={onOpen} />
       <TeamSettings model={model} kind={AUTOMATION} onOpen={onOpen} />
-
-      <Block title="Dime">
-        <div className={s.row2}>
-          <span className={s.prose}>
-            Dime, the agent on the AI desk, suggests adds, drops and lineups in chat and makes a move only when you confirm it. What it remembers about your teams, and how its moves went, are on the AI desk.
-          </span>
-          <Link href={AI_DESK} className={`${dk.btn} ${dk.btnSmall}`}>
-            <MessagesSquare size={12} /> Open the AI desk
-          </Link>
-        </div>
-      </Block>
+      <DimeAutopilot model={model} />
     </div>
   );
 }

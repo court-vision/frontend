@@ -371,10 +371,10 @@ function own(over: Partial<NotificationTeamPreference> = {}): NotificationTeamPr
 }
 
 describe("settings: notifications, and AI and automation", () => {
-  test("every stored field belongs to exactly one sheet", () => {
+  test("every stored field belongs to a sheet, and only the tip-off email (Lineup's Notify) to both", () => {
     const all: string[] = [...NOTIFICATION_FIELDS, ...AUTOMATION_FIELDS];
-    expect(new Set(all).size).toBe(all.length);
-    expect([...all].sort()).toEqual(Object.keys(PREFS).sort());
+    expect(all.filter((f, i) => all.indexOf(f) !== i)).toEqual(["lineup_alerts_enabled"]);
+    expect([...new Set(all)].sort()).toEqual(Object.keys(PREFS).sort());
   });
 
   test("a team's own values win field by field", () => {
@@ -394,15 +394,18 @@ describe("settings: notifications, and AI and automation", () => {
   });
 
   test("a sheet writes only its own fields", () => {
-    expect(ownPatch({ ...PREFS, auto_lineup_enabled: true }, AUTOMATION_FIELDS)).toEqual({ auto_lineup_enabled: true });
+    expect(ownPatch({ ...PREFS, auto_lineup_enabled: true }, AUTOMATION_FIELDS)).toEqual({
+      lineup_alerts_enabled: PREFS.lineup_alerts_enabled,
+      auto_lineup_enabled: true,
+    });
     const n = ownPatch({ ...PREFS, alert_minutes_before: 30 }, NOTIFICATION_FIELDS);
     expect(n.alert_minutes_before).toBe(30);
     expect("auto_lineup_enabled" in n).toBe(false);
   });
 
   test("handing a sheet back clears its fields, or the whole override when nothing else is the team's", () => {
-    const both = own({ auto_lineup_enabled: true, lineup_alerts_enabled: false });
-    expect(clearPatch(both, AUTOMATION_FIELDS)).toEqual({ auto_lineup_enabled: null });
+    const both = own({ auto_lineup_enabled: true, alert_minutes_before: 30 });
+    expect(clearPatch(both, AUTOMATION_FIELDS)).toEqual({ lineup_alerts_enabled: null, auto_lineup_enabled: null });
     const cleared = clearPatch(both, NOTIFICATION_FIELDS);
     expect(cleared?.lineup_alerts_enabled).toBeNull();
     expect(cleared?.email).toBeNull();
@@ -414,9 +417,9 @@ describe("settings: notifications, and AI and automation", () => {
   test("the lineup is set only when the tip-off email is on too", () => {
     expect(setsLineup({ ...PREFS, auto_lineup_enabled: true })).toBe(true);
     expect(setsLineup({ ...PREFS, auto_lineup_enabled: true, lineup_alerts_enabled: false })).toBe(false);
-    expect(automationSummary({ ...PREFS, auto_lineup_enabled: true })).toBe("sets the lineup · 90 min before");
-    expect(automationSummary({ ...PREFS, auto_lineup_enabled: true, lineup_alerts_enabled: false })).toBe("on, waiting for the tip-off email");
-    expect(automationSummary(PREFS)).toBe("off");
+    expect(automationSummary({ ...PREFS, auto_lineup_enabled: true })).toBe("lineup: act, sets it 90 min before");
+    expect(automationSummary({ ...PREFS, auto_lineup_enabled: true, lineup_alerts_enabled: false })).toBe("lineup: off");
+    expect(automationSummary(PREFS)).toBe("lineup: notify, the email 90 min before");
   });
 
   test("teams whose lineup is set, each by its own settings", () => {
