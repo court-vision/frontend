@@ -131,6 +131,18 @@ describe("rows and staging", () => {
     expect(unstagedLineupActions([START, IR_IN, IR_OUT, ADD], staged).map((a) => a.id)).toEqual(["ir_out:14"]);
   });
 
+  test("a scratch is staged only once the ruled-out starter is out of the lineup too", () => {
+    // Hart into UT for someone else leaves Brunson starting: the scratch isn't done.
+    expect(isRowStaged({ 11: UT, 9: BE }, SCRATCH)).toBe(false);
+    expect(isRowStaged({ 11: UT }, SCRATCH)).toBe(false);
+    expect(unstagedLineupActions([SCRATCH], { 11: UT, 9: BE }).map((a) => a.id)).toEqual(["scratch:11"]);
+    expect(isRowStaged({ 11: UT, 8: BE }, SCRATCH)).toBe(true);
+    expect(isRowStaged({ 11: UT, 8: IR }, SCRATCH)).toBe(true);
+    // Taking back the IR row keeps the scratch, which benches him again.
+    const SCRATCH_IR = action("ir_in", 8, [[8, UT, IR]]);
+    expect(unstageRow(BOARD, { 11: UT, 8: IR }, SCRATCH_IR, [SCRATCH_IR, SCRATCH])).toEqual({ 11: UT, 8: BE });
+  });
+
   test("stage all lands starts before IR, so a benched OUT starter still goes to IR", () => {
     expect(stageAllOrder([IR_IN, IR_OUT, START, START_EARLY]).map((a) => a.id)).toEqual(["start:11", "start:12", "ir_in:8", "ir_out:14"]);
   });

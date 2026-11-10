@@ -33220,12 +33220,12 @@
             }
           },
           {
-            "description": "Last game date (ISO), at most 14 days after start",
+            "description": "Last game date (ISO); start to end spans at most 14 days",
             "in": "query",
             "name": "end",
             "required": true,
             "schema": {
-              "description": "Last game date (ISO), at most 14 days after start",
+              "description": "Last game date (ISO); start to end spans at most 14 days",
               "format": "date",
               "title": "End",
               "type": "string"

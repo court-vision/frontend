@@ -59,15 +59,23 @@ export function isTransactionAction(a: DailyAction): boolean {
   return (a.kind === "add" || a.kind === "add_drop") && !!a.transaction;
 }
 
+function subjectStaged(staged: Staged, a: DailyAction): boolean {
+  const first = movesOf(a)[0];
+  return !!first && staged[first.player_id] === first.to_slot_id;
+}
+
 /**
  * A lineup row is staged when its subject sits on its target. Subject-only on
  * purpose: when a start row benches X and the IR row sends X to IR, both rows
  * report staged; `stageRow` and `unstageRow` keep a press on either from
- * undoing the other.
+ * undoing the other. A scratch is the exception: it is there to take the
+ * ruled-out starter out of the lineup, so it is staged only once every player
+ * it moves has landed too, or sits on IR (the IR row's move for him).
  */
 export function isRowStaged(staged: Staged, a: DailyAction): boolean {
-  const first = movesOf(a)[0];
-  return !!first && staged[first.player_id] === first.to_slot_id;
+  if (!subjectStaged(staged, a)) return false;
+  if (a.kind !== "scratch") return true;
+  return movesOf(a).slice(1).every((m) => staged[m.player_id] === m.to_slot_id || staged[m.player_id] === IR_SLOT_ID);
 }
 
 /**
@@ -118,7 +126,8 @@ export function stageRow(board: LineupState, staged: Staged, a: DailyAction): St
  */
 export function unstageRow(board: LineupState, staged: Staged, a: DailyAction, rows: readonly DailyAction[]): Staged {
   let next = unstageMoves(board, staged, movesOf(a).filter((m) => staged[m.player_id] === m.to_slot_id));
-  const others = rows.filter((r) => r.id !== a.id && isLineupAction(r) && isRowStaged(next, r));
+  // By subject: the moves taken back may be the ones another row still needs, which it stages again below.
+  const others = rows.filter((r) => r.id !== a.id && isLineupAction(r) && subjectStaged(next, r));
   for (const r of stageAllOrder(others)) {
     next = stageMoves(board, next, movesOf(r).filter((m) => m.player_id in staged && !(m.player_id in next)));
   }

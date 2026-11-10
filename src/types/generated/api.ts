@@ -17272,7 +17272,7 @@ export interface operations {
             query: {
                 /** @description First game date (ISO) */
                 start: string;
-                /** @description Last game date (ISO), at most 14 days after start */
+                /** @description Last game date (ISO); start to end spans at most 14 days */
                 end: string;
                 /** @description NBA player ids, the matchup's two rosters (at most 60) */
                 nba_ids?: number[];
