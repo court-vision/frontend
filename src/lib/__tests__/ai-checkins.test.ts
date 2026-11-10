@@ -1,5 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { VerdictSaves, agreement, checkinLine, decisionKicker, reasonWords, unrated, verdictOf, withVerdict } from "../ai-checkins";
+import {
+  KIND_HELP,
+  KIND_LABEL,
+  RUN_KINDS,
+  VerdictSaves,
+  agreement,
+  checkinLine,
+  decisionKicker,
+  eventsShown,
+  reasonWords,
+  unrated,
+  verdictOf,
+  withVerdict,
+} from "../ai-checkins";
 import { chipState, stageProblem } from "../ai-proposals";
 import type { AiCheckin, AiConversation, AiProposalChip } from "@/types/ai";
 
@@ -23,7 +36,19 @@ function checkin(over: Partial<AiCheckin> = {}): AiCheckin {
     agree: 2,
     disagree: 0,
     sent: 0,
+    events: [],
     ...over,
+  };
+}
+
+function event(n: number, source: "availability" | "news" = "news") {
+  return {
+    source,
+    player_id: 1628973 + n,
+    summary: `Item ${n}`,
+    received_at: "2026-11-10T22:00:00Z",
+    verdict: source === "availability" ? "out" : null,
+    news_id: source === "news" ? n : null,
   };
 }
 
@@ -122,5 +147,34 @@ describe("a shadow chip", () => {
     const chip = { proposal_id: 9, state: "shadow", expires_at: "2026-11-10T00:00:00Z", team_id: 23 } as AiProposalChip;
     expect(chipState(chip, Date.parse("2026-11-11T00:00:00Z"))).toBe("shadow");
     expect(stageProblem(chip, [])).toContain("can't be sent");
+  });
+});
+
+describe("an event check-in", () => {
+  test("is labelled, and the Run menu never offers one", () => {
+    expect(KIND_LABEL.event).toBe("Event");
+    expect(RUN_KINDS).not.toContain("event" as never);
+    expect(Object.keys(KIND_HELP).sort()).toEqual([...RUN_KINDS].sort());
+  });
+
+  test("says what came in, then its calls", () => {
+    const c = checkin({ kind: "event", events: [event(1, "availability")], decisions: 1, changes: 1, agree: 0 });
+    expect(checkinLine(c)).toBe("1 thing came in · 1 call · 1 change · not rated · $0.41");
+    expect(checkinLine(checkin({ events: [event(1), event(2)] }))).toBe(
+      "2 things came in · 3 calls · 1 change · 2 agree · $0.41"
+    );
+  });
+
+  test("one with nothing left to take says why it was skipped", () => {
+    expect(checkinLine(checkin({ kind: "event", state: "skipped", reason: "no_events" }))).toBe(
+      "Skipped: the news it was for went to another check-in"
+    );
+  });
+
+  test("its row shows the first three, then how many more", () => {
+    const { shown, more } = eventsShown(checkin({ events: [1, 2, 3, 4, 5].map((n) => event(n)) }));
+    expect(shown.map((e) => e.summary)).toEqual(["Item 1", "Item 2", "Item 3"]);
+    expect(more).toBe(2);
+    expect(eventsShown(checkin())).toEqual({ shown: [], more: 0 });
   });
 });

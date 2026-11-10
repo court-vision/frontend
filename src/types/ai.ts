@@ -73,6 +73,10 @@ export type AiFeedback = "up" | "down";
  */
 export type AiCheckin = S["AiCheckinSummary"];
 export type AiCheckinKind = AiCheckin["kind"];
+/** The kinds the AI desk can run now: an `event` check-in starts only when news comes in (step 6). */
+export type AiCheckinRunKind = NonNullable<S["AiCheckinRunReq"]["kind"]>;
+/** What came in about a rostered player that a check-in took: a verdict change or a news item. */
+export type AiCheckinEvent = AiCheckin["events"][number];
 export type AiCheckinState = AiCheckin["state"];
 export type AiAutopilotTeam = S["AiAutopilotTeam"];
 export type AiCheckins = S["AiCheckinsData"];

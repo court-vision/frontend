@@ -1346,6 +1346,39 @@
   color: var(--text-3);
 }
 
+/* What came in that a check-in took: a verdict change, a news item, one line each */
+.checkinEvents {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 3px;
+  min-width: 0;
+}
+
+.checkinEvent {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkinEvent::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin: 0 6px 1px 0;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+}
+
+.checkinEvent[data-source="availability"]::before {
+  background: var(--warn, var(--accent));
+}
+
 /* The check-in's opening message is the server's brief: folded away, readable on demand */
 .brief {
   align-self: stretch;
