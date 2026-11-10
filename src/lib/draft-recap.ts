@@ -480,6 +480,8 @@ export function pickSourceGlyph(source: PickSource): { glyph: string; title: str
       return { glyph: "I", title: "Imported from the completed ESPN draft" };
     case "mock":
       return { glyph: "M", title: "Played by the mock autopicker" };
+    case "dime":
+      return { glyph: "D", title: "Made by Dime, holding your seat" };
     case "espn_sync":
       return { glyph: "E", title: "Synced live from the ESPN draft room" };
     default:

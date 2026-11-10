@@ -16,7 +16,7 @@
 import type { DraftPick, DraftSession } from "@/types/draft";
 
 /** Sources Court Vision recorded itself. Everything else came from ESPN. */
-const CV_OWNED_SOURCES: ReadonlySet<DraftPick["source"]> = new Set(["manual", "mock"]);
+const CV_OWNED_SOURCES: ReadonlySet<DraftPick["source"]> = new Set(["manual", "mock", "dime"]);
 
 /** Whether this room follows one ESPN draft, and so does not own what ESPN recorded. */
 export function followsEspnDraft(session: DraftSession): boolean {

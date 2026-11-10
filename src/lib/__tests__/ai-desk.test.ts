@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { aiLocation, aiSearch, showsConversation, type AiLocation } from "../ai-desk";
+import { aiLocation, aiSearch, holdsConversation, showsConversation, viewOfKind, type AiLocation } from "../ai-desk";
 
 describe("the AI desk's URL", () => {
   test("reads a conversation, Dime's views, and a check-in opened from its list", () => {
@@ -10,6 +10,8 @@ describe("the AI desk's URL", () => {
     expect(aiLocation("memory", "12")).toEqual({ view: "memory", conversation: null });
     expect(aiLocation("results", null)).toEqual({ view: "results", conversation: null });
     expect(aiLocation("moves", "7")).toEqual({ view: "moves", conversation: null });
+    expect(aiLocation("drafts", null)).toEqual({ view: "drafts", conversation: null });
+    expect(aiLocation("drafts", "40")).toEqual({ view: "drafts", conversation: 40 });
   });
 
   test("anything it doesn't know is a new conversation", () => {
@@ -26,6 +28,8 @@ describe("the AI desk's URL", () => {
       { view: "moves", conversation: null },
       { view: "memory", conversation: null },
       { view: "results", conversation: null },
+      { view: "drafts", conversation: null },
+      { view: "drafts", conversation: 40 },
     ];
     for (const loc of all) {
       const q = new URLSearchParams(aiSearch(loc));
@@ -34,6 +38,7 @@ describe("the AI desk's URL", () => {
     expect(aiSearch({ view: "chat", conversation: null })).toBe("");
     expect(aiSearch({ view: "checkins", conversation: 31 })).toBe("?v=checkins&c=31");
     expect(aiSearch({ view: "moves", conversation: null })).toBe("?v=moves");
+    expect(aiSearch({ view: "drafts", conversation: 40 })).toBe("?v=drafts&c=40");
   });
 
   test("shows a conversation for a chat or an opened check-in, a list otherwise", () => {
@@ -41,5 +46,16 @@ describe("the AI desk's URL", () => {
     expect(showsConversation({ view: "checkins", conversation: 31 })).toBe(true);
     expect(showsConversation({ view: "checkins", conversation: null })).toBe(false);
     expect(showsConversation({ view: "memory", conversation: null })).toBe(false);
+    expect(showsConversation({ view: "drafts", conversation: 40 })).toBe(true);
+    expect(showsConversation({ view: "drafts", conversation: null })).toBe(false);
+  });
+
+  test("a conversation opens under the section of its kind", () => {
+    expect(viewOfKind("checkin")).toBe("checkins");
+    expect(viewOfKind("draft")).toBe("drafts");
+    expect(viewOfKind("chat")).toBe("chat");
+    expect(viewOfKind(undefined)).toBe("chat");
+    expect(["chat", "checkins", "drafts"].every((v) => holdsConversation(v as AiLocation["view"]))).toBe(true);
+    expect(holdsConversation("memory")).toBe(false);
   });
 });
