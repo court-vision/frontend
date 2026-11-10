@@ -16,8 +16,10 @@ const EMPTY: TeamHolds = { enabled: false, holds: [] };
 /**
  * Dime's live holds on a team (the Dime autopilot plan, step 4): what it set,
  * applied from the AI desk, for auto-lineup's fill and the stream lanes to read.
- * None while its steering is off. They change only when a chip is applied or a
- * hold is cleared (or a day passes), so the list isn't polled.
+ * None while its steering is off. While it is on, Dime can set and clear holds
+ * from a check-in with the desk open, so the list is read again every minute (as
+ * the lanes and the scheduled pickups are); off, nothing changes it and it isn't
+ * polled.
  */
 export function useTeamHoldsQuery(teamId: number | null): { data: TeamHolds } {
   const { getToken, isSignedIn } = useAuth();
@@ -26,6 +28,7 @@ export function useTeamHoldsQuery(teamId: number | null): { data: TeamHolds } {
     queryFn: ({ signal }) => apiClient.getTeamHolds(getToken, teamId!, { signal }),
     enabled: !!teamId && isSignedIn === true,
     staleTime: 60_000,
+    refetchInterval: (q) => (q.state.data?.enabled ? 60_000 : false),
     refetchOnWindowFocus: true,
     meta: { toast: false },
   });

@@ -79,7 +79,9 @@ function Room({ room, onOpen }: { room: DimeDraftDeskRoom; onOpen: (conversation
 function Note({ note, onOpen }: { note: DimeDraftNote; onOpen: (conversationId: number) => void }) {
   const failed = failedLine(note);
   const line = notePreview(note.text);
-  const id = note.conversation_id;
+  // A note still being written isn't opened: its conversation isn't polled, so it would sit there
+  // half-written (the check-ins list waits the same way)
+  const id = note.state === "running" ? null : note.conversation_id;
   return (
     <div className={s.noteRow}>
       <div className={s.noteHead}>
