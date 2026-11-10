@@ -6,7 +6,7 @@
  */
 import type { AiActing, AiAutomationName, AiAutopilotChange, AiAutopilotTeam, AiFeatures, AiLevel } from "@/types/ai";
 import type { EspnAccountTeam, ProviderConnection } from "@/types/connections";
-import type { NotificationPreference, NotificationTeamPreference } from "@/types/notifications";
+import type { LateScratchLevel, NotificationPreference, NotificationTeamPreference } from "@/types/notifications";
 import type { LeagueDetail, LeagueSummary, TeamResponseData } from "@/types/team";
 import type { YahooLeague, YahooTeam } from "@/types/yahoo";
 import type { Capabilities } from "./account";
@@ -218,13 +218,14 @@ export const DEMO_PREFS: NotificationPreference = {
   alert_injured_active: true,
   alert_minutes_before: 90,
   auto_lineup_enabled: false,
+  late_scratch_level: "off",
   email: null,
 };
 
 export const DEMO_TEAM_PREFS: NotificationTeamPreference[] = [
-  { team_id: 1, has_override: false, lineup_alerts_enabled: null, alert_benched_starters: null, alert_active_non_playing: null, alert_injured_active: null, alert_minutes_before: null, auto_lineup_enabled: null, email: null },
-  { team_id: 2, has_override: true, lineup_alerts_enabled: true, alert_benched_starters: null, alert_active_non_playing: null, alert_injured_active: null, alert_minutes_before: 45, auto_lineup_enabled: true, email: null },
-  { team_id: 3, has_override: false, lineup_alerts_enabled: null, alert_benched_starters: null, alert_active_non_playing: null, alert_injured_active: null, alert_minutes_before: null, auto_lineup_enabled: null, email: null },
+  { team_id: 1, has_override: false, lineup_alerts_enabled: null, alert_benched_starters: null, alert_active_non_playing: null, alert_injured_active: null, alert_minutes_before: null, auto_lineup_enabled: null, late_scratch_level: null, email: null },
+  { team_id: 2, has_override: true, lineup_alerts_enabled: true, alert_benched_starters: null, alert_active_non_playing: null, alert_injured_active: null, alert_minutes_before: 45, auto_lineup_enabled: true, late_scratch_level: "act", email: null },
+  { team_id: 3, has_override: false, lineup_alerts_enabled: null, alert_benched_starters: null, alert_active_non_playing: null, alert_injured_active: null, alert_minutes_before: null, auto_lineup_enabled: null, late_scratch_level: null, email: null },
 ];
 
 export const DEMO_USER = { name: "Demo Manager", email: "demo@courtvision.dev", imageUrl: null as string | null };
@@ -297,6 +298,7 @@ export function demoDimeTeam(
       lineupBelowAi: prefs.lineup_alerts_enabled
         ? lineupLevel({ lineup_alerts_enabled: !!pick("lineup_alerts_enabled"), auto_lineup_enabled: !!pick("auto_lineup_enabled") })
         : "off",
+      lateScratchBelowAi: override?.late_scratch_level ?? prefs.late_scratch_level ?? "off",
       lineupEmail: prefs.lineup_alerts_enabled,
       actingAvailable: DEMO_ACTING.available,
     }),
@@ -305,8 +307,9 @@ export function demoDimeTeam(
 
 /**
  * A change to a demo team, as the server would make it (services/ai/levels.py): the new row,
- * and the lineup override to write when the change touches it. Throws the server's refusal for a
- * level the row doesn't offer.
+ * the lineup override to write when the change touches it, and late scratches' level below AI
+ * when the change sets one (at AI it writes none). Throws the server's refusal for a level the
+ * row doesn't offer.
  */
 export function demoDimeChange(
   d: DemoDime,
@@ -314,7 +317,7 @@ export function demoDimeChange(
   override: LineupOverride,
   change: AiAutopilotChange,
   now: number = Date.now()
-): { dime: DemoDime; lineup: LineupOverride | null } {
+): { dime: DemoDime; lineup: LineupOverride | null; lateScratch: LateScratchLevel | null } {
   const levels = Object.entries(change.levels ?? {}) as Array<[AiAutomationName, AiLevel]>;
   for (const [row, level] of levels) {
     const option = team.rows.find((r) => r.row === row)?.options.find((o) => o.level === level);
@@ -325,6 +328,7 @@ export function demoDimeChange(
   let restore = d.restore;
   let checkins = change.checkins;
   let lineup: LineupOverride | null = null;
+  let lateScratch: LateScratchLevel | null = null;
   const fill = lineupPrefs("ai");
   if (change.autopilot === true && !autopilot) {
     restore = { lineup: override, checkins_on: d.paused_at == null };
@@ -356,10 +360,11 @@ export function demoDimeChange(
         checkins = checkins ?? true;
       } else rows.delete(row);
       if (row === "lineup") lineup = lineupPrefs(level);
+      else if (row === "late_scratch" && level !== "ai") lateScratch = level;
     }
   }
   let pause = { paused_at: d.paused_at, paused_by: d.paused_by, active_since: d.active_since };
   if (checkins === true && d.paused_at != null) pause = { paused_at: null, paused_by: null, active_since: new Date(now).toISOString() };
   else if (checkins === false && d.paused_at == null) pause = { ...pause, paused_at: new Date(now).toISOString(), paused_by: "user" };
-  return { dime: { ...d, ...pause, ai_rows: AI_ROWS.filter((r) => rows.has(r)), autopilot, restore }, lineup };
+  return { dime: { ...d, ...pause, ai_rows: AI_ROWS.filter((r) => rows.has(r)), autopilot, restore }, lineup, lateScratch };
 }

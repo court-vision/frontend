@@ -1,3 +1,6 @@
+/** The Late scratches row below AI: off, notify (an email with the swap a ruling calls for) or act (Court Vision makes it). */
+export type LateScratchLevel = "off" | "notify" | "act";
+
 export interface NotificationPreference {
   lineup_alerts_enabled: boolean;
   /** Legacy alert-type flags: the pipeline no longer reads them, but the API still carries them. */
@@ -7,6 +10,8 @@ export interface NotificationPreference {
   alert_minutes_before: number;
   /** Let Court Vision apply the fill-only plan to ESPN before tip-off (runs in the alerts pass, so it needs alerts on). */
   auto_lineup_enabled: boolean;
+  /** Late scratches below AI (an API that predates it leaves it out: off). */
+  late_scratch_level?: LateScratchLevel;
   email: string | null;
 }
 
@@ -25,6 +30,7 @@ export interface NotificationTeamPreference {
   alert_injured_active: boolean | null;
   alert_minutes_before: number | null;
   auto_lineup_enabled: boolean | null;
+  late_scratch_level?: LateScratchLevel | null;
   email: string | null;
 }
 
@@ -39,6 +45,7 @@ export interface NotificationTeamPreferenceRequest {
   alert_injured_active?: boolean | null;
   alert_minutes_before?: number | null;
   auto_lineup_enabled?: boolean | null;
+  late_scratch_level?: LateScratchLevel | null;
   email?: string | null;
 }
 

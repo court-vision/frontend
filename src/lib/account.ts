@@ -75,7 +75,8 @@ export type PrefField = keyof NotificationPreference;
  * the whole set and writes only its own fields: a team's own notification
  * settings and its own automation settings come and go apart. One field is on
  * both: the tip-off email is Lineup's Notify, so AI and automation's Lineup
- * level (Off, Notify, Act) writes it with auto-lineup.
+ * level (Off, Notify, Act) writes it with auto-lineup. Late scratches' level is
+ * its own field.
  */
 export const NOTIFICATION_FIELDS = [
   "lineup_alerts_enabled",
@@ -86,7 +87,7 @@ export const NOTIFICATION_FIELDS = [
   "alert_injured_active",
 ] as const satisfies readonly PrefField[];
 
-export const AUTOMATION_FIELDS = ["lineup_alerts_enabled", "auto_lineup_enabled"] as const satisfies readonly PrefField[];
+export const AUTOMATION_FIELDS = ["lineup_alerts_enabled", "auto_lineup_enabled", "late_scratch_level"] as const satisfies readonly PrefField[];
 
 export type PrefFields = readonly PrefField[];
 
@@ -144,10 +145,13 @@ export function notificationSummary(prefs: NotificationPreference): string {
   return `on · ${alertMinutes(prefs)} min before${prefs.email ? ` · ${prefs.email}` : ""}`;
 }
 
-/** A team's automations in a line: Lineup's level, the only one with a choice below AI. */
+/** A team's automations in a line: the levels with a choice below AI, Lineup's and Late scratches'. */
 export function automationSummary(prefs: NotificationPreference): string {
-  if (setsLineup(prefs)) return `lineup: act, sets it ${alertMinutes(prefs)} min before`;
-  return prefs.lineup_alerts_enabled ? `lineup: notify, the email ${alertMinutes(prefs)} min before` : "lineup: off";
+  const lineup = setsLineup(prefs)
+    ? `lineup: act, sets it ${alertMinutes(prefs)} min before`
+    : prefs.lineup_alerts_enabled ? `lineup: notify, the email ${alertMinutes(prefs)} min before` : "lineup: off";
+  const late = prefs.late_scratch_level ?? "off";
+  return late === "off" ? lineup : `${lineup} · late scratches: ${late}`;
 }
 
 // ---------------------------------------------------------------------------

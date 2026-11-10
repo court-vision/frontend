@@ -1164,6 +1164,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/jobs/lineup/react": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * React To Verdict
+         * @description Answer one player's verdict change (out, doubtful or available, before his game)
+         *     on every team that may swap: bench him or start him when a move answers it, and
+         *     nothing else on the board.
+         *
+         *     Called by data-platform's availability pipeline once per change. Each team's
+         *     outcome is reported in `data.teams`, never raised.
+         */
+        post: operations["react_to_verdict_v1_internal_jobs_lineup_react_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/jobs/pickups/execute": {
         parameters: {
             query?: never;
@@ -8618,6 +8643,105 @@ export interface components {
             /** Value Source */
             value_source: string | null;
         };
+        /** LineupReactData */
+        LineupReactData: {
+            /** Player Id */
+            player_id: number;
+            /**
+             * Teams
+             * @default []
+             */
+            teams: components["schemas"]["LineupReactTeam"][];
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "out" | "doubtful" | "available";
+        };
+        /**
+         * LineupReactReq
+         * @description One verdict change from data-platform's availability pipeline, for a game that
+         *     has not tipped (the news plan's late-scratch pass). Posted once per change.
+         */
+        LineupReactReq: {
+            /** Changed At */
+            changed_at?: string | null;
+            /**
+             * Game Date
+             * Format: date
+             */
+            game_date: string;
+            /** Player Id */
+            player_id: number;
+            /** Previous Verdict */
+            previous_verdict?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Source */
+            source?: string | null;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "out" | "doubtful" | "available";
+        };
+        /** LineupReactResp */
+        LineupReactResp: {
+            data: components["schemas"]["LineupReactData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * LineupReactTeam
+         * @description What the change did to one team: the outcomes are evaluate's (`applied`,
+         *     `planned` at notify or when writes are off, `noop` when no move answers it,
+         *     `skipped` with why, `rejected` / `failed` when ESPN or the writer said no).
+         *     `level` is the team's Late scratches level (notify or act).
+         */
+        LineupReactTeam: {
+            /** Audit Id */
+            audit_id: number | null;
+            /** First Game Time Et */
+            first_game_time_et: string | null;
+            /**
+             * Level
+             * @default act
+             * @enum {string}
+             */
+            level: "notify" | "act";
+            /**
+             * Moves
+             * @default []
+             */
+            moves: components["schemas"]["LineupMoveResult"][];
+            /** Nba Date */
+            nba_date: string | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "planned" | "applied" | "noop" | "rejected" | "failed" | "skipped";
+            /** Player Name */
+            player_name: string | null;
+            /** Reason */
+            reason: string | null;
+            /** Team Id */
+            team_id: number;
+            /**
+             * Team Name
+             * @default
+             */
+            team_name: string;
+            /** User Id */
+            user_id: number;
+            /** Verified */
+            verified: boolean | null;
+        };
         /**
          * LineupResponse
          * @description Lineup data response model
@@ -9678,6 +9802,8 @@ export interface components {
             auto_lineup_enabled?: boolean;
             /** Email */
             email?: string | null;
+            /** Late Scratch Level */
+            late_scratch_level?: ("off" | "notify" | "act") | null;
             /**
              * Lineup Alerts Enabled
              * @default true
@@ -9716,6 +9842,12 @@ export interface components {
             auto_lineup_enabled: boolean;
             /** Email */
             email: string | null;
+            /**
+             * Late Scratch Level
+             * @default off
+             * @enum {string}
+             */
+            late_scratch_level: "off" | "notify" | "act";
             /**
              * Lineup Alerts Enabled
              * @default false
@@ -9768,6 +9900,8 @@ export interface components {
             auto_lineup_enabled?: boolean | null;
             /** Email */
             email?: string | null;
+            /** Late Scratch Level */
+            late_scratch_level?: ("off" | "notify" | "act") | null;
             /** Lineup Alerts Enabled */
             lineup_alerts_enabled?: boolean | null;
         };
@@ -9790,6 +9924,8 @@ export interface components {
             email: string | null;
             /** Has Override */
             has_override: boolean;
+            /** Late Scratch Level */
+            late_scratch_level: ("off" | "notify" | "act") | null;
             /** Lineup Alerts Enabled */
             lineup_alerts_enabled: boolean | null;
             /** Team Id */
@@ -15897,6 +16033,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LineupEvaluationResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    react_to_verdict_v1_internal_jobs_lineup_react_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LineupReactReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineupReactResp"];
                 };
             };
             /** @description Validation Error */

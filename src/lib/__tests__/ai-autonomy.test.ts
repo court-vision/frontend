@@ -68,6 +68,10 @@ describe("lineup below AI", () => {
     expect(belowAi("lineup", prefs)).toBe("notify");
     expect(belowAi("lanes", prefs)).toBe("act");
     expect(belowAi("daily_actions", prefs)).toBe("off");
+    // Late scratches read their own level; an API that predates it is off
+    expect(belowAi("late_scratch", prefs)).toBe("off");
+    expect(belowAi("late_scratch", { ...prefs, late_scratch_level: "act" })).toBe("act");
+    expect(accountOptions("late_scratch", false).map((o) => o.available)).toEqual([true, true, true]);
     expect(accountOptions("lineup").map((o) => o.available)).toEqual([true, true, true]);
     const daily = accountOptions("daily_actions");
     expect(daily.map((o) => o.level)).toEqual(["off", "notify", "act"]);
@@ -96,9 +100,11 @@ describe("a team's table", () => {
     const rows = tableOf(state({ autopilot: true }));
     expect(rows.map((r) => r.level)).toEqual(["ai", "ai", "ai", "ai", "ai"]);
     expect(rows[0].note).toBe("Autopilot sets these");
-    // Late scratches at AI are event check-ins (step 6); their notify and act aren't built
+    // Late scratches offer every level: notify and act are the late-scratch swap, AI Dime's event check-ins
     const late = rows.find((r) => r.row === "late_scratch")!;
-    expect(late.options.map((o) => o.available)).toEqual([true, false, false, true]);
+    expect(late.options.map((o) => o.available)).toEqual([true, true, true, true]);
+    expect(levels(state({ lateScratchBelowAi: "notify" })).late_scratch).toBe("notify");
+    expect(levels(state({ aiRows: ["late_scratch"], lateScratchBelowAi: "act" })).late_scratch).toBe("ai");
     expect(late.note).toBe("Autopilot sets these");
     expect(levels(state({ aiRows: ["late_scratch"] })).late_scratch).toBe("ai");
   });
@@ -170,6 +176,16 @@ describe("the demo's Dime", () => {
 
     const changed = demoDimeChange(on.dime, read(on.dime), lineupPrefs("ai"), { levels: { lanes: "act" } }, NOW);
     expect([changed.dime.autopilot, changed.dime.ai_rows]).toEqual([false, ["lineup", "daily_actions", "late_scratch"]]);
+  });
+
+  test("late scratches below AI write the team's level; at AI they write none", () => {
+    const [d] = demoDime(NOW);
+    const act = demoDimeChange(d, read(d), override, { levels: { late_scratch: "act" } }, NOW);
+    expect([act.lateScratch, act.lineup, act.dime.ai_rows]).toEqual(["act", null, ["daily_actions"]]);
+    const ai = demoDimeChange(d, read(d), override, { levels: { late_scratch: "ai" } }, NOW);
+    expect([ai.lateScratch, ai.dime.ai_rows]).toEqual([null, ["daily_actions", "late_scratch"]]);
+    const own = demoDimeTeam(d, DEMO_PREFS, { ...DEMO_TEAM_PREFS[0], has_override: true, late_scratch_level: "notify" }, NOW);
+    expect(own.rows.find((r) => r.row === "late_scratch")?.level).toBe("notify");
   });
 
   test("pausing check-ins leaves the switch on; a level the row can't do is refused", () => {

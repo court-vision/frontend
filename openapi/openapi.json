@@ -14364,6 +14364,298 @@
         "title": "LineupPlayer",
         "type": "object"
       },
+      "LineupReactData": {
+        "properties": {
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "teams": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineupReactTeam"
+            },
+            "title": "Teams",
+            "type": "array"
+          },
+          "verdict": {
+            "enum": [
+              "out",
+              "doubtful",
+              "available"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "verdict",
+          "teams"
+        ],
+        "title": "LineupReactData",
+        "type": "object"
+      },
+      "LineupReactReq": {
+        "description": "One verdict change from data-platform's availability pipeline, for a game that\nhas not tipped (the news plan's late-scratch pass). Posted once per change.",
+        "properties": {
+          "changed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changed At"
+          },
+          "game_date": {
+            "format": "date",
+            "title": "Game Date",
+            "type": "string"
+          },
+          "player_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "previous_verdict": {
+            "anyOf": [
+              {
+                "maxLength": 12,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Verdict"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "verdict": {
+            "enum": [
+              "out",
+              "doubtful",
+              "available"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "game_date",
+          "verdict"
+        ],
+        "title": "LineupReactReq",
+        "type": "object"
+      },
+      "LineupReactResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LineupReactData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "LineupReactResp",
+        "type": "object"
+      },
+      "LineupReactTeam": {
+        "description": "What the change did to one team: the outcomes are evaluate's (`applied`,\n`planned` at notify or when writes are off, `noop` when no move answers it,\n`skipped` with why, `rejected` / `failed` when ESPN or the writer said no).\n`level` is the team's Late scratches level (notify or act).",
+        "properties": {
+          "audit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Id"
+          },
+          "first_game_time_et": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Game Time Et"
+          },
+          "level": {
+            "default": "act",
+            "enum": [
+              "notify",
+              "act"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "moves": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineupMoveResult"
+            },
+            "title": "Moves",
+            "type": "array"
+          },
+          "nba_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Date"
+          },
+          "outcome": {
+            "enum": [
+              "planned",
+              "applied",
+              "noop",
+              "rejected",
+              "failed",
+              "skipped"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "player_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Name"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "team_name": {
+            "default": "",
+            "title": "Team Name",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified"
+          }
+        },
+        "required": [
+          "team_id",
+          "user_id",
+          "level",
+          "outcome",
+          "reason",
+          "player_name",
+          "moves",
+          "verified",
+          "nba_date",
+          "first_game_time_et",
+          "team_name",
+          "audit_id"
+        ],
+        "title": "LineupReactTeam",
+        "type": "object"
+      },
       "LineupResponse": {
         "description": "Lineup data response model",
         "properties": {
@@ -17684,6 +17976,22 @@
             ],
             "title": "Email"
           },
+          "late_scratch_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "notify",
+                  "act"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Late Scratch Level"
+          },
           "lineup_alerts_enabled": {
             "default": true,
             "title": "Lineup Alerts Enabled",
@@ -17734,6 +18042,16 @@
             ],
             "title": "Email"
           },
+          "late_scratch_level": {
+            "default": "off",
+            "enum": [
+              "off",
+              "notify",
+              "act"
+            ],
+            "title": "Late Scratch Level",
+            "type": "string"
+          },
           "lineup_alerts_enabled": {
             "default": false,
             "title": "Lineup Alerts Enabled",
@@ -17747,6 +18065,7 @@
           "alert_injured_active",
           "alert_minutes_before",
           "auto_lineup_enabled",
+          "late_scratch_level",
           "email"
         ],
         "title": "NotificationPreferenceResp",
@@ -17933,6 +18252,22 @@
             ],
             "title": "Email"
           },
+          "late_scratch_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "notify",
+                  "act"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Late Scratch Level"
+          },
           "lineup_alerts_enabled": {
             "anyOf": [
               {
@@ -18021,6 +18356,22 @@
             "title": "Has Override",
             "type": "boolean"
           },
+          "late_scratch_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "notify",
+                  "act"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Late Scratch Level"
+          },
           "lineup_alerts_enabled": {
             "anyOf": [
               {
@@ -18046,6 +18397,7 @@
           "alert_injured_active",
           "alert_minutes_before",
           "auto_lineup_enabled",
+          "late_scratch_level",
           "email"
         ],
         "title": "NotificationTeamPreferenceResp",
@@ -30909,6 +31261,53 @@
           }
         ],
         "summary": "Evaluate Lineup",
+        "tags": [
+          "internal jobs"
+        ]
+      }
+    },
+    "/v1/internal/jobs/lineup/react": {
+      "post": {
+        "description": "Answer one player's verdict change (out, doubtful or available, before his game)\non every team that may swap: bench him or start him when a move answers it, and\nnothing else on the board.\n\nCalled by data-platform's availability pipeline once per change. Each team's\noutcome is reported in `data.teams`, never raised.",
+        "operationId": "react_to_verdict_v1_internal_jobs_lineup_react_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LineupReactReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineupReactResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "React To Verdict",
         "tags": [
           "internal jobs"
         ]
