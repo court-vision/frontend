@@ -52,6 +52,7 @@ import type {
 import type { RankingsMeta, RankingsParams, RankingsPlayer, RankingsResult } from "@/types/rankings";
 import type { TeamHolds, TeamHoldsResponse } from "@/types/team-hold";
 import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actions";
+import type { TeamAvailabilityData, TeamAvailabilityResponse } from "@/types/availability";
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
@@ -347,6 +348,25 @@ class ApiClient {
   /** Today's recommended moves for an ESPN team, and the board they were computed against. */
   async getTeamDailyActions(getToken: GetTokenFn, teamId: number, opts?: RequestOptions): Promise<DailyActionsData> {
     const env = await fetchJson<DailyActionsResponse>(`${TEAMS_API}/${teamId}/actions`, { ...opts, getToken });
+    return unwrap(env);
+  }
+
+  /**
+   * Our availability verdicts on these players (NBA ids: the matchup's two
+   * rosters) from `start` to `end`, one per player per game date.
+   */
+  async getTeamAvailability(
+    getToken: GetTokenFn,
+    teamId: number,
+    ask: { nbaIds: readonly number[]; start: string; end: string },
+    opts?: RequestOptions
+  ): Promise<TeamAvailabilityData> {
+    const q = new URLSearchParams({ start: ask.start, end: ask.end });
+    ask.nbaIds.forEach((id) => q.append("nba_ids", String(id)));
+    const env = await fetchJson<TeamAvailabilityResponse>(`${TEAMS_API}/${teamId}/availability?${q.toString()}`, {
+      ...opts,
+      getToken,
+    });
     return unwrap(env);
   }
 

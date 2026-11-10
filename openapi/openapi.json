@@ -6165,6 +6165,7 @@
           "kind": {
             "enum": [
               "start",
+              "scratch",
               "ir_in",
               "ir_out",
               "add",
@@ -26114,6 +26115,85 @@
         "title": "TeamAddResp",
         "type": "object"
       },
+      "TeamAvailabilityData": {
+        "properties": {
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "verdicts": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Verdict"
+            },
+            "title": "Verdicts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "verdicts"
+        ],
+        "title": "TeamAvailabilityData",
+        "type": "object"
+      },
+      "TeamAvailabilityResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TeamAvailabilityData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "TeamAvailabilityResp",
+        "type": "object"
+      },
       "TeamDataResp": {
         "properties": {
           "data": {
@@ -27398,6 +27478,115 @@
           "line"
         ],
         "title": "ValuationPlayer",
+        "type": "object"
+      },
+      "Verdict": {
+        "properties": {
+          "changed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changed At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "expected_return": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Return"
+          },
+          "final": {
+            "default": false,
+            "title": "Final",
+            "type": "boolean"
+          },
+          "game_date": {
+            "title": "Game Date",
+            "type": "string"
+          },
+          "nba_player_id": {
+            "title": "Nba Player Id",
+            "type": "integer"
+          },
+          "previous_verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Verdict"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "verdict": {
+            "enum": [
+              "out",
+              "doubtful",
+              "questionable",
+              "probable",
+              "available"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nba_player_id",
+          "game_date",
+          "verdict",
+          "final",
+          "decided_by",
+          "reason",
+          "detail",
+          "expected_return",
+          "previous_verdict",
+          "changed_at"
+        ],
+        "title": "Verdict",
         "type": "object"
       },
       "VerdictChangeIn": {
@@ -32999,6 +33188,93 @@
           }
         ],
         "summary": "Get Daily Actions",
+        "tags": [
+          "lineup editor"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/availability": {
+      "get": {
+        "description": "Our verdict on each player for each game date in the range (out, doubtful, questionable,\nprobable, available), the source that decided it and when it changed. A player with no\nverdict that day has no row: ESPN's own status stands for him. Never reads ESPN.",
+        "operationId": "get_team_availability_v1_internal_teams__team_id__availability_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "First game date (ISO)",
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "description": "First game date (ISO)",
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last game date (ISO), at most 14 days after start",
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "description": "Last game date (ISO), at most 14 days after start",
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          },
+          {
+            "description": "NBA player ids, the matchup's two rosters (at most 60)",
+            "in": "query",
+            "name": "nba_ids",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "NBA player ids, the matchup's two rosters (at most 60)",
+              "items": {
+                "type": "integer"
+              },
+              "title": "Nba Ids",
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamAvailabilityResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Team Availability",
         "tags": [
           "lineup editor"
         ]

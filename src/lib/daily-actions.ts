@@ -14,6 +14,8 @@ import type {
 } from "@/types/daily-actions";
 
 export const KIND_ORDER: Record<DailyActionKind, number> = {
+  // A starter ruled out (our verdicts) and the bench player who takes his spot: first, it can't wait.
+  scratch: -1,
   ir_out: 0,
   ir_in: 1,
   start: 2,
@@ -23,6 +25,7 @@ export const KIND_ORDER: Record<DailyActionKind, number> = {
 
 /** The short word for a row's kind (the box's tag column). */
 export const KIND_WORD: Record<DailyActionKind, string> = {
+  scratch: "SCRATCH",
   start: "START",
   ir_in: "TO IR",
   ir_out: "OFF IR",
@@ -46,9 +49,9 @@ function movesOf(a: DailyAction) {
   return a.moves ?? [];
 }
 
-/** A row that stages lineup moves (start / IR) and is not blocked. */
+/** A row that stages lineup moves (start, scratch, IR) and is not blocked. */
 export function isLineupAction(a: DailyAction): boolean {
-  return (a.kind === "start" || a.kind === "ir_in" || a.kind === "ir_out") && movesOf(a).length > 0 && !a.blocked_reason;
+  return (a.kind === "start" || a.kind === "scratch" || a.kind === "ir_in" || a.kind === "ir_out") && movesOf(a).length > 0 && !a.blocked_reason;
 }
 
 /** A row that stages an add (and maybe a drop) into the desk's tray. */
@@ -91,7 +94,7 @@ export function unstagedLineupActions(actions: readonly DailyAction[], staged: S
  * start that benches an OUT player and the IR row that sends him to IR both
  * land (the IR row's move is the later one, so it wins).
  */
-const STAGE_ALL_ORDER: Record<DailyActionKind, number> = { start: 0, ir_in: 1, ir_out: 2, add: 3, add_drop: 3 };
+const STAGE_ALL_ORDER: Record<DailyActionKind, number> = { scratch: 0, start: 0, ir_in: 1, ir_out: 2, add: 3, add_drop: 3 };
 
 export function stageAllOrder(actions: readonly DailyAction[]): DailyAction[] {
   return [...actions].sort((a, b) => STAGE_ALL_ORDER[a.kind] - STAGE_ALL_ORDER[b.kind]);
@@ -223,6 +226,11 @@ export function moveLine(a: DailyAction): string {
   switch (a.kind) {
     case "start":
       return `Start ${who}`;
+    case "scratch": {
+      // "Hart for Brunson": who starts, for the player ruled out, when it fits the strip.
+      const swap = a.counterpart ? `${who} for ${surname(a.counterpart.name)}` : "";
+      return swap && [...swap].length <= LINE_MAX ? swap : `Start ${who}`;
+    }
     case "ir_in":
       return `${who} to IR`;
     case "ir_out":

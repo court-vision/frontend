@@ -60,6 +60,8 @@ const IR_OUT = action("ir_out", 14, [[14, IR, BE]]);
 const IR_BLOCKED = action("ir_out", 15, [], { blocked_reason: "roster_full" });
 const ADD_DROP = action("add_drop", 99, [], { transaction: { pickup, drop_player_id: 12 }, counterpart: who(12, "Keegan Murray") });
 const ADD = action("add", 98, [], { transaction: { pickup: { ...pickup, player_id: 98 }, drop_player_id: null } });
+// Our verdict ruled 8 out: 11 takes his UT spot.
+const SCRATCH = action("scratch", 11, [[11, BE, UT], [8, UT, BE]], { game_time_et: "22:00", counterpart: who(8, "Jalen Brunson") });
 
 function player(pid: number, slot: number, eligible: number[], extra: Partial<LineupPlayer> = {}): LineupPlayer {
   return {
@@ -103,6 +105,12 @@ describe("sortActions", () => {
     const sorted = sortActions([ADD, START, IR_IN, START_EARLY, IR_OUT, ADD_DROP]);
     expect(sorted.map((a) => a.id)).toEqual(["ir_out:14", "ir_in:8", "start:12", "start:11", "add:98", "add_drop:99"]);
     expect(sortActions(sorted)).toEqual(sorted);
+  });
+
+  test("a starter ruled out comes first, and stages as a lineup row", () => {
+    const sorted = sortActions([START_EARLY, IR_OUT, SCRATCH]);
+    expect(sorted.map((a) => a.id)).toEqual(["scratch:11", "ir_out:14", "start:12"]);
+    expect(isLineupAction(SCRATCH)).toBe(true);
   });
 });
 
@@ -223,6 +231,8 @@ describe("the strip's line", () => {
     expect(moveLine({ ...IR_OUT, player: who(14, "Joel Embiid") })).toBe("Embiid off IR");
     expect(moveLine({ ...ADD, player: who(98, "Day'Ron Sharpe") })).toBe("Add Sharpe");
     expect(moveLine({ ...ADD_DROP, player: who(99, "Kawhi Leonard") })).toBe("Leonard for Murray");
+    expect(moveLine({ ...SCRATCH, player: who(11, "Josh Hart") })).toBe("Hart for Brunson");
+    expect(moveLine({ ...SCRATCH, player: who(11, "Josh Hart"), counterpart: who(8, "Kentavious Caldwell-Pope") })).toBe("Start Hart");
     // Too long for the strip: the pickup alone.
     expect(moveLine({ ...ADD_DROP, player: who(99, "Nickeil Alexander-Walker"), counterpart: who(12, "Kentavious Caldwell-Pope") })).toBe("Add Alexander-Walker");
   });

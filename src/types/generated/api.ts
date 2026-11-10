@@ -1887,6 +1887,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/teams/{team_id}/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Team Availability
+         * @description Our verdict on each player for each game date in the range (out, doubtful, questionable,
+         *     probable, available), the source that decided it and when it changed. A player with no
+         *     verdict that day has no row: ESPN's own status stands for him. Never reads ESPN.
+         */
+        get: operations["get_team_availability_v1_internal_teams__team_id__availability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/teams/{team_id}/holds": {
         parameters: {
             query?: never;
@@ -5488,7 +5510,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "start" | "ir_in" | "ir_out" | "add" | "add_drop";
+            kind: "start" | "scratch" | "ir_in" | "ir_out" | "add" | "add_drop";
             /**
              * Moves
              * @default []
@@ -12613,6 +12635,29 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** TeamAvailabilityData */
+        TeamAvailabilityData: {
+            /** End */
+            end: string;
+            /** Start */
+            start: string;
+            /**
+             * Verdicts
+             * @default []
+             */
+            verdicts: components["schemas"]["Verdict"][];
+        };
+        /** TeamAvailabilityResp */
+        TeamAvailabilityResp: {
+            data: components["schemas"]["TeamAvailabilityData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /** TeamDataResp */
         TeamDataResp: {
             /** Data */
@@ -13100,6 +13145,35 @@ export interface components {
              * @description Current NBA team tricode, for his schedule around the fantasy playoffs
              */
             team?: string | null;
+        };
+        /** Verdict */
+        Verdict: {
+            /** Changed At */
+            changed_at: string | null;
+            /** Decided By */
+            decided_by: string | null;
+            /** Detail */
+            detail: string | null;
+            /** Expected Return */
+            expected_return: string | null;
+            /**
+             * Final
+             * @default false
+             */
+            final: boolean;
+            /** Game Date */
+            game_date: string;
+            /** Nba Player Id */
+            nba_player_id: number;
+            /** Previous Verdict */
+            previous_verdict: string | null;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "out" | "doubtful" | "questionable" | "probable" | "available";
         };
         /**
          * VerdictChangeIn
@@ -17180,6 +17254,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DailyActionsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_team_availability_v1_internal_teams__team_id__availability_get: {
+        parameters: {
+            query: {
+                /** @description First game date (ISO) */
+                start: string;
+                /** @description Last game date (ISO), at most 14 days after start */
+                end: string;
+                /** @description NBA player ids, the matchup's two rosters (at most 60) */
+                nba_ids?: number[];
+            };
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamAvailabilityResp"];
                 };
             };
             /** @description Validation Error */

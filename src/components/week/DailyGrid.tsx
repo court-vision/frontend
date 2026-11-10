@@ -32,6 +32,7 @@ import { LaneGroupRow, LaneRow, type LaneRowModel } from "./LaneRow";
 import type { LineupState } from "@/types/lineup-editor";
 import { Headshot } from "@/components/desk/Headshot";
 import { useViewerZone } from "@/hooks/useViewerZone";
+import { gridCellTitle } from "@/lib/availability";
 import { type Cursor, type DropTarget } from "./WeekGrid";
 import { monthDay, oppShort, pts, shortName, signed, tip, weekdayTime } from "./format";
 import dk from "@/components/desk/desk.module.css";
@@ -830,7 +831,7 @@ const SeatPair = memo(function SeatPair({
           data-incoming={seat?.incoming}
           onMouseEnter={() => onHot(day)}
           onClick={() => onCursor({ key: def.key, col: day })}
-          title={cellTitle(cell)}
+          title={gridCellTitle(cell, { tz })}
         >
           {heatLevel > 0 ? <span className={s.heat} style={{ opacity: heatLevel }} /> : null}
           <FocusStats cell={cell} hasPlayer={!!p} />
@@ -849,7 +850,7 @@ const SeatPair = memo(function SeatPair({
           data-drop={drop}
           onMouseEnter={() => onHot(day)}
           onClick={() => onCursor({ key: def.key, col: day })}
-          title={cellTitle(cell)}
+          title={gridCellTitle(cell, { tz })}
         >
           {heatLevel > 0 ? <span className={s.heat} style={{ opacity: heatLevel }} /> : null}
           <CompactValue cell={cell} />
@@ -858,17 +859,6 @@ const SeatPair = memo(function SeatPair({
     </>
   );
 });
-
-/** What a cell's styling means, for the tooltip (the grid itself carries no status words). */
-function cellTitle(cell: GridCell): string | undefined {
-  if (cell.tag === "BENCH") return "On the bench: this game doesn't count";
-  if (cell.tag === "SITS") return "No room in the best lineup that day";
-  if (cell.tag === "IR") return "On IR";
-  if (cell.tag === "DROP") return "Leaves the roster: this game doesn't count";
-  if (cell.state === "out") return "Out for this game";
-  if (cell.state === "dnp") return "Didn't play";
-  return undefined;
-}
 
 /** A narrow day: points if the game has started, else the opponent and tip. */
 function CompactValue({ cell }: { cell: GridCell }) {
