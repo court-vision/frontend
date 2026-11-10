@@ -79,6 +79,13 @@ const REASONS: Record<string, string> = {
   holder_plays_today: "the player to drop plays first",
   unverified: "ESPN hasn't confirmed it yet",
   team_not_found: "the team is no longer connected",
+  // A pickup Dime scheduled itself, stopped when it came due
+  dime_off: "Dime is switched off",
+  dime_acting_off: "Dime's acting is switched off",
+  dime_paused: "Dime is paused on this team",
+  dime_not_allowed: "the team isn't open to Dime",
+  dime_not_acting: "daily actions aren't at AI on this team any more",
+  dime_reserve: "it would have used the add Dime keeps for you",
 };
 
 const words = (reason: string) => REASONS[reason] ?? reason.replace(/_/g, " ");

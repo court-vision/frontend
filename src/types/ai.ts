@@ -63,12 +63,13 @@ export type AiFeedback = "up" | "down";
 
 /**
  * Dime's check-ins (`/v1/internal/ai/checkins`; the Dime autopilot plan, step 3):
- * turns Dime starts itself on a team it runs on, in shadow. Each is about one
+ * turns Dime starts itself on a team it runs on. Each is about one
  * fantasy day (morning, weekly on a matchup's first day, pre_lock before the
  * first tip, night the next morning) and has its own conversation (`kind`
- * checkin) whose first message is the server's brief. Its proposals are
- * `shadow` (never staged or sent) and its calls are decision blocks the user
- * marks agree or disagree.
+ * checkin) whose first message is the server's brief. A proposal on an
+ * automation that isn't at AI is a review (state `shadow`, never staged or
+ * sent); on one at AI Dime sends it itself or leaves it as a chip, and the call's
+ * decision block says which. The user marks each call agree or disagree.
  */
 export type AiCheckin = S["AiCheckinSummary"];
 export type AiCheckinKind = AiCheckin["kind"];
@@ -79,6 +80,38 @@ export type AiCheckinsResponse = S["AiCheckinsResp"];
 export type AiCheckinResponse = S["AiCheckinResp"];
 export type AiAutopilotResponse = S["AiAutopilotResp"];
 export type AiDecisionVerdictResponse = S["AiDecisionVerdictResp"];
+
+/**
+ * A team's automations (the Dime autopilot plan's "Automation levels", step 5;
+ * backend services/ai/autonomy.py). Each row has one level: off, notify (an
+ * email), act (Court Vision does it, no AI) or ai (Dime does it, and sends its
+ * own moves within the policy). Every level says whether it can be picked and
+ * why not; `note` says when the row does less than its level (paused, acting
+ * off on the server, the lineup email off). The autopilot switch puts every row
+ * that offers AI at AI.
+ */
+export type AiAutomationRow = S["AiAutomationRow"];
+export type AiAutomationName = AiAutomationRow["row"];
+export type AiLevel = AiAutomationRow["level"];
+export type AiLevelOption = S["AiLevelOption"];
+/** Whether the server lets Dime act at all, and the policy it acts within. */
+export type AiActing = S["AiActing"];
+export type AiActingPolicy = S["AiActingPolicy"];
+/** What became of a check-in's change on an automation at AI: sent, blocked by a rule, refused or failed. */
+export type AiDecisionAction = S["AiDecisionAction"];
+export type AiActionOutcome = AiDecisionAction["outcome"];
+/** A change to a team's autopilot: its check-ins, the autopilot switch, or some automations' levels (one at a time). */
+export type AiAutopilotChange = {
+  checkins?: boolean;
+  autopilot?: boolean;
+  levels?: Partial<Record<AiAutomationName, AiLevel>>;
+};
+/** One move Dime handled on its own (`/v1/internal/ai/actions`): sent, or held back as a chip with the rule. */
+export type AiAutopilotAction = S["AiAutopilotActionItem"];
+export type AiAutopilotActionsResponse = S["AiAutopilotActionsResp"];
+/** The account's AI features (`/v1/internal/ai/settings`): Dime's memory and its side of the Draft desk. */
+export type AiFeatures = S["AiFeatures"];
+export type AiSettingsResponse = S["AiSettingsResp"];
 
 /**
  * Dime's notes (`/v1/internal/ai/notes`): what the agent keeps between

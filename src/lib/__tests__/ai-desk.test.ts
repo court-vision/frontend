@@ -9,6 +9,7 @@ describe("the AI desk's URL", () => {
     expect(aiLocation("checkins", "31")).toEqual({ view: "checkins", conversation: 31 });
     expect(aiLocation("memory", "12")).toEqual({ view: "memory", conversation: null });
     expect(aiLocation("results", null)).toEqual({ view: "results", conversation: null });
+    expect(aiLocation("moves", "7")).toEqual({ view: "moves", conversation: null });
   });
 
   test("anything it doesn't know is a new conversation", () => {
@@ -22,6 +23,7 @@ describe("the AI desk's URL", () => {
       { view: "chat", conversation: 12 },
       { view: "checkins", conversation: null },
       { view: "checkins", conversation: 31 },
+      { view: "moves", conversation: null },
       { view: "memory", conversation: null },
       { view: "results", conversation: null },
     ];
@@ -31,6 +33,7 @@ describe("the AI desk's URL", () => {
     }
     expect(aiSearch({ view: "chat", conversation: null })).toBe("");
     expect(aiSearch({ view: "checkins", conversation: 31 })).toBe("?v=checkins&c=31");
+    expect(aiSearch({ view: "moves", conversation: null })).toBe("?v=moves");
   });
 
   test("shows a conversation for a chat or an opened check-in, a list otherwise", () => {

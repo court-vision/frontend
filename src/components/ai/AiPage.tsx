@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { BookOpen, ChevronLeft, ClipboardCheck, LayoutList, Loader2, Plus, Repeat, Trash2 } from "lucide-react";
+import { BookOpen, ChevronLeft, ClipboardCheck, LayoutList, Loader2, Plus, Repeat, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { DeskDialog } from "@/components/desk/DeskDialog";
@@ -26,6 +26,7 @@ import {
 } from "@/hooks/useAi";
 import { useChipTray } from "@/hooks/useAiProposals";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
+import { checkinBanner } from "@/lib/ai-autonomy";
 import { unrated } from "@/lib/ai-checkins";
 import { VIEW_LABEL, aiLocation, aiSearch, showsConversation, type AiLocation, type AiView } from "@/lib/ai-desk";
 import { draftKey } from "@/lib/ai-drafts";
@@ -36,6 +37,7 @@ import type { AiCheckins, AiConversationSummary, AiFeedback, AiVerdict } from "@
 import { CheckinsView } from "./Checkins";
 import { ChipTray, type ChipActions } from "./Chips";
 import { Composer, type ComposerHandle } from "./Composer";
+import { DimeMoves } from "./DimeMoves";
 import { DimeMemory } from "./DimeNotes";
 import { MoveResults } from "./MoveLedger";
 import { Thread } from "./Thread";
@@ -335,12 +337,8 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
         </button>
       </>
     );
-  } else if (isCheckin) {
-    banner = (
-      <span className={dk.sub}>
-        In shadow: nothing in this check-in was sent to ESPN. Mark each call agree or disagree; a follow-up here is an ordinary chat.
-      </span>
-    );
+  } else if (isCheckin && conversation) {
+    banner = <span className={dk.sub}>{checkinBanner(conversation)}</span>;
   } else if (current == null && selected.teams.length > 0) {
     banner = (
       <>
@@ -423,6 +421,16 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
         onRetry={() => void checkins.refetch()}
         teams={teams}
         onOpen={(id) => go({ view: "checkins", conversation: id })}
+      />
+    );
+  } else if (loc.view === "moves") {
+    main = (
+      <DimeMoves
+        teams={teams}
+        teamId={viewTeam}
+        teamSwitch={teamSwitch(viewTeam)}
+        acting={checkins.data?.acting ?? null}
+        onOpenCheckin={(id) => go({ view: "checkins", conversation: id })}
       />
     );
   } else if (loc.view === "memory") {
@@ -525,7 +533,7 @@ function Empty({ onPick, disabled }: { onPick: (q: string) => void; disabled: bo
 }
 
 /**
- * The side list: Dime's views on top (its check-ins, its memory, how moves went),
+ * The side list: Dime's views on top (its check-ins, its own moves, its memory, how moves went),
  * each rendered in the main area, then the conversations, which are the chats.
  * Both show always: memory and move results exist without any check-ins.
  */
@@ -573,6 +581,7 @@ function SideList({
             </span>
           ) : null
         )}
+        {nav("moves", <Send size={13} />)}
         {nav("memory", <BookOpen size={13} />)}
         {nav("results", <Repeat size={13} />)}
       </div>

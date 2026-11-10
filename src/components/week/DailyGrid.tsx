@@ -621,7 +621,7 @@ function HoldRow({
 }) {
   const covered = new Set(holdDays(hold, days.map((d) => d.date)));
   const first = Math.min(...covered);
-  const title = `${hold.effect} · ${daySpan(hold.starts_on, hold.ends_on)} · Dime: ${hold.reason}`;
+  const title = `${hold.effect} · ${daySpan(hold.starts_on, hold.ends_on)} · Dime${hold.applied_by === "dime" ? ", on its own" : ""}: ${hold.reason}`;
   const clear = onClear ? (
     <button
       type="button"
