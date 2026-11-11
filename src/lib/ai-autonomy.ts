@@ -75,8 +75,8 @@ export const EMAIL_OFF = "Your account's lineup email is off, so no team's lineu
 /** A row's note while the autopilot switch holds it at AI (the server's words). */
 export const AUTOPILOT_NOTE = "Autopilot sets these";
 
-/** Late scratches at AI while the server's event check-ins are off (the server's words). */
-export const EVENTS_OFF = "Nothing starts yet: event check-ins are switched off on the server";
+/** A row at AI while autopilot's kill switch is off on the server (the server's words). */
+export const SERVER_OFF = "Nothing runs: autopilot is switched off on the server";
 
 // ---------------------------------------------------------------------------
 // Lineup below AI: the tip-off email and auto-lineup
@@ -134,9 +134,8 @@ export interface TableState {
   /** Late scratches below AI (the team's own level, else the account's); left out, off. */
   lateScratchBelowAi?: AiLevel;
   lineupEmail: boolean;
+  /** The server's kill switches are on (the API's `acting.available`): off, no check-in runs and nothing at AI sends. */
   actingAvailable: boolean;
-  /** The server starts event check-ins (DIME_EVENTS_ENABLED); left out, it does. */
-  eventsAvailable?: boolean;
 }
 
 export function offersAi(row: AiAutomationName): boolean {
@@ -166,8 +165,7 @@ export function tableOf(t: TableState): AiAutomationRow[] {
     if (row !== "checkins" && level === "ai") {
       if (t.autopilot) note = AUTOPILOT_NOTE;
       if (t.paused) note = "Paused: Dime does nothing here until you resume check-ins";
-      else if (row === "late_scratch" && t.eventsAvailable === false) note = EVENTS_OFF;
-      else if (!t.actingAvailable) note = "Reviews only: Dime's acting is switched off on the server";
+      else if (!t.actingAvailable) note = SERVER_OFF;
       if (row === "lineup" && !t.lineupEmail) note = `${note ? `${note}. ` : ""}Auto-lineup doesn't run: your account's lineup email is off`;
     }
     if (row === "checkins" && t.paused && t.pausedBy === "system") note = t.pausedReason ? `Dime paused itself: ${t.pausedReason}` : "Dime paused itself";
@@ -203,10 +201,11 @@ export function checkinsLabels(team: Pick<AiAutopilotTeam, "rows" | "on">): { of
 /** What Dime does on the team, in a line, for the AI desk's check-ins. */
 export function teamLine(team: Pick<AiAutopilotTeam, "rows" | "on" | "autopilot">, acting: Pick<AiActing, "available"> | null): string {
   const rows = aiRowsLine(team);
-  if (!rows) return "Dime reviews and logs; nothing is at AI";
+  // The server's kill switch: off, no check-in runs, so there is nothing to review or send
+  if (!rows) return acting && !acting.available ? "No check-ins run: autopilot is off on the server" : "Dime reviews and logs; nothing is at AI";
   const who = team.autopilot ? "Autopilot: " : "At AI: ";
   if (!team.on) return `${who}${rows}, paused`;
-  if (!acting?.available) return `${who}${rows}, reviews only (acting is off on the server)`;
+  if (!acting?.available) return `${who}${rows}, not running (autopilot is off on the server)`;
   return `${who}${rows}`;
 }
 
@@ -286,7 +285,6 @@ export const RULE_LABEL: Record<string, string> = {
   paused: "Paused",
   not_allowed: "Not allowed",
   writes_off: "Roster writes off",
-  steering_off: "Steering off",
   expired: "Too late",
   cap_day: "Day's adds used",
   cap_matchup: "Matchup's adds used",

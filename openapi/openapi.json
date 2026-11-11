@@ -274,17 +274,12 @@
         "description": "Whether Dime can act on its own at all, and the policy it acts within.",
         "properties": {
           "available": {
-            "description": "DIME_ACTING_ENABLED: off, an automation at AI only reviews",
+            "description": "AI_ENABLED and AUTOPILOT_ENABLED, the server's kill switches: off, nothing at AI runs or sends",
             "title": "Available",
             "type": "boolean"
           },
           "policy": {
             "$ref": "#/components/schemas/AiActingPolicy"
-          },
-          "steering": {
-            "description": "DIME_STEERING_ENABLED: Dime's steering chips exist at all",
-            "title": "Steering",
-            "type": "boolean"
           },
           "writes": {
             "description": "ROSTER_WRITES_ENABLED: writes to ESPN are on",
@@ -294,7 +289,6 @@
         },
         "required": [
           "available",
-          "steering",
           "writes",
           "policy"
         ],
@@ -7168,7 +7162,7 @@
       "DimeDraftDesk": {
         "properties": {
           "enabled": {
-            "description": "DIME_DRAFT_ENABLED (and AI_ENABLED) on the server",
+            "description": "AI_ENABLED on the server",
             "title": "Enabled",
             "type": "boolean"
           },
@@ -7586,7 +7580,7 @@
             "title": "Can Seat"
           },
           "enabled": {
-            "description": "DIME_DRAFT_ENABLED (and AI_ENABLED) on the server",
+            "description": "AI_ENABLED on the server",
             "title": "Enabled",
             "type": "boolean"
           },
@@ -26446,7 +26440,7 @@
       "TeamHoldsData": {
         "properties": {
           "enabled": {
-            "description": "Dime's steering is on: off, no hold steers anything and none is listed",
+            "description": "Dime can set holds for this account (it is on the AI desk); a hold already set is listed either way",
             "title": "Enabled",
             "type": "boolean"
           },
@@ -30769,7 +30763,7 @@
             "description": "Validation Error"
           },
           "503": {
-            "description": "Turned off (AI_DISABLED, AI_DRAFT_DISABLED)"
+            "description": "Turned off (AI_DISABLED)"
           }
         },
         "security": [
@@ -30842,7 +30836,7 @@
             "description": "The AI desk's monthly budget is used up"
           },
           "503": {
-            "description": "Turned off (AI_DISABLED, AI_DRAFT_DISABLED)"
+            "description": "Turned off (AI_DISABLED)"
           }
         },
         "security": [
@@ -30912,7 +30906,7 @@
             "description": "Validation Error"
           },
           "503": {
-            "description": "Turned off (AI_DISABLED, AI_DRAFT_DISABLED)"
+            "description": "Turned off (AI_DISABLED)"
           }
         },
         "security": [
@@ -31289,7 +31283,7 @@
     },
     "/v1/internal/jobs/checkins/events": {
       "post": {
-        "description": "What came in about players: verdicts that changed for games not yet tipped, news items just\nstored. Each becomes an event on every team Dime runs that rosters the player, and a team with a\nnew one gets a check-in about it (or the scheduled one about to run takes it).\n\nCalled by data-platform's availability pipeline (its late-scratch events, every 2-minute tick that\nhas one) and its news feed (every 5 minutes). Keys only: the verdicts and items are read here. Off\nunless DIME_EVENTS_ENABLED; the check-ins run on here after the response.",
+        "description": "What came in about players: verdicts that changed for games not yet tipped, news items just\nstored. Each becomes an event on every team Dime runs that rosters the player, and a team with a\nnew one gets a check-in about it (or the scheduled one about to run takes it).\n\nCalled by data-platform's availability pipeline (its late-scratch events, every 2-minute tick that\nhas one) and its news feed (every 5 minutes). Keys only: the verdicts and items are read here. Only\nteams on AUTOPILOT_TEAM_IDS with Late scratches at AI hear them; the check-ins run on here after\nthe response.",
         "operationId": "checkin_events_v1_internal_jobs_checkins_events_post",
         "requestBody": {
           "content": {
@@ -33328,7 +33322,7 @@
         ]
       },
       "post": {
-        "description": "Apply a `steer` chip from the AI desk: its holds are set (each with the chip's reason)\nand the holds it clears are cleared, in one transaction, and the chip is marked sent.\nReturns the team's live holds then. 404 AI_PROPOSAL_NOT_FOUND (not the caller's, or not\nthis team's); 409 AI_PROPOSAL_NOT_PENDING (already applied, dismissed, expired, or a\ncheck-in's shadow); 422 AI_PROPOSAL_MISMATCH (not a steer chip); 409 AI_STEERING_OFF.",
+        "description": "Apply a `steer` chip from the AI desk: its holds are set (each with the chip's reason)\nand the holds it clears are cleared, in one transaction, and the chip is marked sent.\nReturns the team's live holds then. 404 AI_PROPOSAL_NOT_FOUND (not the caller's, or not\nthis team's); 409 AI_PROPOSAL_NOT_PENDING (already applied, dismissed, expired, or a\ncheck-in's shadow); 422 AI_PROPOSAL_MISMATCH (not a steer chip).",
         "operationId": "apply_holds_v1_internal_teams__team_id__holds_post",
         "parameters": [
           {
@@ -34170,7 +34164,7 @@
     },
     "/v1/internal/teams/{team_id}/pickups/{pickup_id}": {
       "delete": {
-        "description": "Cancel a pending pickup. 404 when it is not this team's; 409 SCHEDULED_PICKUP_NOT_PENDING\nwhen it already ran (or was cancelled); 409 SCHEDULED_PICKUP_IN_PROGRESS while an attempt is\nmaking it \u2014 its outcome follows in a few minutes, and a deferred pickup can be cancelled again.\n\n`proposal_id`: Dime's cancel_pickup chip for this pickup (the Dime autopilot plan, step 4),\nchecked first (409 AI_PROPOSAL_NOT_PENDING, 422 AI_PROPOSAL_MISMATCH, 409 AI_STEERING_OFF) and\nmarked sent once the pickup is cancelled.",
+        "description": "Cancel a pending pickup. 404 when it is not this team's; 409 SCHEDULED_PICKUP_NOT_PENDING\nwhen it already ran (or was cancelled); 409 SCHEDULED_PICKUP_IN_PROGRESS while an attempt is\nmaking it \u2014 its outcome follows in a few minutes, and a deferred pickup can be cancelled again.\n\n`proposal_id`: Dime's cancel_pickup chip for this pickup (the Dime autopilot plan, step 4),\nchecked first (409 AI_PROPOSAL_NOT_PENDING, 422 AI_PROPOSAL_MISMATCH) and marked sent once the\npickup is cancelled.",
         "operationId": "cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete",
         "parameters": [
           {

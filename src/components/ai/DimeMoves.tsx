@@ -70,7 +70,7 @@ export function DimeMoves({
     body = (
       <div className={s.rowEmpty}>
         {acting && !acting.available
-          ? "Nothing yet: Dime's acting is switched off on the server for now, so its check-ins are reviews."
+          ? "Nothing yet: autopilot is switched off on the server for now, so nothing at AI runs."
           : "Nothing yet. On automations at AI, what Dime sends itself and what it holds back show up here."}{" "}
         <Link href={`${ACCOUNT_DESK}?v=automation`} className={dk.link}>
           Automations and autopilot

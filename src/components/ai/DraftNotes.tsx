@@ -44,7 +44,7 @@ export function DraftNotes({ onOpen }: { onOpen: (conversationId: number) => voi
         <div className={s.rowEmpty}>{aiMessage(query.error, "Couldn't read the draft notes")}</div>
       ) : rooms.length === 0 ? (
         <div className={s.rowEmpty}>
-          {data && !data.enabled ? "Dime isn't in draft rooms yet: it is switched off on the server." : "Nothing yet. Ask for a plan from the Dime section of any draft room."}
+          {data && !data.enabled ? "Dime is switched off on the server for now." : "Nothing yet. Ask for a plan from the Dime section of any draft room."}
         </div>
       ) : (
         <div className={s.noteList}>

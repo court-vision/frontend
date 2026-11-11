@@ -18,7 +18,7 @@
  * The pure pieces the chip, the hook and the Week desk's hold rows share.
  */
 import type { AiHoldChange, AiProposalChip, AiProposalKind } from "@/types/ai";
-import type { TeamHold, TeamHoldKind } from "@/types/team-hold";
+import type { TeamHold, TeamHoldKind, TeamHolds } from "@/types/team-hold";
 
 export const STEERING_KINDS: ReadonlySet<AiProposalKind> = new Set<AiProposalKind>(["steer", "lane", "cancel_pickup"]);
 
@@ -93,4 +93,13 @@ export function holdsOn(holds: readonly TeamHold[], date: string): TeamHold[] {
 /** Which of `dates` (ISO, a week's days) a hold covers, by index. */
 export function holdDays(hold: Pick<TeamHold, "starts_on" | "ends_on">, dates: readonly string[]): number[] {
   return dates.flatMap((d, i) => (hold.starts_on <= d && d <= hold.ends_on ? [i] : []));
+}
+
+/**
+ * The team's holds list can change without this tab, so the Week desk keeps reading it: Dime can
+ * add to it (`enabled`: the account is on the AI desk), or it has a hold on it, which can be
+ * cleared from another tab or reach its last day. An empty list nobody can add to is read once.
+ */
+export function holdsCanChange(data: Pick<TeamHolds, "enabled" | "holds"> | undefined): boolean {
+  return !!data && (data.enabled || data.holds.length > 0);
 }

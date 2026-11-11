@@ -517,7 +517,7 @@ class ApiClient {
     return { lane: unwrap(env), message: env.message };
   }
 
-  /** Dime's live holds on the team (none while its steering is off), by first day. */
+  /** Dime's live holds on the team, by first day, and whether Dime can set more for this account. */
   async getTeamHolds(getToken: GetTokenFn, teamId: number, opts?: RequestOptions): Promise<TeamHolds> {
     const env = await fetchJson<TeamHoldsResponse>(`${TEAMS_API}/${teamId}/holds`, { ...opts, getToken });
     return unwrap(env, { enabled: false, holds: [] });
@@ -525,8 +525,8 @@ class ApiClient {
 
   /**
    * Apply Dime's steer chip: its holds are set and its clears done, and the chip is
-   * marked sent. 409 AI_PROPOSAL_NOT_PENDING once applied (or dismissed, expired),
-   * 409 AI_STEERING_OFF while steering is switched off. Returns the holds then.
+   * marked sent. 409 AI_PROPOSAL_NOT_PENDING once applied (or dismissed, expired).
+   * Returns the holds then.
    */
   async applyHolds(getToken: GetTokenFn, teamId: number, proposalId: number): Promise<TeamHolds> {
     const env = await fetchJson<TeamHoldsResponse>(`${TEAMS_API}/${teamId}/holds`, {

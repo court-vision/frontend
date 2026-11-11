@@ -1080,8 +1080,9 @@ export interface paths {
          *     new one gets a check-in about it (or the scheduled one about to run takes it).
          *
          *     Called by data-platform's availability pipeline (its late-scratch events, every 2-minute tick that
-         *     has one) and its news feed (every 5 minutes). Keys only: the verdicts and items are read here. Off
-         *     unless DIME_EVENTS_ENABLED; the check-ins run on here after the response.
+         *     has one) and its news feed (every 5 minutes). Keys only: the verdicts and items are read here. Only
+         *     teams on AUTOPILOT_TEAM_IDS with Late scratches at AI hear them; the check-ins run on here after
+         *     the response.
          */
         post: operations["checkin_events_v1_internal_jobs_checkins_events_post"];
         delete?: never;
@@ -1929,7 +1930,7 @@ export interface paths {
          *     and the holds it clears are cleared, in one transaction, and the chip is marked sent.
          *     Returns the team's live holds then. 404 AI_PROPOSAL_NOT_FOUND (not the caller's, or not
          *     this team's); 409 AI_PROPOSAL_NOT_PENDING (already applied, dismissed, expired, or a
-         *     check-in's shadow); 422 AI_PROPOSAL_MISMATCH (not a steer chip); 409 AI_STEERING_OFF.
+         *     check-in's shadow); 422 AI_PROPOSAL_MISMATCH (not a steer chip).
          */
         post: operations["apply_holds_v1_internal_teams__team_id__holds_post"];
         delete?: never;
@@ -2196,8 +2197,8 @@ export interface paths {
          *     making it — its outcome follows in a few minutes, and a deferred pickup can be cancelled again.
          *
          *     `proposal_id`: Dime's cancel_pickup chip for this pickup (the Dime autopilot plan, step 4),
-         *     checked first (409 AI_PROPOSAL_NOT_PENDING, 422 AI_PROPOSAL_MISMATCH, 409 AI_STEERING_OFF) and
-         *     marked sent once the pickup is cancelled.
+         *     checked first (409 AI_PROPOSAL_NOT_PENDING, 422 AI_PROPOSAL_MISMATCH) and marked sent once the
+         *     pickup is cancelled.
          */
         delete: operations["cancel_pickup_v1_internal_teams__team_id__pickups__pickup_id__delete"];
         options?: never;
@@ -3154,15 +3155,10 @@ export interface components {
         AiActing: {
             /**
              * Available
-             * @description DIME_ACTING_ENABLED: off, an automation at AI only reviews
+             * @description AI_ENABLED and AUTOPILOT_ENABLED, the server's kill switches: off, nothing at AI runs or sends
              */
             available: boolean;
             policy: components["schemas"]["AiActingPolicy"];
-            /**
-             * Steering
-             * @description DIME_STEERING_ENABLED: Dime's steering chips exist at all
-             */
-            steering: boolean;
             /**
              * Writes
              * @description ROSTER_WRITES_ENABLED: writes to ESPN are on
@@ -5789,7 +5785,7 @@ export interface components {
         DimeDraftDesk: {
             /**
              * Enabled
-             * @description DIME_DRAFT_ENABLED (and AI_ENABLED) on the server
+             * @description AI_ENABLED on the server
              */
             enabled: boolean;
             /**
@@ -5966,7 +5962,7 @@ export interface components {
             can_seat: boolean | null;
             /**
              * Enabled
-             * @description DIME_DRAFT_ENABLED (and AI_ENABLED) on the server
+             * @description AI_ENABLED on the server
              */
             enabled: boolean;
             /**
@@ -12752,7 +12748,7 @@ export interface components {
         TeamHoldsData: {
             /**
              * Enabled
-             * @description Dime's steering is on: off, no hold steers anything and none is listed
+             * @description Dime can set holds for this account (it is on the AI desk); a hold already set is listed either way
              */
             enabled: boolean;
             /**
@@ -15552,7 +15548,7 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Turned off (AI_DISABLED, AI_DRAFT_DISABLED) */
+            /** @description Turned off (AI_DISABLED) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -15622,7 +15618,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Turned off (AI_DISABLED, AI_DRAFT_DISABLED) */
+            /** @description Turned off (AI_DISABLED) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -15685,7 +15681,7 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Turned off (AI_DISABLED, AI_DRAFT_DISABLED) */
+            /** @description Turned off (AI_DISABLED) */
             503: {
                 headers: {
                     [name: string]: unknown;

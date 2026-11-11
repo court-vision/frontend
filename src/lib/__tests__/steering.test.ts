@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyLabel, daySpan, doneLabel, holdDays, holdLine, holdTag, holdsOn, isSteering, shortDay, steerHow } from "../steering";
+import { applyLabel, daySpan, doneLabel, holdDays, holdLine, holdTag, holdsCanChange, holdsOn, isSteering, shortDay, steerHow } from "../steering";
 import type { AiHoldChange, AiLaneAction, AiProposalChip, AiSteerAction } from "@/types/ai";
 import type { TeamHold } from "@/types/team-hold";
 
@@ -104,5 +104,14 @@ describe("holds in the Week desk", () => {
     expect(holdsOn(holds, "2026-11-06").map((h) => h.hold_id)).toEqual([5]);
     expect(holdsOn(holds, "2026-11-07").map((h) => h.hold_id)).toEqual([5, 6]);
     expect(holdsOn(holds, "2026-11-08")).toEqual([]);
+  });
+
+  test("the list is read again while Dime can add to it or a hold is on it", () => {
+    expect(holdsCanChange(undefined)).toBe(false);
+    // An account off the AI desk with no holds: nothing can change it, so it isn't polled
+    expect(holdsCanChange({ enabled: false, holds: [] })).toBe(false);
+    expect(holdsCanChange({ enabled: true, holds: [] })).toBe(true);
+    // A hold left on a team whose account left the AI desk still steers, and can be cleared elsewhere
+    expect(holdsCanChange({ enabled: false, holds: [teamHold()] })).toBe(true);
   });
 });

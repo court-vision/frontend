@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { DEMO_PREFS, DEMO_TEAM_PREFS, demoDime, demoDimeChange, demoDimeTeam } from "../account-demo";
 import {
   EMAIL_OFF,
-  EVENTS_OFF,
+  SERVER_OFF,
   accountOptions,
   actionLine,
   aiRowsLine,
@@ -113,13 +113,15 @@ describe("a team's table", () => {
     const paused = tableOf(state({ aiRows: ["lineup"], paused: true, pausedBy: "system", pausedReason: "2 moves were refused today" }));
     expect(paused[0].note).toBe("Paused: Dime does nothing here until you resume check-ins");
     expect(paused[4].note).toBe("Dime paused itself: 2 moves were refused today");
-    expect(tableOf(state({ aiRows: ["lineup"], actingAvailable: false }))[0].note).toBe(
-      "Reviews only: Dime's acting is switched off on the server"
-    );
-    // Late scratches at AI do nothing while the server's event check-ins are off
-    const eventsOff = tableOf(state({ aiRows: ["lineup", "late_scratch"], eventsAvailable: false }));
-    expect(eventsOff[3].note).toBe(EVENTS_OFF);
-    expect(eventsOff[0].note).toBeNull();
+    // A kill switch off on the server: every row at AI says nothing runs, late scratches like the rest
+    const serverOff = tableOf(state({ aiRows: ["lineup", "late_scratch"], actingAvailable: false }));
+    expect(serverOff[0].note).toBe(SERVER_OFF);
+    expect(serverOff[3].note).toBe(SERVER_OFF);
+    expect(serverOff[1].note).toBeNull();
+    // Running, a row at AI by the user's own pick needs no note
+    const running = tableOf(state({ aiRows: ["lineup", "late_scratch"] }));
+    expect(running[0].note).toBeNull();
+    expect(running[3].note).toBeNull();
     const noEmail = tableOf(state({ aiRows: ["lineup"], lineupEmail: false }))[0];
     expect(noEmail.note).toBe("Auto-lineup doesn't run: your account's lineup email is off");
     expect(noEmail.options.map((o) => o.available)).toEqual([true, false, false, false]);
@@ -141,8 +143,11 @@ describe("a team's table", () => {
     );
     expect(teamLine(team(state({ aiRows: ["daily_actions"], paused: true })), on)).toBe("At AI: daily actions, paused");
     expect(teamLine(team(state({ aiRows: ["daily_actions"] })), { available: false })).toBe(
-      "At AI: daily actions, reviews only (acting is off on the server)"
+      "At AI: daily actions, not running (autopilot is off on the server)"
     );
+    // With nothing at AI and the server off, no check-in runs to review anything
+    expect(teamLine(team(state()), { available: false })).toBe("No check-ins run: autopilot is off on the server");
+    expect(teamLine(team(state()), null)).toBe("Dime reviews and logs; nothing is at AI");
   });
 
   test("a pause Dime made itself says why", () => {
