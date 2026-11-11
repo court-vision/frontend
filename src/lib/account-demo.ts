@@ -232,10 +232,9 @@ export const DEMO_USER = { name: "Demo Manager", email: "demo@courtvision.dev", 
 
 // ---- Dime: one team it runs on, every change kept in memory
 
-/** The server's switches and policy, as a server with acting on would send them. */
+/** The server's switches and policy, as a running server sends them. */
 export const DEMO_ACTING: AiActing = {
   available: true,
-  steering: true,
   writes: true,
   policy: { adds_per_day: 2, adds_per_matchup: 5, adds_reserve: 1, protected_top: 6, churn_hours: 48, pause_refused: 2, pause_same_block: 2 },
 };

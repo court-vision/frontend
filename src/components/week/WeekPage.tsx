@@ -169,7 +169,7 @@ export interface TerminalData {
   stopLane: (laneId: number) => Promise<"ok" | "refused">;
   /** A lane change (pause, resume, notify, stop) while that request is out. */
   laneBusy: boolean;
-  /** Dime's holds (ESPN teams, while its steering is on): one player over some days each, with its reason. */
+  /** Dime's holds (ESPN teams): one player over some days each, with its reason. */
   holds: readonly TeamHold[];
   clearHold: (holdId: number) => void;
   /** The hold being cleared, while that request is out. */

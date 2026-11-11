@@ -17,7 +17,7 @@ import { LevelRail } from "./LevelRail";
 import dk from "@/components/desk/desk.module.css";
 import s from "./account.module.css";
 
-const ACT_OFF = "Dime's acting is switched off on the server for now: rows at AI are reviews, and Dime's changes become chips you send.";
+const ACT_OFF = "Dime is switched off on the server for now: nothing at AI runs or sends until it is back.";
 
 /**
  * The Dime block of AI and automation (the Dime autopilot plan's automation levels):

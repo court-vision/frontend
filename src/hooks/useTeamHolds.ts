@@ -16,10 +16,10 @@ const EMPTY: TeamHolds = { enabled: false, holds: [] };
 /**
  * Dime's live holds on a team (the Dime autopilot plan, step 4): what it set,
  * applied from the AI desk, for auto-lineup's fill and the stream lanes to read.
- * None while its steering is off. While it is on, Dime can set and clear holds
- * from a check-in with the desk open, so the list is read again every minute (as
- * the lanes and the scheduled pickups are); off, nothing changes it and it isn't
- * polled.
+ * `enabled` is whether Dime can set holds for this account (it is on the AI
+ * desk). Then Dime can set and clear holds from a check-in with the desk open, so
+ * the list is read again every minute (as the lanes and the scheduled pickups
+ * are); for any other account nothing adds one, and it isn't polled.
  */
 export function useTeamHoldsQuery(teamId: number | null): { data: TeamHolds } {
   const { getToken, isSignedIn } = useAuth();
