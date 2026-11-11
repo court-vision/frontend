@@ -4,6 +4,7 @@ import { Bell } from "lucide-react";
 import { automationSummary, AUTOMATION_FIELDS, type AccountFocus } from "@/lib/account";
 import { ACCOUNT_LEVELS, accountOptions, belowAi, lineupPrefs, ROW_LABEL } from "@/lib/ai-autonomy";
 import type { AiAutomationName } from "@/types/ai";
+import type { LateScratchLevel } from "@/types/notifications";
 import type { AccountModel } from "./model";
 import { DimeAutopilot } from "./DimeAutopilot";
 import { LevelRail } from "./LevelRail";
@@ -20,7 +21,7 @@ const ACCOUNT_HELP: Record<string, string> = {
   daily_actions: "The Week desk's IR moves and the day's pickup and drop. Its email and Court Vision making the moves aren't built yet.",
   lanes: "Your stream lanes run as you set them in the Week desk.",
   late_scratch:
-    "News and late scratches before a player's game. Its email and the late-scratch swap aren't built yet; at AI, on a team Dime runs, an event check-in answers them before the game locks.",
+    "When a starter is ruled out before his game, or a bench player is cleared to play. Notify emails the one swap it calls for: the starter benched for a bench player with a game, or the cleared player started. Act makes that swap on ESPN and emails it. Nothing else in the lineup moves, and a swap isn't undone if the ruling changes again. At AI, on a team Dime runs, an event check-in answers it instead.",
 };
 
 /** Off, Notify or Act for each automation: the account's, or a team's own over it. */
@@ -41,7 +42,9 @@ function AutomationFields({ prefs, onChange, disabled, onOpen, account }: Fields
             value={belowAi(row, prefs)}
             disabled={disabled}
             onPick={(level) => {
-              if (row === "lineup" && ACCOUNT_LEVELS.includes(level)) onChange({ ...prefs, ...lineupPrefs(level) });
+              if (!ACCOUNT_LEVELS.includes(level)) return;
+              if (row === "lineup") onChange({ ...prefs, ...lineupPrefs(level) });
+              else if (row === "late_scratch") onChange({ ...prefs, late_scratch_level: level as LateScratchLevel });
             }}
           />
         </div>

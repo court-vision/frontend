@@ -14,6 +14,8 @@ import type {
 } from "@/types/daily-actions";
 
 export const KIND_ORDER: Record<DailyActionKind, number> = {
+  // A starter ruled out (our verdicts) and the bench player who takes his spot: first, it can't wait.
+  scratch: -1,
   ir_out: 0,
   ir_in: 1,
   start: 2,
@@ -23,6 +25,7 @@ export const KIND_ORDER: Record<DailyActionKind, number> = {
 
 /** The short word for a row's kind (the box's tag column). */
 export const KIND_WORD: Record<DailyActionKind, string> = {
+  scratch: "SCRATCH",
   start: "START",
   ir_in: "TO IR",
   ir_out: "OFF IR",
@@ -46,9 +49,9 @@ function movesOf(a: DailyAction) {
   return a.moves ?? [];
 }
 
-/** A row that stages lineup moves (start / IR) and is not blocked. */
+/** A row that stages lineup moves (start, scratch, IR) and is not blocked. */
 export function isLineupAction(a: DailyAction): boolean {
-  return (a.kind === "start" || a.kind === "ir_in" || a.kind === "ir_out") && movesOf(a).length > 0 && !a.blocked_reason;
+  return (a.kind === "start" || a.kind === "scratch" || a.kind === "ir_in" || a.kind === "ir_out") && movesOf(a).length > 0 && !a.blocked_reason;
 }
 
 /** A row that stages an add (and maybe a drop) into the desk's tray. */
@@ -56,15 +59,23 @@ export function isTransactionAction(a: DailyAction): boolean {
   return (a.kind === "add" || a.kind === "add_drop") && !!a.transaction;
 }
 
+function subjectStaged(staged: Staged, a: DailyAction): boolean {
+  const first = movesOf(a)[0];
+  return !!first && staged[first.player_id] === first.to_slot_id;
+}
+
 /**
  * A lineup row is staged when its subject sits on its target. Subject-only on
  * purpose: when a start row benches X and the IR row sends X to IR, both rows
  * report staged; `stageRow` and `unstageRow` keep a press on either from
- * undoing the other.
+ * undoing the other. A scratch is the exception: it is there to take the
+ * ruled-out starter out of the lineup, so it is staged only once every player
+ * it moves has landed too, or sits on IR (the IR row's move for him).
  */
 export function isRowStaged(staged: Staged, a: DailyAction): boolean {
-  const first = movesOf(a)[0];
-  return !!first && staged[first.player_id] === first.to_slot_id;
+  if (!subjectStaged(staged, a)) return false;
+  if (a.kind !== "scratch") return true;
+  return movesOf(a).slice(1).every((m) => staged[m.player_id] === m.to_slot_id || staged[m.player_id] === IR_SLOT_ID);
 }
 
 /**
@@ -91,7 +102,7 @@ export function unstagedLineupActions(actions: readonly DailyAction[], staged: S
  * start that benches an OUT player and the IR row that sends him to IR both
  * land (the IR row's move is the later one, so it wins).
  */
-const STAGE_ALL_ORDER: Record<DailyActionKind, number> = { start: 0, ir_in: 1, ir_out: 2, add: 3, add_drop: 3 };
+const STAGE_ALL_ORDER: Record<DailyActionKind, number> = { scratch: 0, start: 0, ir_in: 1, ir_out: 2, add: 3, add_drop: 3 };
 
 export function stageAllOrder(actions: readonly DailyAction[]): DailyAction[] {
   return [...actions].sort((a, b) => STAGE_ALL_ORDER[a.kind] - STAGE_ALL_ORDER[b.kind]);
@@ -115,7 +126,8 @@ export function stageRow(board: LineupState, staged: Staged, a: DailyAction): St
  */
 export function unstageRow(board: LineupState, staged: Staged, a: DailyAction, rows: readonly DailyAction[]): Staged {
   let next = unstageMoves(board, staged, movesOf(a).filter((m) => staged[m.player_id] === m.to_slot_id));
-  const others = rows.filter((r) => r.id !== a.id && isLineupAction(r) && isRowStaged(next, r));
+  // By subject: the moves taken back may be the ones another row still needs, which it stages again below.
+  const others = rows.filter((r) => r.id !== a.id && isLineupAction(r) && subjectStaged(next, r));
   for (const r of stageAllOrder(others)) {
     next = stageMoves(board, next, movesOf(r).filter((m) => m.player_id in staged && !(m.player_id in next)));
   }
@@ -223,6 +235,11 @@ export function moveLine(a: DailyAction): string {
   switch (a.kind) {
     case "start":
       return `Start ${who}`;
+    case "scratch": {
+      // "Hart for Brunson": who starts, for the player ruled out, when it fits the strip.
+      const swap = a.counterpart ? `${who} for ${surname(a.counterpart.name)}` : "";
+      return swap && [...swap].length <= LINE_MAX ? swap : `Start ${who}`;
+    }
     case "ir_in":
       return `${who} to IR`;
     case "ir_out":

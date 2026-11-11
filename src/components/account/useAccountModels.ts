@@ -571,10 +571,11 @@ export function useDemoAccount(): AccountModel {
       const override = st.teamPrefs.find((p) => p.team_id === teamId);
       const team = demoDimeTeam(d, st.prefs, override);
       const current = { lineup_alerts_enabled: override?.lineup_alerts_enabled ?? null, auto_lineup_enabled: override?.auto_lineup_enabled ?? null };
-      const { dime, lineup } = demoDimeChange(d, team, current, change);
+      const { dime, lineup, lateScratch } = demoDimeChange(d, team, current, change);
+      const patch = lineup || lateScratch ? { ...lineup, ...(lateScratch ? { late_scratch_level: lateScratch } : {}) } : null;
       set((s) => ({
         dime: s.dime.map((x) => (x.team_id === teamId ? dime : x)),
-        teamPrefs: lineup ? s.teamPrefs.map((p) => (p.team_id === teamId ? { ...p, ...lineup, has_override: true } : p)) : s.teamPrefs,
+        teamPrefs: patch ? s.teamPrefs.map((p) => (p.team_id === teamId ? { ...p, ...patch, has_override: true } : p)) : s.teamPrefs,
         features: change.autopilot ? { memory: true, draft_rooms: true } : s.features,
       }));
       return demoDimeTeam(dime, useDemoStore.getState().prefs, useDemoStore.getState().teamPrefs.find((p) => p.team_id === teamId));

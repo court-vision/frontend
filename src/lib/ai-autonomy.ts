@@ -7,7 +7,8 @@
  * (Court Vision does it, no AI) or ai (Dime does it: it reviews the plan, acts
  * within the limits, and logs every call and move). Below AI a level lives with
  * its automation: lineup's are the notification preferences (the tip-off email
- * and auto-lineup), lanes run as you set them. AI and the autopilot switch are
+ * and auto-lineup), late scratches' is its own preference (`late_scratch_level`),
+ * lanes run as you set them. AI and the autopilot switch are
  * per team, only on teams Dime runs on; the switch puts every row that offers AI
  * at AI. Dime sends a move itself only on rows at AI, with check-ins on and
  * acting on on the server; anywhere else a check-in's change is a review.
@@ -55,7 +56,7 @@ export const ROW_HELP: Record<AiAutomationName, string> = {
   lineup: "Each day's slots. Notify is the tip-off email, Act is auto-lineup's fill; at AI Dime reviews the fill before lock and moves slots or pins players",
   daily_actions: "The Week desk's IR moves and the day's pickup and drop; at AI Dime makes its own adds and drops and may cancel a pickup you scheduled",
   lanes: "Your lanes run as you set them; at AI Dime also starts, pauses, stops and steers them",
-  late_scratch: "News and late scratches before a player's game; at AI an event check-in before it locks",
+  late_scratch: "A starter ruled out or a bench player cleared before his game. Notify emails the swap it calls for, Act makes it; at AI an event check-in answers it before the game locks",
   checkins: "Dime's morning, pre-lock, night and weekly check-ins. AI needs them",
 };
 
@@ -66,10 +67,6 @@ export const NOT_OFFERED: Partial<Record<AiAutomationName, Partial<Record<AiLeve
     act: "Not built yet: Court Vision making the list's moves",
   },
   lanes: { off: "Lanes are started and stopped one at a time in the Week desk", notify: "Not offered yet" },
-  late_scratch: {
-    notify: "Not built yet: an email when news touches a player before his game",
-    act: "Not built yet: the late-scratch swap",
-  },
   checkins: { notify: "Check-ins are Dime's own", act: "Check-ins are Dime's own" },
 };
 
@@ -86,6 +83,7 @@ export const EVENTS_OFF = "Nothing starts yet: event check-ins are switched off 
 // ---------------------------------------------------------------------------
 
 type LineupPrefs = Pick<NotificationPreference, "lineup_alerts_enabled" | "auto_lineup_enabled">;
+type RowPrefs = LineupPrefs & Pick<NotificationPreference, "late_scratch_level">;
 
 /** Lineup's level from the preferences in force: off, notify (the email) or act (the email and the fill). */
 export function lineupLevel(p: LineupPrefs): "off" | "notify" | "act" {
@@ -101,8 +99,9 @@ export function lineupPrefs(level: AiLevel): LineupPrefs {
 }
 
 /** A row's level below AI as the account's table shows it. */
-export function belowAi(row: AiAutomationName, prefs: LineupPrefs): AiLevel {
+export function belowAi(row: AiAutomationName, prefs: RowPrefs): AiLevel {
   if (row === "lineup") return lineupLevel(prefs);
+  if (row === "late_scratch") return prefs.late_scratch_level ?? "off";
   if (row === "lanes") return "act";
   return "off";
 }
@@ -132,6 +131,8 @@ export interface TableState {
   pausedBy?: "user" | "system" | null;
   pausedReason?: string | null;
   lineupBelowAi: AiLevel;
+  /** Late scratches below AI (the team's own level, else the account's); left out, off. */
+  lateScratchBelowAi?: AiLevel;
   lineupEmail: boolean;
   actingAvailable: boolean;
   /** The server starts event check-ins (DIME_EVENTS_ENABLED); left out, it does. */
@@ -154,6 +155,7 @@ export function tableOf(t: TableState): AiAutomationRow[] {
     if (row === "checkins") level = t.paused ? "off" : "ai";
     else if (atAi(t, row)) level = "ai";
     else if (row === "lineup") level = t.lineupBelowAi;
+    else if (row === "late_scratch") level = t.lateScratchBelowAi ?? "off";
     else level = row === "lanes" ? "act" : "off";
     const options = LEVELS.map((lv) => {
       let reason = NOT_OFFERED[row]?.[lv] ?? null;

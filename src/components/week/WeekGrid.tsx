@@ -21,6 +21,7 @@ import { healthOf, type GridCell, type GridRow, type LineupMode, type WeekGrid a
 import type { LineupPlayer } from "@/types/lineup-editor";
 import { Headshot } from "@/components/desk/Headshot";
 import { useViewerZone } from "@/hooks/useViewerZone";
+import { gridCellTitle } from "@/lib/availability";
 import { monthDay, oppShort, pts, signed, tip } from "./format";
 import dk from "@/components/desk/desk.module.css";
 import s from "./week.module.css";
@@ -649,15 +650,6 @@ interface DayCellProps {
   hideOpp?: boolean;
 }
 
-const CELL_TITLES: Record<string, string | undefined> = {
-  BENCH: "On the bench: this game doesn't count",
-  SITS: "No room in the best lineup that day",
-  IR: "On IR",
-  DROP: "Leaves the roster: this game doesn't count",
-  out: "Out for this game",
-  dnp: "Didn't play",
-};
-
 export const DayCell = memo(function DayCell({
   cell,
   col,
@@ -722,7 +714,7 @@ export const DayCell = memo(function DayCell({
       data-today={today}
       data-hotcol={hot}
       data-cursor={cursor}
-      title={CELL_TITLES[cell.tag ?? cell.state]}
+      title={gridCellTitle(cell, { tz })}
       onMouseEnter={() => onEnter(col)}
       onClick={onClick}
     >

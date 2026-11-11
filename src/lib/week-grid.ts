@@ -78,10 +78,25 @@ export interface DayGame {
   clock: string | null;
   /** Share of the game still to play: 1 before tip, 0 at the final. */
   remaining: number;
-  /** Ruled out for this game. */
+  /** Ruled out for this game: our verdict when we hold one, else ESPN's status. */
   out: boolean;
   /** The box score so far, when the game has one. */
   line?: StatLine | null;
+  /** Our verdict on this game, when we hold one (`withVerdicts`, lib/availability.ts). */
+  ruling?: Ruling;
+}
+
+/** Our verdict on a player's game (the availability pipeline's), with what decided it. */
+export interface Ruling {
+  verdict: "out" | "doubtful" | "questionable" | "probable" | "available";
+  /** The source that decided it: nba_report, nba_boxscore, espn_injuries, espn_fantasy or news. */
+  decidedBy: string | null;
+  /** "Left Ankle; Sprain". */
+  reason: string | null;
+  /** The date the source expects him back (ISO), when it gives one. */
+  expectedReturn: string | null;
+  /** When the verdict last changed (ISO instant). */
+  changedAt: string | null;
 }
 
 export interface SourcePlayer {
@@ -296,6 +311,8 @@ export interface GridCell {
   date?: string;
   counts: boolean;
   tag: CellTag;
+  /** Our verdict on the game, for the tooltip (today and later days). */
+  ruling?: Ruling;
 }
 
 export type RowKind = "player" | "open" | "incoming";
@@ -643,7 +660,7 @@ export function buildWeekGrid({
     if (!g || offRoster(p, d.index) || offDay) {
       return { state: "none", value: null, opp: null, note: null, counts: false, tag: null };
     }
-    const base = { opp: g.opp, note: g.time, date: d.date, line: g.line ?? null };
+    const base = { opp: g.opp, note: g.time, date: d.date, line: g.line ?? null, ...(g.ruling ? { ruling: g.ruling } : {}) };
     if (d.kind === "past") {
       // As it stood, only the active spots counted; with no record, every game shows as counted.
       const stood = stoodOn(d.index);

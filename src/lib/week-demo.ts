@@ -14,7 +14,7 @@ import type { ScheduleGame } from "@/types/games";
 import type { ScheduledPickup } from "@/types/scheduled-pickup";
 import type { DailyAction, DailyActionPlayer, DailyActionsData } from "@/types/daily-actions";
 import type { DailyScorePoint } from "@/types/matchup";
-import type { DayGame, SourceOpponent, SourcePlayer, StatLine, WeekDay, WeekSource } from "./week-grid";
+import type { DayGame, Ruling, SourceOpponent, SourcePlayer, StatLine, WeekDay, WeekSource } from "./week-grid";
 import { SLOT_NAMES, assignment, type Staged } from "./lineup-editor";
 
 const PG = 0, SG = 1, SF = 2, PF = 3, C = 4, G = 5, F = 6, UT = 11, BE = 12, IR = 13;
@@ -105,9 +105,14 @@ function games(team: string, line: Line, out: boolean): Array<DayGame | null> {
         clock: t.clock ?? null, remaining, out: false, line: demoLine(t.fpts, 1 - remaining),
       };
     }
-    return { opp: g.opp, time: g.time, status: "scheduled", fpts: null, clock: null, remaining: 1, out };
+    return { opp: g.opp, time: g.time, status: "scheduled", fpts: null, clock: null, remaining: 1, out, ...(out ? { ruling: DEMO_RULING } : {}) };
   });
 }
+
+/** The demo's one ruled-out player, as our verdicts would put it (the cell's tooltip). */
+const DEMO_RULING: Ruling = {
+  verdict: "out", decidedBy: "nba_report", reason: "Left Knee; Soreness", expectedReturn: null, changedAt: null,
+};
 
 interface MineSpec {
   id: number; nbaId: number; name: string; team: string; slot: number; eligible: number[];

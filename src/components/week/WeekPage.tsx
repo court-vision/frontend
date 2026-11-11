@@ -27,6 +27,8 @@ import { apiClient } from "@/lib/api";
 import { demoLanePlan } from "@/lib/lanes";
 import { useConnectionsQuery } from "@/hooks/useConnections";
 import { useDailyActionsQuery } from "@/hooks/useDailyActions";
+import { useTeamAvailabilityQuery } from "@/hooks/useTeamAvailability";
+import { verdictAsk, withVerdicts } from "@/lib/availability";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { useStreamersQuery } from "@/hooks/useStreamers";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
@@ -532,10 +534,20 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const weekData = week.data;
   const liveData = live.data;
   const matchupData = matchup.data;
+  // Our verdicts on both rosters over the days left: they decide who is out, ESPN's status where we have none.
+  const ask = useMemo(
+    () => (weekData ? verdictAsk({ week: weekData, live: liveData, matchup: matchupData, board: todayBoard, boards: lineup.boards }) : null),
+    [weekData, liveData, matchupData, todayBoard, lineup.boards]
+  );
+  // Keyed by the ask's contents, so a poll that names the same players reads the same query.
+  const availability = useTeamAvailabilityQuery(teamId, ask);
+  const verdicts = availability.data?.verdicts;
   const makeSource = useCallback(
     (board: LineupState | null, boards?: ReadonlyArray<LineupState | undefined>) =>
-      weekData ? sourceFromApi({ week: weekData, live: liveData, matchup: matchupData, board, boards }) : null,
-    [weekData, liveData, matchupData]
+      weekData
+        ? withVerdicts(sourceFromApi({ week: weekData, live: liveData, matchup: matchupData, board, boards }), verdicts)
+        : null,
+    [weekData, liveData, matchupData, verdicts]
   );
 
   let status: TerminalStatus = "ready";

@@ -212,7 +212,8 @@ export function useSetAiAutopilot() {
       queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
         d ? { ...d, teams: d.teams.map((t) => (t.team_id === team.team_id ? team : t)) } : d
       );
-      if (change.autopilot != null || change.levels?.lineup != null) {
+      // Below AI, the lineup and late-scratch rows are written to the team's notification override.
+      if (change.autopilot != null || change.levels?.lineup != null || change.levels?.late_scratch != null) {
         void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
       }
       if (change.autopilot) void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });

@@ -45,6 +45,7 @@ const STAGGER_MS = 45;
 const IN_AFTER_MS = 130;
 
 const TONE: Record<DailyActionKind, string> = {
+  scratch: "var(--down)",
   start: "var(--up)",
   ir_in: "var(--warn)",
   ir_out: "var(--warn)",
@@ -139,9 +140,10 @@ export function TodayStrip(props: TodayStripProps) {
   );
 }
 
-/** Cells that wear the move's colour: the verb, the pickup's name in a swap, or the whole IR line. */
+/** Cells that wear the move's colour: the verb, the incoming name in a swap, or the whole IR line. */
 function toneLength(kind: DailyActionKind, line: string): number {
   if (kind === "start") return "Start".length;
+  if (kind === "scratch") return line.startsWith("Start ") ? "Start".length : Math.max(0, line.indexOf(" for "));
   if (kind === "add") return "Add".length;
   if (kind === "add_drop") return line.startsWith("Add ") ? 3 : Math.max(0, line.indexOf(" for "));
   return line.length;
