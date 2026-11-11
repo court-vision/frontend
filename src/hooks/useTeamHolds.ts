@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { userMessage } from "@/lib/api-error";
 import { laneKeys } from "@/hooks/useStreamLanes";
+import { holdsCanChange } from "@/lib/steering";
 import type { TeamHolds } from "@/types/team-hold";
 
 export const holdKeys = {
@@ -19,7 +20,9 @@ const EMPTY: TeamHolds = { enabled: false, holds: [] };
  * `enabled` is whether Dime can set holds for this account (it is on the AI
  * desk). Then Dime can set and clear holds from a check-in with the desk open, so
  * the list is read again every minute (as the lanes and the scheduled pickups
- * are); for any other account nothing adds one, and it isn't polled.
+ * are), and so is a list that still has a hold on it, which can be cleared from
+ * another tab or end. For any other account nothing adds one, and an empty list
+ * isn't polled.
  */
 export function useTeamHoldsQuery(teamId: number | null): { data: TeamHolds } {
   const { getToken, isSignedIn } = useAuth();
@@ -28,7 +31,7 @@ export function useTeamHoldsQuery(teamId: number | null): { data: TeamHolds } {
     queryFn: ({ signal }) => apiClient.getTeamHolds(getToken, teamId!, { signal }),
     enabled: !!teamId && isSignedIn === true,
     staleTime: 60_000,
-    refetchInterval: (q) => (q.state.data?.enabled ? 60_000 : false),
+    refetchInterval: (q) => (holdsCanChange(q.state.data) ? 60_000 : false),
     refetchOnWindowFocus: true,
     meta: { toast: false },
   });

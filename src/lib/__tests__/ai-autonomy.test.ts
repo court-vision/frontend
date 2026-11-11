@@ -143,8 +143,11 @@ describe("a team's table", () => {
     );
     expect(teamLine(team(state({ aiRows: ["daily_actions"], paused: true })), on)).toBe("At AI: daily actions, paused");
     expect(teamLine(team(state({ aiRows: ["daily_actions"] })), { available: false })).toBe(
-      "At AI: daily actions, not running (Dime is off on the server)"
+      "At AI: daily actions, not running (autopilot is off on the server)"
     );
+    // With nothing at AI and the server off, no check-in runs to review anything
+    expect(teamLine(team(state()), { available: false })).toBe("No check-ins run: autopilot is off on the server");
+    expect(teamLine(team(state()), null)).toBe("Dime reviews and logs; nothing is at AI");
   });
 
   test("a pause Dime made itself says why", () => {
