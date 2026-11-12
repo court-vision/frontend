@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MessagesSquare } from "lucide-react";
 import { toast } from "sonner";
@@ -8,7 +8,7 @@ import { aiMessage } from "@/hooks/useAi";
 import { AI_DESK } from "@/components/desk/routes";
 import { whenTime } from "@/components/week/format";
 import { KIND_LABEL } from "@/lib/ai-checkins";
-import { AUTOPILOT_NOTE, ROW_HELP, checkinsLabels, pauseLine, policyLine } from "@/lib/ai-autonomy";
+import { AUTOPILOT_NOTE, ROW_HELP, autopilotLive, checkinsLabels, pauseLine, policyLine } from "@/lib/ai-autonomy";
 import { teamName } from "@/lib/account";
 import type { AiActing, AiAutomationRow, AiAutopilotChange, AiAutopilotTeam, AiFeatures, AiLevel } from "@/types/ai";
 import type { AccountModel } from "./model";
@@ -18,6 +18,9 @@ import dk from "@/components/desk/desk.module.css";
 import s from "./account.module.css";
 
 const ACT_OFF = "Autopilot is switched off on the server for now: no check-in runs and nothing at AI sends until it is back.";
+
+/** How long the block stays in its switch-on moment: the sweep across it, and the rows landing on AI behind it. */
+const ENGAGE_MS = 1400;
 
 /**
  * The Dime block of AI and automation (the Dime autopilot plan's automation levels):
@@ -83,6 +86,20 @@ function PilotTeam({
   onSet: AccountModel["setDime"];
 }) {
   const [pending, setPending] = useState(false);
+  // Autopilot running the team wears the spectrum; the moment it comes on (here, or from anywhere else) the block
+  // plays its sweep once. A block that opens already live starts in its steady state.
+  const live = autopilotLive(t, acting);
+  const [wasLive, setWasLive] = useState(live);
+  const [engage, setEngage] = useState(false);
+  if (wasLive !== live) {
+    setWasLive(live);
+    setEngage(live);
+  }
+  useEffect(() => {
+    if (!engage) return;
+    const done = window.setTimeout(() => setEngage(false), ENGAGE_MS);
+    return () => window.clearTimeout(done);
+  }, [engage]);
   const change = (c: AiAutopilotChange, done?: string) => {
     setPending(true);
     onSet(t.team_id, c)
@@ -99,9 +116,18 @@ function PilotTeam({
   };
   const labels = checkinsLabels(t);
   return (
-    <div className={s.pilot} data-paused-by={t.paused_by ?? undefined}>
+    <div className={live ? `${s.pilot} ${dk.spectrumEdge}` : s.pilot} data-paused-by={t.paused_by ?? undefined} data-engage={engage ? "" : undefined}>
+      {engage ? <span className={dk.spectrumSweep} aria-hidden /> : null}
       <Toggle
         label={`Autopilot on ${name}`}
+        shown={
+          live ? (
+            <>
+              <span className={dk.spectrumText}>Autopilot</span> on {name}
+            </>
+          ) : undefined
+        }
+        switchClass={live ? dk.spectrumTrack : undefined}
         help={
           <>
             {t.autopilot
