@@ -1822,6 +1822,7 @@ export function WeekTerminal({
         onTeam={data.selectTeam}
         onAdd={data.addTeam ?? undefined}
         notice={data.notice}
+        autopilot={data.autopilot}
         period={source?.period ?? null}
         days={source?.days ?? []}
         oppName={source?.opp.name ?? null}

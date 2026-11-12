@@ -1295,6 +1295,10 @@
   border-radius: calc(8px * var(--round, 1));
   background: var(--raised);
 }
+/* Autopilot is running the team: the desk's spectrum edge, drawn over this card's own 1px border */
+.autopilot.autopilotLive {
+  --edge-w: 1px;
+}
 .autopilotHead {
   display: flex;
   align-items: center;

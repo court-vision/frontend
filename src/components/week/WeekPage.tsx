@@ -16,6 +16,8 @@ import {
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { useCancelPickupMutation, useSchedulePickupMutation, useScheduledPickupsQuery } from "@/hooks/useScheduledPickups";
 import { useClearHoldMutation, useTeamHoldsQuery } from "@/hooks/useTeamHolds";
+import { useAiCheckinsQuery } from "@/hooks/useAi";
+import { autopilotLive } from "@/lib/ai-autonomy";
 import type { TeamHold } from "@/types/team-hold";
 import {
   useStartStreamLaneMutation,
@@ -38,7 +40,7 @@ import { connectionForTeam, connectionTitle, providerLabel, returnPath, teamName
 import { yahooConnectErrorMessage } from "@/lib/yahoo-connect";
 import { AddTeamTray, type AddStart } from "@/components/account/AddTeamTray";
 import { ACCOUNT_DESK } from "@/components/desk/routes";
-import { useLiveAddTeam } from "@/components/account/useAccountModels";
+import { useDemoAutopilot, useLiveAddTeam } from "@/components/account/useAccountModels";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
 import { staleLineup } from "@/lib/lineup-editor";
 import { currentFallback, racePeriod, sourceFromApi, weekBehindBoard, weekDaysFromApi } from "@/lib/week-source";
@@ -113,6 +115,8 @@ export interface TerminalData {
   /** Opens the add-team flow on this desk; null in the demo. */
   addTeam: (() => void) | null;
   notice: BarNotice | null;
+  /** Dime Autopilot is running the team in view: the bar carries its mark. */
+  autopilot: boolean;
   /** The week, given today's ESPN lineup and each day's (who is on the roster that day). */
   makeSource: (board: LineupState | null, boards?: ReadonlyArray<LineupState | undefined>) => WeekSource | null;
   /** Each day's ESPN lineup and the lineup writes (ESPN teams). */
@@ -359,6 +363,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   }, []);
 
   const todayBoard = boards[DEMO_TODAY];
+  const autopilot = useDemoAutopilot(1);
   const actions = useMemo(
     () => (todayBoard ? demoDailyActions(todayBoard, demoDailyStreamers(DEMO_TODAY)) : null),
     [todayBoard]
@@ -372,6 +377,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     selectTeam: () => {},
     addTeam: null,
     notice: null,
+    autopilot,
     makeSource,
     lineup,
     updatedFrom: NOTHING_WATCHED,
@@ -526,6 +532,10 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const pickupCancel = useCancelPickupMutation(teamId ?? 0);
   const lanes = useStreamLanesQuery(selected.provider === "espn" ? teamId : null);
   const holds = useTeamHoldsQuery(selected.provider === "espn" ? teamId : null);
+  // Dime's teams, read only for an account on the AI desk (the holds say whether this one is), so nobody
+  // else's desk asks: the bar carries autopilot's mark while it runs the team in view.
+  const dime = useAiCheckinsQuery(holds.data.enabled);
+  const autopilot = autopilotLive(dime.data?.teams.find((t) => t.team_id === teamId), dime.data?.acting ?? null);
   const holdClear = useClearHoldMutation(teamId ?? 0);
   const laneStart = useStartStreamLaneMutation(teamId ?? 0);
   const laneUpdate = useUpdateStreamLaneMutation(teamId ?? 0);
@@ -671,6 +681,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     selectTeam: (id) => setSelectedTeam(id),
     addTeam: () => setAdd(START_PROVIDER),
     notice,
+    autopilot,
     makeSource,
     lineup,
     updatedFrom,
