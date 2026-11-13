@@ -43,7 +43,11 @@ export function useRosterTransactionMutation(teamId: number) {
     mutationFn: (body) => apiClient.applyRosterTransaction(getToken, teamId, body),
     meta: { toast: false },
 
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      // A read of today's board that went out before the transaction answers with the roster from
+      // before it: landing after the board below, it would put the old roster back on screen. Call it
+      // off, as `writeLineupDay` does; the reads after the transaction go out fresh.
+      await queryClient.cancelQueries({ queryKey: lineupKeys.state(teamId), exact: true });
       queryClient.setQueryData<LineupState | null>(lineupKeys.state(teamId), data.lineup);
       queryClient.removeQueries({ queryKey: lineupKeys.plan(teamId) });
       queryClient.invalidateQueries({ queryKey: lineupKeys.actions(teamId) });
