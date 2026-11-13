@@ -10,7 +10,7 @@ import {
 import { lineupKeys } from "@/hooks/useLineupEditor";
 import { matchupKeys } from "@/hooks/useMatchup";
 import { ApiError, ROSTER_STALE, ROSTER_WRITE_REJECTED } from "@/lib/api-error";
-import { cancelCatchUp, catchUpDelays, catchUpPending } from "@/lib/catch-up-reads";
+import { cancelCatchUp, catchUp, catchUpDelays, catchUpPending } from "@/lib/catch-up-reads";
 import { diff, normalize, type Staged } from "@/lib/lineup-editor";
 import type { ApplyLineupMovesData, ApplyLineupMovesRequest, LineupState } from "@/types/lineup-editor";
 import { MOCK_LINEUP_STATE } from "../../__fixtures__/lineupState";
@@ -585,18 +585,21 @@ describe("the reads a few seconds after a send", () => {
     expect(espn.log).not.toContain("GET lineup");
   });
 
-  test("the next write calls off the last send's reads still waiting", async () => {
-    Object.assign(catchUpDelays, { after: [30], unconfirmed: [30, 60] });
+  test("a confirmed lineup write after an unconfirmed add / drop keeps the add / drop's read of today's board", async () => {
+    Object.assign(catchUpDelays, { after: [10], unconfirmed: [10, 30] });
     const espn = fakeEspn();
-    espn.unverified.add(TODAY);
     await desk(espn);
-    await send(espn, { 0: SWAP_A });
+    // useRosterTransactionMutation's ask after an add / drop that came back unconfirmed.
+    catchUp(client, TEAM, [{ queryKey: lineupKeys.state(TEAM), exact: true }], catchUpDelays.unconfirmed);
+    await send(espn, { 3: SWAP_A });
     await idle();
-    expect(catchUpPending(TEAM)).toBe(true);
+    espn.reset();
 
-    espn.unverified.clear();
-    const board = espn.boardOn(TODAY);
-    await writeLineupDay(client, TEAM, (body) => espn.post(body), board, diff(board, SWAP_B));
-    expect(catchUpPending(TEAM)).toBe(false);
+    await wait(20);
+    await idle();
+    expect(espn.log).toContain("GET lineup");
+    await wait(30);
+    await idle();
+    expect(espn.log.filter((r) => r === "GET lineup")).toHaveLength(2);
   });
 });

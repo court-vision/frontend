@@ -8,7 +8,7 @@ import {
   toApiError,
   userMessage,
 } from "@/lib/api-error";
-import { cancelCatchUp, catchUp, catchUpDelays } from "@/lib/catch-up-reads";
+import { catchUp, catchUpDelays } from "@/lib/catch-up-reads";
 import { staleLineup } from "@/lib/lineup-editor";
 import { STALE_POOL_REASONS, transactionError, transactionOutcomeCopy } from "@/lib/roster-transaction";
 import { lineupKeys } from "@/hooks/useLineupEditor";
@@ -40,11 +40,7 @@ export function useRosterTransactionMutation(teamId: number) {
 
   return useMutation<RosterTransactionData, Error, RosterTransactionRequest>({
     mutationKey: ["roster", "transaction", teamId],
-    mutationFn: (body) => {
-      // The last write's re-reads still waiting would land after this one with the roster from before it.
-      cancelCatchUp(teamId);
-      return apiClient.applyRosterTransaction(getToken, teamId, body);
-    },
+    mutationFn: (body) => apiClient.applyRosterTransaction(getToken, teamId, body),
     meta: { toast: false },
 
     onSuccess: (data) => {

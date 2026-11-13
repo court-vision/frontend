@@ -47,14 +47,27 @@ test("reads again after each delay, then has nothing waiting", async () => {
   expect(catchUpPending(TEAM)).toBe(false);
 });
 
-test("a team's next catch-up replaces the one waiting", async () => {
+test("a team's next catch-up keeps the reads still waiting, on the longer schedule from now", async () => {
   const reads = mounted();
+  const other = { started: 0 };
+  const otherKey = ["matchup", "week", TEAM] as const;
+  const watcher = new QueryObserver(client, {
+    queryKey: otherKey,
+    staleTime: 60_000,
+    queryFn: async () => (other.started += 1),
+  });
+  const unwatch = watcher.subscribe(() => {});
   await wait(5);
-  catchUp(client, TEAM, [{ queryKey: KEY }], [10]);
-  cancelCatchUp(TEAM);
+
+  // An unconfirmed add / drop asks for today's board twice; the confirmed lineup write after it, the week once.
+  catchUp(client, TEAM, [{ queryKey: KEY }], [10, 40]);
+  catchUp(client, TEAM, [{ queryKey: otherKey }], [10]);
   await wait(25);
-  expect(reads.started).toBe(1);
+  expect([reads.started, other.started]).toEqual([2, 2]);
+  await wait(30);
+  expect([reads.started, other.started]).toEqual([3, 3]);
   expect(catchUpPending(TEAM)).toBe(false);
+  unwatch();
 });
 
 test("joins a read already out instead of calling it off, so a send awaiting it isn't failed", async () => {

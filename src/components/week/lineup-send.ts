@@ -23,7 +23,7 @@ import type { InvalidateQueryFilters, QueryClient, QueryKey } from "@tanstack/re
 import { lineupKeys } from "@/hooks/useLineupEditor";
 import { matchupKeys } from "@/hooks/useMatchup";
 import { teamsKeys } from "@/hooks/useTeams";
-import { cancelCatchUp, catchUp, catchUpDelays } from "@/lib/catch-up-reads";
+import { catchUp, catchUpDelays } from "@/lib/catch-up-reads";
 import { staleLineup } from "@/lib/lineup-editor";
 import type { ApplyLineupMovesData, ApplyLineupMovesRequest, LineupMove, LineupState } from "@/types/lineup-editor";
 
@@ -61,8 +61,6 @@ export async function writeLineupDay(
 ): Promise<SentDay> {
   const period = board.scoring_period_id;
   if (period == null) throw new Error("This day can't be edited");
-  // The last send's re-reads still waiting would land after this write with the lineup from before it.
-  cancelCatchUp(teamId);
   let data: ApplyLineupMovesData;
   try {
     data = await post({ moves, expected_scoring_period_id: period, roster_version: board.roster_version });

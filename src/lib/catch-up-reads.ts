@@ -12,8 +12,9 @@
  *
  * So after a write the desk reads those again a few seconds on, and while a write
  * isn't confirmed it reads its board again as well, twice. A board a write came
- * back verified with is the server's read after the write and is never read
- * again here: a trailing copy could put the old lineup back over it.
+ * back verified with is the server's read after the write and isn't asked for
+ * again (a trailing copy could put the old lineup back over it), unless an
+ * unconfirmed write before it in the same send asked for it.
  */
 import type { InvalidateQueryFilters, QueryClient } from "@tanstack/react-query";
 
@@ -23,13 +24,22 @@ export const catchUpDelays = {
   unconfirmed: [3_000, 10_000] as readonly number[],
 };
 
-const pending = new Map<number, Array<ReturnType<typeof setTimeout>>>();
+interface Pending {
+  filters: InvalidateQueryFilters[];
+  delays: readonly number[];
+  timers: Array<ReturnType<typeof setTimeout>>;
+}
+
+const pending = new Map<number, Pending>();
 
 /**
- * Read `filters` again after each of `delays` ms. A team's next write calls off
- * the reads still waiting from its last one (`cancelCatchUp`): its own re-reads
- * cover them, and one landing after it could carry the lineup from before it.
- * A read already in flight is joined, never called off: a send may be awaiting it.
+ * Read `filters` again after each of `delays` ms. Re-reads a team still has
+ * waiting are kept and go with these, on the longer of the two schedules from
+ * now: one send can make an add / drop and then lineup writes, each asking for
+ * its own (an unconfirmed add / drop wants today's board and the market, a
+ * confirmed lineup write after it doesn't), and the later ask must not drop the
+ * earlier one's. A read already in flight is joined, never called off: a send
+ * may be awaiting it.
  */
 export function catchUp(
   queryClient: QueryClient,
@@ -37,20 +47,26 @@ export function catchUp(
   filters: readonly InvalidateQueryFilters[],
   delays: readonly number[]
 ) {
-  cancelCatchUp(teamId);
-  if (filters.length === 0 || delays.length === 0) return;
-  const timers = delays.map((ms, i) =>
+  const waiting = pending.get(teamId);
+  waiting?.timers.forEach(clearTimeout);
+  const all = [...(waiting?.filters ?? []), ...filters];
+  const schedule = waiting && waiting.delays.length > delays.length ? waiting.delays : delays;
+  if (all.length === 0 || schedule.length === 0) {
+    pending.delete(teamId);
+    return;
+  }
+  const timers = schedule.map((ms, i) =>
     setTimeout(() => {
-      if (i === delays.length - 1) pending.delete(teamId);
-      for (const f of filters) void queryClient.invalidateQueries(f, { cancelRefetch: false });
+      if (i === schedule.length - 1) pending.delete(teamId);
+      for (const f of all) void queryClient.invalidateQueries(f, { cancelRefetch: false });
     }, ms)
   );
-  pending.set(teamId, timers);
+  pending.set(teamId, { filters: all, delays: schedule, timers });
 }
 
-/** Call off a team's re-reads still waiting (a new write to it is going out). */
+/** Drop a team's re-reads still waiting (tests, between cases). */
 export function cancelCatchUp(teamId: number) {
-  pending.get(teamId)?.forEach(clearTimeout);
+  pending.get(teamId)?.timers.forEach(clearTimeout);
   pending.delete(teamId);
 }
 
