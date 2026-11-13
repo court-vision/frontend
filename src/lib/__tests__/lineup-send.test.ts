@@ -10,6 +10,7 @@ import {
 import { lineupKeys } from "@/hooks/useLineupEditor";
 import { matchupKeys } from "@/hooks/useMatchup";
 import { ApiError, ROSTER_STALE, ROSTER_WRITE_REJECTED } from "@/lib/api-error";
+import { cancelCatchUp, catchUpDelays, catchUpPending } from "@/lib/catch-up-reads";
 import { diff, normalize, type Staged } from "@/lib/lineup-editor";
 import type { ApplyLineupMovesData, ApplyLineupMovesRequest, LineupState } from "@/types/lineup-editor";
 import { MOCK_LINEUP_STATE } from "../../__fixtures__/lineupState";
@@ -138,6 +139,7 @@ let client: QueryClient;
 let unsubscribe: Array<() => void> = [];
 
 afterEach(() => {
+  cancelCatchUp(TEAM);
   unsubscribe.forEach((u) => u());
   unsubscribe = [];
   client.clear();
@@ -514,5 +516,87 @@ describe("a send that fails part way", () => {
     expect(done).toEqual([]);
     expect(failed?.step.day).toBe(0);
     expect(espn.log).toEqual(["POST moves 20"]);
+  });
+});
+
+describe("the reads a few seconds after a send", () => {
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const real = { ...catchUpDelays };
+  afterEach(() => Object.assign(catchUpDelays, real));
+
+  /** ESPN's copy behind the write: the write's own read-back shows the old lineup, a read a moment later the new. */
+  test("an unconfirmed today write: today's board is read again a few seconds on, so the move shows without a reload", async () => {
+    Object.assign(catchUpDelays, { after: [10], unconfirmed: [10, 30] });
+    const espn = fakeEspn();
+    espn.unverified.add(TODAY);
+    await desk(espn);
+    const { failed } = await send(espn, { 0: SWAP_A });
+    await idle();
+
+    expect(failed).toBeNull();
+    // The write came back with the lineup from before it, and nothing read today's board again yet.
+    expect(cached(0)!.roster_version).not.toBe(espn.boardOn(TODAY).roster_version);
+    expect(count(espn, "GET lineup") - count(espn, "GET lineup ")).toBe(0);
+
+    await wait(20);
+    await idle();
+    expectDeskMatchesEspn(espn);
+    expect(count(espn, "GET lineup") - count(espn, "GET lineup ")).toBe(1);
+
+    await wait(30);
+    await idle();
+    expect(count(espn, "GET lineup") - count(espn, "GET lineup ")).toBe(2);   // and once more, later
+    expect(catchUpPending(TEAM)).toBe(false);
+  });
+
+  test("a confirmed write: the later days and the matchup go once more, and its own board is left as it came back", async () => {
+    Object.assign(catchUpDelays, { after: [10], unconfirmed: [10, 30] });
+    const espn = fakeEspn();
+    await desk(espn);
+    await send(espn, { 0: SWAP_A });
+    await idle();
+    espn.reset();
+
+    await wait(20);
+    await idle();
+    expect(espn.log.filter((r) => r.startsWith("GET lineup ")).sort()).toEqual(
+      [21, 22, 23, 24, 25, 26].map((p) => `GET lineup ${p}`)
+    );
+    expect(espn.log).not.toContain("GET lineup");
+    expect(["GET actions", "GET live", "GET week"].map((r) => count(espn, r))).toEqual([1, 1, 1]);
+    expect(espn.log).toHaveLength(9);
+
+    await wait(30);
+    await idle();
+    expect(espn.log).toHaveLength(9);   // once, when the write was confirmed
+  });
+
+  test("a confirmed later day isn't read again either, the days after it are", async () => {
+    Object.assign(catchUpDelays, { after: [10], unconfirmed: [10, 30] });
+    const espn = fakeEspn();
+    await desk(espn);
+    await send(espn, { 3: SWAP_A });
+    await idle();
+    espn.reset();
+
+    await wait(20);
+    await idle();
+    expect(espn.log.filter((r) => r.startsWith("GET lineup ")).sort()).toEqual(["GET lineup 24", "GET lineup 25", "GET lineup 26"]);
+    expect(espn.log).not.toContain("GET lineup");
+  });
+
+  test("the next write calls off the last send's reads still waiting", async () => {
+    Object.assign(catchUpDelays, { after: [30], unconfirmed: [30, 60] });
+    const espn = fakeEspn();
+    espn.unverified.add(TODAY);
+    await desk(espn);
+    await send(espn, { 0: SWAP_A });
+    await idle();
+    expect(catchUpPending(TEAM)).toBe(true);
+
+    espn.unverified.clear();
+    const board = espn.boardOn(TODAY);
+    await writeLineupDay(client, TEAM, (body) => espn.post(body), board, diff(board, SWAP_B));
+    expect(catchUpPending(TEAM)).toBe(false);
   });
 });

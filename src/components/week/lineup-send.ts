@@ -19,10 +19,11 @@
  * desk's reads mounted, that 3-day send went from 34 requests (30 ESPN lineup
  * reads) to 13 (15).
  */
-import type { QueryClient, QueryKey } from "@tanstack/react-query";
+import type { InvalidateQueryFilters, QueryClient, QueryKey } from "@tanstack/react-query";
 import { lineupKeys } from "@/hooks/useLineupEditor";
 import { matchupKeys } from "@/hooks/useMatchup";
 import { teamsKeys } from "@/hooks/useTeams";
+import { cancelCatchUp, catchUp, catchUpDelays } from "@/lib/catch-up-reads";
 import { staleLineup } from "@/lib/lineup-editor";
 import type { ApplyLineupMovesData, ApplyLineupMovesRequest, LineupMove, LineupState } from "@/types/lineup-editor";
 
@@ -60,6 +61,8 @@ export async function writeLineupDay(
 ): Promise<SentDay> {
   const period = board.scoring_period_id;
   if (period == null) throw new Error("This day can't be edited");
+  // The last send's re-reads still waiting would land after this write with the lineup from before it.
+  cancelCatchUp(teamId);
   let data: ApplyLineupMovesData;
   try {
     data = await post({ moves, expected_scoring_period_id: period, roster_version: board.roster_version });
@@ -91,6 +94,9 @@ export async function writeLineupDay(
  *   other way: every later day is read again, as before.
  * - Today's board after a later day's write, and everything else that shows the
  *   roster (today's moves, the matchup, insights, the roster), as each write did.
+ * - The later days, today's moves and the matchup again a few seconds on, since
+ *   ESPN's reads can trail its writes (`catchUp`); while a write isn't confirmed,
+ *   twice, and today's board with them when it was today's write.
  */
 export function settleLineupWrites(queryClient: QueryClient, teamId: number, sent: SentDay[], failed?: unknown) {
   const stale = failed !== undefined && staleLineup(failed) !== null;
@@ -98,13 +104,14 @@ export function settleLineupWrites(queryClient: QueryClient, teamId: number, sen
   const periods = sent.map((s) => s.lineup.scoring_period_id).filter((p): p is number => p != null);
   const from = stale || periods.length === 0 ? -Infinity : Math.min(...periods);
   const kept = new Set(stale ? [] : sent.filter((s) => s.verified && isLaterDay(s.lineup)).map((s) => s.lineup.scoring_period_id));
-  void queryClient.invalidateQueries({
+  const laterDays: InvalidateQueryFilters = {
     queryKey: lineupKeys.days(teamId),
     predicate: (q) => {
       const period = periodOfKey(q.queryKey);
       return period >= from && !kept.has(period);
     },
-  });
+  };
+  void queryClient.invalidateQueries(laterDays);
   if (sent.length === 0) return;
   if (sent.some((s) => isLaterDay(s.lineup))) void queryClient.invalidateQueries({ queryKey: lineupKeys.state(teamId) });
   queryClient.removeQueries({ queryKey: lineupKeys.plan(teamId) });
@@ -113,6 +120,23 @@ export function settleLineupWrites(queryClient: QueryClient, teamId: number, sen
   void queryClient.invalidateQueries({ queryKey: teamsKeys.roster(teamId) });
   void queryClient.invalidateQueries({ queryKey: matchupKeys.live(teamId) });
   void queryClient.invalidateQueries({ queryKey: matchupKeys.week(teamId) });
+  // ESPN's reads can trail its writes, these re-reads included: the same again a few seconds on
+  // (`catchUp`), and twice, with today's board, while a write isn't confirmed. An unconfirmed later
+  // day is already among the later days; a confirmed board stays as the write returned it.
+  const unconfirmed = sent.some((s) => !s.verified);
+  const todayUnconfirmed = sent.some((s) => !s.verified && !isLaterDay(s.lineup));
+  catchUp(
+    queryClient,
+    teamId,
+    [
+      laterDays,
+      ...(todayUnconfirmed ? [{ queryKey: lineupKeys.state(teamId), exact: true }] : []),
+      { queryKey: lineupKeys.actions(teamId) },
+      { queryKey: matchupKeys.live(teamId) },
+      { queryKey: matchupKeys.week(teamId) },
+    ],
+    unconfirmed ? catchUpDelays.unconfirmed : catchUpDelays.after
+  );
 }
 
 /** A day the tray sends: its index in the week, and its name for what the send says. */
