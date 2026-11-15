@@ -15,7 +15,7 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Lock, X } from "lucide-react";
+import { Lock, Shield, X } from "lucide-react";
 import { slotName } from "@/lib/lineup-editor";
 import {
   healthOf,
@@ -78,6 +78,8 @@ interface DailyGridProps {
   onClearHold?: (holdId: number) => void;
   /** The hold being cleared, while that request is out. */
   clearingHold?: number | null;
+  /** The players the user protected (the roster lock): a shield beside each name. */
+  protectedIds?: ReadonlySet<number>;
 }
 
 /** The focused day's box score, in this order (FPTS follows). */
@@ -95,6 +97,7 @@ const STATS: Array<{ key: string; label: string; get: (l: StatLine) => string }>
 ];
 const NO_LANES: ReadonlyArray<LaneRowModel> = [];
 const NO_HOLDS: ReadonlyArray<TeamHold> = [];
+const NO_PROTECTED: ReadonlySet<number> = new Set();
 // Eleven equal cells, the ten stats and FPTS, so the spacing is even.
 const STAT_CELL = 34;
 const STAT_TRACKS = `repeat(${STATS.length + 1}, minmax(0, 1fr))`;
@@ -132,6 +135,7 @@ export function DailyGrid({
   holds = NO_HOLDS,
   onClearHold,
   clearingHold = null,
+  protectedIds = NO_PROTECTED,
 }: DailyGridProps) {
   const { slots, seats, asItStood } = grid.lineups;
   const days = grid.days;
@@ -247,6 +251,7 @@ export function DailyGrid({
               heat={heat}
               peak={peak}
               locked={!!seats[i][r] && !!boards[i]?.players.find((p) => p.player_id === seats[i][r]!.player.id)?.locked}
+              shielded={!!seats[i][r] && !seats[i][r]!.incoming && protectedIds.has(seats[i][r]!.player.id)}
               dnd={!!drag?.editable[i] && def.group !== "drop"}
               drop={dropState(i, def.key)}
               onHot={setHotDay}
@@ -700,6 +705,8 @@ interface SeatPairProps {
   heat: boolean;
   peak: number;
   locked: boolean;
+  /** He is protected (the roster lock). */
+  shielded: boolean;
   /** This day's lineup takes drags and drops. */
   dnd: boolean;
   drop: string | undefined;
@@ -721,6 +728,7 @@ const SeatPair = memo(function SeatPair({
   heat,
   peak,
   locked,
+  shielded,
   dnd,
   drop,
   onHot,
@@ -809,6 +817,9 @@ const SeatPair = memo(function SeatPair({
                 </span>
               ) : null}
             </span>
+            {shielded ? (
+              <Shield size={11} className={s.shield} aria-label="Protected: never dropped or suggested as a drop" />
+            ) : null}
             {locked ? <Lock size={11} className={s.lock} aria-label="Locked: his game has started" /> : null}
           </motion.span>
         ) : def.group === "active" ? (

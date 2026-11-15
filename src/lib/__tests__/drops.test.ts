@@ -91,6 +91,16 @@ describe("dropBlockedReason", () => {
     expect(dropBlockedReason({ ...base, player: { id: 1, name: "Nobody" } })).toBe("Nobody isn't on today's ESPN roster.");
   });
 
+  test("a protected player is never a drop, before any lock or lane says so", () => {
+    const protectedIds = new Set([murray]);
+    expect(dropBlockedReason({ ...base, protectedIds })).toBe("Keegan Murray is protected: unprotect him to drop him.");
+    expect(dropBlockedReason({ ...base, protectedIds, board: lockedBoard(true), laneHolders: new Set([murray]) })).toBe(
+      "Keegan Murray is protected: unprotect him to drop him."
+    );
+    // Protecting someone else leaves him droppable
+    expect(dropBlockedReason({ ...base, protectedIds: new Set([7]) })).toBeNull();
+  });
+
   describe("past today's first tip", () => {
     const tomorrow = demoBoard(undefined, "demo-1", today + 1);
     const late = { ...base, afterTip: true, tomorrow };

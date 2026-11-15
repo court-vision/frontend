@@ -64,6 +64,18 @@ describe("pickupNote", () => {
     expect(pickupNote({ status: "expired", reason: "some_new_reason", seated_slot: null, detail: null })).toBe("Expired: some new reason");
   });
 
+  test("a pickup whose drop was protected since is an add only, or skipped", () => {
+    expect(pickupNote({ status: "executed", reason: "drop_protected", seated_slot: null, detail: null })).toBe(
+      "Added, on the bench, nothing dropped: the player to drop is protected"
+    );
+    expect(pickupNote({ status: "skipped", reason: "drop_protected", seated_slot: null, detail: null })).toBe(
+      "Skipped: the player to drop is protected"
+    );
+    expect(pickupNote({ status: "pending", reason: "protections_unread", seated_slot: null, detail: null })).toBe(
+      "Waiting: your protected players couldn't be read"
+    );
+  });
+
   test("a pickup Dime scheduled, stopped when it came due, says why", () => {
     expect(pickupNote({ status: "skipped", reason: "dime_paused", seated_slot: null, detail: null })).toBe("Skipped: Dime is paused on this team");
     expect(pickupNote({ status: "skipped", reason: "dime_reserve", seated_slot: null, detail: null })).toBe(

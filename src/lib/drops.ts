@@ -69,6 +69,8 @@ export interface DropBlockedInput {
   board: LineupState | null | undefined;
   /** The players the team's active stream lanes hold their spots with. */
   laneHolders: ReadonlySet<number>;
+  /** The players the user protected (the roster lock): never dropped. */
+  protectedIds?: ReadonlySet<number>;
   /** A pending scheduled pickup that already drops him: its add's name and its day's. */
   scheduled: { add: string; day: string } | null;
   /** The add / drop staged in the tray already drops him. */
@@ -87,13 +89,15 @@ export interface DropBlockedInput {
 /**
  * Why this player can't be dropped now, as a sentence for the menu (and the
  * tray, once staged) — or null when he can. The server refuses the same cases:
- * a locked player before today's first tip (`drop_locked`), a lane holder
- * (`drop_is_lane_holder`) and a player a scheduled pickup drops (`drop_is_scheduled`).
+ * a protected player (`drop_protected`), a locked player before today's first tip
+ * (`drop_locked`), a lane holder (`drop_is_lane_holder`) and a player a scheduled pickup
+ * drops (`drop_is_scheduled`).
  */
 export function dropBlockedReason({
   player,
   board,
   laneHolders,
+  protectedIds,
   scheduled,
   pinnedDrops,
   demo,
@@ -105,6 +109,7 @@ export function dropBlockedReason({
   const roster = afterTip && tomorrow ? tomorrow : board;
   const onBoard = roster.players.find((p) => p.player_id === player.id);
   if (!onBoard) return `${player.name} isn't on ${roster === board ? "today's" : "tomorrow's"} ESPN roster.`;
+  if (protectedIds?.has(player.id)) return `${player.name} is protected: unprotect him to drop him.`;
   if (onBoard.locked && !afterTip) {
     return onBoard.game_started
       ? `${player.name} is locked until tomorrow: his game has started.`

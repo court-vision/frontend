@@ -2207,6 +2207,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/teams/{team_id}/protections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Protections
+         * @description The team's protected players, by name. No ESPN call.
+         */
+        get: operations["list_protections_v1_internal_teams__team_id__protections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/protections/{player_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Protect Player
+         * @description Protect `player_id` (ESPN) on this team. He must be on the roster: today's on ESPN, or
+         *     tomorrow's once today's first game has tipped (a player added tonight). Protecting one
+         *     already protected changes nothing.
+         *
+         *     What would drop him goes: the open stream lanes holding his spot are stopped and the
+         *     pending pickups dropping him are cancelled, each named in `cancelled`. One already being
+         *     sent to ESPN can't be cancelled and is named in `not_cancelled` (the check before ESPN
+         *     still refuses it unless it was out already). 422 PROTECTION_NOT_ON_ROSTER.
+         */
+        put: operations["protect_player_v1_internal_teams__team_id__protections__player_id__put"];
+        post?: never;
+        /**
+         * Unprotect Player
+         * @description Unprotect `player_id`: from now on he can be dropped again. Nothing that protecting him
+         *     cancelled comes back. 404 PROTECTION_NOT_FOUND when he isn't protected.
+         */
+        delete: operations["unprotect_player_v1_internal_teams__team_id__protections__player_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/teams/{team_id}/roster/transactions": {
         parameters: {
             query?: never;
@@ -3862,7 +3914,7 @@ export interface components {
             outcome: "sent" | "blocked" | "refused" | "failed";
             /**
              * Rule
-             * @description The rule that blocked it (cap_day, cap_matchup, reserve, protected, churn, paused, writes_off, ...) or the error code
+             * @description The rule that blocked it (cap_day, cap_matchup, reserve, protected (a top player), user_protected (the user protected him), churn, paused, writes_off, ...) or the error code
              */
             rule: string | null;
         };
@@ -11028,6 +11080,43 @@ export interface components {
             /** Tov */
             tov: number | null;
         };
+        /** ProtectedPlayer */
+        ProtectedPlayer: {
+            /** Espn Id */
+            espn_id: number;
+            /** Name */
+            name: string;
+            /** Nba Player Id */
+            nba_player_id: number | null;
+            /**
+             * Protected At
+             * Format: date-time
+             */
+            protected_at: string;
+            /** Team */
+            team: string | null;
+        };
+        /**
+         * ProtectionCancelled
+         * @description Something protecting a player cancelled, because it would have dropped him.
+         */
+        ProtectionCancelled: {
+            /**
+             * Id
+             * @description The scheduled pickup's id, or the stream lane's
+             */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "pickup" | "lane";
+            /**
+             * Summary
+             * @description What it was, in a few words ("Thu's pickup of K. Murray")
+             */
+            summary: string;
+        };
         /**
          * ProviderCapabilitiesResp
          * @description What this team's provider can do for it (services.providers.capabilities).
@@ -11657,6 +11746,35 @@ export interface components {
             out: number;
             /** Total Players */
             total_players: number;
+        };
+        /** RosterProtectionsData */
+        RosterProtectionsData: {
+            /**
+             * Cancelled
+             * @description Protecting only: what would have dropped him and was cancelled
+             */
+            cancelled: components["schemas"]["ProtectionCancelled"][];
+            /**
+             * Not Cancelled
+             * @description Protecting only: what would drop him and was already being sent to ESPN, so it could not be cancelled; the check before ESPN still refuses it unless it was out already
+             */
+            not_cancelled: string[];
+            /**
+             * Players
+             * @default []
+             */
+            players: components["schemas"]["ProtectedPlayer"][];
+        };
+        /** RosterProtectionsResp */
+        RosterProtectionsResp: {
+            data: components["schemas"]["RosterProtectionsData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /** RosterTransactionData */
         RosterTransactionData: {
@@ -17808,6 +17926,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScheduledPickupResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_protections_v1_internal_teams__team_id__protections_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterProtectionsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    protect_player_v1_internal_teams__team_id__protections__player_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_id: number;
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterProtectionsResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unprotect_player_v1_internal_teams__team_id__protections__player_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_id: number;
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterProtectionsResp"];
                 };
             };
             /** @description Validation Error */

@@ -291,6 +291,8 @@ export function WeekTerminal({
 
   // ---- the stream lanes: up to four open, one per spot; hovering a lane's row previews its projection ----
   const openLanes = data.lanes.open;
+  // The roster lock: the players the user protected are never dropped, or offered as a drop.
+  const protectedIds = data.protectedIds;
   const [laneHover, setLaneHover] = useState<number | null>(null);
   const hoveredLane = laneHover != null ? openLanes.find((l) => l.id === laneHover) ?? null : null;
   const laneCellsById = useMemo(
@@ -462,10 +464,16 @@ export function WeekTerminal({
     () => (source && drops.length ? { ...source, mine: source.mine.filter((p) => !drops.includes(p.id)) } : source),
     [source, drops]
   );
-  const marketDrops = useMemo(() => (keptSource ? dropCandidates(keptSource, board) : []), [keptSource, board]);
+  const marketDrops = useMemo(
+    () => (keptSource ? dropCandidates(keptSource, board, 5, protectedIds) : []),
+    [keptSource, board, protectedIds]
+  );
   // The detail offers a few more, never the stars: a week's gain can't see what a player is worth
   // the rest of the season (an injured star projects nothing this week, and is still no drop).
-  const marketAllDrops = useMemo(() => (keptSource ? dropCandidates(keptSource, board, 7) : []), [keptSource, board]);
+  const marketAllDrops = useMemo(
+    () => (keptSource ? dropCandidates(keptSource, board, 7, protectedIds) : []),
+    [keptSource, board, protectedIds]
+  );
   const avgOf = useCallback((id: number) => roster.find((p) => p.id === id)?.avg ?? null, [roster]);
   // Open spots once every staged drop is made (one an add rides on included, whenever it lands).
   const marketRoom = useMemo(() => {
@@ -655,11 +663,15 @@ export function WeekTerminal({
       const row = rowByKey(key);
       const anchor = el ?? anchorFor(key);
       if (!row?.player || row.kind !== "player" || !anchor) return;
+      if (protectedIds.has(row.player.id)) {
+        toast(`${row.player.name} is protected: unprotect him to replace him.`);
+        return;
+      }
       requestStreamers();
       if (view === "players") setCursor({ key, col: 0 });
       setMenu({ type: "replace", rowKey: key, anchor, day: day ?? viewDay, from: replaceFrom(day) });
     },
-    [rowByKey, anchorFor, requestStreamers, view, viewDay, replaceFrom]
+    [rowByKey, anchorFor, requestStreamers, view, viewDay, replaceFrom, protectedIds]
   );
   const closeMenu = useCallback(() => {
     setMenu(null);
@@ -881,6 +893,7 @@ export function WeekTerminal({
         player: { id, name: nameOf(id) },
         board: rawToday,
         laneHolders,
+        protectedIds,
         scheduled: pickup ? { add: pickup.add.name, day: pickupDayLabel(pickup.nba_date) } : null,
         pinnedDrops: pinned?.replaces === id,
         demo: data.demo,
@@ -888,7 +901,7 @@ export function WeekTerminal({
         tomorrow: addFrom != null ? rawBoards[addFrom] ?? null : null,
       });
     },
-    [pendingPickups, nameOf, rawToday, laneHolders, pickupDayLabel, pinned, data.demo, addFrom, rawBoards]
+    [pendingPickups, nameOf, rawToday, laneHolders, protectedIds, pickupDayLabel, pinned, data.demo, addFrom, rawBoards]
   );
   // Why a staged drop's last send failed, by player.
   const [dropErrors, setDropErrors] = useState<Record<number, string>>({});
@@ -913,6 +926,19 @@ export function WeekTerminal({
       else stageDrop(id);
     },
     [drops, undrop, dropReason, stageDrop]
+  );
+  // Protecting is offered where it can be set: an ESPN team (the server checks him on its roster).
+  const canProtect = data.demo || !!rawToday;
+  const { setProtected } = data;
+  /** The K key: protect him, or unprotect him. Protected, a drop staged for him is taken back. */
+  const toggleProtect = useCallback(
+    (id: number) => {
+      if (!canProtect || data.protecting != null) return;
+      const on = !protectedIds.has(id);
+      if (on && drops.includes(id)) undrop(id);
+      setProtected(id, on);
+    },
+    [canProtect, data.protecting, protectedIds, drops, undrop, setProtected]
   );
   // The drops that go to ESPN on their own (the one an add rides on goes with the add), and
   // what they do to the week: the week now, less the week without them.
@@ -944,6 +970,7 @@ export function WeekTerminal({
     // Scheduled, locks and waivers are the server's to wait out when the day comes.
     let blocked: string | null = null;
     if (!rawToday) blocked = swapFrom != null ? "Scheduling a pickup needs an ESPN team." : "Add and drop from here need an ESPN team.";
+    else if (out && protectedIds.has(out.id)) blocked = `${out.name} is protected: unprotect him to drop him.`;
     else if (dup) blocked = `${swapFa.name} is already scheduled for ${pickupDayLabel(dup.nba_date)}.`;
     else if (already && out) blocked = `${out.name} is already being dropped for ${already.add.name} on ${pickupDayLabel(already.nba_date)}.`;
     else if (out && laneHolders.has(out.id)) blocked = "A stream lane is streaming his spot: stop it to drop him.";
@@ -986,7 +1013,7 @@ export function WeekTerminal({
       // Made now, it sits in today's column (or one of its own when today isn't on the board).
       day: swapFrom ?? todayDay ?? NOW_DAY,
     };
-  }, [pinned, swapFa, source, roster, swapOut, paired, nameOf, swapFrom, pendingPickups, rawToday, laneHolders, data.demo, pickupDayLabel, timings, todayIndex, addFrom, pinnedDelta, todayDay]);
+  }, [pinned, swapFa, source, roster, swapOut, paired, nameOf, swapFrom, pendingPickups, rawToday, laneHolders, protectedIds, data.demo, pickupDayLabel, timings, todayIndex, addFrom, pinnedDelta, todayDay]);
 
   const [swapError, setSwapError] = useState<string | null>(null);
   /**
@@ -1243,12 +1270,13 @@ export function WeekTerminal({
     (playerId: number): string | null => {
       if (!data.demo && !rawToday) return "Stream lanes need an ESPN team.";
       if (drops.includes(playerId)) return "He's staged to drop.";
+      if (protectedIds.has(playerId)) return "He's protected, and a lane would drop him: unprotect him to stream his spot.";
       const room = laneRoomRefusal(openLanes, playerId);
       if (room) return room;
       if (boardById.get(playerId)?.lineup_slot_id === IR_SLOT_ID) return "A player on IR holds no spot to stream.";
       return null;
     },
-    [data.demo, rawToday, drops, openLanes, boardById]
+    [data.demo, rawToday, drops, protectedIds, openLanes, boardById]
   );
   const { updateLane, clearLaneError } = data;
   const laneModels: LaneRowModel[] = useMemo(() => {
@@ -1435,6 +1463,11 @@ export function WeekTerminal({
             if (seat && !seat.incoming && (!seat.outgoing || seat.dropped)) toggleDrop(seat.player.id);
             return;
           }
+          case "k": {
+            const seat = seatHere();
+            if (seat && !seat.incoming) toggleProtect(seat.player.id);
+            return;
+          }
           case "i": {
             const seat = seatHere();
             if (seat) toggleStats(seat.player.id);
@@ -1509,6 +1542,11 @@ export function WeekTerminal({
           if (row?.player && row.kind === "player" && (!row.outgoing || row.dropped)) toggleDrop(row.player.id);
           return;
         }
+        case "k": {
+          const row = cursor ? rows.find((r) => r.key === cursor.key) : null;
+          if (row?.player && row.kind === "player") toggleProtect(row.player.id);
+          return;
+        }
         case "[":
           stepDay(-1);
           return;
@@ -1519,7 +1557,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, toggleMarket, streamable, toggleDrop, toggleStats, stats, laneFor, tapeBox, data.actions]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, toggleMarket, streamable, toggleDrop, toggleProtect, toggleStats, stats, laneFor, tapeBox, data.actions]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
@@ -1704,6 +1742,7 @@ export function WeekTerminal({
             holds={data.holds}
             onClearHold={data.clearHold}
             clearingHold={data.clearingHold}
+            protectedIds={protectedIds}
           />
         ) : (
           <WeekGrid
@@ -1722,6 +1761,7 @@ export function WeekTerminal({
             drag={drag}
             mode={mode}
             onStats={toggleStats}
+            protectedIds={protectedIds}
           />
         )}
         {trayDays.length ? (
@@ -1872,6 +1912,18 @@ export function WeekTerminal({
           }
           streamThrough={lastDow}
           streamNote={streamable(menuPlayer.id)}
+          protect={
+            canProtect
+              ? {
+                  on: protectedIds.has(menuPlayer.id),
+                  busy: data.protecting != null,
+                  onToggle: () => {
+                    toggleProtect(menuPlayer.id);
+                    closeMenu();
+                  },
+                }
+              : null
+          }
           onPick={(slot) => {
             stageOneOn(moveInfo.day, menuPlayer.id, slot);
             closeMenu();

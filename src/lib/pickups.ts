@@ -79,6 +79,9 @@ const REASONS: Record<string, string> = {
   holder_plays_today: "the player to drop plays first",
   unverified: "ESPN hasn't confirmed it yet",
   team_not_found: "the team is no longer connected",
+  // The roster lock: a pickup never drops a protected player (made as an add only when a seat is free)
+  drop_protected: "the player to drop is protected",
+  protections_unread: "your protected players couldn't be read",
   // A pickup Dime scheduled itself, stopped when it came due
   dime_off: "Dime is switched off",
   dime_paused: "Dime is paused on this team",
@@ -94,8 +97,11 @@ export function pickupNote(p: Pick<ScheduledPickup, "status" | "reason" | "seate
   switch (p.status) {
     case "pending":
       return p.reason ? `Waiting: ${words(p.reason)}` : null;
-    case "executed":
-      return p.seated_slot ? `Added, starting at ${p.seated_slot}` : "Added, on the bench";
+    case "executed": {
+      const added = p.seated_slot ? `Added, starting at ${p.seated_slot}` : "Added, on the bench";
+      // Protected after it was scheduled: made as an add only (a seat was free)
+      return p.reason === "drop_protected" ? `${added}, nothing dropped: ${words(p.reason)}` : added;
+    }
     case "skipped":
       return `Skipped: ${p.reason ? words(p.reason) : "nothing to do"}`;
     case "failed":

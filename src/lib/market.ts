@@ -27,6 +27,7 @@ export interface DropOption {
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
+const NO_IDS: ReadonlySet<number> = new Set();
 
 /** The change a move makes: `after` (the grid with it) minus `base`, the week and each day. */
 export function gainOf(base: WeekGrid, after: WeekGrid, dropId: number): DropOption {
@@ -48,12 +49,18 @@ export function better(a: DropOption | null, b: DropOption, day: number | null):
 
 /**
  * Who a streamer most plausibly replaces: the lowest projected players, never
- * one sitting on IR (he holds no roster spot worth trading).
+ * one sitting on IR (he holds no roster spot worth trading) or one the user
+ * protected (the roster lock: never suggested as a drop).
  */
-export function dropCandidates(source: WeekSource, board: LineupState | null, k = 5): number[] {
+export function dropCandidates(
+  source: WeekSource,
+  board: LineupState | null,
+  k = 5,
+  protectedIds: ReadonlySet<number> = NO_IDS
+): number[] {
   const ir = new Set((board?.players ?? []).filter((p) => p.lineup_slot_id === IR_SLOT_ID).map((p) => p.player_id));
   return source.mine
-    .filter((p) => !ir.has(p.id))
+    .filter((p) => !ir.has(p.id) && !protectedIds.has(p.id))
     .sort((a, b) => a.avg - b.avg)
     .slice(0, k)
     .map((p) => p.id);

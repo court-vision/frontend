@@ -299,6 +299,7 @@ export const RULE_LABEL: Record<string, string> = {
   cap_matchup: "Matchup's adds used",
   reserve: "Adds kept for you",
   protected: "Top player",
+  user_protected: "Protected",
   churn: "Added recently",
   credentials: "ESPN sign-in",
   espn_rejected: "ESPN said no",

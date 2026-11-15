@@ -282,6 +282,9 @@ describe("in words", () => {
     expect(laneReason("can_write:not_team_owner")).toBe("ESPN won't take changes for this team right now");
     expect(laneReason("something_new")).toBe("something new");
     expect(laneReason(null)).toBeNull();
+    // The roster lock
+    expect(laneReason("stopped_for_protected")).toBe("you protected the spot's player");
+    expect(laneReason("protections_unread")).toBe("your protected players couldn't be read");
   });
 });
 
