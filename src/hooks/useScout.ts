@@ -1,6 +1,7 @@
 import { keepPreviousData, queryOptions, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { getTodayDate } from "@/hooks/useGames";
+import { onLiveBeat } from "@/lib/live-beat";
 import { addDays } from "@/lib/scout";
 import type { ESPNMarketPlayer, MarketDirection, MarketSort } from "@/types/scout";
 
@@ -106,8 +107,9 @@ export function useEspnMarketMoversQuery(
 }
 
 /**
- * Today's live box-score lines for everyone on the floor, polled with the
- * live pipeline. Off while nothing on the desk shows them.
+ * Today's live box-score lines for everyone on the floor. While the live
+ * pipeline is writing them it is read a second after each write (every 15 s:
+ * `liveReadMs`), every minute otherwise. Off while nothing on the desk shows them.
  */
 export function useLiveLeadersQuery(enabled: boolean = true) {
   return useQuery({
@@ -115,11 +117,15 @@ export function useLiveLeadersQuery(enabled: boolean = true) {
     queryKey: ["live", "players", "today", "scout"],
     queryFn: async ({ signal }) => {
       const data = await apiClient.getLivePlayersToday({ signal });
-      return { gameDate: data.game_date, players: [...data.players].sort((a, b) => b.fpts - a.fpts) };
+      return {
+        gameDate: data.game_date,
+        players: [...data.players].sort((a, b) => b.fpts - a.fpts),
+        liveAgeMs: data.live_age_ms ?? null,
+      };
     },
     enabled,
     staleTime: 0,
-    refetchInterval: 60 * 1000,
+    refetchInterval: onLiveBeat<{ liveAgeMs: number | null }>((data) => data?.liveAgeMs, 60 * 1000),
     refetchOnWindowFocus: true,
     // Live polling: the next poll is the retry, and the sheet shows its own badge
     retry: false,

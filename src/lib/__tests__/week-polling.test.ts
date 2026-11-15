@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { LIVE_TICK } from "../live-beat";
 import {
   ACTIONS_FAST,
   ACTIONS_SLOW,
@@ -14,7 +16,9 @@ import {
   livePollMs,
   lockSpan,
   lockTimes,
+  readLiveMatchup,
 } from "../week-polling";
+import type { LiveMatchupData } from "@/types/matchup";
 import * as F from "./week-api-fixtures";
 
 const MIN = 60_000;
@@ -123,6 +127,123 @@ describe("livePollMs", () => {
     // Preseason: the board is opening night's, a week ahead.
     const opening = liveSpan(F.espnBoard(0));
     expect(livePollMs(opening, quiet, etInstant("2026-10-21", "19:30")!)).toBe(LIVE_SLOW);
+  });
+});
+
+describe("livePollMs on the beat", () => {
+  const span = liveSpan(F.espnBoard());
+  const boxes = { [F.MINE[2].id]: F.liveStats(1628983, 2, 18) };
+
+  test("while rostered box scores are being written, the read lands a second after the next write", () => {
+    // Answered at 20:00:01 with a write one second old: the next is due at 20:00:15, read at :16.
+    const readAt = et("20:00") + 1_000;
+    const written = F.live(F.current(), boxes, { liveAgeMs: 1_000 });
+    expect(livePollMs(span, written, readAt, readAt)).toBe(15_000);
+    // Asked again four seconds on (the timer is re-armed on every state change), it names the same moment.
+    expect(livePollMs(span, written, readAt + 4_000, readAt)).toBe(11_000);
+    // An opponent's matinee with no window of yours: the box scores alone put it on the beat.
+    expect(livePollMs(null, written, readAt, readAt)).toBe(15_000);
+  });
+
+  test("with no write to read by it is the 30 s pace around rostered games, as before", () => {
+    const at = et("20:00");
+    // Before the first box score of the night.
+    expect(livePollMs(span, F.live(F.current()), at, at)).toBe(LIVE_FAST);
+    // The pipeline has stopped under a game still marked live.
+    expect(livePollMs(span, F.live(F.current(), boxes, { liveAgeMs: 600_000 }), at, at)).toBe(LIVE_FAST);
+    expect(livePollMs(null, F.live(F.current(), boxes, { liveAgeMs: 600_000 }), et("23:10"), et("23:10"))).toBe(LIVE_FAST);
+    // An answer whose arrival isn't known (the callers before the beat) is read as it was.
+    expect(livePollMs(span, F.live(F.current(), boxes, { liveAgeMs: 1_000 }), at)).toBe(LIVE_FAST);
+  });
+
+  test("games over and settled: slow again", () => {
+    const done = F.live(F.current(), { [F.MINE[0].id]: F.liveStats(203999, 3, 52) }, { liveAgeMs: 2 * 3_600_000 });
+    expect(livePollMs(span, done, et("23:40"), et("23:40"))).toBe(LIVE_SLOW);
+  });
+});
+
+describe("readLiveMatchup", () => {
+  const KEY = ["matchups", "live", 7] as const;
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  /** A mounted live matchup whose server stamps each provider read; `asked` is what each read handed back. */
+  function desk(slow = 0) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const asked: Array<number | undefined> = [];
+    let stamp = 1_000;
+    const read = async (reuseFrom: number | undefined): Promise<LiveMatchupData> => {
+      asked.push(reuseFrom);
+      await wait(slow);
+      // The server reads the provider unless the caller's stamp lets it reuse its own.
+      if (reuseFrom === undefined) stamp += 1;
+      return F.live(F.current(), {}, { liveAgeMs: 1_000, providerReadMs: stamp });
+    };
+    const observer = new QueryObserver<LiveMatchupData>(client, {
+      queryKey: KEY,
+      staleTime: LIVE_TICK,
+      queryFn: () => readLiveMatchup(client, KEY, read),
+    });
+    const stop = observer.subscribe(() => {});
+    const done = () => {
+      stop();
+      client.clear();
+    };
+    return { client, observer, asked, done };
+  }
+
+  test("a first read hands nothing back; a poll hands back the stamp it holds", async () => {
+    const { observer, asked, done } = desk();
+    await wait(5);
+    expect(asked).toEqual([undefined]);
+    await observer.refetch();
+    await observer.refetch();
+    expect(asked).toEqual([undefined, 1_001, 1_001]);
+    done();
+  });
+
+  test("after a move the provider is read again, and the polls after it hand back the new stamp", async () => {
+    const { client, observer, asked, done } = desk();
+    await wait(5);
+    await client.invalidateQueries({ queryKey: KEY });
+    expect(asked).toEqual([undefined, undefined]);
+    await observer.refetch();
+    expect(asked).toEqual([undefined, undefined, 1_002]);
+    done();
+  });
+
+  test("a move's re-read that joins a read over the old rosters gets the provider read after all", async () => {
+    const { client, observer, asked, done } = desk(20);
+    await wait(40);
+    expect(asked).toEqual([undefined]);
+    const poll = observer.refetch();                                  // box scores over the read it holds
+    await wait(5);
+    await client.invalidateQueries({ queryKey: KEY }, { cancelRefetch: false });   // a catch-up read joins it
+    await poll;
+    expect(asked).toEqual([undefined, 1_001, undefined]);
+    expect(observer.getCurrentResult().data?.provider_read_ms).toBe(1_002);
+    expect(client.getQueryState(KEY)?.isInvalidated).toBe(false);
+    done();
+  });
+
+  test("a read that fails after a move leaves the next one still asking the provider", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const asked: Array<number | undefined> = [];
+    let down = false;
+    const read = async (reuseFrom: number | undefined): Promise<LiveMatchupData> => {
+      asked.push(reuseFrom);
+      if (down) throw new Error("ESPN is down");
+      return F.live(F.current(), {}, { providerReadMs: 1_001 });
+    };
+    const observer = new QueryObserver<LiveMatchupData>(client, { queryKey: KEY, queryFn: () => readLiveMatchup(client, KEY, read) });
+    const stop = observer.subscribe(() => {});
+    await wait(5);
+    down = true;
+    await client.invalidateQueries({ queryKey: KEY });
+    down = false;
+    await observer.refetch();
+    expect(asked).toEqual([undefined, undefined, undefined]);
+    stop();
+    client.clear();
   });
 });
 

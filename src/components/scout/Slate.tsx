@@ -5,7 +5,7 @@ import { useQueries } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { Headshot } from "@/components/desk/Headshot";
 import { TeamLogo } from "@/components/desk/TeamLogo";
-import { gamesKeys, useGameDetailQuery, useGamesOnDateQuery } from "@/hooks/useGames";
+import { gamesKeys, todaySlatePollMs, useGameDetailQuery, useGamesOnDateQuery } from "@/hooks/useGames";
 import { useNBATeamLiveGameQuery } from "@/hooks/useNBATeam";
 import { apiClient } from "@/lib/api";
 import { userMessage } from "@/lib/api-error";
@@ -53,7 +53,7 @@ export function SlateOverview({ today, open, live }: { today: string; open: (foc
       queryKey: gamesKeys.onDate(d),
       queryFn: ({ signal }: { signal?: AbortSignal }) => apiClient.getGamesOnDate(d, { signal }),
       staleTime: d === today ? 0 : 1000 * 60 * 5,
-      refetchInterval: (d === today ? 60 * 1000 : false) as number | false,
+      refetchInterval: d === today ? todaySlatePollMs : (false as const),
       retry: false,
       meta: { toast: false },
     })),
@@ -92,7 +92,7 @@ export function SlateOverview({ today, open, live }: { today: string; open: (foc
         ]}
       />
 
-      <Block title="Tonight" note={liveCount ? "scores refresh every minute" : games.length ? `tip times in ${tipZone}` : undefined}>
+      <Block title="Tonight" note={liveCount ? "scores refresh every 15 s" : games.length ? `tip times in ${tipZone}` : undefined}>
         {tonight.isLoading ? (
           <Skeleton rows={4} className={s.ledgerSkel} />
         ) : tonight.error ? (

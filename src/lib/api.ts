@@ -557,13 +557,20 @@ class ApiClient {
     return unwrap(env);
   }
 
+  /**
+   * The current matchup with tonight's box scores on top. `reuseFrom` is the
+   * `provider_read_ms` of the answer the desk holds: with it the server may put
+   * the box scores over the provider read it already made (`readLiveMatchup`).
+   */
   async getLiveMatchup(
     getToken: GetTokenFn,
     teamId: number,
-    opts?: RequestOptions
+    opts?: RequestOptions & { reuseFrom?: number }
   ): Promise<LiveMatchupData> {
-    const env = await fetchJson<LiveMatchupResponse>(`${MATCHUPS_API}/live/${teamId}`, {
-      ...opts,
+    const { reuseFrom, ...rest } = opts ?? {};
+    const query = reuseFrom != null ? `?reuse_from=${reuseFrom}` : "";
+    const env = await fetchJson<LiveMatchupResponse>(`${MATCHUPS_API}/live/${teamId}${query}`, {
+      ...rest,
       getToken,
     });
     return unwrap(env);
