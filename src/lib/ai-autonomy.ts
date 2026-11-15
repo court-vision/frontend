@@ -271,11 +271,15 @@ function count(n: number, one: string, many = `${one}s`): string {
  * to the league's own add limits (ESPN's settings), so they have no number of Dime's own here; who it
  * never drops is the user's protections, seeded once from the draft (backend roster_protection.seed). */
 export function policyLine(p: AiActingPolicy): string {
+  // An api from before the seed sends no seed_protected: the line goes without that sentence
+  const seeded = typeof p.seed_protected === "number" && p.seed_protected > 0;
   return (
     `On automations at AI Dime makes at most ${count(p.adds_per_day, "add")} a day, within your league's own add limits, ` +
     `and it never drops a player you protected. ` +
-    `Where it adds and drops, your first ${count(p.seed_protected, "draft pick")} still on the roster are protected ` +
-    `for you once, and the Week desk changes them. ` +
+    (seeded
+      ? `Where it adds and drops, your first ${count(p.seed_protected, "draft pick")} still on the roster are protected ` +
+        `for you once, and the Week desk changes them. `
+      : "") +
     `It pauses itself and emails you after ${count(p.pause_refused, "refused move")}, or the same rule stopping it ` +
     `${count(p.pause_same_block, "time")}, in a day.`
   );

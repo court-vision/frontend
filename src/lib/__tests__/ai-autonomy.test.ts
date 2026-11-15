@@ -273,6 +273,11 @@ describe("the policy", () => {
     );
     expect(policyLine({ ...p, adds_per_day: 1 })).toContain("at most 1 add a day");
     expect(policyLine({ ...p, seed_protected: 1 })).toContain("your first 1 draft pick still");
+    // The api before the seed sends no seed_protected: the line goes without that sentence
+    const before = { adds_per_day: 2, pause_refused: 2, pause_same_block: 2 } as unknown as AiActingPolicy;
+    expect(policyLine(before)).toBe(
+      "On automations at AI Dime makes at most 2 adds a day, within your league's own add limits, and it never drops a player you protected. It pauses itself and emails you after 2 refused moves, or the same rule stopping it 2 times, in a day."
+    );
   });
 });
 
