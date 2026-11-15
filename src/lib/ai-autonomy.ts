@@ -268,12 +268,14 @@ function count(n: number, one: string, many = `${one}s`): string {
 }
 
 /** The policy every move Dime sends itself is held to, in three sentences. Over the matchup Dime keeps
- * to the league's own add limits (ESPN's settings), so they have no number of Dime's own here. */
+ * to the league's own add limits (ESPN's settings), so they have no number of Dime's own here; who it
+ * never drops is the user's protections, seeded once from the draft (backend roster_protection.seed). */
 export function policyLine(p: AiActingPolicy): string {
   return (
-    `On automations at AI Dime makes at most ${count(p.adds_per_day, "add")} a day, within your league's own add limits. ` +
-    `It leaves ${p.adds_reserve} of the matchup's adds for you, and it never drops one of ` +
-    `your top ${p.protected_top}. ` +
+    `On automations at AI Dime makes at most ${count(p.adds_per_day, "add")} a day, within your league's own add limits, ` +
+    `and it never drops a player you protected. ` +
+    `Where it adds and drops, your first ${count(p.seed_protected, "draft pick")} still on the roster are protected ` +
+    `for you once, and the Week desk changes them. ` +
     `It pauses itself and emails you after ${count(p.pause_refused, "refused move")}, or the same rule stopping it ` +
     `${count(p.pause_same_block, "time")}, in a day.`
   );
@@ -337,10 +339,12 @@ export const RULE_LABEL: Record<string, string> = {
   cap_day: "Day's adds used",
   league_limit: "League's add limit",
   cap_matchup: "Matchup's adds used",
+  // Moves held back by rules since removed (2026-11-15) still say so: the add kept for the user,
+  // the top-six rule and the 48-hour rule
   reserve: "Adds kept for you",
   protected: "Top player",
   user_protected: "Protected",
-  churn: "Added recently", // moves held back before the 48-hour rule went (2026-11-15) still say so
+  churn: "Added recently",
   credentials: "ESPN sign-in",
   espn_rejected: "ESPN said no",
   error: "Error",

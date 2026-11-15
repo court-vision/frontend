@@ -264,15 +264,15 @@ describe("the policy", () => {
   test("is three sentences of the server's numbers, the matchup's cap the league's own", () => {
     const p: AiActingPolicy = {
       adds_per_day: 2,
-      adds_reserve: 1,
-      protected_top: 6,
+      seed_protected: 6,
       pause_refused: 2,
       pause_same_block: 2,
     };
     expect(policyLine(p)).toBe(
-      "On automations at AI Dime makes at most 2 adds a day, within your league's own add limits. It leaves 1 of the matchup's adds for you, and it never drops one of your top 6. It pauses itself and emails you after 2 refused moves, or the same rule stopping it 2 times, in a day."
+      "On automations at AI Dime makes at most 2 adds a day, within your league's own add limits, and it never drops a player you protected. Where it adds and drops, your first 6 draft picks still on the roster are protected for you once, and the Week desk changes them. It pauses itself and emails you after 2 refused moves, or the same rule stopping it 2 times, in a day."
     );
     expect(policyLine({ ...p, adds_per_day: 1 })).toContain("at most 1 add a day");
+    expect(policyLine({ ...p, seed_protected: 1 })).toContain("your first 1 draft pick still");
   });
 });
 
