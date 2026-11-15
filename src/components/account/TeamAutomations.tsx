@@ -75,31 +75,45 @@ export function TeamAutomations({
     });
 
   const base = prefs.data;
+  const overrides = teamPrefs.data;
   const pilots = dime.data?.teams ?? [];
   const acting = dime.data?.acting ?? null;
   const features = dime.data?.features ?? null;
   const accountEmail = base ? base.lineup_alerts_enabled : true;
+  // A card shows a team's real levels only once all three reads are in: the account's values, the team's own,
+  // and whether Dime runs it. Until then, or if one fails, no card is editable.
   const loading = prefs.loading || teamPrefs.loading || dime.loading;
   const error = prefs.error ?? teamPrefs.error ?? dime.error;
+  const ready = !!base && !!overrides && !loading && !error;
+  const retry = () => {
+    if (prefs.error) prefs.refetch();
+    if (teamPrefs.error) teamPrefs.refetch();
+    if (dime.error) dime.refetch();
+  };
   const live = pilots.filter((t) => t.autopilot).length;
 
   return (
     <>
-      <Block title="Your teams" note={loading ? "loading…" : live ? `${model.teams.length} · autopilot on ${live}` : `${model.teams.length}`}>
-        {loading && !base ? (
+      <Block title="Your teams" note={!ready ? (error ? "" : "loading…") : live ? `${model.teams.length} · autopilot on ${live}` : `${model.teams.length}`}>
+        {error ? (
+          <div className={s.row2}>
+            <span className={s.formError}>Your teams&apos; automations didn&apos;t load: {error}</span>
+            <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={retry}>
+              Try again
+            </button>
+          </div>
+        ) : !ready || !base || !overrides ? (
           <Skeleton rows={4} />
-        ) : error && !base ? (
-          <div className={s.formError}>{error}</div>
         ) : model.teams.length === 0 ? (
           <div className={s.blockEmpty}>No teams yet. Add one and its automations show here.</div>
-        ) : base ? (
+        ) : (
           <div className={s.autoTeams}>
             {model.teams.map((team) => (
               <TeamAutomation
                 key={team.team_id}
                 model={model}
                 team={team}
-                prefs={effectivePrefs(base, (teamPrefs.data ?? []).find((p) => p.team_id === team.team_id))}
+                prefs={effectivePrefs(base, overrides.find((p) => p.team_id === team.team_id))}
                 accountEmail={accountEmail}
                 pilot={pilots.find((p) => p.team_id === team.team_id) ?? null}
                 acting={acting}
@@ -108,8 +122,8 @@ export function TeamAutomations({
               />
             ))}
           </div>
-        ) : null}
-        {base && !accountEmail ? (
+        )}
+        {ready && !accountEmail ? (
           <div className={s.row2} style={{ paddingTop: 12 }}>
             <span className={s.fieldHint}>
               Your account&apos;s lineup email is off, so no team&apos;s lineup runs: Lineup can&apos;t be Notify, Act or AI anywhere until it is back on.

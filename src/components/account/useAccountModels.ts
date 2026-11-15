@@ -71,15 +71,20 @@ const useLiveTeamPrefs = (): Loaded<NotificationTeamPreference[]> => loaded(useT
 /** Dime's teams, the server's switches and the features, out of the AI desk's check-ins read: only with CV AI. */
 function useLiveDime(): Loaded<DimeState> {
   const usage = useAiUsageQuery();
-  const { data, isLoading, error, refetch } = useAiCheckinsQuery(usage.data?.access === true);
+  const access = usage.data?.access === true;
+  const { data, isLoading, error, refetch } = useAiCheckinsQuery(access);
+  // Still loading until CV AI access is known, so a team never shows the no-AI controls first. A failed
+  // access read is the AI desk switched off (AI_DISABLED), which counts as no CV AI; a failed check-ins
+  // read with access is an error, since the team's AI levels are then unknown.
+  const usageLoading = usage.isLoading;
   return useMemo(
     () => ({
-      data: data ? { teams: data.teams, acting: data.acting ?? null, features: data.features ?? null } : null,
-      loading: isLoading,
-      error: error ? userMessage(error) : null,
+      data: access && data ? { teams: data.teams, acting: data.acting ?? null, features: data.features ?? null } : null,
+      loading: usageLoading || (access && isLoading),
+      error: access && error ? userMessage(error) : null,
       refetch: () => void refetch(),
     }),
-    [data, isLoading, error, refetch]
+    [access, data, usageLoading, isLoading, error, refetch]
   );
 }
 
