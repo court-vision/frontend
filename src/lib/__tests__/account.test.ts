@@ -3,7 +3,6 @@ import {
   AUTOMATION_FIELDS,
   NOTIFICATION_FIELDS,
   accountTeamLine,
-  automationSummary,
   clearPatch,
   effectivePrefs,
   hasOwn,
@@ -118,7 +117,7 @@ function connection(over: Partial<ProviderConnection> = {}): ProviderConnection 
 
 describe("focus", () => {
   test("round-trips through the URL", () => {
-    for (const q of ["", "t=22", "c=1", "v=alerts", "v=automation", "v=account"]) {
+    for (const q of ["", "t=22", "c=1", "v=alerts", "v=automation", "v=automation&team=22", "v=account"]) {
       expect(focusToSearch(focusFromSearch(new URLSearchParams(q)))).toBe(q);
     }
   });
@@ -127,6 +126,12 @@ describe("focus", () => {
     for (const q of ["t=abc", "t=-1", "c=", "v=keys", "t=1234567890"]) {
       expect(focusFromSearch(new URLSearchParams(q)).kind).toBe("overview");
     }
+  });
+
+  test("AI and automation can open one team; a malformed one opens none", () => {
+    expect(focusFromSearch(new URLSearchParams("v=automation&team=22"))).toEqual({ kind: "automation", team: 22 });
+    expect(focusFromSearch(new URLSearchParams("v=automation&team=x"))).toEqual({ kind: "automation" });
+    expect(sameFocus({ kind: "automation", team: 22 }, { kind: "automation" })).toBe(true);
   });
 
   test("a team beats a connection when both are present", () => {
@@ -419,10 +424,6 @@ describe("settings: notifications, and AI and automation", () => {
   test("the lineup is set only when the tip-off email is on too", () => {
     expect(setsLineup({ ...PREFS, auto_lineup_enabled: true })).toBe(true);
     expect(setsLineup({ ...PREFS, auto_lineup_enabled: true, lineup_alerts_enabled: false })).toBe(false);
-    expect(automationSummary({ ...PREFS, auto_lineup_enabled: true })).toBe("lineup: act, sets it 90 min before");
-    expect(automationSummary({ ...PREFS, auto_lineup_enabled: true, lineup_alerts_enabled: false })).toBe("lineup: off");
-    expect(automationSummary(PREFS)).toBe("lineup: notify, the email 90 min before");
-    expect(automationSummary({ ...PREFS, late_scratch_level: "act" })).toBe("lineup: notify, the email 90 min before · late scratches: act");
   });
 
   test("teams whose lineup is set, each by its own settings", () => {

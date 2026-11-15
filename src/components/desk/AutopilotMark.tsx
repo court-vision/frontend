@@ -8,13 +8,14 @@ import dk from "./desk.module.css";
  * spectrum, inside an outline that runs with it. It is the way to the switch,
  * so a desk shows it only for a team whose autopilot is live (ai-autonomy's
  * `autopilotLive`), never for one that is merely switched on over a pause.
- * In a demo the link stays in the demo.
+ * In a demo the link stays in the demo. It opens AI and automation with the team
+ * (`teamId`) unfolded.
  */
-export function AutopilotMark({ team, demo = false }: { team?: string | null; demo?: boolean }) {
+export function AutopilotMark({ team, teamId, demo = false }: { team?: string | null; teamId?: number | null; demo?: boolean }) {
   const where = team ? ` on ${team}` : "";
   return (
     <Link
-      href={`${ACCOUNT_DESK}?${demo ? "demo&" : ""}v=automation`}
+      href={`${ACCOUNT_DESK}?${demo ? "demo&" : ""}v=automation${teamId != null ? `&team=${teamId}` : ""}`}
       className={`${dk.badge} ${dk.autopilotMark}`}
       title={`Dime Autopilot is running${where}: every automation is at AI. Open its switch in Account.`}
       aria-label={`Dime Autopilot is on${where}. Open its settings`}

@@ -1,89 +1,28 @@
 "use client";
 
-import { Bell } from "lucide-react";
-import { automationSummary, AUTOMATION_FIELDS, type AccountFocus } from "@/lib/account";
-import { ACCOUNT_LEVELS, accountOptions, belowAi, lineupPrefs, ROW_LABEL } from "@/lib/ai-autonomy";
-import type { AiAutomationName } from "@/types/ai";
-import type { LateScratchLevel } from "@/types/notifications";
+import type { AccountFocus } from "@/lib/account";
 import type { AccountModel } from "./model";
-import { DimeAutopilot } from "./DimeAutopilot";
-import { LevelRail } from "./LevelRail";
-import { AccountSettings, TeamSettings, type FieldsProps, type SettingsKind } from "./SettingsBlocks";
-import dk from "@/components/desk/desk.module.css";
+import { TeamAutomations } from "./TeamAutomations";
 import s from "./account.module.css";
 
-/** The automations the account's table lists: AI and check-ins are per team, in the Dime block. */
-const ACCOUNT_ROWS: AiAutomationName[] = ["lineup", "daily_actions", "lanes", "late_scratch"];
-
-const ACCOUNT_HELP: Record<string, string> = {
-  lineup:
-    "Notify is the tip-off email. Act also sets the lineup before tip-off: bench players with a game move into spots held by players without one. Healthy starters stay, IR is untouched, and the email says what changed.",
-  daily_actions: "The Week desk's IR moves and the day's pickup and drop. Its email and Court Vision making the moves aren't built yet.",
-  lanes: "Your stream lanes run as you set them in the Week desk.",
-  late_scratch:
-    "When a starter is ruled out before his game, or a bench player is cleared to play. Notify emails the one swap it calls for: the starter benched for a bench player with a game, or the cleared player started. Act makes that swap on ESPN and emails it. Nothing else in the lineup moves, and a swap isn't undone if the ruling changes again. At AI, on a team Dime runs, an event check-in answers it instead.",
-};
-
-/** Off, Notify or Act for each automation: the account's, or a team's own over it. */
-function AutomationFields({ prefs, onChange, disabled, onOpen, account }: FieldsProps) {
-  // A team's own Notify and Act need the account's lineup email: the pipeline skips everyone without it
-  const accountEmail = account ? account.lineup_alerts_enabled : true;
-  return (
-    <div className={s.pilotGrid} role="group" aria-label="Automations">
-      {ACCOUNT_ROWS.map((row) => (
-        <div key={row} className={s.pilotRow}>
-          <div className={s.pilotLabel}>
-            <span className={s.pilotName}>{ROW_LABEL[row]}</span>
-            <span className={s.fieldHint}>{ACCOUNT_HELP[row]}</span>
-          </div>
-          <LevelRail
-            label={ROW_LABEL[row]}
-            options={accountOptions(row, accountEmail)}
-            value={belowAi(row, prefs)}
-            disabled={disabled}
-            onPick={(level) => {
-              if (!ACCOUNT_LEVELS.includes(level)) return;
-              if (row === "lineup") onChange({ ...prefs, ...lineupPrefs(level) });
-              else if (row === "late_scratch") onChange({ ...prefs, late_scratch_level: level as LateScratchLevel });
-            }}
-          />
-        </div>
-      ))}
-      {!accountEmail ? (
-        <div className={s.row2} style={{ padding: "6px 14px 8px" }}>
-          <span className={s.fieldHint}>The account&apos;s Lineup is off, so no team&apos;s lineup runs. Set it to Notify or Act above, or turn the tip-off email on.</span>
-          <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={() => onOpen({ kind: "alerts" })}>
-            <Bell size={12} /> Open notifications
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-const AUTOMATION: SettingsKind = {
-  fields: AUTOMATION_FIELDS,
-  Fields: AutomationFields,
-  summary: automationSummary,
-  own: "own setting",
-};
-
-/** AI and automation: what Court Vision does on your teams by itself, and what Dime does there. */
-export function AutomationSheet({ model, onOpen }: { model: AccountModel; onOpen: (focus: AccountFocus) => void }) {
+/** AI and automation: what Court Vision and Dime do on each of your teams by themselves, team by team. */
+export function AutomationSheet({ model, team, onOpen }: { model: AccountModel; team?: number; onOpen: (focus: AccountFocus) => void }) {
+  const dime = model.useDime();
+  const ai = !!dime.data;
   return (
     <div className={s.sheetInner}>
       <header className={s.head}>
         <div className={s.headBody}>
           <span className={s.headTitle}>AI and automation</span>
           <span className={s.headSub}>
-            What Court Vision does on your teams without asking each time: Off, Notify (an email says what is due) or Act (Court Vision does it). One setting for the account; any team can have its own. On teams Dime runs on, each automation can also be at AI.
+            {ai
+              ? "What Court Vision and Dime do on each of your teams without asking each time. Every automation is Off, Notify (an email says what is due), Act (Court Vision does it) or AI (Dime does it, within its limits, and logs every call). Autopilot puts all of a team's automations at AI."
+              : "What Court Vision does on each of your teams without asking each time. Every automation is Off, Notify (an email says what is due) or Act (Court Vision does it)."}
           </span>
         </div>
       </header>
 
-      <AccountSettings model={model} kind={AUTOMATION} onOpen={onOpen} />
-      <TeamSettings model={model} kind={AUTOMATION} onOpen={onOpen} />
-      <DimeAutopilot model={model} />
+      <TeamAutomations model={model} expand={team} onOpen={onOpen} />
     </div>
   );
 }

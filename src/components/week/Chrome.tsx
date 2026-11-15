@@ -59,7 +59,7 @@ export function Bar({ teams, teamId, onTeam, onAdd, notice, autopilot = false, p
               {liveGames} live
             </span>
           ) : null}
-          {autopilot ? <AutopilotMark team={teams.find((t) => t.id === teamId)?.name} demo={demo} /> : null}
+          {autopilot ? <AutopilotMark team={teams.find((t) => t.id === teamId)?.name} teamId={teamId} demo={demo} /> : null}
         </>
       }
     >

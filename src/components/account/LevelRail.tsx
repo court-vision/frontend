@@ -7,8 +7,8 @@ import type { AiLevel, AiLevelOption } from "@/types/ai";
 import dk from "@/components/desk/desk.module.css";
 
 /**
- * An automation's levels as a segmented rail: Off, Notify, Act (and AI on a team
- * Dime runs on). A level the row can't do stays in the rail, dimmed, and says why
+ * An automation's levels as a segmented rail: Off, Notify, Act (and AI on an
+ * account with CV AI). A level the row can't do stays in the rail, dimmed, and says why
  * when it is hovered or tapped; the level in force is the checked one.
  */
 export function LevelRail({

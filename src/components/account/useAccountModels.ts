@@ -36,6 +36,7 @@ import {
   demoDime,
   demoDimeChange,
   demoDimeTeam,
+  idleDemoDime,
   demoLeagueDetail,
   type DemoDime,
 } from "@/lib/account-demo";
@@ -70,15 +71,20 @@ const useLiveTeamPrefs = (): Loaded<NotificationTeamPreference[]> => loaded(useT
 /** Dime's teams, the server's switches and the features, out of the AI desk's check-ins read: only with CV AI. */
 function useLiveDime(): Loaded<DimeState> {
   const usage = useAiUsageQuery();
-  const { data, isLoading, error, refetch } = useAiCheckinsQuery(usage.data?.access === true);
+  const access = usage.data?.access === true;
+  const { data, isLoading, error, refetch } = useAiCheckinsQuery(access);
+  // Still loading until CV AI access is known, so a team never shows the no-AI controls first. A failed
+  // access read is the AI desk switched off (AI_DISABLED), which counts as no CV AI; a failed check-ins
+  // read with access is an error, since the team's AI levels are then unknown.
+  const usageLoading = usage.isLoading;
   return useMemo(
     () => ({
-      data: data ? { teams: data.teams, acting: data.acting ?? null, features: data.features ?? null } : null,
-      loading: isLoading,
-      error: error ? userMessage(error) : null,
+      data: access && data ? { teams: data.teams, acting: data.acting ?? null, features: data.features ?? null } : null,
+      loading: usageLoading || (access && isLoading),
+      error: access && error ? userMessage(error) : null,
       refetch: () => void refetch(),
     }),
-    [data, isLoading, error, refetch]
+    [access, data, usageLoading, isLoading, error, refetch]
   );
 }
 
@@ -328,6 +334,7 @@ const useDemoYahooTeams = (connectionId: number | null, leagueKey: string | null
 const useDemoPrefs = (): Loaded<NotificationPreference> => ready(useDemoStore((s) => s.prefs));
 const useDemoTeamPrefs = (): Loaded<NotificationTeamPreference[]> => ready(useDemoStore((s) => s.teamPrefs));
 const useDemoDime = (): Loaded<DimeState> => {
+  const teams = useDemoStore((s) => s.teams);
   const dime = useDemoStore((s) => s.dime);
   const prefs = useDemoStore((s) => s.prefs);
   const teamPrefs = useDemoStore((s) => s.teamPrefs);
@@ -335,11 +342,14 @@ const useDemoDime = (): Loaded<DimeState> => {
   return useMemo(
     () =>
       ready<DimeState>({
-        teams: dime.map((d) => demoDimeTeam(d, prefs, teamPrefs.find((p) => p.team_id === d.team_id))),
+        // Every team of the account, as the server lists them for CV AI; one never switched on reads idle
+        teams: teams.map((t) =>
+          demoDimeTeam(dime.find((d) => d.team_id === t.team_id) ?? idleDemoDime(t.team_id), prefs, teamPrefs.find((p) => p.team_id === t.team_id))
+        ),
         acting: DEMO_ACTING,
         features,
       }),
-    [dime, prefs, teamPrefs, features]
+    [teams, dime, prefs, teamPrefs, features]
   );
 };
 
@@ -351,6 +361,24 @@ const useDemoDime = (): Loaded<DimeState> => {
 export function useDemoAutopilot(teamId: number | null): boolean {
   const d = useDemoStore((s) => s.dime.find((x) => x.team_id === teamId));
   return autopilotLive(d ? { autopilot: d.autopilot, on: d.paused_at == null } : null, DEMO_ACTING);
+}
+
+/** A team's override with `patch` written over it, added when the team had none (as the server's upsert). */
+function upsertTeamPrefs(list: NotificationTeamPreference[], teamId: number, patch: Partial<NotificationTeamPreference>): NotificationTeamPreference[] {
+  const blank: NotificationTeamPreference = {
+    team_id: teamId,
+    has_override: true,
+    lineup_alerts_enabled: null,
+    alert_benched_starters: null,
+    alert_active_non_playing: null,
+    alert_injured_active: null,
+    alert_minutes_before: null,
+    auto_lineup_enabled: null,
+    late_scratch_level: null,
+    email: null,
+  };
+  const found = list.some((p) => p.team_id === teamId);
+  return found ? list.map((p) => (p.team_id === teamId ? { ...p, ...patch, has_override: true } : p)) : [...list, { ...blank, ...patch }];
 }
 
 /** A connected ESPN account's teams, with one of them now tracked. */
@@ -558,7 +586,7 @@ export function useDemoAccount(): AccountModel {
     useTeamPrefs: useDemoTeamPrefs,
     saveTeamPrefs: async (teamId, data) => {
       await wait(300);
-      set((s) => ({ teamPrefs: s.teamPrefs.map((p) => (p.team_id === teamId ? { ...p, ...data, has_override: true } : p)) }));
+      set((s) => ({ teamPrefs: upsertTeamPrefs(s.teamPrefs, teamId, data) }));
       toast.success("Team settings saved (demo)");
     },
     clearTeamPrefs: async (teamId) => {
@@ -572,21 +600,21 @@ export function useDemoAccount(): AccountModel {
       }));
       toast.success("Back to the account's settings (demo)");
     },
-    // Dime runs on the demo's first team: every change stays in memory, as the server would make it
+    // Dime runs on every demo team: every change stays in memory, as the server would make it
     useDime: useDemoDime,
     setDime: async (teamId, change) => {
       await wait(300);
       const st = useDemoStore.getState();
-      const d = st.dime.find((x) => x.team_id === teamId);
-      if (!d) throw new Error("Dime doesn't run on that team (demo)");
+      if (!st.teams.some((t) => t.team_id === teamId)) throw new Error("Team not found (demo)");
+      const d = st.dime.find((x) => x.team_id === teamId) ?? idleDemoDime(teamId);
       const override = st.teamPrefs.find((p) => p.team_id === teamId);
       const team = demoDimeTeam(d, st.prefs, override);
       const current = { lineup_alerts_enabled: override?.lineup_alerts_enabled ?? null, auto_lineup_enabled: override?.auto_lineup_enabled ?? null };
       const { dime, lineup, lateScratch } = demoDimeChange(d, team, current, change);
       const patch = lineup || lateScratch ? { ...lineup, ...(lateScratch ? { late_scratch_level: lateScratch } : {}) } : null;
       set((s) => ({
-        dime: s.dime.map((x) => (x.team_id === teamId ? dime : x)),
-        teamPrefs: patch ? s.teamPrefs.map((p) => (p.team_id === teamId ? { ...p, ...patch, has_override: true } : p)) : s.teamPrefs,
+        dime: s.dime.some((x) => x.team_id === teamId) ? s.dime.map((x) => (x.team_id === teamId ? dime : x)) : [...s.dime, dime],
+        teamPrefs: patch ? upsertTeamPrefs(s.teamPrefs, teamId, patch) : s.teamPrefs,
         features: change.autopilot ? { memory: true, draft_rooms: true } : s.features,
       }));
       return demoDimeTeam(dime, useDemoStore.getState().prefs, useDemoStore.getState().teamPrefs.find((p) => p.team_id === teamId));

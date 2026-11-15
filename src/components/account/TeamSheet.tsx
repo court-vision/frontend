@@ -15,7 +15,6 @@ import {
   providerLabel,
   rolloverSeason,
   seasonLabel,
-  setsLineup,
   teamCredentials,
   teamLine,
   teamName,
@@ -33,8 +32,11 @@ import s from "./account.module.css";
 interface TeamSheetProps {
   model: AccountModel;
   team: TeamResponseData;
-  /** The settings in force on this team, and which kinds it holds its own of; null while they load. */
-  settings: { prefs: NotificationPreference; notifyCustom: boolean; autoCustom: boolean } | null;
+  /**
+   * The settings in force on this team, whether it holds its own notifications, its automations in a
+   * line and whether autopilot runs it; null while they load.
+   */
+  settings: { prefs: NotificationPreference; notifyCustom: boolean; automation: string; autopilot: boolean } | null;
   onOpen: (focus: AccountFocus) => void;
   onRemoved: () => void;
 }
@@ -273,18 +275,16 @@ export function TeamSheet({ model, team, settings, onOpen, onRemoved }: TeamShee
         </div>
       </Block>
 
-      <Block title="AI and automation" note={settings ? (settings.autoCustom ? "custom for this team" : "the account's settings") : undefined}>
+      <Block title="AI and automation" note={settings?.autopilot ? <span className={dk.spectrumText}>Autopilot</span> : undefined}>
         <div className={s.row2}>
           <span className={s.prose}>
             {settings == null
-              ? "Setting the lineup before tip-off, for the account or for this team alone."
-              : setsLineup(settings.prefs)
-                ? "Court Vision sets this team's lineup before the first tip-off."
-                : settings.prefs.auto_lineup_enabled
-                  ? "Set to fill the lineup, but it waits for the tip-off email, which is off for this team."
-                  : "Nothing runs on this team by itself."}
+              ? "What Court Vision does on this team by itself: the lineup before tip-off, late scratches, and Dime."
+              : settings.autopilot
+                ? "Dime Autopilot runs this team: every automation is at AI."
+                : `On this team: ${settings.automation}.`}
           </span>
-          <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={() => onOpen({ kind: "automation" })}>
+          <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={() => onOpen({ kind: "automation", team: team.team_id })}>
             Open automation
           </button>
         </div>

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const READ = ["t", "c", "v", "yahoo_connected", "yahoo_connection", "yahoo_error"] as const;
+const READ = ["t", "c", "v", "team", "yahoo_connected", "yahoo_connection", "yahoo_error"] as const;
 
 export default async function Page({
   searchParams,

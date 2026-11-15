@@ -7,8 +7,8 @@ import { LayoutList } from "lucide-react";
 import { toast } from "sonner";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
+import { autopilotLive, prefsTable, tableLine } from "@/lib/ai-autonomy";
 import {
-  AUTOMATION_FIELDS,
   NOTIFICATION_FIELDS,
   effectivePrefs,
   focusFromSearch,
@@ -81,11 +81,13 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
 
   const prefs = model.usePrefs();
   const teamPrefs = model.useTeamPrefs();
+  const dime = model.useDime();
   const alertsOn = prefs.data ? prefs.data.lineup_alerts_enabled : null;
   const autoTeams = useMemo(
     () => (prefs.data && teamPrefs.data ? lineupTeams(prefs.data, teamPrefs.data, model.teams.map((t) => t.team_id)) : null),
     [prefs.data, teamPrefs.data, model.teams]
   );
+  const autopilotTeams = dime.data ? dime.data.teams.filter((t) => t.autopilot && model.teams.some((x) => x.team_id === t.team_id)).length : 0;
 
   const rows = useMemo(() => ledgerRows(model.teams, model.connections), [model.teams, model.connections]);
 
@@ -259,12 +261,23 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
     );
   } else if (team) {
     const override = (teamPrefs.data ?? []).find((p) => p.team_id === team.team_id);
+    const pilot = dime.data?.teams.find((t) => t.team_id === team.team_id) ?? null;
+    const inForce = prefs.data ? effectivePrefs(prefs.data, override) : null;
     body = (
       <TeamSheet
         key={team.team_id}
         model={model}
         team={team}
-        settings={prefs.data && teamPrefs.data ? { prefs: effectivePrefs(prefs.data, override), notifyCustom: hasOwn(override, NOTIFICATION_FIELDS), autoCustom: hasOwn(override, AUTOMATION_FIELDS) } : null}
+        settings={
+          prefs.data && inForce && teamPrefs.data
+            ? {
+                prefs: inForce,
+                notifyCustom: hasOwn(override, NOTIFICATION_FIELDS),
+                automation: tableLine(pilot ? pilot.rows : prefsTable(inForce, prefs.data.lineup_alerts_enabled), pilot?.autopilot),
+                autopilot: autopilotLive(pilot, dime.data?.acting ?? null),
+              }
+            : null
+        }
         onOpen={open}
         onRemoved={() => open({ kind: "overview" })}
       />
@@ -285,7 +298,7 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
   } else if (focus.kind === "alerts") {
     body = <NotificationsSheet model={model} onOpen={open} />;
   } else if (focus.kind === "automation") {
-    body = <AutomationSheet model={model} onOpen={open} />;
+    body = <AutomationSheet model={model} team={focus.team} onOpen={open} />;
   } else if (focus.kind === "account") {
     body = <AccountSheet model={model} />;
   } else if (loading) {
@@ -321,6 +334,7 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
           rows={rows}
           alertsOn={alertsOn}
           autoTeams={autoTeams}
+          autopilotTeams={autopilotTeams}
           email={model.user?.email ?? null}
           loading={loading}
           onOpen={open}
