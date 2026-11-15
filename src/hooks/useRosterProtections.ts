@@ -47,7 +47,9 @@ export function useSetProtectionMutation(teamId: number) {
     mutationKey: ["rosterProtections", "set", teamId],
     mutationFn: ({ playerId, on }) => apiClient.setProtection(getToken, teamId, playerId, on),
     meta: { toast: false },
-    onSuccess: ({ protections, message }, { on }) => {
+    onSuccess: async ({ protections, message }, { on }) => {
+      // A read still out (a focus refetch) holds the list from before: it must not land over this one.
+      await queryClient.cancelQueries({ queryKey: protectionKeys.team(teamId) });
       queryClient.setQueryData(protectionKeys.team(teamId), { ...protections, cancelled: [], not_cancelled: [] });
       toast.success(message);
       if (on) {
