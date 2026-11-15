@@ -51,6 +51,7 @@ import type {
 } from "@/types/lineup";
 import type { RankingsMeta, RankingsParams, RankingsPlayer, RankingsResult } from "@/types/rankings";
 import type { TeamHolds, TeamHoldsResponse } from "@/types/team-hold";
+import type { RosterProtections, RosterProtectionsResponse } from "@/types/roster-protection";
 import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actions";
 import type { TeamAvailabilityData, TeamAvailabilityResponse } from "@/types/availability";
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
@@ -535,6 +536,30 @@ class ApiClient {
       body: { proposal_id: proposalId },
     });
     return unwrap(env, { enabled: true, holds: [] });
+  }
+
+  /** The team's protected players (the roster lock), by name. */
+  async getProtections(getToken: GetTokenFn, teamId: number, opts?: RequestOptions): Promise<RosterProtections> {
+    const env = await fetchJson<RosterProtectionsResponse>(`${TEAMS_API}/${teamId}/protections`, { ...opts, getToken });
+    return unwrap(env, { players: [], cancelled: [], not_cancelled: [] });
+  }
+
+  /**
+   * Protect (`on`) or unprotect a player (ESPN id). Protecting cancels the pending pickups
+   * that drop him and stops the stream lanes on his spot, each named in the answer; 422
+   * PROTECTION_NOT_ON_ROSTER, 404 PROTECTION_NOT_FOUND. Returns the list then, with the message.
+   */
+  async setProtection(
+    getToken: GetTokenFn,
+    teamId: number,
+    playerId: number,
+    on: boolean
+  ): Promise<{ protections: RosterProtections; message: string }> {
+    const env = await fetchJson<RosterProtectionsResponse>(`${TEAMS_API}/${teamId}/protections/${playerId}`, {
+      getToken,
+      method: on ? "PUT" : "DELETE",
+    });
+    return { protections: unwrap(env, { players: [], cancelled: [], not_cancelled: [] }), message: env.message };
   }
 
   /** Clear one of Dime's holds: nothing reads it from now on. Returns the holds then. */

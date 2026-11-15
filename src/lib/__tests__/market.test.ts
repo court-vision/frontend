@@ -91,6 +91,14 @@ describe("roster", () => {
     expect(Math.max(...avgs)).toBeLessThanOrEqual(Math.min(...source.mine.filter((p) => !ids.includes(p.id)).map((p) => p.avg)));
   });
 
+  test("a protected player is never offered as a drop", () => {
+    const lowest = dropCandidates(source, board, 3);
+    const without = dropCandidates(source, board, 3, new Set([lowest[0]]));
+    expect(without).not.toContain(lowest[0]);
+    expect(without).toHaveLength(3);
+    expect(without.slice(0, 2)).toEqual(lowest.slice(1));
+  });
+
   test("a full roster has no room; an empty spot does", () => {
     expect(rosterRoom(board)).toBe(0);
     expect(rosterRoom({ ...board, players: board.players.slice(1) })).toBe(1);

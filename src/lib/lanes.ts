@@ -223,6 +223,10 @@ const LANE_REASONS: Record<string, string> = {
   provider_not_supported: "this league's rosters can't be changed from here",
   paused_by_user: "you paused it",
   stopped: "you stopped it",
+  // The roster lock: protecting the spot's player stops the lane, and nothing drops him
+  stopped_for_protected: "you protected the spot's player",
+  drop_protected: "the spot's player is protected",
+  protections_unread: "your protected players couldn't be read",
   // Dime's lane chips, applied by you (the reason Dime gave is the event's detail)
   paused_by_dime: "you applied Dime's pause",
   stopped_by_dime: "you applied Dime's stop",

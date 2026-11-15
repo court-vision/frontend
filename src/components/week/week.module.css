@@ -254,6 +254,13 @@
   flex-shrink: 0;
 }
 
+/* A protected player (the roster lock): never dropped. Not the padlock, which is ESPN's game lock. */
+.shield {
+  color: var(--accent);
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
 .openSlot {
   font-family: var(--desk-mono), ui-monospace, monospace;
   font-size: 11px;

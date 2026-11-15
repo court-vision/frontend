@@ -32,4 +32,5 @@ export type PickupInvalidReason =
   | "add_already_on_roster"
   | "add_not_found"
   | "add_not_available"
-  | "drop_not_on_roster";
+  | "drop_not_on_roster"
+  | "drop_protected";

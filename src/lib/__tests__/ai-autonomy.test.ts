@@ -275,6 +275,9 @@ describe("what became of a move", () => {
 describe("Dime's moves", () => {
   test("a rule reads as its chip; a passed-through code as itself", () => {
     expect(ruleLabel("cap_day")).toBe("Day's adds used");
+    // The user's lock and Dime's own top-player rule are different chips
+    expect(ruleLabel("user_protected")).toBe("Protected");
+    expect(ruleLabel("protected")).toBe("Top player");
     expect(ruleLabel("AI_PROPOSAL_STALE")).toBe("Proposal stale");
     expect(ruleLabel(null)).toBeNull();
   });

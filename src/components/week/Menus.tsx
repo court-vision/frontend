@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Command } from "cmdk";
-import { BarChart3, Radio, Repeat2, Undo2, UserMinus } from "lucide-react";
+import { BarChart3, Radio, Repeat2, Shield, ShieldOff, Undo2, UserMinus } from "lucide-react";
 import { slotName } from "@/lib/lineup-editor";
 import type { SourcePlayer, WeekDay } from "@/lib/week-grid";
 import type { StreamerPlayer } from "@/types/streamer";
@@ -70,6 +70,17 @@ interface MoveMenuProps extends Anchored {
   drop?: MoveMenuDrop | null;
   /** Open his stats beside the grid. */
   onStats?: () => void;
+  /** Protecting him (the roster lock); omitted where it can't be set (no ESPN team). */
+  protect?: MoveMenuProtect | null;
+}
+
+/** The move menu's protect item: a protected player is never dropped, or suggested as a drop. */
+export interface MoveMenuProtect {
+  /** He is protected now. */
+  on: boolean;
+  /** That request is out. */
+  busy: boolean;
+  onToggle: () => void;
 }
 
 /** The move menu's drop: made now, staged in the tray's today column. */
@@ -99,17 +110,21 @@ export function MoveMenu({
   streamNote = null,
   drop = null,
   onStats,
+  protect = null,
   ...shell
 }: MoveMenuProps) {
   const staged = !!drop?.staged;
+  // Protected, he can't be replaced, dropped or streamed over: one line says so in place of the three.
+  const shielded = !!protect?.on && !staged;
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => ref.current?.focus(), []);
   // The letters on the items work here too, as they do on the grid.
   const shortcuts: Record<string, (() => void) | undefined> = {
-    r: onReplace,
+    r: shielded ? undefined : onReplace,
     x: drop && (staged || !drop.note) ? drop.onToggle : undefined,
-    s: onStream,
+    s: shielded ? undefined : onStream,
     i: onStats,
+    k: protect && !protect.busy ? protect.onToggle : undefined,
   };
   return (
     <Shell {...shell}>
@@ -169,14 +184,18 @@ export function MoveMenu({
               ))}
             </Command.Group>
           )}
-          <Command.Item value="replace" className={dk.menuItem} onSelect={onReplace}>
-            <Repeat2 size={14} style={{ color: "var(--preview)" }} />
-            <span className={dk.grow}>
-              {scheduleFor ? `Replace him from ${scheduleFor} with a free agent…` : "Replace with a free agent…"}
-            </span>
-            <span className={dk.kbd}>R</span>
-          </Command.Item>
-          {drop && !staged ? (
+          {shielded ? (
+            <div className={dk.menuEmpty}>Protected: he can&apos;t be replaced, dropped or streamed over until you unprotect him.</div>
+          ) : (
+            <Command.Item value="replace" className={dk.menuItem} onSelect={onReplace}>
+              <Repeat2 size={14} style={{ color: "var(--preview)" }} />
+              <span className={dk.grow}>
+                {scheduleFor ? `Replace him from ${scheduleFor} with a free agent…` : "Replace with a free agent…"}
+              </span>
+              <span className={dk.kbd}>R</span>
+            </Command.Item>
+          )}
+          {drop && !staged && !shielded ? (
             drop.note ? (
               <div className={dk.menuEmpty}>{drop.note}</div>
             ) : (
@@ -190,7 +209,7 @@ export function MoveMenu({
               </Command.Item>
             )
           ) : null}
-          {onStream ? (
+          {shielded ? null : onStream ? (
             <Command.Item value="stream" className={dk.menuItem} onSelect={onStream}>
               <Radio size={14} style={{ color: "var(--accent)" }} />
               <span className={dk.grow}>Stream this spot{streamThrough ? ` through ${streamThrough}` : ""}…</span>
@@ -198,6 +217,20 @@ export function MoveMenu({
             </Command.Item>
           ) : streamNote ? (
             <div className={dk.menuEmpty}>{streamNote}</div>
+          ) : null}
+          {protect ? (
+            <Command.Item value="protect" className={dk.menuItem} onSelect={protect.onToggle} disabled={protect.busy}>
+              {protect.on ? (
+                <ShieldOff size={14} style={{ color: "var(--text-2)" }} />
+              ) : (
+                <Shield size={14} style={{ color: "var(--accent)" }} />
+              )}
+              <span className={dk.grow}>
+                {protect.on ? "Unprotect him" : "Protect him"}
+                <span className={dk.sub}>{protect.on ? " · droppable again" : " · never dropped"}</span>
+              </span>
+              <span className={dk.kbd}>K</span>
+            </Command.Item>
           ) : null}
           {onStats ? (
             <Command.Item value="stats" className={dk.menuItem} onSelect={onStats}>

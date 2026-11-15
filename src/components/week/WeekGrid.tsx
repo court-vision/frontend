@@ -15,7 +15,7 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { ArrowLeftRight, BarChart3, Lock, Repeat2 } from "lucide-react";
+import { ArrowLeftRight, BarChart3, Lock, Repeat2, Shield } from "lucide-react";
 import { BENCH_SLOT_ID, IR_SLOT_ID, isActiveSlot, slotName } from "@/lib/lineup-editor";
 import { healthOf, type GridCell, type GridRow, type LineupMode, type WeekGrid as Grid } from "@/lib/week-grid";
 import type { LineupPlayer } from "@/types/lineup-editor";
@@ -64,7 +64,11 @@ interface WeekGridProps {
   mode: LineupMode;
   /** Open (or close) a player's stats. */
   onStats?: (playerId: number) => void;
+  /** The players the user protected (the roster lock): a shield beside each name. */
+  protectedIds?: ReadonlySet<number>;
 }
+
+const NO_PROTECTED: ReadonlySet<number> = new Set();
 
 type Group = "active" | "bench" | "ir" | "drop" | "later";
 
@@ -101,6 +105,7 @@ export function WeekGrid({
   drag,
   mode,
   onStats,
+  protectedIds = NO_PROTECTED,
 }: WeekGridProps) {
   const [hotCol, setHotCol] = useState<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -171,6 +176,7 @@ export function WeekGrid({
           droppable={!!drag && group !== "drop"}
           draggable={!!drag && group !== "drop" && row.kind === "player" && !!row.player && !boardById.get(row.player.id)?.locked}
           board={row.player ? boardById.get(row.player.id) : undefined}
+          shielded={!!row.player && row.kind === "player" && protectedIds.has(row.player.id)}
           isToday={isToday}
           todayIndex={todayIndex}
           cursor={cursor?.key === row.key ? cursor.col : null}
@@ -368,6 +374,8 @@ interface GridRowViewProps {
   droppable: boolean;
   draggable: boolean;
   board: LineupPlayer | undefined;
+  /** He is protected (the roster lock). */
+  shielded: boolean;
   isToday: boolean;
   todayIndex: number | null;
   /** The cursor's column when it is on this row. */
@@ -390,6 +398,7 @@ function GridRowView({
   droppable,
   draggable,
   board,
+  shielded,
   isToday,
   todayIndex,
   cursor,
@@ -420,6 +429,7 @@ function GridRowView({
         row={row}
         group={group}
         board={board}
+        shielded={shielded}
         isToday={isToday}
         draggable={draggable}
         cursor={cursor === 0}
@@ -497,6 +507,7 @@ interface RosterCellProps {
   row: GridRow;
   group: Group;
   board: LineupPlayer | undefined;
+  shielded: boolean;
   isToday: boolean;
   draggable: boolean;
   cursor: boolean;
@@ -506,7 +517,7 @@ interface RosterCellProps {
   onStats?: () => void;
 }
 
-const RosterCell = memo(function RosterCell({ row, group, board, isToday, draggable, cursor, onFocus, onMove, onReplace, onStats }: RosterCellProps) {
+const RosterCell = memo(function RosterCell({ row, group, board, shielded, isToday, draggable, cursor, onFocus, onMove, onReplace, onStats }: RosterCellProps) {
   const p = row.player;
   const cellRef = useRef<HTMLDivElement | null>(null);
   const { setNodeRef, listeners, attributes } = useDraggable({
@@ -583,6 +594,11 @@ const RosterCell = memo(function RosterCell({ row, group, board, isToday, dragga
           {row.kind === "incoming" ? <span style={{ color: "var(--preview)" }}>FREE AGENT</span> : null}
         </span>
       </span>
+      {shielded ? (
+        <span className={s.shield} title="Protected: never dropped or suggested as a drop">
+          <Shield size={12} aria-label="Protected" />
+        </span>
+      ) : null}
       {locked ? (
         <span className={s.lock} title="Locked: his game has started">
           <Lock size={12} />

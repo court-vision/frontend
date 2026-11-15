@@ -1967,7 +1967,7 @@
                 "type": "null"
               }
             ],
-            "description": "The rule that blocked it (cap_day, cap_matchup, reserve, protected, churn, paused, writes_off, ...) or the error code",
+            "description": "The rule that blocked it (cap_day, cap_matchup, reserve, protected (a top player), user_protected (the user protected him), churn, paused, writes_off, ...) or the error code",
             "title": "Rule"
           }
         },
@@ -21446,6 +21446,84 @@
         "title": "ProjectionStats",
         "type": "object"
       },
+      "ProtectedPlayer": {
+        "properties": {
+          "espn_id": {
+            "title": "Espn Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
+          "protected_at": {
+            "format": "date-time",
+            "title": "Protected At",
+            "type": "string"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          }
+        },
+        "required": [
+          "espn_id",
+          "nba_player_id",
+          "name",
+          "team",
+          "protected_at"
+        ],
+        "title": "ProtectedPlayer",
+        "type": "object"
+      },
+      "ProtectionCancelled": {
+        "description": "Something protecting a player cancelled, because it would have dropped him.",
+        "properties": {
+          "id": {
+            "description": "The scheduled pickup's id, or the stream lane's",
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "pickup",
+              "lane"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "summary": {
+            "description": "What it was, in a few words (\"Thu's pickup of K. Murray\")",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "summary"
+        ],
+        "title": "ProtectionCancelled",
+        "type": "object"
+      },
       "ProviderCapabilitiesResp": {
         "description": "What this team's provider can do for it (services.providers.capabilities).\n\nThe client reads these instead of branching on the provider name: a\nfeature is offered when its capability is true and renders the empty state\nwith `write_blocked_reason` otherwise.",
         "properties": {
@@ -23197,6 +23275,93 @@
           "game_time_decision"
         ],
         "title": "RosterHealthSummary",
+        "type": "object"
+      },
+      "RosterProtectionsData": {
+        "properties": {
+          "cancelled": {
+            "description": "Protecting only: what would have dropped him and was cancelled",
+            "items": {
+              "$ref": "#/components/schemas/ProtectionCancelled"
+            },
+            "title": "Cancelled",
+            "type": "array"
+          },
+          "not_cancelled": {
+            "description": "Protecting only: what would drop him and was already being sent to ESPN, so it could not be cancelled; the check before ESPN still refuses it unless it was out already",
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Cancelled",
+            "type": "array"
+          },
+          "players": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProtectedPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          }
+        },
+        "required": [
+          "players",
+          "cancelled",
+          "not_cancelled"
+        ],
+        "title": "RosterProtectionsData",
+        "type": "object"
+      },
+      "RosterProtectionsResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RosterProtectionsData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "RosterProtectionsResp",
         "type": "object"
       },
       "RosterTransactionData": {
@@ -34233,6 +34398,166 @@
         "summary": "Cancel Pickup",
         "tags": [
           "scheduled pickups"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/protections": {
+      "get": {
+        "description": "The team's protected players, by name. No ESPN call.",
+        "operationId": "list_protections_v1_internal_teams__team_id__protections_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterProtectionsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Protections",
+        "tags": [
+          "protections"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/protections/{player_id}": {
+      "delete": {
+        "description": "Unprotect `player_id`: from now on he can be dropped again. Nothing that protecting him\ncancelled comes back. 404 PROTECTION_NOT_FOUND when he isn't protected.",
+        "operationId": "unprotect_player_v1_internal_teams__team_id__protections__player_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "player_id",
+            "required": true,
+            "schema": {
+              "title": "Player Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterProtectionsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unprotect Player",
+        "tags": [
+          "protections"
+        ]
+      },
+      "put": {
+        "description": "Protect `player_id` (ESPN) on this team. He must be on the roster: today's on ESPN, or\ntomorrow's once today's first game has tipped (a player added tonight). Protecting one\nalready protected changes nothing.\n\nWhat would drop him goes: the open stream lanes holding his spot are stopped and the\npending pickups dropping him are cancelled, each named in `cancelled`. One already being\nsent to ESPN can't be cancelled and is named in `not_cancelled` (the check before ESPN\nstill refuses it unless it was out already). 422 PROTECTION_NOT_ON_ROSTER.",
+        "operationId": "protect_player_v1_internal_teams__team_id__protections__player_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "player_id",
+            "required": true,
+            "schema": {
+              "title": "Player Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterProtectionsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Protect Player",
+        "tags": [
+          "protections"
         ]
       }
     },

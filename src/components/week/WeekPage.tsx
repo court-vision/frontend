@@ -16,6 +16,7 @@ import {
 import { useRosterTransactionMutation } from "@/hooks/useRosterTransaction";
 import { useCancelPickupMutation, useSchedulePickupMutation, useScheduledPickupsQuery } from "@/hooks/useScheduledPickups";
 import { useClearHoldMutation, useTeamHoldsQuery } from "@/hooks/useTeamHolds";
+import { useRosterProtectionsQuery, useSetProtectionMutation } from "@/hooks/useRosterProtections";
 import { useAiCheckinsQuery } from "@/hooks/useAi";
 import { autopilotLive } from "@/lib/ai-autonomy";
 import type { TeamHold } from "@/types/team-hold";
@@ -178,6 +179,15 @@ export interface TerminalData {
   clearHold: (holdId: number) => void;
   /** The hold being cleared, while that request is out. */
   clearingHold: number | null;
+  /**
+   * The players the user protected (ESPN ids; ESPN teams): never dropped, or suggested as a
+   * drop, by anything here or by Dime (the roster lock).
+   */
+  protectedIds: ReadonlySet<number>;
+  /** Protect or unprotect him. Protecting cancels the pickups dropping him and stops the lanes on his spot. */
+  setProtected: (playerId: number, on: boolean) => void;
+  /** The player being protected or unprotected, while that request is out. */
+  protecting: number | null;
   /** Today's moves (ESPN teams); null where there are none to read. */
   actions: TodayActions | null;
   /** The matchup's nightly score snapshots (the edge's race); null while there is no week to ask about. */
@@ -186,6 +196,9 @@ export interface TerminalData {
 
 /** The demo has no Dime to set holds. */
 const NO_HOLDS: readonly TeamHold[] = [];
+
+/** A team with no protected players (and one whose provider can't have them). */
+const NO_PROTECTED: ReadonlySet<number> = new Set();
 
 /** The demo's status line watches no query (and a signed-out desk has none to watch). */
 const NOTHING_WATCHED: readonly QueryKey[] = [];
@@ -218,6 +231,7 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const nextPickupId = useRef(1);
   const [lanes, setLanes] = useState<StreamLaneList>({ open: [], recent: [] });
   const nextLaneId = useRef(1);
+  const [protectedIds, setProtectedIds] = useState<ReadonlySet<number>>(NO_PROTECTED);
 
   const boardFor = useCallback(
     (r: typeof roster, day: number, v: number) =>
@@ -361,6 +375,41 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     toast.success("Stream lane stopped (demo)");
     return "ok" as const;
   }, []);
+  // The roster lock, as the server does it: protecting cancels his pickups and stops the lanes on his spot.
+  const setProtected = useCallback(
+    (playerId: number, on: boolean) => {
+      const name = roster.find((r) => r.id === playerId)?.name ?? "the player";
+      setProtectedIds((prev) => {
+        const next = new Set(prev);
+        if (on) next.add(playerId);
+        else next.delete(playerId);
+        return next;
+      });
+      if (!on) {
+        toast.success(`${name} is no longer protected (demo)`);
+        return;
+      }
+      const dropping = pickups.filter((p) => p.drop?.player_id === playerId && p.lane_id == null);
+      const holding = lanes.open.filter((l) => l.holder.player_id === playerId);
+      if (dropping.length) setPickups((list) => list.filter((p) => p.drop?.player_id !== playerId));
+      if (holding.length) {
+        const ended = new Date().toISOString();
+        setLanes((prev) => ({
+          open: prev.open.filter((l) => l.holder.player_id !== playerId),
+          recent: [
+            ...holding.map((l) => ({ ...l, status: "ended" as const, reason: "stopped_for_protected", ended_at: ended })),
+            ...prev.recent,
+          ],
+        }));
+      }
+      const gone = [
+        ...holding.map(() => `the stream lane on ${name}'s spot`),
+        ...dropping.map((p) => `${DEMO_DAYS.find((d) => d.date === p.nba_date)?.dow ?? p.nba_date}'s pickup of ${p.add.name}`),
+      ];
+      toast.success(`Protected ${name}${gone.length ? `; cancelled ${gone.join(" and ")}` : ""} (demo)`);
+    },
+    [roster, pickups, lanes.open]
+  );
 
   const todayBoard = boards[DEMO_TODAY];
   const autopilot = useDemoAutopilot(1);
@@ -418,6 +467,9 @@ function DemoWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     holds: NO_HOLDS,
     clearHold: () => {},
     clearingHold: null,
+    protectedIds,
+    setProtected,
+    protecting: null,
     actions: { data: actions, loading: false, error: null, refetch: () => {} },
     history: { points: demoScoreHistory(source), loading: false },
   };
@@ -537,6 +589,13 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   const dime = useAiCheckinsQuery(holds.data.enabled);
   const autopilot = autopilotLive(dime.data?.teams.find((t) => t.team_id === teamId), dime.data?.acting ?? null);
   const holdClear = useClearHoldMutation(teamId ?? 0);
+  const protections = useRosterProtectionsQuery(selected.provider === "espn" ? teamId : null);
+  const protect = useSetProtectionMutation(teamId ?? 0);
+  const protectionPlayers = protections.data.players;
+  const protectedIds = useMemo(
+    () => (protectionPlayers.length ? new Set(protectionPlayers.map((p) => p.espn_id)) : NO_PROTECTED),
+    [protectionPlayers]
+  );
   const laneStart = useStartStreamLaneMutation(teamId ?? 0);
   const laneUpdate = useUpdateStreamLaneMutation(teamId ?? 0);
   const laneStop = useStopStreamLaneMutation(teamId ?? 0);
@@ -616,6 +675,7 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
   );
   const cancelMutate = pickupCancel.mutate;
   const clearHoldMutate = holdClear.mutate;
+  const protectMutate = protect.mutate;
   const planLane = useCallback(
     (playerId: number) => (teamId == null ? Promise.reject(new Error("No team")) : apiClient.planStreamLane(getToken, teamId, playerId)),
     [getToken, teamId]
@@ -726,6 +786,9 @@ function LiveWeek({ view, market }: { view?: WeekView; market?: MarketMode }) {
     holds: holds.data.holds,
     clearHold: (holdId) => clearHoldMutate(holdId),
     clearingHold: holdClear.isPending ? holdClear.variables ?? null : null,
+    protectedIds: selected.provider === "espn" ? protectedIds : NO_PROTECTED,
+    setProtected: (playerId, on) => protectMutate({ playerId, on }),
+    protecting: protect.isPending ? protect.variables?.playerId ?? null : null,
     actions:
       selected.provider === "espn"
         ? {
