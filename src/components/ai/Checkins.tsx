@@ -6,7 +6,7 @@ import { Check, Loader2, Play, Settings2, X } from "lucide-react";
 import { toast } from "sonner";
 import { aiMessage, useRunAiCheckin } from "@/hooks/useAi";
 import { KIND_HELP, KIND_LABEL, RUN_KINDS, STATE_LABEL, agreement, checkinLine, decisionKicker, eventsShown } from "@/lib/ai-checkins";
-import { actionLine, pauseLine, teamLine } from "@/lib/ai-autonomy";
+import { actionLine, autopilotLive, pauseLine, teamLine } from "@/lib/ai-autonomy";
 import { whenTime } from "@/components/week/format";
 import { ACCOUNT_DESK } from "@/components/desk/routes";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
@@ -17,6 +17,8 @@ import s from "./ai.module.css";
 
 /** Where the automations, check-ins and autopilot are set: settings stay in settings. */
 const SETTINGS_HREF = `${ACCOUNT_DESK}?v=automation`;
+/** The word teamLine opens with on a team under the switch. */
+const AUTOPILOT_WORD = "Autopilot";
 
 /**
  * Dime's check-ins, in the AI desk's main area (the Dime autopilot plan, steps 3
@@ -171,15 +173,25 @@ function AutopilotTeam({ team, name, acting, running }: { team: AiAutopilotTeam;
       ? `Next: ${KIND_LABEL[team.next.kind].toLowerCase()}, ${whenTime(team.next.due_at)}`
       : "Nothing due until the season's next game day"
     : `${pauseLine(team) ?? "Off"}. No scheduled check-ins until you resume them`;
+  // Autopilot running the team wears the spectrum here too: the card's edge, and the word that opens its line
+  const live = autopilotLive(team, acting);
+  const line = teamLine(team, acting);
   return (
-    <div className={s.autopilot}>
+    <div className={live ? `${s.autopilot} ${s.autopilotLive} ${dk.spectrumEdge}` : s.autopilot}>
       <div className={s.autopilotHead}>
         <span className={s.autopilotName}>{name}</span>
         <span className={dk.spacer} />
         <span className={`${dk.chip} ${team.on ? dk.up : dk.flat}`}>{team.on ? "On" : team.paused_at ? "Paused" : "Off"}</span>
       </div>
       <Link href={SETTINGS_HREF} className={s.autopilotMode} title="Set the automations and autopilot in Account">
-        {teamLine(team, acting)}
+        {live && line.startsWith(AUTOPILOT_WORD) ? (
+          <>
+            <span className={dk.spectrumText}>{AUTOPILOT_WORD}</span>
+            {line.slice(AUTOPILOT_WORD.length)}
+          </>
+        ) : (
+          line
+        )}
       </Link>
       <span className={dk.sub} data-paused-by={team.paused_by ?? undefined}>
         {next}

@@ -209,6 +209,15 @@ export function teamLine(team: Pick<AiAutopilotTeam, "rows" | "on" | "autopilot"
   return `${who}${rows}`;
 }
 
+/**
+ * Autopilot is running the team: the switch is on, its check-ins aren't paused (by you or by
+ * Dime) and the server lets Dime act. This is when the desks show it as on (the spectrum);
+ * a switch that is on over a pause or a server that is off looks like any other row.
+ */
+export function autopilotLive(team: Pick<AiAutopilotTeam, "autopilot" | "on"> | null | undefined, acting: Pick<AiActing, "available"> | null): boolean {
+  return !!team && team.autopilot && team.on && !!acting?.available;
+}
+
 /** The switch's line: why the team is paused, when it is. */
 export function pauseLine(t: Pick<AiAutopilotTeam, "paused_at" | "paused_by" | "paused_reason">): string | null {
   if (!t.paused_at) return null;

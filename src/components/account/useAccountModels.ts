@@ -21,6 +21,7 @@ import { apiClient } from "@/lib/api";
 import { userMessage } from "@/lib/api-error";
 import { scoringLabel } from "@/lib/category-format";
 import { seasonLabel } from "@/lib/account";
+import { autopilotLive } from "@/lib/ai-autonomy";
 import {
   DEMO_ACCOUNT_TEAMS,
   DEMO_CONNECTIONS,
@@ -341,6 +342,16 @@ const useDemoDime = (): Loaded<DimeState> => {
     [dime, prefs, teamPrefs, features]
   );
 };
+
+/**
+ * Whether the demo's Dime is running a team on autopilot. The Week desk's demo reads it, so the
+ * switch flipped in the Account demo shows in its bar as it would for a real team (both live in
+ * this page's memory, so it lasts as long as the tab's navigation does).
+ */
+export function useDemoAutopilot(teamId: number | null): boolean {
+  const d = useDemoStore((s) => s.dime.find((x) => x.team_id === teamId));
+  return autopilotLive(d ? { autopilot: d.autopilot, on: d.paused_at == null } : null, DEMO_ACTING);
+}
 
 /** A connected ESPN account's teams, with one of them now tracked. */
 function trackOnAccount(list: EspnAccountTeam[], leagueId: number, teamName: string, teamId: number): EspnAccountTeam[] {

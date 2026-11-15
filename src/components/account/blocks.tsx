@@ -28,27 +28,43 @@ export function Skeleton({ rows = 5 }: { rows?: number }) {
   );
 }
 
-/** A switch that reads as one, with its label and a line of help. */
+/**
+ * A switch that reads as one, with its label and a line of help. `label` is
+ * always its name; `shown` is what stands in the row when that is more than
+ * plain words, and `switchClass` dresses the switch itself.
+ */
 export function Toggle({
   label,
+  shown,
   help,
   checked,
   onChange,
   disabled,
+  switchClass,
 }: {
   label: string;
+  shown?: React.ReactNode;
   help?: React.ReactNode;
   checked: boolean;
   onChange: (next: boolean) => void;
   disabled?: boolean;
+  switchClass?: string;
 }) {
   return (
     <div className={s.toggleRow}>
       <div className={s.toggleBody}>
-        <span className={s.toggleLabel}>{label}</span>
+        <span className={s.toggleLabel}>{shown ?? label}</span>
         {help ? <span className={s.toggleHelp}>{help}</span> : null}
       </div>
-      <button type="button" role="switch" aria-checked={checked} aria-label={label} className={s.switch} disabled={disabled} onClick={() => onChange(!checked)} />
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        className={switchClass ? `${s.switch} ${switchClass}` : s.switch}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+      />
     </div>
   );
 }

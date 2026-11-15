@@ -1374,10 +1374,24 @@ button.item:hover:not(:disabled) {
 /* ---------------------------------------------------------------- Dime's autopilot (AI and automation) */
 
 .pilot {
+  position: relative;
   margin-top: 14px;
   border: var(--ctl-w, 1px) solid var(--line-2);
   border-radius: calc(8px * var(--round, 1));
   background: var(--surface);
+}
+
+/*
+ * As autopilot comes on a band of the spectrum crosses the block (the desk's
+ * .spectrumSweep) and each row's rail lands on AI in turn behind it, top to
+ * bottom, as the band reaches the rails.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .pilot[data-engage] .pilotRow:nth-child(1) { --seg-delay: 430ms; }
+  .pilot[data-engage] .pilotRow:nth-child(2) { --seg-delay: 505ms; }
+  .pilot[data-engage] .pilotRow:nth-child(3) { --seg-delay: 580ms; }
+  .pilot[data-engage] .pilotRow:nth-child(4) { --seg-delay: 655ms; }
+  .pilot[data-engage] .pilotRow:nth-child(n + 5) { --seg-delay: 730ms; }
 }
 
 .pilot > .toggleRow {

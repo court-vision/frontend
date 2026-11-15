@@ -56,6 +56,14 @@
  * step that reads on --raised, where a block sits, and the four were checked
  * together for color-vision separation and contrast there. Text beside a mark
  * stays in the text tokens; the hue alone never carries a name.
+ *
+ * One effect brings colors from outside the theme: Dime Autopilot, on (the
+ * spectrum rules below). --spectrum-1 to --spectrum-6 walk the wheel, deep
+ * enough to read as type on a light desk and bright on a dark one, and
+ * --spectrum lists them back to the first so every use of it loops without a
+ * seam. --spectrum-halo is how much of them glows around the block's edge (a
+ * theme with hard edges sets 0) and --spectrum-blend how the switch-on sweep
+ * lays over the block.
  */
 .tokens {
   --bg: #f6f3ec;
@@ -87,6 +95,15 @@
   --series-2: #2a78d6;
   --series-3: #eda100;
   --series-4: #6250d6;
+  --spectrum-1: #c2255c;
+  --spectrum-2: #d9480f;
+  --spectrum-3: #a16207;
+  --spectrum-4: #1c7c54;
+  --spectrum-5: #0a6dab;
+  --spectrum-6: #6b45d1;
+  --spectrum: var(--spectrum-1), var(--spectrum-2), var(--spectrum-3), var(--spectrum-4), var(--spectrum-5), var(--spectrum-6), var(--spectrum-1);
+  --spectrum-halo: 0.2;
+  --spectrum-blend: multiply;
   --glow: none;
   --bar-bg: var(--surface);
   --round: 1;
@@ -341,6 +358,24 @@
   --today-edge-l: linear-gradient(90deg, rgba(212, 245, 60, 0.7) 0 1px, rgba(212, 245, 60, 0.1) 1px, rgba(212, 245, 60, 0) 16px);
   --today-edge-r: linear-gradient(270deg, rgba(212, 245, 60, 0.7) 0 1px, rgba(212, 245, 60, 0.1) 1px, rgba(212, 245, 60, 0) 16px);
   color-scheme: dark;
+}
+
+/* The spectrum on a dark desk: the same six hues, bright. Chalk's edges are hard, so nothing glows there. */
+.tokens[data-theme="ember"],
+.tokens[data-theme="midnight"],
+.tokens[data-theme="blacktop"] {
+  --spectrum-1: #ff7ab8;
+  --spectrum-2: #ff9f4a;
+  --spectrum-3: #ffd95c;
+  --spectrum-4: #5ee6a0;
+  --spectrum-5: #5cc8ff;
+  --spectrum-6: #b79bff;
+  --spectrum-halo: 0.36;
+  --spectrum-blend: screen;
+}
+
+.tokens[data-theme="chalk"] {
+  --spectrum-halo: 0;
 }
 
 /* Chalk prints its status line in reverse, light ink on black. */
@@ -727,6 +762,183 @@
   background: color-mix(in srgb, var(--warn) 12%, transparent);
 }
 
+/* ---------------------------------------------------------------- spectrum (Dime Autopilot is on) */
+
+/*
+ * What Dime Autopilot looks like while it runs a team, wherever that shows:
+ * the word runs through the spectrum (.spectrumText), the block it governs has
+ * the same colors turning around its edge (.spectrumEdge) with a halo outside
+ * it, its switch's track runs too (.spectrumTrack), and once, as it comes on,
+ * a band of the colors crosses the block (.spectrumSweep, an element mounted
+ * for that moment). The bar's mark (.autopilotMark) is the badge every desk
+ * with that team in view carries. With reduced motion each keeps its colors
+ * and holds still, and nothing sweeps.
+ */
+@property --spectrum-turn {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes spectrum-turn {
+  to { --spectrum-turn: 360deg; }
+}
+
+/* One full image width, so the loop has no seam (the list ends on its first color). */
+@keyframes spectrum-run {
+  to { background-position: -200% 0; }
+}
+
+@keyframes spectrum-sweep {
+  from { transform: translateX(-130%) skewX(-14deg); }
+  to { transform: translateX(360%) skewX(-14deg); }
+}
+
+.spectrumText {
+  background: linear-gradient(90deg, var(--spectrum)) 0 0 / 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  font-weight: 600;
+  animation: spectrum-run 3.2s linear infinite;
+}
+
+/*
+ * The edge is drawn over the block's own border, so the block keeps its box:
+ * --edge-w is that border's width and --edge-r its radius. The halo is a
+ * blurred copy 3px larger, cut out where the block is, so it needs nothing of
+ * the block's parent and never tints what is inside.
+ */
+.spectrumEdge {
+  --edge-w: var(--ctl-w, 1px);
+  --edge-r: calc(8px * var(--round, 1));
+  position: relative;
+}
+
+.spectrumEdge::before,
+.spectrumEdge::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  background: conic-gradient(from var(--spectrum-turn), var(--spectrum));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: spectrum-turn 7s linear infinite;
+}
+
+.spectrumEdge::before {
+  inset: calc(-1 * var(--edge-w));
+  padding: max(1.5px, var(--edge-w));
+  border-radius: var(--edge-r);
+}
+
+.spectrumEdge::after {
+  inset: calc(-20px - var(--edge-w));
+  border: 17px solid transparent;
+  padding: 3px;
+  border-radius: calc(var(--edge-r) + 20px);
+  background-clip: padding-box;
+  filter: blur(9px);
+  opacity: var(--spectrum-halo);
+}
+
+/* A switch that is on; the role keeps this above the switch's own accent track whichever sheet loads last. */
+.spectrumTrack[role="switch"][aria-checked="true"] {
+  background: linear-gradient(90deg, var(--spectrum)) 0 0 / 200% 100%;
+  animation: spectrum-run 3.2s linear infinite;
+}
+
+.spectrumSweep {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.spectrumSweep::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 42%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--spectrum-1),
+    var(--spectrum-2),
+    var(--spectrum-3),
+    var(--spectrum-4),
+    var(--spectrum-5),
+    var(--spectrum-6),
+    transparent
+  );
+  opacity: 0.62;
+  filter: blur(12px);
+  mix-blend-mode: var(--spectrum-blend);
+  animation: spectrum-sweep 1050ms cubic-bezier(0.4, 0, 0.5, 1) both;
+}
+
+/* The bar's mark: a badge whose outline and word run together; it is the way to the team's automations. */
+.autopilotMark {
+  position: relative;
+  border-color: transparent;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.autopilotMark::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--spectrum)) 0 0 / 200% 100%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: spectrum-run 3.2s linear infinite;
+}
+
+.autopilotMark:hover {
+  background: var(--hover);
+}
+
+.autopilotMark:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Forced colors drop background images, and the word is painted with one: give it back its ink. */
+@media (forced-colors: active) {
+  .spectrumText {
+    background: none;
+    color: CanvasText;
+    -webkit-text-fill-color: CanvasText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spectrumText,
+  .spectrumEdge::before,
+  .spectrumEdge::after,
+  .spectrumTrack[role="switch"][aria-checked="true"],
+  .autopilotMark::before {
+    animation: none;
+  }
+
+  .spectrumSweep {
+    display: none;
+  }
+}
+
 /* ---------------------------------------------------------------- segmented rail */
 
 .rail {
@@ -755,6 +967,8 @@
   letter-spacing: 0.04em;
   white-space: nowrap;
   cursor: pointer;
+  /* --seg-delay holds a segment's ink back with its pill (see .segIndicator); nothing sets it by default */
+  transition: color 0s linear var(--seg-delay, 0ms);
 }
 
 .seg:hover:not(:disabled) {
@@ -796,6 +1010,7 @@
     transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
     width 220ms cubic-bezier(0.22, 1, 0.36, 1),
     height 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--seg-delay, 0ms);
 }
 
 .segRail:not([data-pill]) > .segOn::before {
@@ -1665,6 +1880,7 @@ button.menuItem:hover:not(:disabled) {
     animation: none;
   }
 
+  .seg,
   .segIndicator {
     transition: none;
   }

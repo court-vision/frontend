@@ -7,6 +7,7 @@ import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { motion } from "motion/react";
 import { AlertTriangle, Flame, Store } from "lucide-react";
 import { TeamSwitch } from "@/components/desk/TeamSwitch";
+import { AutopilotMark } from "@/components/desk/AutopilotMark";
 import type { LineupMode, WeekDay, WeekGrid } from "@/lib/week-grid";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { useDataUpdatedAt } from "@/hooks/useDataUpdatedAt";
@@ -28,6 +29,8 @@ interface BarProps {
   onAdd?: () => void;
   /** Something the team's account needs before its week can be read. */
   notice: BarNotice | null;
+  /** Dime Autopilot is running this team: the bar carries its mark. */
+  autopilot?: boolean;
   period: number | null;
   days: WeekDay[];
   oppName: string | null;
@@ -37,7 +40,7 @@ interface BarProps {
   container: HTMLElement | null;
 }
 
-export function Bar({ teams, teamId, onTeam, onAdd, notice, period, days, oppName, liveGames, demo, onRefresh, container }: BarProps) {
+export function Bar({ teams, teamId, onTeam, onAdd, notice, autopilot = false, period, days, oppName, liveGames, demo, onRefresh, container }: BarProps) {
   return (
     <DeskBar
       desk="week"
@@ -56,6 +59,7 @@ export function Bar({ teams, teamId, onTeam, onAdd, notice, period, days, oppNam
               {liveGames} live
             </span>
           ) : null}
+          {autopilot ? <AutopilotMark team={teams.find((t) => t.id === teamId)?.name} demo={demo} /> : null}
         </>
       }
     >

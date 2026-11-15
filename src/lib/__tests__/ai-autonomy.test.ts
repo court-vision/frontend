@@ -6,6 +6,7 @@ import {
   accountOptions,
   actionLine,
   aiRowsLine,
+  autopilotLive,
   belowAi,
   checkinBanner,
   checkinsLabels,
@@ -131,6 +132,21 @@ describe("a team's table", () => {
     expect(checkinsLabels(team(state()))).toEqual({ off: "Off", ai: "AI" });
     expect(checkinsLabels(team(state({ aiRows: ["lineup"] })))).toEqual({ off: "Pause", ai: "AI" });
     expect(checkinsLabels(team(state({ aiRows: ["lineup"], paused: true })))).toEqual({ off: "Paused", ai: "Resume" });
+  });
+
+  test("autopilot is live while its switch is on, its check-ins run and the server lets Dime act", () => {
+    const on = { available: true };
+    const switched = team(state({ autopilot: true }));
+    expect(autopilotLive(switched, on)).toBe(true);
+    // A row at AI isn't the switch
+    expect(autopilotLive(team(state({ aiRows: ["lineup", "daily_actions", "lanes", "late_scratch"] })), on)).toBe(false);
+    // The switch stays on over a pause, yours or Dime's own, and over a server that is off: nothing runs, so nothing shows as on
+    expect(autopilotLive(team(state({ autopilot: true, paused: true })), on)).toBe(false);
+    expect(autopilotLive(team(state({ autopilot: true, paused: true, pausedBy: "system" })), on)).toBe(false);
+    expect(autopilotLive(switched, { available: false })).toBe(false);
+    expect(autopilotLive(switched, null)).toBe(false);
+    // A desk whose team Dime doesn't run on
+    expect(autopilotLive(undefined, on)).toBe(false);
   });
 
   test("the AI desk's line names the rows at AI", () => {
