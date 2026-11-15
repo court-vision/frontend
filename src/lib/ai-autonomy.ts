@@ -8,10 +8,12 @@
  * within the limits, and logs every call and move). Below AI a level lives with
  * its automation: lineup's are the notification preferences (the tip-off email
  * and auto-lineup), late scratches' is its own preference (`late_scratch_level`),
- * lanes run as you set them. AI and the autopilot switch are
- * per team, only on teams Dime runs on; the switch puts every row that offers AI
- * at AI. Dime sends a move itself only on rows at AI, with check-ins on and
- * acting on on the server; anywhere else a check-in's change is a review.
+ * lanes run as you set them. Every level is set per team (Account's AI and
+ * automation lists each team with its own table); AI, check-ins and the autopilot
+ * switch are there on every team of an account with CV AI, and the switch puts every
+ * row that offers AI at AI. Dime sends a move itself only on rows at AI, with
+ * check-ins on and acting on on the server; anywhere else a check-in's change is a
+ * review.
  */
 import type {
   AiActing,
@@ -28,7 +30,7 @@ import type {
 import type { NotificationPreference } from "@/types/notifications";
 
 export const LEVELS: readonly AiLevel[] = ["off", "notify", "act", "ai"];
-/** The account's table: AI is per team, in the Dime block. */
+/** A team's levels on an account without CV AI: no AI, no check-ins. */
 export const ACCOUNT_LEVELS: readonly AiLevel[] = ["off", "notify", "act"];
 
 export const LEVEL_LABEL: Record<AiLevel, string> = { off: "Off", notify: "Notify", act: "Act", ai: "AI" };
@@ -60,7 +62,7 @@ export const ROW_HELP: Record<AiAutomationName, string> = {
   checkins: "Dime's morning, pre-lock, night and weekly check-ins. AI needs them",
 };
 
-/** What a row doesn't offer, and why (the server's NOT_OFFERED); the account's table reads it. */
+/** What a row doesn't offer, and why (the server's NOT_OFFERED); a team's table without CV AI reads it. */
 export const NOT_OFFERED: Partial<Record<AiAutomationName, Partial<Record<AiLevel, string>>>> = {
   daily_actions: {
     notify: "Not built yet: a morning email with the day's list",
@@ -98,7 +100,7 @@ export function lineupPrefs(level: AiLevel): LineupPrefs {
   return { lineup_alerts_enabled: true, auto_lineup_enabled: true };
 }
 
-/** A row's level below AI as the account's table shows it. */
+/** A row's level below AI, from the preferences in force on a team. */
 export function belowAi(row: AiAutomationName, prefs: RowPrefs): AiLevel {
   if (row === "lineup") return lineupLevel(prefs);
   if (row === "late_scratch") return prefs.late_scratch_level ?? "off";
@@ -107,8 +109,8 @@ export function belowAi(row: AiAutomationName, prefs: RowPrefs): AiLevel {
 }
 
 /**
- * Each level the account's table offers on a row, and why not. `accountEmail` is the
- * account's own lineup email: without it no team's lineup runs, so a team's own
+ * Each level a team's table offers on a row without CV AI, and why not. `accountEmail` is
+ * the account's own lineup email: without it no team's lineup runs, so a team's own
  * Notify and Act can't be picked either.
  */
 export function accountOptions(row: AiAutomationName, accountEmail = true): AiLevelOption[] {
@@ -117,6 +119,42 @@ export function accountOptions(row: AiAutomationName, accountEmail = true): AiLe
     if (reason == null && row === "lineup" && level !== "off" && !accountEmail) reason = EMAIL_OFF;
     return { level, available: reason == null, reason };
   });
+}
+
+/**
+ * A team's table on an account without CV AI, from the preferences in force on it (its own
+ * over the account's): the four automations at Off, Notify or Act, no check-ins. With CV AI
+ * the server sends the team's whole table instead (GET /ai/checkins).
+ */
+export function prefsTable(prefs: RowPrefs, accountEmail = true): AiAutomationRow[] {
+  return AI_ROWS.map((row) => ({ row, label: ROW_LABEL[row], level: belowAi(row, prefs), options: accountOptions(row, accountEmail), note: null }));
+}
+
+/** The rows' names in a team's one line. */
+const SHORT: Record<AiAutomationName, string> = {
+  lineup: "lineup",
+  daily_actions: "daily actions",
+  lanes: "lanes",
+  late_scratch: "late scratches",
+  checkins: "check-ins",
+};
+
+/**
+ * A team's automations in one line, for its row in AI and automation while it is folded:
+ * what runs at which level ("lineup act · late scratches notify"), lanes only when they are
+ * at AI (they always run as you set them), "paused" when rows are at AI and check-ins are
+ * off, and "nothing runs by itself" when nothing does. Under the autopilot switch, that.
+ */
+export function tableLine(rows: readonly Pick<AiAutomationRow, "row" | "level">[], autopilot = false): string {
+  const checkins = rows.find((r) => r.row === "checkins");
+  const paused = checkins != null && checkins.level !== "ai";
+  if (autopilot) return paused ? "every automation at AI · check-ins paused" : "every automation at AI";
+  const parts = rows
+    .filter((r) => r.row !== "checkins" && r.level !== "off" && !(r.row === "lanes" && r.level === "act"))
+    .map((r) => `${SHORT[r.row]} ${r.level === "ai" ? "AI" : r.level}`);
+  if (!parts.length) return "nothing runs by itself";
+  if (paused && rows.some((r) => r.row !== "checkins" && r.level === "ai")) parts.push("paused");
+  return parts.join(" · ");
 }
 
 // ---------------------------------------------------------------------------

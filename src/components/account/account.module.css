@@ -1444,3 +1444,82 @@ button.item:hover:not(:disabled) {
   line-height: 1.5;
   color: var(--text-3);
 }
+
+/*
+ * AI and automation's teams: each a card (.pilot) whose header is the one row seen while
+ * it is folded, the team's name with the autopilot pill and its levels in a line. Open, the
+ * autopilot switch and the automations table hang under the header.
+ */
+.autoTeams {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.autoTeams > .pilot {
+  margin-top: 0;
+}
+
+.autoHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.autoHead:hover {
+  background: var(--hover);
+}
+
+.autoHead:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.autoHead[aria-expanded="true"] {
+  border-bottom: 1px solid var(--line);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.autoChevron {
+  color: var(--text-3);
+  transition: transform 120ms ease;
+}
+
+.autoHead[aria-expanded="true"] .autoChevron {
+  transform: rotate(90deg);
+}
+
+.autoPill {
+  flex: none;
+  cursor: default;
+}
+
+.autoLeague {
+  font-size: 11.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+.pilot > .pilotGrid:last-child > .pilotRow:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .autoLeague {
+    display: none;
+  }
+}

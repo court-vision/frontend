@@ -21,21 +21,26 @@ export type AccountFocus =
   | { kind: "team"; id: number }
   | { kind: "connection"; id: number }
   | { kind: "alerts" }
-  | { kind: "automation" }
+  /** AI and automation, with `team` opened (the Week desk's autopilot mark, a team's page). */
+  | { kind: "automation"; team?: number }
   | { kind: "account" };
 
 export const OVERVIEW: AccountFocus = { kind: "overview" };
 
 const ID = /^\d{1,9}$/;
 
-/** `?t=<team>`, `?c=<connection>`, `?v=alerts|automation|account`; anything else is the overview. */
+/** `?t=<team>`, `?c=<connection>`, `?v=alerts|automation|account` (automation with `&team=<id>` opened); anything else is the overview. */
 export function focusFromSearch(p: URLSearchParams): AccountFocus {
   const t = p.get("t");
   if (t && ID.test(t)) return { kind: "team", id: Number(t) };
   const c = p.get("c");
   if (c && ID.test(c)) return { kind: "connection", id: Number(c) };
   const v = p.get("v");
-  if (v === "alerts" || v === "automation" || v === "account") return { kind: v };
+  if (v === "automation") {
+    const team = p.get("team");
+    return team && ID.test(team) ? { kind: v, team: Number(team) } : { kind: v };
+  }
+  if (v === "alerts" || v === "account") return { kind: v };
   return OVERVIEW;
 }
 
@@ -46,8 +51,9 @@ export function focusToSearch(focus: AccountFocus): string {
       return `t=${focus.id}`;
     case "connection":
       return `c=${focus.id}`;
-    case "alerts":
     case "automation":
+      return focus.team != null ? `v=automation&team=${focus.team}` : "v=automation";
+    case "alerts":
     case "account":
       return `v=${focus.kind}`;
     default:
@@ -71,12 +77,13 @@ export type PrefField = keyof NotificationPreference;
 
 /**
  * The two kinds of setting, each on its own sheet. They share one stored
- * preference (the account's, and a team's own over it), so each sheet reads
- * the whole set and writes only its own fields: a team's own notification
- * settings and its own automation settings come and go apart. One field is on
- * both: the tip-off email is Lineup's Notify, so AI and automation's Lineup
- * level (Off, Notify, Act) writes it with auto-lineup. Late scratches' level is
- * its own field.
+ * preference (the account's, and a team's own over it). Notifications has both
+ * the account's settings and a team's own; AI and automation is set per team
+ * only, so it writes only a team's own fields (since backend migration 0049 the
+ * account's auto-lineup and Late scratches stay off, where a new team starts).
+ * One field is on both: the tip-off email is Lineup's Notify, so a team's Lineup
+ * level (Off, Notify, Act) writes it with auto-lineup, and a team without its
+ * own email follows the account's. Late scratches' level is its own field.
  */
 export const NOTIFICATION_FIELDS = [
   "lineup_alerts_enabled",
@@ -145,14 +152,6 @@ export function notificationSummary(prefs: NotificationPreference): string {
   return `on · ${alertMinutes(prefs)} min before${prefs.email ? ` · ${prefs.email}` : ""}`;
 }
 
-/** A team's automations in a line: the levels with a choice below AI, Lineup's and Late scratches'. */
-export function automationSummary(prefs: NotificationPreference): string {
-  const lineup = setsLineup(prefs)
-    ? `lineup: act, sets it ${alertMinutes(prefs)} min before`
-    : prefs.lineup_alerts_enabled ? `lineup: notify, the email ${alertMinutes(prefs)} min before` : "lineup: off";
-  const late = prefs.late_scratch_level ?? "off";
-  return late === "off" ? lineup : `${lineup} · late scratches: ${late}`;
-}
 
 // ---------------------------------------------------------------------------
 // Providers

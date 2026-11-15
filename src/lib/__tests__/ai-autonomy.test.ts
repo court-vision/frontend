@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DEMO_PREFS, DEMO_TEAM_PREFS, demoDime, demoDimeChange, demoDimeTeam } from "../account-demo";
+import { DEMO_PREFS, DEMO_TEAM_PREFS, demoDime, demoDimeChange, demoDimeTeam, idleDemoDime } from "../account-demo";
 import {
   EMAIL_OFF,
   SERVER_OFF,
@@ -15,7 +15,9 @@ import {
   movesOf,
   pauseLine,
   policyLine,
+  prefsTable,
   ruleLabel,
+  tableLine,
   tableOf,
   teamLine,
   type TableState,
@@ -175,16 +177,49 @@ describe("a team's table", () => {
   });
 });
 
+describe("a team's own table and its line", () => {
+  const prefs = { lineup_alerts_enabled: true, auto_lineup_enabled: false, late_scratch_level: "off" as const };
+
+  test("without CV AI a team has its four automations at Off, Notify or Act, no check-ins", () => {
+    const rows = prefsTable({ ...prefs, auto_lineup_enabled: true, late_scratch_level: "notify" });
+    expect(rows.map((r) => [r.row, r.level])).toEqual([["lineup", "act"], ["daily_actions", "off"], ["lanes", "act"], ["late_scratch", "notify"]]);
+    expect(rows.every((r) => r.options.map((o) => o.level).join() === "off,notify,act")).toBe(true);
+    // The account's lineup email gates every team's lineup
+    const noEmail = prefsTable({ ...prefs, lineup_alerts_enabled: false }, false);
+    expect(noEmail[0].level).toBe("off");
+    expect(noEmail[0].options.filter((o) => !o.available).map((o) => o.reason)).toEqual([EMAIL_OFF, EMAIL_OFF]);
+  });
+
+  test("the folded line says what runs, lanes only at AI, and paused only over something at AI", () => {
+    expect(tableLine(prefsTable(prefs))).toBe("lineup notify");
+    expect(tableLine(prefsTable({ ...prefs, lineup_alerts_enabled: false }))).toBe("nothing runs by itself");
+    const rows = tableOf(state({ aiRows: ["daily_actions", "lanes"], lineupBelowAi: "act", lateScratchBelowAi: "notify" }));
+    expect(tableLine(rows)).toBe("lineup act · daily actions AI · lanes AI · late scratches notify");
+    const paused = tableOf(state({ aiRows: ["daily_actions"], paused: true, lineupBelowAi: "off" }));
+    expect(tableLine(paused)).toBe("daily actions AI · paused");
+    expect(tableLine(tableOf(state({ paused: true, lineupBelowAi: "notify" })))).toBe("lineup notify");
+  });
+
+  test("under the autopilot switch the line says so, and says when check-ins are off", () => {
+    expect(tableLine(tableOf(state({ autopilot: true })), true)).toBe("every automation at AI");
+    expect(tableLine(tableOf(state({ autopilot: true, paused: true })), true)).toBe("every automation at AI · check-ins paused");
+  });
+});
+
 describe("the demo's Dime", () => {
   const NOW = Date.parse("2026-11-05T15:00:00Z");
   const override = { lineup_alerts_enabled: null, auto_lineup_enabled: null };
   const read = (d: ReturnType<typeof demoDime>[number]) => demoDimeTeam(d, DEMO_PREFS, DEMO_TEAM_PREFS[0], NOW);
 
-  test("is one team with daily actions at AI, its next check-in tomorrow morning", () => {
-    const [d] = demoDime(NOW);
+  test("runs on every team: the first with daily actions at AI, the second on autopilot, the rest idle", () => {
+    const [d, second] = demoDime(NOW);
     const t = read(d);
     expect(t.rows.map((r) => r.level)).toEqual(["notify", "ai", "act", "off", "ai"]);
     expect(t.next).toEqual({ kind: "morning", date: "2026-11-06", due_at: "2026-11-06T14:00:00Z" });
+    const pilot = demoDimeTeam(second, DEMO_PREFS, DEMO_TEAM_PREFS[1], NOW);
+    expect([pilot.autopilot, pilot.on, pilot.rows.map((r) => r.level)]).toEqual([true, true, ["ai", "ai", "ai", "ai", "ai"]]);
+    const idle = demoDimeTeam(idleDemoDime(3, NOW), DEMO_PREFS, DEMO_TEAM_PREFS[2], NOW);
+    expect([idle.on, idle.autopilot, idle.next, idle.rows.map((r) => r.level)]).toEqual([false, false, null, ["notify", "off", "act", "off", "off"]]);
   });
 
   test("the switch puts every row at AI and back; a row changed under it turns it off", () => {

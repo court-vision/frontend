@@ -230,7 +230,7 @@ export const DEMO_TEAM_PREFS: NotificationTeamPreference[] = [
 
 export const DEMO_USER = { name: "Demo Manager", email: "demo@courtvision.dev", imageUrl: null as string | null };
 
-// ---- Dime: one team it runs on, every change kept in memory
+// ---- Dime: on every team (the demo account has CV AI), every change kept in memory
 
 /** The server's switches and policy, as a running server sends them. */
 export const DEMO_ACTING: AiActing = {
@@ -255,19 +255,27 @@ export interface DemoDime {
   restore: { lineup: LineupOverride; checkins_on: boolean } | null;
 }
 
-/** The demo's first team: daily actions at AI, check-ins on. */
+/** The demo's teams Dime was switched on for: the first with daily actions at AI, the second on autopilot. */
 export function demoDime(now: number = Date.now()): DemoDime[] {
+  const since = new Date(now - 7 * 86_400_000).toISOString();
   return [
+    { team_id: DEMO_TEAMS[0].team_id, ai_rows: ["daily_actions"], autopilot: false, paused_at: null, paused_by: null, active_since: since, restore: null },
     {
-      team_id: DEMO_TEAMS[0].team_id,
-      ai_rows: ["daily_actions"],
-      autopilot: false,
+      team_id: DEMO_TEAMS[1].team_id,
+      ai_rows: [],
+      autopilot: true,
       paused_at: null,
       paused_by: null,
-      active_since: new Date(now - 7 * 86_400_000).toISOString(),
-      restore: null,
+      active_since: since,
+      restore: { lineup: { lineup_alerts_enabled: true, auto_lineup_enabled: true }, checkins_on: false },
     },
   ];
+}
+
+/** A team Dime was never switched on for, as the server reads it: nothing at AI, check-ins off. */
+export function idleDemoDime(teamId: number, now: number = Date.now()): DemoDime {
+  const at = new Date(now).toISOString();
+  return { team_id: teamId, ai_rows: [], autopilot: false, paused_at: at, paused_by: "user", active_since: at, restore: null };
 }
 
 /** The team as GET /ai/checkins would send it, its lineup row read from the demo's preferences. */

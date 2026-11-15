@@ -52,9 +52,9 @@ export interface AddTeamModel {
   useYahooTeams: (connectionId: number | null, leagueKey: string | null) => Loaded<YahooTeam[]>;
 }
 
-/** Dime on the account: the teams it runs on with their automations, the server's switches, the AI features. */
+/** Dime on the account: every team with its automations, the server's switches, the AI features. */
 export interface DimeState {
-  /** Each team Dime may run on: its check-ins, the autopilot switch and its automations table. */
+  /** Every team of the account (with CV AI): its check-ins, the autopilot switch and its automations table. */
   teams: AiAutopilotTeam[];
   /** Acting's switch and the policy; null from a server without them. */
   acting: AiActing | null;

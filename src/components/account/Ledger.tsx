@@ -39,6 +39,8 @@ interface LedgerProps {
   alertsOn: boolean | null;
   /** How many teams have the lineup set for them; null while the settings load. */
   autoTeams: number | null;
+  /** Teams with the autopilot switch on. */
+  autopilotTeams?: number;
   email: string | null;
   loading: boolean;
   onOpen: (focus: AccountFocus) => void;
@@ -50,7 +52,7 @@ interface LedgerProps {
  * The ledger: the overview, your teams, the accounts they read through, and
  * the things about you. A team or an account in trouble carries a dot.
  */
-export function Ledger({ teams, connections, focus, cursor, rows, alertsOn, autoTeams, email, loading, onOpen, onAction, onCursor }: LedgerProps) {
+export function Ledger({ teams, connections, focus, cursor, rows, alertsOn, autoTeams, autopilotTeams = 0, email, loading, onOpen, onAction, onCursor }: LedgerProps) {
   const indexOf = (key: string) => rows.findIndex((r) => rowKey(r) === key);
   const cls = (key: string, on: boolean, extra?: string) =>
     [s.row, on ? s.rowOn : "", indexOf(key) === cursor ? s.rowCursor : "", extra ?? ""].filter(Boolean).join(" ");
@@ -211,7 +213,9 @@ export function Ledger({ teams, connections, focus, cursor, rows, alertsOn, auto
             <span className={s.rowName}>
               <span>AI and automation</span>
             </span>
-            <span className={s.rowSub}>{autoTeams == null
+            <span className={s.rowSub}>{autopilotTeams > 0
+                ? `autopilot on ${autopilotTeams === teams.length ? (teams.length === 1 ? "your team" : "every team") : `${autopilotTeams} of ${teams.length} teams`}`
+                : autoTeams == null
                 ? "Dime, setting lineups"
                 : autoTeams === 0
                   ? "nothing runs by itself"
