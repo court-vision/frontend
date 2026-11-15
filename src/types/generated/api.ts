@@ -1420,7 +1420,8 @@ export interface paths {
          * @description Get the current matchup with live in-game stats per player.
          *
          *     Combines ESPN/Yahoo live scores (correct for custom league scoring) with
-         *     per-player box score stats from the live polling pipeline (~60s cadence).
+         *     per-player box score stats from the live pipeline (written every 15 s
+         *     while games are on; `live_age_ms` says how old the newest is).
          *     Players with no game today have live=null. Includes all roster slots
          *     (active and bench) so the frontend can render the full matchup layout.
          */
@@ -2493,7 +2494,8 @@ export interface paths {
          *
          *     Returns current box score stats for every player in an active or
          *     recently-completed game, ordered by fantasy points descending.
-         *     Updated every ~60 seconds by the live polling pipeline.
+         *     Written every 15 seconds by the live pipeline while games are on;
+         *     `live_age_ms` says how old its newest write is (core/live_age.py).
          */
         get: operations["get_live_players_today_v1_live_players_today_get"];
         put?: never;
@@ -7783,6 +7785,11 @@ export interface components {
              * @description List of games on this date
              */
             games: components["schemas"]["GameInfo"][];
+            /**
+             * Live Age Ms
+             * @description Today only: how old the live pipeline's newest score snapshot of these games was when this was answered, in milliseconds. Null on any other date and before the first snapshot.
+             */
+            live_age_ms: number | null;
         };
         /**
          * GamesOnDateResp
@@ -8983,6 +8990,8 @@ export interface components {
             category_comparison: components["schemas"]["CategoryComparison"] | null;
             /** Game Date */
             game_date: string;
+            /** Live Age Ms */
+            live_age_ms: number | null;
             /** Matchup Period */
             matchup_period: number;
             /** Matchup Period End */
@@ -8994,6 +9003,8 @@ export interface components {
             projected_margin: number;
             /** Projected Winner */
             projected_winner: string;
+            /** Provider Read Ms */
+            provider_read_ms: number | null;
             /**
              * Scoring Format
              * @default points
@@ -9117,6 +9128,8 @@ export interface components {
         LivePlayersData: {
             /** Game Date */
             game_date: string;
+            /** Live Age Ms */
+            live_age_ms: number | null;
             /** Player Count */
             player_count: number;
             /** Players */
@@ -16480,7 +16493,10 @@ export interface operations {
     };
     get_live_matchup_v1_internal_matchups_live__team_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The provider_read_ms of the answer the caller holds. Given, the ESPN/Yahoo read behind this answer may be one made in the last 25 seconds, never one older than the caller's; the box scores are read now either way. Left out, the provider is read. */
+                reuse_from?: number | null;
+            };
             header?: never;
             path: {
                 team_id: number;

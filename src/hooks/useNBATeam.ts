@@ -34,7 +34,8 @@ export function useNBATeamLiveGameQuery(abbrev: string | null) {
     queryFn: ({ signal }) => apiClient.getNBATeamLiveGame(abbrev!, { signal }),
     enabled: !!abbrev,
     staleTime: 0,
-    refetchInterval: 30 * 1000, // 30 seconds — matches live pipeline cadence
+    // Not on the 15 s beat (`liveReadMs`): the server asks the NBA for this game's box score on every read.
+    refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,
     // Live polling: the next poll is the retry, and the panel shows its own badge
     retry: false,

@@ -2,7 +2,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
-import { livePollMs, type Span } from "@/lib/week-polling";
+import { LIVE_TICK } from "@/lib/live-beat";
+import { livePollMs, readLiveMatchup, type Span } from "@/lib/week-polling";
 import type { AvgWindow, LiveMatchupData } from "@/types/matchup";
 
 // Query keys
@@ -39,20 +40,26 @@ export function useMatchupQuery(
 }
 
 /**
- * The current matchup with tonight's box scores on top. It polls fast only
- * around rostered games (`span`, from today's board, and any live box score in
- * its own answer) and every few minutes otherwise; see `livePollMs`. A return
- * to the tab reads it again once it is 30 s old.
+ * The current matchup with tonight's box scores on top. While rostered box
+ * scores are being written it reads a second after each write (every 15 s),
+ * asking the provider only every other time; around rostered games without
+ * one (`span`, from today's board, and any live box score in its own answer)
+ * every 30 s, and every few minutes otherwise. See `livePollMs` and
+ * `readLiveMatchup`. A return to the tab reads it again once it is a write old.
  */
 export function useLiveMatchupQuery(teamId: number | null, span: Span | null = null) {
   const { getToken, isSignedIn } = useAuth();
+  const queryClient = useQueryClient();
 
   return useQuery<LiveMatchupData>({
     queryKey: matchupKeys.live(teamId!),
-    queryFn: ({ signal }) => apiClient.getLiveMatchup(getToken, teamId!, { signal }),
+    queryFn: ({ signal }) =>
+      readLiveMatchup(queryClient, matchupKeys.live(teamId!), (reuseFrom) =>
+        apiClient.getLiveMatchup(getToken, teamId!, { signal, reuseFrom })
+      ),
     enabled: !!teamId && isSignedIn === true,
-    staleTime: 30_000,
-    refetchInterval: (query) => livePollMs(span, query.state.data, Date.now()),
+    staleTime: LIVE_TICK,
+    refetchInterval: (query) => livePollMs(span, query.state.data, Date.now(), query.state.dataUpdatedAt),
     refetchOnWindowFocus: true,
     // Live polling: the next poll is the retry (the Week desk reads /matchups/current
     // meanwhile), and the panel shows its own badge

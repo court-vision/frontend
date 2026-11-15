@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
+import { onLiveBeat } from "@/lib/live-beat";
 import { getTodayDate } from "@/lib/nba-date";
 import { gameDetailPollMs } from "@/lib/scout";
+import type { GamesOnDateData } from "@/types/games";
 
 export { getTodayDate };
 
@@ -12,6 +14,13 @@ export const gamesKeys = {
   detail: (date: string, gameId: string) => [...gamesKeys.all, "detail", date, gameId] as const,
 };
 
+/**
+ * Today's slate's own timer: a second after each write of its scores and
+ * clocks while the live pipeline is writing them (every 15 s: `liveReadMs`),
+ * every minute otherwise.
+ */
+export const todaySlatePollMs = onLiveBeat<GamesOnDateData | null>((slate) => slate?.live_age_ms, 60 * 1000);
+
 // Hooks
 export function useGamesOnDateQuery(date: string) {
   const isToday = date === getTodayDate();
@@ -20,7 +29,7 @@ export function useGamesOnDateQuery(date: string) {
     queryKey: gamesKeys.onDate(date),
     queryFn: ({ signal }) => apiClient.getGamesOnDate(date, { signal }),
     staleTime: isToday ? 0 : 1000 * 60 * 5,
-    refetchInterval: isToday ? 60 * 1000 : false, // Poll every 60s for today
+    refetchInterval: isToday ? todaySlatePollMs : false,
     enabled: !!date,
     // Live polling: the next poll is the retry, and the panel shows its own badge
     ...(isToday ? { retry: false, meta: { toast: false } } : {}),

@@ -206,10 +206,18 @@ export function current(opts: { categories?: boolean; mine?: Spec[]; theirs?: Sp
 /**
  * /matchups/live: the same rosters (the server builds it from the same read)
  * with tonight's box scores on top; `boxes` maps an ESPN player id to his.
+ * `liveAgeMs` is how old the newest of them was when the server answered (null
+ * with none written), `providerReadMs` the stamp of the provider read under it.
  */
-export function live(from: MatchupData, boxes: Record<number, PlayerLiveStats> = {}): LiveMatchupData {
+export function live(
+  from: MatchupData,
+  boxes: Record<number, PlayerLiveStats> = {},
+  opts: { liveAgeMs?: number | null; providerReadMs?: number | null } = {}
+): LiveMatchupData {
   const overlay = (p: MatchupPlayer): LiveMatchupPlayer => ({ ...p, live: boxes[p.player_id] ?? null });
   return {
+    live_age_ms: opts.liveAgeMs ?? null,
+    provider_read_ms: opts.providerReadMs ?? null,
     matchup_period: from.matchup_period,
     matchup_period_start: from.matchup_period_start,
     matchup_period_end: from.matchup_period_end,

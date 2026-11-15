@@ -1538,7 +1538,7 @@ export function WeekTerminal({
   const toolbarNote =
     view === "matchup"
       ? todayIndex != null && (focusDay ?? defaultFocus) === todayIndex
-        ? "Live box scores, refreshed every 30 s while games are on · the spot's leader is underlined"
+        ? "Live box scores, refreshed every 15 s while games are on · the spot's leader is underlined"
         : "Spot against spot · the leader is underlined"
       : view === "daily"
       ? mode === "best"

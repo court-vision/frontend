@@ -12048,12 +12048,25 @@
             },
             "title": "Games",
             "type": "array"
+          },
+          "live_age_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Today only: how old the live pipeline's newest score snapshot of these games was when this was answered, in milliseconds. Null on any other date and before the first snapshot.",
+            "title": "Live Age Ms"
           }
         },
         "required": [
           "date",
           "games",
-          "count"
+          "count",
+          "live_age_ms"
         ],
         "title": "GamesOnDateData",
         "type": "object"
@@ -15379,6 +15392,17 @@
             "title": "Game Date",
             "type": "string"
           },
+          "live_age_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Age Ms"
+          },
           "matchup_period": {
             "title": "Matchup Period",
             "type": "integer"
@@ -15401,6 +15425,17 @@
           "projected_winner": {
             "title": "Projected Winner",
             "type": "string"
+          },
+          "provider_read_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Read Ms"
           },
           "scoring_format": {
             "default": "points",
@@ -15432,7 +15467,9 @@
           "baseline_stale_days",
           "scoring_format",
           "settings_synced",
-          "category_comparison"
+          "category_comparison",
+          "live_age_ms",
+          "provider_read_ms"
         ],
         "title": "LiveMatchupData",
         "type": "object"
@@ -15783,6 +15820,17 @@
             "title": "Game Date",
             "type": "string"
           },
+          "live_age_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Age Ms"
+          },
           "player_count": {
             "title": "Player Count",
             "type": "integer"
@@ -15798,7 +15846,8 @@
         "required": [
           "game_date",
           "player_count",
-          "players"
+          "players",
+          "live_age_ms"
         ],
         "title": "LivePlayersData",
         "type": "object"
@@ -32012,7 +32061,7 @@
     },
     "/v1/internal/matchups/live/{team_id}": {
       "get": {
-        "description": "Get the current matchup with live in-game stats per player.\n\nCombines ESPN/Yahoo live scores (correct for custom league scoring) with\nper-player box score stats from the live polling pipeline (~60s cadence).\nPlayers with no game today have live=null. Includes all roster slots\n(active and bench) so the frontend can render the full matchup layout.",
+        "description": "Get the current matchup with live in-game stats per player.\n\nCombines ESPN/Yahoo live scores (correct for custom league scoring) with\nper-player box score stats from the live pipeline (written every 15 s\nwhile games are on; `live_age_ms` says how old the newest is).\nPlayers with no game today have live=null. Includes all roster slots\n(active and bench) so the frontend can render the full matchup layout.",
         "operationId": "get_live_matchup_v1_internal_matchups_live__team_id__get",
         "parameters": [
           {
@@ -32022,6 +32071,25 @@
             "schema": {
               "title": "Team Id",
               "type": "integer"
+            }
+          },
+          {
+            "description": "The provider_read_ms of the answer the caller holds. Given, the ESPN/Yahoo read behind this answer may be one made in the last 25 seconds, never one older than the caller's; the box scores are read now either way. Left out, the provider is read.",
+            "in": "query",
+            "name": "reuse_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The provider_read_ms of the answer the caller holds. Given, the ESPN/Yahoo read behind this answer may be one made in the last 25 seconds, never one older than the caller's; the box scores are read now either way. Left out, the provider is read.",
+              "title": "Reuse From"
             }
           }
         ],
@@ -35019,7 +35087,7 @@
     },
     "/v1/live/players/today": {
       "get": {
-        "description": "Get live stats for all players with games today.\n\nReturns current box score stats for every player in an active or\nrecently-completed game, ordered by fantasy points descending.\nUpdated every ~60 seconds by the live polling pipeline.",
+        "description": "Get live stats for all players with games today.\n\nReturns current box score stats for every player in an active or\nrecently-completed game, ordered by fantasy points descending.\nWritten every 15 seconds by the live pipeline while games are on;\n`live_age_ms` says how old its newest write is (core/live_age.py).",
         "operationId": "get_live_players_today_v1_live_players_today_get",
         "responses": {
           "200": {
