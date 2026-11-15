@@ -2,8 +2,19 @@
   "components": {
     "schemas": {
       "AcquisitionState": {
-        "description": "ESPN's limits on adds and what this team has used: `settings.acquisitionSettings`\n(mSettings) and the team's `transactionCounter` (mTeam). A day's own adds (what a\nper-day limit counts) are not in the counter: `services.acquisitions.adds_for_day`.",
+        "description": "ESPN's limits on adds and what this team has used: `settings.acquisitionSettings`\n(mSettings) and the team's `transactionCounter` (mTeam). Either kind of limit is a matchup\ntotal the team may use on any day: `per` says how ESPN sets it (`services.acquisitions`).",
         "properties": {
+          "game_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Game Days"
+          },
           "limit": {
             "anyOf": [
               {
@@ -58,10 +69,21 @@
           "per": {
             "enum": [
               "matchup",
-              "day"
+              "game_day"
             ],
             "title": "Per",
             "type": "string"
+          },
+          "per_game_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Game Day"
           },
           "season_limit": {
             "anyOf": [
@@ -94,6 +116,8 @@
         "required": [
           "per",
           "limit",
+          "per_game_day",
+          "game_days",
           "matchup_period_id",
           "matchup_start",
           "matchup_end",
@@ -299,21 +323,13 @@
         "description": "The rules every move Dime sends itself is held to (core/settings.py).",
         "properties": {
           "adds_per_day": {
+            "description": "Dime's own adds a day; over the matchup it keeps to the league's own add limits, which every add counts toward",
             "title": "Adds Per Day",
             "type": "integer"
           },
-          "adds_per_matchup": {
-            "title": "Adds Per Matchup",
-            "type": "integer"
-          },
           "adds_reserve": {
-            "description": "Adds this matchup Dime leaves for the user (injuries)",
+            "description": "Adds of the matchup's limit Dime leaves for the user (injuries)",
             "title": "Adds Reserve",
-            "type": "integer"
-          },
-          "churn_hours": {
-            "description": "Nor a player added this recently, unless he is out",
-            "title": "Churn Hours",
             "type": "integer"
           },
           "pause_refused": {
@@ -334,10 +350,8 @@
         },
         "required": [
           "adds_per_day",
-          "adds_per_matchup",
           "adds_reserve",
           "protected_top",
-          "churn_hours",
           "pause_refused",
           "pause_same_block"
         ],
@@ -1967,7 +1981,7 @@
                 "type": "null"
               }
             ],
-            "description": "The rule that blocked it (cap_day, cap_matchup, reserve, protected (a top player), user_protected (the user protected him), churn, paused, writes_off, ...) or the error code",
+            "description": "The rule that blocked it (cap_day, league_limit, reserve, protected (a top player), user_protected (the user protected him), paused, writes_off, ...) or the error code",
             "title": "Rule"
           }
         },

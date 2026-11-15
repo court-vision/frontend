@@ -28,7 +28,9 @@ export type LineupStateResponse = S["LineupStateResp"];
 export type LineupMoveResult = S["LineupMoveResult"];
 /**
  * ESPN's limits on adds and what the team has used, on every board
- * (`LineupState.acquisitions`): per matchup, or per day; null limits are none.
+ * (`LineupState.acquisitions`). Either kind is a matchup total usable on any day:
+ * a number per matchup, or `per_game_day` for each of the matchup's days with games
+ * (`limit` once those are known); null limits are none.
  */
 export type AcquisitionState = S["AcquisitionState"];
 export type LineupUnfilled = S["LineupUnfilled"];

@@ -3138,10 +3138,12 @@ export interface components {
         /**
          * AcquisitionState
          * @description ESPN's limits on adds and what this team has used: `settings.acquisitionSettings`
-         *     (mSettings) and the team's `transactionCounter` (mTeam). A day's own adds (what a
-         *     per-day limit counts) are not in the counter: `services.acquisitions.adds_for_day`.
+         *     (mSettings) and the team's `transactionCounter` (mTeam). Either kind of limit is a matchup
+         *     total the team may use on any day: `per` says how ESPN sets it (`services.acquisitions`).
          */
         AcquisitionState: {
+            /** Game Days */
+            game_days: number | null;
             /** Limit */
             limit: number | null;
             /** Matchup End */
@@ -3159,7 +3161,9 @@ export interface components {
              * Per
              * @enum {string}
              */
-            per: "matchup" | "day";
+            per: "matchup" | "game_day";
+            /** Per Game Day */
+            per_game_day: number | null;
             /** Season Limit */
             season_limit: number | null;
             /**
@@ -3224,20 +3228,16 @@ export interface components {
          * @description The rules every move Dime sends itself is held to (core/settings.py).
          */
         AiActingPolicy: {
-            /** Adds Per Day */
+            /**
+             * Adds Per Day
+             * @description Dime's own adds a day; over the matchup it keeps to the league's own add limits, which every add counts toward
+             */
             adds_per_day: number;
-            /** Adds Per Matchup */
-            adds_per_matchup: number;
             /**
              * Adds Reserve
-             * @description Adds this matchup Dime leaves for the user (injuries)
+             * @description Adds of the matchup's limit Dime leaves for the user (injuries)
              */
             adds_reserve: number;
-            /**
-             * Churn Hours
-             * @description Nor a player added this recently, unless he is out
-             */
-            churn_hours: number;
             /**
              * Pause Refused
              * @description It pauses itself after this many refused writes in a day
@@ -3914,7 +3914,7 @@ export interface components {
             outcome: "sent" | "blocked" | "refused" | "failed";
             /**
              * Rule
-             * @description The rule that blocked it (cap_day, cap_matchup, reserve, protected (a top player), user_protected (the user protected him), churn, paused, writes_off, ...) or the error code
+             * @description The rule that blocked it (cap_day, league_limit, reserve, protected (a top player), user_protected (the user protected him), paused, writes_off, ...) or the error code
              */
             rule: string | null;
         };
