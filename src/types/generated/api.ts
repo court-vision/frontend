@@ -3224,20 +3224,16 @@ export interface components {
          * @description The rules every move Dime sends itself is held to (core/settings.py).
          */
         AiActingPolicy: {
-            /** Adds Per Day */
+            /**
+             * Adds Per Day
+             * @description Dime's own adds a day; over the matchup it keeps to the league's own add limits, which every add counts toward
+             */
             adds_per_day: number;
-            /** Adds Per Matchup */
-            adds_per_matchup: number;
             /**
              * Adds Reserve
-             * @description Adds this matchup Dime leaves for the user (injuries)
+             * @description Adds of a per-matchup limit Dime leaves for the user (injuries)
              */
             adds_reserve: number;
-            /**
-             * Churn Hours
-             * @description Nor a player added this recently, unless he is out
-             */
-            churn_hours: number;
             /**
              * Pause Refused
              * @description It pauses itself after this many refused writes in a day
@@ -3914,7 +3910,7 @@ export interface components {
             outcome: "sent" | "blocked" | "refused" | "failed";
             /**
              * Rule
-             * @description The rule that blocked it (cap_day, cap_matchup, reserve, protected (a top player), user_protected (the user protected him), churn, paused, writes_off, ...) or the error code
+             * @description The rule that blocked it (cap_day, league_limit, reserve, protected (a top player), user_protected (the user protected him), paused, writes_off, ...) or the error code
              */
             rule: string | null;
         };

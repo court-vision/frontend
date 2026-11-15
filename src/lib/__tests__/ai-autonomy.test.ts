@@ -226,18 +226,16 @@ describe("the demo's Dime", () => {
 });
 
 describe("the policy", () => {
-  test("is two sentences of the server's numbers", () => {
+  test("is three sentences of the server's numbers, the matchup's cap the league's own", () => {
     const p: AiActingPolicy = {
       adds_per_day: 2,
-      adds_per_matchup: 5,
       adds_reserve: 1,
       protected_top: 6,
-      churn_hours: 48,
       pause_refused: 2,
       pause_same_block: 2,
     };
     expect(policyLine(p)).toBe(
-      "On automations at AI Dime makes at most 2 adds a day and 5 a matchup, leaves 1 of the league's adds for you, and never drops one of your top 6 or a player added in the last 48 hours unless he's out. It pauses itself and emails you after 2 refused moves, or the same rule stopping it 2 times, in a day."
+      "On automations at AI Dime makes at most 2 adds a day, within your league's own add limits. Where the league limits adds per matchup it leaves 1 of them for you, and it never drops one of your top 6. It pauses itself and emails you after 2 refused moves, or the same rule stopping it 2 times, in a day."
     );
     expect(policyLine({ ...p, adds_per_day: 1 })).toContain("at most 1 add a day");
   });
@@ -278,6 +276,7 @@ describe("Dime's moves", () => {
     // The user's lock and Dime's own top-player rule are different chips
     expect(ruleLabel("user_protected")).toBe("Protected");
     expect(ruleLabel("protected")).toBe("Top player");
+    expect(ruleLabel("league_limit")).toBe("League's add limit");
     expect(ruleLabel("AI_PROPOSAL_STALE")).toBe("Proposal stale");
     expect(ruleLabel(null)).toBeNull();
   });

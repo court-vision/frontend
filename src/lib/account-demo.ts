@@ -236,7 +236,7 @@ export const DEMO_USER = { name: "Demo Manager", email: "demo@courtvision.dev", 
 export const DEMO_ACTING: AiActing = {
   available: true,
   writes: true,
-  policy: { adds_per_day: 2, adds_per_matchup: 5, adds_reserve: 1, protected_top: 6, churn_hours: 48, pause_refused: 2, pause_same_block: 2 },
+  policy: { adds_per_day: 2, adds_reserve: 1, protected_top: 6, pause_refused: 2, pause_same_block: 2 },
 };
 
 export const DEMO_FEATURES: AiFeatures = { memory: true, draft_rooms: true };
