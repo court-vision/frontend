@@ -8,6 +8,7 @@ import {
   toApiError,
   userMessage,
 } from "@/lib/api-error";
+import { catchUp, catchUpDelays } from "@/lib/catch-up-reads";
 import { staleLineup } from "@/lib/lineup-editor";
 import { STALE_POOL_REASONS, transactionError, transactionOutcomeCopy } from "@/lib/roster-transaction";
 import { lineupKeys } from "@/hooks/useLineupEditor";
@@ -28,7 +29,10 @@ import type { RosterTransactionData, RosterTransactionRequest } from "@/types/ro
  *
  * On success the re-read board replaces the cached one, and everything that
  * lists the roster — insights, roster, matchups, the streamer pool this
- * player just left — is invalidated.
+ * player just left — is invalidated. ESPN's reads can trail its writes, so the
+ * roster's other reads (the later days, the matchup, the week, the pool) go
+ * again a few seconds on, and today's board with them, twice, when the
+ * transaction came back not confirmed (`catchUp`).
  */
 export function useRosterTransactionMutation(teamId: number) {
   const queryClient = useQueryClient();
@@ -39,7 +43,11 @@ export function useRosterTransactionMutation(teamId: number) {
     mutationFn: (body) => apiClient.applyRosterTransaction(getToken, teamId, body),
     meta: { toast: false },
 
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      // A read of today's board that went out before the transaction answers with the roster from
+      // before it: landing after the board below, it would put the old roster back on screen. Call it
+      // off, as `writeLineupDay` does; the reads after the transaction go out fresh.
+      await queryClient.cancelQueries({ queryKey: lineupKeys.state(teamId), exact: true });
       queryClient.setQueryData<LineupState | null>(lineupKeys.state(teamId), data.lineup);
       queryClient.removeQueries({ queryKey: lineupKeys.plan(teamId) });
       queryClient.invalidateQueries({ queryKey: lineupKeys.actions(teamId) });
@@ -51,6 +59,20 @@ export function useRosterTransactionMutation(teamId: number) {
       queryClient.invalidateQueries({ queryKey: matchupKeys.live(teamId) });
       queryClient.invalidateQueries({ queryKey: matchupKeys.week(teamId) });
       queryClient.invalidateQueries({ queryKey: [...matchupKeys.all, "daily", teamId] });
+      catchUp(
+        queryClient,
+        teamId,
+        [
+          { queryKey: lineupKeys.days(teamId) },
+          ...(data.verified ? [] : [{ queryKey: lineupKeys.state(teamId), exact: true }]),
+          { queryKey: lineupKeys.actions(teamId) },
+          { queryKey: streamersKeys.team(teamId) },
+          { queryKey: teamsKeys.roster(teamId) },
+          { queryKey: matchupKeys.live(teamId) },
+          { queryKey: matchupKeys.week(teamId) },
+        ],
+        data.verified ? catchUpDelays.after : catchUpDelays.unconfirmed
+      );
       const { tone, message } = transactionOutcomeCopy(data);
       if (tone === "success") toast.success(message);
       else toast.warning(message);
