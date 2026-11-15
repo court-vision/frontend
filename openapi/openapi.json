@@ -2,8 +2,19 @@
   "components": {
     "schemas": {
       "AcquisitionState": {
-        "description": "ESPN's limits on adds and what this team has used: `settings.acquisitionSettings`\n(mSettings) and the team's `transactionCounter` (mTeam). A day's own adds (what a\nper-day limit counts) are not in the counter: `services.acquisitions.adds_for_day`.",
+        "description": "ESPN's limits on adds and what this team has used: `settings.acquisitionSettings`\n(mSettings) and the team's `transactionCounter` (mTeam). Either kind of limit is a matchup\ntotal the team may use on any day: `per` says how ESPN sets it (`services.acquisitions`).",
         "properties": {
+          "game_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Game Days"
+          },
           "limit": {
             "anyOf": [
               {
@@ -58,10 +69,21 @@
           "per": {
             "enum": [
               "matchup",
-              "day"
+              "game_day"
             ],
             "title": "Per",
             "type": "string"
+          },
+          "per_game_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Game Day"
           },
           "season_limit": {
             "anyOf": [
@@ -94,6 +116,8 @@
         "required": [
           "per",
           "limit",
+          "per_game_day",
+          "game_days",
           "matchup_period_id",
           "matchup_start",
           "matchup_end",
@@ -304,7 +328,7 @@
             "type": "integer"
           },
           "adds_reserve": {
-            "description": "Adds of a per-matchup limit Dime leaves for the user (injuries)",
+            "description": "Adds of the matchup's limit Dime leaves for the user (injuries)",
             "title": "Adds Reserve",
             "type": "integer"
           },

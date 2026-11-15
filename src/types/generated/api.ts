@@ -3138,10 +3138,12 @@ export interface components {
         /**
          * AcquisitionState
          * @description ESPN's limits on adds and what this team has used: `settings.acquisitionSettings`
-         *     (mSettings) and the team's `transactionCounter` (mTeam). A day's own adds (what a
-         *     per-day limit counts) are not in the counter: `services.acquisitions.adds_for_day`.
+         *     (mSettings) and the team's `transactionCounter` (mTeam). Either kind of limit is a matchup
+         *     total the team may use on any day: `per` says how ESPN sets it (`services.acquisitions`).
          */
         AcquisitionState: {
+            /** Game Days */
+            game_days: number | null;
             /** Limit */
             limit: number | null;
             /** Matchup End */
@@ -3159,7 +3161,9 @@ export interface components {
              * Per
              * @enum {string}
              */
-            per: "matchup" | "day";
+            per: "matchup" | "game_day";
+            /** Per Game Day */
+            per_game_day: number | null;
             /** Season Limit */
             season_limit: number | null;
             /**
@@ -3231,7 +3235,7 @@ export interface components {
             adds_per_day: number;
             /**
              * Adds Reserve
-             * @description Adds of a per-matchup limit Dime leaves for the user (injuries)
+             * @description Adds of the matchup's limit Dime leaves for the user (injuries)
              */
             adds_reserve: number;
             /**

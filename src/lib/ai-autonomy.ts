@@ -234,7 +234,7 @@ function count(n: number, one: string, many = `${one}s`): string {
 export function policyLine(p: AiActingPolicy): string {
   return (
     `On automations at AI Dime makes at most ${count(p.adds_per_day, "add")} a day, within your league's own add limits. ` +
-    `Where the league limits adds per matchup it leaves ${p.adds_reserve} of them for you, and it never drops one of ` +
+    `It leaves ${p.adds_reserve} of the matchup's adds for you, and it never drops one of ` +
     `your top ${p.protected_top}. ` +
     `It pauses itself and emails you after ${count(p.pause_refused, "refused move")}, or the same rule stopping it ` +
     `${count(p.pause_same_block, "time")}, in a day.`

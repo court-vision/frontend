@@ -223,10 +223,12 @@ export function demoBoard(
     write_blocked_reason: null,
     roster_version: version,
     fetched_at: `${DATES[TODAY]}T02:55:00Z`,
-    // Most leagues cap adds per matchup: four a week here, one already used.
+    // A matchup's adds, usable on any day: four a week here, one already used.
     acquisitions: {
       per: "matchup",
       limit: 4,
+      per_game_day: null,
+      game_days: null,
       matchup_period_id: 4,
       matchup_start: DATES[0],
       matchup_end: DATES[DATES.length - 1],

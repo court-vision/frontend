@@ -235,7 +235,7 @@ describe("the policy", () => {
       pause_same_block: 2,
     };
     expect(policyLine(p)).toBe(
-      "On automations at AI Dime makes at most 2 adds a day, within your league's own add limits. Where the league limits adds per matchup it leaves 1 of them for you, and it never drops one of your top 6. It pauses itself and emails you after 2 refused moves, or the same rule stopping it 2 times, in a day."
+      "On automations at AI Dime makes at most 2 adds a day, within your league's own add limits. It leaves 1 of the matchup's adds for you, and it never drops one of your top 6. It pauses itself and emails you after 2 refused moves, or the same rule stopping it 2 times, in a day."
     );
     expect(policyLine({ ...p, adds_per_day: 1 })).toContain("at most 1 add a day");
   });
