@@ -118,16 +118,22 @@ function AccountDoor({ desk, demo }: { desk: DeskId; demo: boolean }) {
   );
 }
 
-/** The bottom line of every desk: the keys that work here (then ⌘K, which works everywhere), then whatever the desk reports. */
+/**
+ * The bottom line of every desk: the keys that work here (then ⌘K, which works everywhere), then
+ * whatever the desk reports. When the line runs short, the desk's own keys give way from the end,
+ * whole, so ⌘K and the desk's report always show.
+ */
 export function DeskStatus({ keys, children }: { keys: Array<[string, string]>; children?: React.ReactNode }) {
+  const hint = ([k, label]: [string, string]) => (
+    <span key={`${k}-${label}`}>
+      <span className={dk.kbd}>{k}</span> {label}
+    </span>
+  );
   return (
     <footer className={dk.status}>
       <span className={dk.keys}>
-        {[...keys, PALETTE_KEY].map(([k, label]) => (
-          <span key={`${k}-${label}`}>
-            <span className={dk.kbd}>{k}</span> {label}
-          </span>
-        ))}
+        <div className={dk.keyList}>{keys.map(hint)}</div>
+        {hint(PALETTE_KEY)}
       </span>
       <span className={dk.spacer} />
       {children}
