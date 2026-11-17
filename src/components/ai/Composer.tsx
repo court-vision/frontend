@@ -12,6 +12,17 @@ export const MAX_MESSAGE = 2000;
 /** How tall the box grows (px) before its text scrolls; matches `.textarea`'s max-height. */
 const MAX_HEIGHT = 180;
 
+/**
+ * Fit the box to its text. scrollHeight leaves out the border, so add it back, and only
+ * allow a scrollbar once the text is taller than the cap (an empty box never scrolls).
+ */
+function fitHeight(el: HTMLTextAreaElement) {
+  el.style.height = "auto";
+  const fit = el.scrollHeight + el.offsetHeight - el.clientHeight;
+  el.style.height = `${Math.min(fit, MAX_HEIGHT)}px`;
+  el.style.overflowY = fit > MAX_HEIGHT ? "auto" : "hidden";
+}
+
 export interface ComposerHandle {
   focus: () => void;
   /** Put text back (a message the server refused before answering). */
@@ -56,16 +67,24 @@ export const Composer = forwardRef<ComposerHandle, {
     },
   }));
 
-  // Fit the box to its text. scrollHeight leaves out the border, so add it back, and
-  // only allow a scrollbar once the text is taller than the cap (an empty box never scrolls)
   useLayoutEffect(() => {
-    const el = area.current;
-    if (!el) return;
-    el.style.height = "auto";
-    const fit = el.scrollHeight + el.offsetHeight - el.clientHeight;
-    el.style.height = `${Math.min(fit, MAX_HEIGHT)}px`;
-    el.style.overflowY = fit > MAX_HEIGHT ? "auto" : "hidden";
+    if (area.current) fitHeight(area.current);
   }, [text]);
+
+  // A narrower box wraps the same text onto more lines: fit again when the width changes
+  // (only the width, since fitting changes the height)
+  useEffect(() => {
+    const el = area.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let width = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      fitHeight(el);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const trimmed = text.trim();
   const canSend = !disabled && !busy && trimmed.length > 0 && text.length <= MAX_MESSAGE;
