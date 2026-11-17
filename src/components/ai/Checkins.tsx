@@ -8,6 +8,8 @@ import { aiMessage, useRunAiCheckin } from "@/hooks/useAi";
 import { KIND_HELP, KIND_LABEL, RUN_KINDS, STATE_LABEL, agreement, checkinLine, decisionKicker, eventsShown } from "@/lib/ai-checkins";
 import { actionLine, autopilotLive, pauseLine, teamLine } from "@/lib/ai-autonomy";
 import { whenTime } from "@/components/week/format";
+import { localizeProseClocks } from "@/lib/local-time";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import { ACCOUNT_DESK } from "@/components/desk/routes";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
 import type { AiActing, AiAutopilotTeam, AiCheckin, AiCheckinRunKind, AiCheckins, AiDecisionBlock, AiVerdict } from "@/types/ai";
@@ -237,12 +239,17 @@ function AutopilotTeam({ team, name, acting, running }: { team: AiAutopilotTeam;
 export function DecisionBlock({
   decision: d,
   onVerdict,
+  date,
 }: {
   decision: AiDecisionBlock;
   /** Absent while the turn is still streaming. */
   onVerdict?: (decisionId: number, verdict: AiVerdict | null) => void;
+  /** The NBA date the call was made on, for its Eastern clock times; today's when left out. */
+  date?: string;
 }) {
   const set = (v: AiVerdict) => onVerdict?.(d.decision_id, d.verdict === v ? null : v);
+  // Dime's own words, its Eastern clock times in the viewer's zone (as in its answers)
+  const tz = useViewerZone();
   return (
     <div className={s.decision} data-call={d.call} data-verdict={d.verdict ?? undefined} role="group" aria-label="Dime's call">
       <div className={s.decisionHead}>
@@ -251,8 +258,8 @@ export function DecisionBlock({
         </span>
         <span className={dk.label}>{decisionKicker(d)}</span>
       </div>
-      <div className={s.decisionSummary}>{d.summary}</div>
-      <div className={s.decisionReason}>{d.reason}</div>
+      <div className={s.decisionSummary}>{localizeProseClocks(d.summary, date, { tz })}</div>
+      <div className={s.decisionReason}>{localizeProseClocks(d.reason, date, { tz })}</div>
       {d.action ? <DecisionAction action={d.action} /> : null}
       {onVerdict ? (
         <div className={s.decisionFoot}>

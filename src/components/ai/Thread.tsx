@@ -220,7 +220,7 @@ function Parts({
         ) : p.block.type === "proposal" ? (
           <ProposalChip key={`${p.block.id}-${i}`} chip={p.block} actions={chips} />
         ) : p.block.type === "decision" ? (
-          <DecisionBlock key={`${p.block.id}-${i}`} decision={p.block} onVerdict={onVerdict} />
+          <DecisionBlock key={`${p.block.id}-${i}`} decision={p.block} onVerdict={onVerdict} date={date} />
         ) : p.block.type === "chart" ? (
           <ChartBlock key={`${p.block.id}-${i}`} chart={p.block} />
         ) : p.block.type === "place" ? (
