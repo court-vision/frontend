@@ -21,7 +21,7 @@ export const DESKS = [
   { id: "week", label: "Week", href: WEEK_DESK, key: "1", note: "Your team's matchup week", keywords: ["matchup", "lineup", "roster", "streamers", "market", "moves"] },
   { id: "draft", label: "Draft", href: DRAFT_DESK, key: "2", note: "A draft room, live or mock", keywords: ["draft", "room", "board", "mock", "lab", "picks"] },
   { id: "scout", label: "Scout", href: SCOUT_DESK, key: "3", note: "One player, NBA team or night of games", keywords: ["players", "rankings", "standings", "tonight", "terminal"] },
-  { id: "ai", label: "AI", href: AI_DESK, key: "4", note: "Ask CV AI about your team", keywords: ["ai", "assistant", "chat", "ask", "agent", "question"] },
+  { id: "ai", label: "AI", href: AI_DESK, key: "4", note: "Ask Dime about your team", keywords: ["ai", "dime", "assistant", "chat", "ask", "agent", "question"] },
 ] as const;
 
 /** The Developer desk sits behind an icon at the bar's far end, not among the tabs. */

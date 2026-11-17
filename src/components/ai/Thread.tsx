@@ -13,10 +13,10 @@ import s from "./ai.module.css";
 
 /** What a failed turn's code means to the user, where the server's own message isn't enough. */
 const OUTCOME_COPY: Record<string, string> = {
-  AI_TIMEOUT: "The assistant took too long and stopped. Try a narrower question.",
-  AI_DECLINED: "The assistant couldn't help with that one.",
+  AI_TIMEOUT: "Dime took too long and stopped. Try a narrower question.",
+  AI_DECLINED: "Dime couldn't help with that one.",
   AI_INCOMPLETE: "The answer was cut off. Try a narrower question.",
-  AI_BUSY: "The assistant is busy. Try again in a minute.",
+  AI_BUSY: "Dime is busy. Try again in a minute.",
 };
 
 /** Save a note; resolves true when it was stored. */

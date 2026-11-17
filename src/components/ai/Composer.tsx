@@ -80,7 +80,7 @@ export const Composer = forwardRef<ComposerHandle, {
             value={text}
             disabled={disabled}
             placeholder={placeholder}
-            aria-label="Message the assistant"
+            aria-label="Message Dime"
             maxLength={MAX_MESSAGE + 200}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
