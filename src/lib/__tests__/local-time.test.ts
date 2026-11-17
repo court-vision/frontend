@@ -9,6 +9,7 @@ import {
   localTip,
   localWeekdayTime,
   localizeEtClocks,
+  localizeProseClocks,
   viewerZone,
   zoneName,
 } from "../local-time";
@@ -161,5 +162,50 @@ describe("localizeEtClocks", () => {
     expect(localizeEtClocks("Q3 5:23", "2026-11-05", { tz: CHI })).toBe("Q3 5:23");
     expect(localizeEtClocks(null, "2026-11-05", { tz: CHI })).toBeNull();
     expect(localizeEtClocks(undefined)).toBeUndefined();
+  });
+});
+
+describe("localizeProseClocks", () => {
+  test("moves Dime's Eastern clocks to the viewer's zone, with its name", () => {
+    expect(localizeProseClocks("Brunson tips at 7:30 PM ET against Boston.", "2026-11-05", { tz: CHI })).toBe(
+      "Brunson tips at 6:30 PM CST against Boston."
+    );
+    expect(localizeProseClocks("first tip 7:00 PM ET, last 10:30 PM ET", "2026-11-05", { tz: LA })).toBe(
+      "first tip 4:00 PM PST, last 7:30 PM PST"
+    );
+  });
+
+  test("reads the ways the time gets written", () => {
+    expect(localizeProseClocks("at 7 pm ET", "2026-11-05", { tz: CHI })).toBe("at 6:00 PM CST");
+    expect(localizeProseClocks("at 7:30 p.m. Eastern", "2026-11-05", { tz: CHI })).toBe("at 6:30 PM CST");
+    expect(localizeProseClocks("at 7:30PM EST", "2026-11-05", { tz: CHI })).toBe("at 6:30 PM CST");
+    expect(localizeProseClocks("window opens 18:55 ET", "2026-11-05", { tz: CHI })).toBe("window opens 5:55 PM CST");
+    expect(localizeProseClocks("the day turns at 3 AM ET", "2026-11-05", { tz: LA })).toBe("the day turns at 12:00 AM PST");
+  });
+
+  test("a clock past the viewer's midnight names the day", () => {
+    expect(localizeProseClocks("tips at 7:00 PM ET", "2026-11-04", { tz: PARIS })).toBe("tips at Thu 1:00 AM GMT+1");
+  });
+
+  test("an Eastern viewer reads it as written", () => {
+    expect(localizeProseClocks("tips at 7:30 PM ET", "2026-11-05", { tz: ET_ZONE })).toBe("tips at 7:30 PM ET");
+    expect(localizeProseClocks("tips at 7:30 PM ET", "2026-11-05", { tz: "America/Detroit" })).toBe("tips at 7:30 PM ET");
+  });
+
+  test("daylight saving follows the date", () => {
+    // Nov 1 2026 ends US daylight time; Phoenix never keeps it
+    expect(localizeProseClocks("7:00 PM ET", "2026-10-30", { tz: PHX })).toBe("4:00 PM MST");
+    expect(localizeProseClocks("7:00 PM ET", "2026-11-05", { tz: PHX })).toBe("5:00 PM MST");
+  });
+
+  test("leaves bare clocks, scores and other numbers alone", () => {
+    const text = "He scored 31 at 7:30 PM, Q3 5:23 left, 12 of 20 from the field, 3:1 odds, 10 PM Pacific.";
+    expect(localizeProseClocks(text, "2026-11-05", { tz: CHI })).toBe(text);
+    expect(localizeProseClocks("13:00 ET", "2026-11-05", { tz: CHI })).toBe("12:00 PM CST");
+    expect(localizeProseClocks("25:00 ET", "2026-11-05", { tz: CHI })).toBe("25:00 ET");
+    // No AM/PM and not plainly 24-hour: it could be a PM tip, so it stays as written
+    expect(localizeProseClocks("tips 7:30 ET, or 10:30 ET", "2026-11-05", { tz: CHI })).toBe("tips 7:30 ET, or 10:30 ET");
+    expect(localizeProseClocks("07:30 ET", "2026-11-05", { tz: CHI })).toBe("6:30 AM CST");
+    expect(localizeProseClocks("", "2026-11-05", { tz: CHI })).toBe("");
   });
 });

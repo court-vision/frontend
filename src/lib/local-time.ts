@@ -227,3 +227,46 @@ export function localizeEtClocks(text: string | null | undefined, date?: string 
     return localTip(`${String(h24).padStart(2, "0")}:${m}`, date, { ...opts, label: opts.label || !!et });
   });
 }
+
+// Dime's prose names Eastern times the way people write them: "7:30 PM ET", "7 pm ET",
+// "7:30 p.m. Eastern", "19:30 ET". Only a clock marked Eastern moves; a bare one could be
+// the user's own. A 24-hour clock counts only where it can't be a 12-hour one missing its
+// PM ("19:30", "07:30"); "7:30 ET" or "10:30 ET" is left as written.
+const PROSE_ET_RE =
+  /\b(?:(\d{1,2})(?::([0-5]\d))?\s?([AaPp])\.?[Mm]\.?|(0\d|1[3-9]|2[0-3]):([0-5]\d))\s(?:ET|EST|EDT|Eastern)\b/g;
+
+/**
+ * Dime's answer with each Eastern clock it names ("tips at 7:30 PM ET") moved
+ * to the viewer's zone and labelled with it: "tips at 6:30 PM CST". Its tools
+ * read the NBA's Eastern times, so that is what it writes; this is where the
+ * reader's zone comes in. `date` is the NBA date the answer was written on
+ * (today's when left out), which only matters across a daylight-saving change
+ * or a viewer whose calendar has moved to the next day. A viewer on Eastern
+ * time reads the text as written.
+ */
+export function localizeProseClocks(text: string, date?: string | null, opts: { tz?: string } = {}): string {
+  if (!text) return text;
+  const tz = opts.tz ?? viewerZone();
+  const day = readDate(date) ? date! : getTodayDate();
+  return text.replace(PROSE_ET_RE, (match, h12?: string, m12?: string, ap?: string, h24?: string, m24?: string) => {
+    let hour: number;
+    let minute: number;
+    if (h12 !== undefined) {
+      hour = Number(h12);
+      if (hour < 1 || hour > 12) return match;
+      hour = (hour % 12) + (ap!.toLowerCase() === "p" ? 12 : 0);
+      minute = Number(m12 ?? 0);
+    } else {
+      hour = Number(h24);
+      minute = Number(m24);
+    }
+    const hhmm = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    const at = etInstant(day, hhmm);
+    if (at == null) return match;
+    // Same wall clock as Eastern at that moment (the viewer is on Eastern time): leave it be
+    const here = wallAt(at, tz);
+    const there = wallAt(at, ET_ZONE);
+    if (here.hour === there.hour && here.minute === there.minute && here.day === there.day) return match;
+    return localTip(hhmm, day, { tz, label: true });
+  });
+}
