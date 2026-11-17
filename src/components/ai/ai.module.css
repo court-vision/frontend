@@ -791,6 +791,7 @@
   border: 0;
   outline: none;
   resize: none;
+  overflow-y: hidden;
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -1068,7 +1069,7 @@
 }
 
 .select,
-.textarea {
+.noteField {
   box-sizing: border-box;
   border-radius: calc(6px * var(--round, 1));
   border: var(--ctl-w) solid var(--ctl-line);
@@ -1083,18 +1084,18 @@
   max-width: 200px;
   padding: 0 8px;
 }
-.textarea {
+.noteField {
   width: 100%;
   padding: 8px 10px;
   line-height: 1.45;
   resize: vertical;
 }
 .select:focus,
-.textarea:focus {
+.noteField:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.textarea::placeholder {
+.noteField::placeholder {
   color: var(--text-3);
 }
 

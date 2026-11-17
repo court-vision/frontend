@@ -9,6 +9,9 @@ import s from "./ai.module.css";
 /** The backend's limit on one message (AGENT_MESSAGE_MAX). */
 export const MAX_MESSAGE = 2000;
 
+/** How tall the box grows (px) before its text scrolls; matches `.textarea`'s max-height. */
+const MAX_HEIGHT = 180;
+
 export interface ComposerHandle {
   focus: () => void;
   /** Put text back (a message the server refused before answering). */
@@ -53,11 +56,15 @@ export const Composer = forwardRef<ComposerHandle, {
     },
   }));
 
+  // Fit the box to its text. scrollHeight leaves out the border, so add it back, and
+  // only allow a scrollbar once the text is taller than the cap (an empty box never scrolls)
   useLayoutEffect(() => {
     const el = area.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+    const fit = el.scrollHeight + el.offsetHeight - el.clientHeight;
+    el.style.height = `${Math.min(fit, MAX_HEIGHT)}px`;
+    el.style.overflowY = fit > MAX_HEIGHT ? "auto" : "hidden";
   }, [text]);
 
   const trimmed = text.trim();
