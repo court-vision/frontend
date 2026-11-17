@@ -285,7 +285,7 @@
   outline-offset: 1px;
 }
 
-.noteText {
+.commentText {
   font-size: 12.5px;
   line-height: 1.5;
   white-space: pre-wrap;
