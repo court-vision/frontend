@@ -3,6 +3,9 @@
 import { memo, useState } from "react";
 import { MessageSquarePlus, ThumbsDown, ThumbsUp } from "lucide-react";
 import { prose } from "@/lib/ai-prose";
+import { localizeProseClocks } from "@/lib/local-time";
+import { getTodayDate } from "@/lib/nba-date";
+import { useViewerZone } from "@/hooks/useViewerZone";
 import type { LivePart, LiveTurn } from "@/hooks/useAi";
 import type { AiFeedback, AiPart, AiTurn, AiVerdict } from "@/types/ai";
 import dk from "@/components/desk/desk.module.css";
@@ -71,18 +74,22 @@ const StoredTurn = memo(function StoredTurn({
 }) {
   const ok = turn.outcome === "ok";
   const [editing, setEditing] = useState(false);
+  const tz = useViewerZone();
+  // The NBA date it was written on: what its Eastern clock times are read against
+  const written = Date.parse(turn.created_at);
+  const date = Number.isNaN(written) ? undefined : getTodayDate(new Date(written));
   return (
     <section className={s.turn} aria-label={brief ? "Check-in" : "Question and answer"}>
       {brief ? (
         <details className={s.brief}>
           <summary>What Dime was asked to check</summary>
-          <div className={s.briefText}>{turn.message}</div>
+          <div className={s.briefText}>{localizeProseClocks(turn.message, date, { tz })}</div>
         </details>
       ) : (
         <div className={s.ask}>{turn.message}</div>
       )}
       <div className={s.answer}>
-        <Parts parts={turn.parts} chips={chips} onVerdict={onVerdict} />
+        <Parts parts={turn.parts} chips={chips} onVerdict={onVerdict} date={date} />
         {!ok ? <div className={s.failed}>{OUTCOME_COPY[turn.outcome] ?? "This answer didn't finish."}</div> : null}
         <div className={s.foot}>
           {ok ? <Vote turn={turn} onVote={onVote} /> : null}
@@ -196,21 +203,24 @@ function Parts({
   chips,
   caret = false,
   onVerdict,
+  date,
 }: {
   parts: Array<AiPart | LivePart>;
   chips: ChipActions;
   caret?: boolean;
   onVerdict?: OnVerdict;
+  /** The NBA date the answer was written on; today's for one being written now. */
+  date?: string;
 }) {
   return (
     <>
       {parts.map((p, i) =>
         p.kind === "text" ? (
-          <Prose key={i} text={p.text} caret={caret && i === parts.length - 1} />
+          <Prose key={i} text={p.text} caret={caret && i === parts.length - 1} date={date} />
         ) : p.block.type === "proposal" ? (
           <ProposalChip key={`${p.block.id}-${i}`} chip={p.block} actions={chips} />
         ) : p.block.type === "decision" ? (
-          <DecisionBlock key={`${p.block.id}-${i}`} decision={p.block} onVerdict={onVerdict} />
+          <DecisionBlock key={`${p.block.id}-${i}`} decision={p.block} onVerdict={onVerdict} date={date} />
         ) : p.block.type === "chart" ? (
           <ChartBlock key={`${p.block.id}-${i}`} chart={p.block} />
         ) : p.block.type === "place" ? (
@@ -223,8 +233,10 @@ function Parts({
   );
 }
 
-function Prose({ text, caret }: { text: string; caret: boolean }) {
-  const blocks = prose(text);
+/** Dime's words, its Eastern clock times in the viewer's zone ("7:30 PM ET" reads "6:30 PM CST" in Chicago). */
+function Prose({ text, caret, date }: { text: string; caret: boolean; date?: string }) {
+  const tz = useViewerZone();
+  const blocks = prose(localizeProseClocks(text, date, { tz }));
   if (!blocks.length && !caret) return null;
   return (
     <div className={s.prose}>

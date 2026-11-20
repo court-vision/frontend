@@ -34,7 +34,7 @@ export function viewerZone(): string {
 
 // Building an Intl.DateTimeFormat is the slow part, and a week grid prints dozens of tips.
 const formats = new Map<string, Intl.DateTimeFormat>();
-function format(tz: string, kind: "wall" | "zone"): Intl.DateTimeFormat {
+function format(tz: string, kind: "wall" | "zone" | "generic"): Intl.DateTimeFormat {
   const key = `${kind}|${tz}`;
   let f = formats.get(key);
   if (!f) {
@@ -50,7 +50,7 @@ function format(tz: string, kind: "wall" | "zone"): Intl.DateTimeFormat {
             hour: "numeric",
             minute: "2-digit",
           })
-        : new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" });
+        : new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: kind === "zone" ? "short" : "shortGeneric" });
     formats.set(key, f);
   }
   return f;
@@ -225,5 +225,99 @@ export function localizeEtClocks(text: string | null | undefined, date?: string 
     if (hour < 1 || hour > 12) return match;
     const h24 = (hour % 12) + (ampm === "PM" ? 12 : 0);
     return localTip(`${String(h24).padStart(2, "0")}:${m}`, date, { ...opts, label: opts.label || !!et });
+  });
+}
+
+// Dime's prose names Eastern times the way people write them: "7:30 PM ET", "7 pm ET",
+// "7:30 p.m. Eastern", "19:30 ET". Only a clock marked Eastern moves; a bare one could be
+// the user's own. A 24-hour clock counts only where it can't be a 12-hour one missing its
+// PM ("19:30", "07:30"); "7:30 ET" or "10:30 ET" is left as written.
+const PROSE_ET_RE =
+  /\b(?:(\d{1,2})(?::([0-5]\d))?\s?([AaPp])\.?[Mm]\.?|(0\d|1[3-9]|2[0-3]):([0-5]\d))\s(?:ET|EST|EDT|Eastern)\b/g;
+
+/** How many days either side of an answer's date a clock in it may be about: its week and the next. */
+const PROSE_DAYS = 14;
+
+/** The zone's name for a clock that holds all year, as Dime's "ET" does: "CT", "PT", "MST"; else "GMT+1". */
+function proseZoneName(ms: number, tz: string): string {
+  try {
+    const part = format(tz, "generic")
+      .formatToParts(new Date(ms))
+      .find((p) => p.type === "timeZoneName");
+    // Outside North America the generic name is a phrase ("France Time"): use the short one
+    if (part && !/\s/.test(part.value)) return part.value;
+  } catch {
+    // an engine without shortGeneric
+  }
+  return zoneName(ms, tz);
+}
+
+const proseMemo = new Map<string, string | null>();
+
+/**
+ * An Eastern clock in Dime's prose as the viewer's own, or null to leave it as
+ * written. Prose doesn't say which day a clock is on ("tomorrow", "Friday"), so
+ * it moves only where the day can't change the answer: the viewer's clock for
+ * it is the same on every day from two weeks before `day` to two weeks after
+ * (no daylight-saving change between the zones), and on the same calendar day
+ * (no weekday to guess). Otherwise Dime's "7:30 PM ET" is right as it stands.
+ */
+function proseClock(hhmm: string, day: string, tz: string): string | null {
+  const key = `${tz}|${day}|${hhmm}`;
+  const memo = proseMemo.get(key);
+  if (memo !== undefined) return memo;
+  const [y, m, d] = day.split("-").map(Number);
+  let here: Wall | null = null;
+  let at: number | null = null;
+  let out: string | null = null;
+  for (let k = -PROSE_DAYS; k <= PROSE_DAYS; k++) {
+    const on = new Date(Date.UTC(y, m - 1, d + k)).toISOString().slice(0, 10);
+    const ms = etInstant(on, hhmm);
+    if (ms == null) break;
+    const local = wallAt(ms, tz);
+    const there = wallAt(ms, ET_ZONE);
+    if (local.year !== there.year || local.month !== there.month || local.day !== there.day) break;
+    if (here && (local.hour !== here.hour || local.minute !== here.minute)) break;
+    here = local;
+    if (k === 0) at = ms;
+    if (k === PROSE_DAYS && at != null) {
+      // A viewer on Eastern time reads it as written
+      const [eh, em] = hhmm.split(":").map(Number);
+      if (local.hour !== eh || local.minute !== em) out = `${clock(local.hour, local.minute, false)} ${proseZoneName(at, tz)}`;
+    }
+  }
+  if (proseMemo.size >= 500) proseMemo.clear();
+  proseMemo.set(key, out);
+  return out;
+}
+
+/**
+ * Dime's answer with each Eastern clock it names ("tips at 7:30 PM ET") moved
+ * to the viewer's zone and labelled with it: "tips at 6:30 PM CT". Its tools
+ * read the NBA's Eastern times, so that is what it writes; this is where the
+ * reader's zone comes in. `date` is the NBA date the answer was written on
+ * (today's when left out). A clock whose move would depend on which day it is
+ * on stays as written: across a daylight-saving change between the zones, or
+ * past the viewer's midnight (see `proseClock`). A viewer on Eastern time
+ * reads the text as written.
+ */
+export function localizeProseClocks(text: string, date?: string | null, opts: { tz?: string } = {}): string {
+  if (!text) return text;
+  const tz = opts.tz ?? viewerZone();
+  const day = readDate(date) ? date! : getTodayDate();
+  return text.replace(PROSE_ET_RE, (match, h12?: string, m12?: string, ap?: string, h24?: string, m24?: string) => {
+    let hour: number;
+    let minute: number;
+    if (h12 !== undefined) {
+      hour = Number(h12);
+      if (hour < 1 || hour > 12) return match;
+      hour = (hour % 12) + (ap!.toLowerCase() === "p" ? 12 : 0);
+      minute = Number(m12 ?? 0);
+    } else {
+      hour = Number(h24);
+      minute = Number(m24);
+    }
+    const hhmm = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    return proseClock(hhmm, day, tz) ?? match;
   });
 }
