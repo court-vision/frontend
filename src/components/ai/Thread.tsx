@@ -108,7 +108,7 @@ const StoredTurn = memo(function StoredTurn({
         ) : turn.comment ? (
           <button type="button" className={s.note} onClick={() => setEditing(true)} title="Edit your note">
             <span className={dk.label}>Your note</span>
-            <span className={s.noteText}>{turn.comment}</span>
+            <span className={s.commentText}>{turn.comment}</span>
           </button>
         ) : null}
       </div>

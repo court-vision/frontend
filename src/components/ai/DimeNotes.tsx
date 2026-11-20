@@ -115,7 +115,7 @@ function NoteForm({ teams, teamId }: { teams: DeskTeam[]; teamId: number | null 
       }}
     >
       <textarea
-        className={s.textarea}
+        className={s.noteField}
         aria-label="Your note for Dime"
         placeholder="Tell Dime something to keep, e.g. Never drop my rookies before December."
         value={text}
@@ -225,7 +225,7 @@ function NoteRow({ note, due }: { note: AiNote; due: boolean }) {
       {editing ? (
         <div className={s.noteEdit}>
           <textarea
-            className={s.textarea}
+            className={s.noteField}
             aria-label="Edit the note"
             value={draft}
             maxLength={NOTE_MAX}
