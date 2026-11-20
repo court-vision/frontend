@@ -85,7 +85,7 @@ const REASONS: Record<string, string> = {
   // A pickup Dime scheduled itself, stopped when it came due
   dime_off: "Dime is switched off",
   dime_paused: "Dime is paused on this team",
-  dime_not_allowed: "the account no longer has CV AI",
+  dime_not_allowed: "the account no longer has Dime",
   dime_not_acting: "daily actions aren't at AI on this team any more",
   dime_reserve: "it would have used the add Dime keeps for you",
 };

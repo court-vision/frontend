@@ -78,7 +78,7 @@ export function AiPage({ initial }: { initial: AiLocation }) {
   } else if (!isSignedIn) {
     gate = (
       <div className={s.hero}>
-        <span className={s.heroTitle}>Sign in to talk to CV AI</span>
+        <span className={s.heroTitle}>Sign in to talk to Dime</span>
         <span className={s.heroSub}>
           Your fantasy assistant: it reads your teams, matchups and the free-agent pool, and answers with the numbers behind them.
         </span>
@@ -93,7 +93,7 @@ export function AiPage({ initial }: { initial: AiLocation }) {
     const err = toApiError(usage.error);
     gate = (
       <div className={s.hero}>
-        <span className={s.heroTitle}>{err.code === "AI_DISABLED" ? "CV AI is turned off" : "CV AI couldn't be reached"}</span>
+        <span className={s.heroTitle}>{err.code === "AI_DISABLED" ? "Dime is turned off" : "Dime couldn't be reached"}</span>
         <span className={s.heroSub}>{err.code === "AI_DISABLED" ? "It's switched off on this server for now." : aiMessage(err)}</span>
         {err.code !== "AI_DISABLED" ? (
           <div className={s.linkRow}>
@@ -107,7 +107,7 @@ export function AiPage({ initial }: { initial: AiLocation }) {
   } else if (!access) {
     gate = (
       <div className={s.hero}>
-        <span className={s.heroTitle}>CV AI is invite-only for now</span>
+        <span className={s.heroTitle}>Dime is invite-only for now</span>
         <span className={s.heroSub}>
           It&apos;s open to a few people while its costs are measured. Your teams, the Week desk and Scout work as before.
         </span>
@@ -119,7 +119,7 @@ export function AiPage({ initial }: { initial: AiLocation }) {
     return (
       <div className={dk.desk}>
         <DeskBar desk="ai">
-          <span style={{ fontWeight: 600 }}>CV AI</span>
+          <span style={{ fontWeight: 600 }}>Dime</span>
         </DeskBar>
         <div className={s.thread}>{gate}</div>
         <DeskStatus keys={[["T", "theme"]]} />
@@ -461,7 +461,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
       <DeskBar
         desk="ai"
         right={
-          <span className={dk.sub} title="Your CV AI spend this month, and your cap">
+          <span className={dk.sub} title="What Dime has cost you this month, and your cap">
             ${monthUsd.toFixed(2)} of ${capUsd.toFixed(0)}
           </span>
         }
@@ -539,7 +539,7 @@ function Empty({ onPick, disabled }: { onPick: (q: string) => void; disabled: bo
     <div className={s.empty}>
       <span className={s.emptyTitle}>What do you want to know?</span>
       <span className={s.emptySub}>
-        CV AI reads your matchup, your roster, the free-agent pool and box scores, then tells you what it would do. Tables are
+        Dime reads your matchup, your roster, the free-agent pool and box scores, then tells you what it would do. Tables are
         copied straight from those lookups.
       </span>
       <div className={s.examples}>

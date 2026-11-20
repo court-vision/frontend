@@ -4,7 +4,7 @@ import { aiLocation } from "@/lib/ai-desk";
 
 export const metadata: Metadata = {
   title: "AI",
-  description: "CV AI: your fantasy assistant, answering from your teams, matchups and the free-agent pool.",
+  description: "Dime: your fantasy assistant, answering from your teams, matchups and the free-agent pool.",
   robots: { index: false, follow: false },
 };
 

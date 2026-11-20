@@ -70,7 +70,7 @@ export function ProposalChip({ chip: raw, actions }: { chip: AiProposalChip; act
   return (
     <div className={s.chip} data-state={state} data-staged={staged || undefined} role="group" aria-label={chip.kind === "lineup" ? "Proposed lineup" : "Proposed move"}>
       <div className={s.chipHead}>
-        <span className={dk.label}>{shadow ? "Dime would" : "CV AI proposes"}</span>
+        <span className={dk.label}>{shadow ? "Dime would" : "Dime proposes"}</span>
         <span>
           {when} · {how}
         </span>
