@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { callResult, checkinTitle, dayLabel, didChip, pausedLine, planNote, shiftDay, showsTimeline, stateLine, timelineRows } from "../ai-timeline";
+import { callResult, checkinTitle, dayLabel, didChip, pausedLine, planNote, shiftDay, showsTimeline, stateLine, timelineRows, timelineVerdictOf, timelineWithVerdict } from "../ai-timeline";
 import type { AiAutopilotTeam, AiNote, AiTimeline, AiTimelineCall, AiTimelineCheckin } from "@/types/ai";
 
 function checkin(over: Partial<AiTimelineCheckin> = {}): AiTimelineCheckin {
@@ -153,5 +153,30 @@ describe("whether the desk has a timeline", () => {
     expect(pausedLine(team({ on: true }))).toBeNull();
     expect(pausedLine(team({ rows: atAi }))).toBe("Check-ins are paused");
     expect(pausedLine(team({ paused_at: "2026-11-20T14:00:00Z", paused_by: "system", paused_reason: "3 refused moves" }))).toBe("Dime paused itself: 3 refused moves");
+  });
+});
+
+describe("a verdict on the timeline", () => {
+  const day = {
+    checkins: [
+      checkin({ checkin_id: 1, calls: [call({ decision_id: 7, verdict: "agree" }), call({ decision_id: 8 })] }),
+      checkin({ checkin_id: 2, calls: [call({ decision_id: 9 })] }),
+    ],
+  };
+
+  test("reads one call's verdict, undefined when it isn't on the day", () => {
+    expect(timelineVerdictOf(day, 7)).toBe("agree");
+    expect(timelineVerdictOf(day, 8)).toBeNull();
+    expect(timelineVerdictOf(day, 99)).toBeUndefined();
+  });
+
+  test("sets only that call, and keeps the day as it was when the call isn't there", () => {
+    const next = timelineWithVerdict(day, 8, "disagree");
+    expect(timelineVerdictOf(next, 8)).toBe("disagree");
+    expect(timelineVerdictOf(next, 7)).toBe("agree");
+    expect(next.checkins[1]).toBe(day.checkins[1]);
+    expect(timelineVerdictOf(day, 8)).toBeNull();
+    expect(timelineWithVerdict(day, 99, "agree")).toBe(day);
+    expect(timelineVerdictOf(timelineWithVerdict(next, 8, null), 8)).toBeNull();
   });
 });

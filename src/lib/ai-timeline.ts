@@ -7,7 +7,7 @@
 import { anyAtAi, pauseLine } from "@/lib/ai-autonomy";
 import { KIND_LABEL, reasonWords, STATE_LABEL } from "@/lib/ai-checkins";
 import { windowOf, windowResult, type Tone } from "@/lib/dime";
-import type { AiAutopilotTeam, AiCheckinKind, AiCheckinSlot, AiNote, AiTimeline, AiTimelineCall, AiTimelineCheckin, MoveWindowName } from "@/types/ai";
+import type { AiAutopilotTeam, AiCheckinKind, AiCheckinSlot, AiNote, AiTimeline, AiTimelineCall, AiTimelineCheckin, AiVerdict, MoveWindowName } from "@/types/ai";
 
 export type TimelineRow =
   | { kind: "checkin"; at: number; checkin: AiTimelineCheckin }
@@ -122,4 +122,27 @@ export function showsTimeline(team: Pick<AiAutopilotTeam, "on" | "rows" | "pause
 export function pausedLine(team: Pick<AiAutopilotTeam, "on" | "paused_at" | "paused_by" | "paused_reason"> | null | undefined): string | null {
   if (!team || team.on) return null;
   return pauseLine(team) ?? "Check-ins are paused";
+}
+
+/** One call's verdict on a day's timeline: null unrated, undefined when the call isn't on that day. */
+export function timelineVerdictOf(t: Pick<AiTimeline, "checkins">, decisionId: number): AiVerdict | null | undefined {
+  for (const c of t.checkins) {
+    for (const call of c.calls) {
+      if (call.decision_id === decisionId) return call.verdict ?? null;
+    }
+  }
+  return undefined;
+}
+
+/** The day's timeline with one call's verdict set, every other call as it was. */
+export function timelineWithVerdict<T extends Pick<AiTimeline, "checkins">>(t: T, decisionId: number, verdict: AiVerdict | null): T {
+  if (timelineVerdictOf(t, decisionId) === undefined) return t;
+  return {
+    ...t,
+    checkins: t.checkins.map((c) =>
+      c.calls.some((call) => call.decision_id === decisionId)
+        ? { ...c, calls: c.calls.map((call) => (call.decision_id === decisionId ? { ...call, verdict } : call)) }
+        : c
+    ),
+  };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { Check, ChevronLeft, ChevronRight, Loader2, Maximize2, MessageSquare, Minimize2, Play, X } from "lucide-react";
 import { toast } from "sonner";
@@ -465,23 +465,16 @@ function CheckinItem({
 
 /** One call: what Dime thought and why, what it did about it, how it went, and your agree or disagree. */
 function Call({ call, conversationId, date }: { call: AiTimelineCall; conversationId: number | null; date: string }) {
+  // The save writes the new verdict into the cached timeline (and the open conversation) at once,
+  // so this reads only the call: a later day read, or a rating made in the chat, shows here too
   const verdict = useAiDecisionVerdict(conversationId);
-  // Shown at once; the timeline is read again when the save settles
-  const [mine, setMine] = useState<AiVerdict | null | undefined>(undefined);
-  const shown = mine !== undefined ? mine : (call.verdict ?? null);
+  const shown = call.verdict ?? null;
   const tz = useViewerZone();
   const result = callResult(call);
   const set = (v: AiVerdict) => {
-    const next = shown === v ? null : v;
-    setMine(next);
     verdict.mutate(
-      { decisionId: call.decision_id, verdict: next },
-      {
-        onError: (err) => {
-          setMine(undefined);
-          toast.error(aiMessage(err, "Couldn't save that"));
-        },
-      }
+      { decisionId: call.decision_id, verdict: shown === v ? null : v },
+      { onError: (err) => toast.error(aiMessage(err, "Couldn't save that")) }
     );
   };
   const action = call.action ? actionLine(call.action) : null;

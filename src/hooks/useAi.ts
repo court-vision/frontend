@@ -6,6 +6,7 @@ import { toApiError, userMessage } from "@/lib/api-error";
 import type { GetTokenFn } from "@/lib/http";
 import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
 import { VerdictSaves, verdictOf, withVerdict } from "@/lib/ai-checkins";
+import { timelineVerdictOf, timelineWithVerdict } from "@/lib/ai-timeline";
 import { notificationKeys } from "@/hooks/useNotificationPreferences";
 import type {
   AiAutopilotChange,
@@ -275,26 +276,42 @@ export function useAiDecisionVerdict(conversationId: number | null) {
       apiClient.setAiDecisionVerdict(getToken, decisionId, verdict),
     onMutate: async ({ decisionId, verdict }) => {
       const save = verdictSaves.start(decisionId);
-      if (conversationId == null) return { save, key: null, previous: undefined };
+      // The timeline's days hold the same call: every cached day shows the new verdict at once, so
+      // both panes agree. A read of a day already on its way would land after this with the old one
+      const days = aiKeys.timelines(userId);
+      await queryClient.cancelQueries({ queryKey: days });
+      const dayBefore = queryClient
+        .getQueriesData<AiTimeline>({ queryKey: days })
+        .map(([, t]) => (t ? timelineVerdictOf(t, decisionId) : undefined))
+        .find((v) => v !== undefined);
+      queryClient.setQueriesData<AiTimeline>({ queryKey: days }, (t) => (t ? timelineWithVerdict(t, decisionId, verdict) : t));
+      if (conversationId == null) return { save, key: null, previous: undefined, dayBefore };
       const key = aiKeys.conversation(userId, conversationId);
-      // A read of the conversation already on its way would land after this and show the old verdict
       await queryClient.cancelQueries({ queryKey: key });
       const before = queryClient.getQueryData<AiConversation>(key);
       const previous = before ? verdictOf(before, decisionId) : undefined;
       if (before) queryClient.setQueryData<AiConversation>(key, withVerdict(before, decisionId, verdict));
-      return { save, key, previous };
+      return { save, key, previous, dayBefore };
     },
     onError: (_err, { decisionId }, ctx) => {
-      const previous = ctx?.previous;
-      if (!ctx?.key || previous === undefined || !verdictSaves.isNewest(decisionId, ctx.save)) return;
-      queryClient.setQueryData<AiConversation>(ctx.key, (c) => (c ? withVerdict(c, decisionId, previous) : c));
+      if (!ctx || !verdictSaves.isNewest(decisionId, ctx.save)) return;
+      const { key, previous, dayBefore } = ctx;
+      if (dayBefore !== undefined) {
+        queryClient.setQueriesData<AiTimeline>({ queryKey: aiKeys.timelines(userId) }, (t) =>
+          t ? timelineWithVerdict(t, decisionId, dayBefore) : t
+        );
+      }
+      if (key && previous !== undefined) {
+        queryClient.setQueryData<AiConversation>(key, (c) => (c ? withVerdict(c, decisionId, previous) : c));
+      }
     },
     onSettled: () => {
-      // The inbox's agree / disagree tallies, and the timeline's calls
-      void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
-      void queryClient.invalidateQueries({ queryKey: aiKeys.timelines(userId) });
-      // Once no save is in flight, the stored conversations say which verdicts were kept
+      // Once no save is in flight, the stored rows say which verdicts were kept: the inbox's agree /
+      // disagree tallies, the timeline's calls and the conversations. Reading them sooner could show
+      // an earlier save's verdict over a newer one still on its way
       if (verdictSaves.settle()) {
+        void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
+        void queryClient.invalidateQueries({ queryKey: aiKeys.timelines(userId) });
         void queryClient.invalidateQueries({ queryKey: [...aiKeys.user(userId), "conversation"] });
       }
     },
