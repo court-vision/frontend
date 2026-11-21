@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { AiPage } from "@/components/ai/AiPage";
-import { aiLocation } from "@/lib/ai-desk";
+import { AI_DESK, DRAFT_DESK } from "@/components/desk/routes";
+import { aiLocation, draftsRedirect } from "@/lib/ai-desk";
 
 export const metadata: Metadata = {
   title: "AI",
@@ -15,5 +17,8 @@ export default async function Page({
 }) {
   const params = await searchParams;
   const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : null);
-  return <AiPage initial={aiLocation(one(params.v), one(params.c))} />;
+  // Draft notes left the AI desk for each room's recap: an old link goes to the note or the rooms
+  const moved = draftsRedirect(one(params.v), one(params.c), DRAFT_DESK, AI_DESK);
+  if (moved) redirect(moved);
+  return <AiPage initial={aiLocation(one(params.v), one(params.c), one(params.d))} />;
 }

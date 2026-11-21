@@ -58,8 +58,6 @@ import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
 import type { BaseApiResponse } from "@/types/auth";
 import type {
-  AiAutopilotAction,
-  AiAutopilotActionsResponse,
   AiAutopilotResponse,
   AiAutopilotChange,
   AiAutopilotTeam,
@@ -85,6 +83,8 @@ import type {
   AiProposalDismissResponse,
   AiProposalResponse,
   AiSettingsResponse,
+  AiTimeline,
+  AiTimelineResponse,
   AiTurnCommentResponse,
   AiTurnFeedbackResponse,
   AiUsage,
@@ -196,8 +196,6 @@ import type {
   RecapPick,
   RecapSeat,
   RecapStanding,
-  DimeDraftDesk,
-  DimeDraftDeskResponse,
   DimeDraftNote,
   DimeDraftNoteKind,
   DimeDraftNoteResponse,
@@ -1255,10 +1253,7 @@ class ApiClient {
     );
   }
 
-  /** What Dime wrote across the user's draft rooms, by room (the AI desk's Draft notes). */
-  async getDimeDraftNotes(getToken: GetTokenFn, opts?: RequestOptions): Promise<DimeDraftDesk> {
-    return unwrap(await fetchJson<DimeDraftDeskResponse>(`${AI_API}/draft-notes`, { ...opts, getToken }));
-  }
+
 
   /** Hand Dime the user's seat in a mock (it drafts to the end), or take it back after the pick it is making. */
   async setDimeDraftSeat(getToken: GetTokenFn, sessionId: number, on: boolean): Promise<DimeDraftRoom> {
@@ -1381,10 +1376,11 @@ class ApiClient {
     );
   }
 
-  /** Everything Dime did on its own, newest first: one team's, or every team's with null. */
-  async getAiActions(getToken: GetTokenFn, teamId: number | null, opts?: RequestOptions): Promise<AiAutopilotAction[]> {
-    const q = teamId != null ? `?team_id=${teamId}` : "";
-    return unwrap(await fetchJson<AiAutopilotActionsResponse>(`${AI_API}/actions${q}`, { ...opts, getToken }));
+  /** One team's fantasy day on the timeline; `day` null for today's. */
+  async getAiTimeline(getToken: GetTokenFn, teamId: number, day: string | null, opts?: RequestOptions): Promise<AiTimeline> {
+    const q = new URLSearchParams({ team_id: String(teamId) });
+    if (day) q.set("date", day);
+    return unwrap(await fetchJson<AiTimelineResponse>(`${AI_API}/timeline?${q}`, { ...opts, getToken }));
   }
 
   /** Turn the account's AI features on or off; returns them as they now stand. */

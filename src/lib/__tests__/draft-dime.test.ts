@@ -4,7 +4,6 @@
  */
 import { describe, expect, test } from "bun:test";
 import {
-  deskRoomLabel,
   failedLine,
   latestPlan,
   noteForPick,
@@ -214,13 +213,7 @@ describe("reading again", () => {
   });
 });
 
-describe("the AI desk's Draft notes", () => {
-  test("a room is named by the user's label, or by its kind", () => {
-    expect(deskRoomLabel({ name: "Atlas mock", kind: "mock", room_id: 4 })).toBe("Atlas mock");
-    expect(deskRoomLabel({ name: "  ", kind: "mock", room_id: 4 })).toBe("Mock draft 4");
-    expect(deskRoomLabel({ name: null, kind: "live", room_id: 9 })).toBe("Draft 9");
-  });
-
+describe("Dime's notes on a room's recap", () => {
   test("a note's line is its first paragraph, plain and cut", () => {
     expect(notePreview(null)).toBeNull();
     expect(notePreview("**Take Mock 001.** He fits the punt.\n\nRunner-up: Mock 004.")).toBe("Take Mock 001. He fits the punt.");

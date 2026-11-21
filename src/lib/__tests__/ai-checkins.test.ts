@@ -1,18 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import {
-  KIND_HELP,
-  KIND_LABEL,
-  RUN_KINDS,
-  VerdictSaves,
-  agreement,
-  checkinLine,
-  decisionKicker,
-  eventsShown,
-  reasonWords,
-  unrated,
-  verdictOf,
-  withVerdict,
-} from "../ai-checkins";
+import { KIND_LABEL, VerdictSaves, decisionKicker, eventsShown, reasonWords, verdictOf, withVerdict } from "../ai-checkins";
+import { stateLine } from "../ai-timeline";
 import { chipState, stageProblem } from "../ai-proposals";
 import type { AiCheckin, AiConversation, AiProposalChip } from "@/types/ai";
 
@@ -52,33 +40,12 @@ function event(n: number, source: "availability" | "news" = "news") {
   };
 }
 
-describe("a check-in's row", () => {
-  test("says its calls, changes, verdicts and cost", () => {
-    expect(checkinLine(checkin())).toBe("3 calls · 1 change · 2 agree · $0.41");
-    expect(checkinLine(checkin({ agree: 1, disagree: 1 }))).toBe("3 calls · 1 change · 1 agree, 1 disagree · $0.41");
-    expect(checkinLine(checkin({ agree: 0, changes: 0 }))).toBe("3 calls · not rated · $0.41");
-    expect(checkinLine(checkin({ sent: 1 }))).toBe("3 calls · 1 change · 1 sent by Dime · 2 agree · $0.41");
-  });
-
-  test("says why one didn't run, or didn't finish", () => {
-    expect(checkinLine(checkin({ state: "missed", reason: "window_closed" }))).toBe(
-      "Missed: its window closed before it could run"
-    );
-    expect(checkinLine(checkin({ state: "skipped", reason: "budget" }))).toBe("Skipped: this month's check-in budget is used up");
-    expect(checkinLine(checkin({ state: "failed", reason: "AI_TIMEOUT", decisions: 1, changes: 0, agree: 0 }))).toBe(
-      "Failed: it took too long · 1 call · not rated · $0.41"
-    );
-    expect(checkinLine(checkin({ state: "running" }))).toBe("Running…");
+describe("a check-in that didn't run", () => {
+  test("says why, or why it didn't finish", () => {
+    expect(stateLine(checkin({ state: "missed", reason: "window_closed" }))).toBe("Missed: its window closed before it could run");
+    expect(stateLine(checkin({ state: "skipped", reason: "budget" }))).toBe("Skipped: this month's check-in budget is used up");
+    expect(stateLine(checkin({ state: "failed", reason: "AI_TIMEOUT" }))).toBe("Failed: it took too long");
     expect(reasonWords("SOMETHING_NEW")).toBe("something new");
-  });
-
-  test("agreement counts only the rated calls", () => {
-    expect(agreement([checkin(), checkin({ agree: 1, disagree: 2 }), checkin({ agree: 0 })])).toEqual({ agree: 3, rated: 5 });
-  });
-
-  test("counts the calls left to mark in finished check-ins", () => {
-    expect(unrated([checkin(), checkin({ agree: 0 }), checkin({ state: "running", decisions: 2, agree: 0 })])).toBe(4);
-    expect(unrated([checkin({ state: "failed", decisions: 1, agree: 0 }), checkin({ state: "missed", decisions: 0, agree: 0 })])).toBe(1);
   });
 });
 
@@ -151,22 +118,12 @@ describe("a shadow chip", () => {
 });
 
 describe("an event check-in", () => {
-  test("is labelled, and the Run menu never offers one", () => {
+  test("is labelled", () => {
     expect(KIND_LABEL.event).toBe("Event");
-    expect(RUN_KINDS).not.toContain("event" as never);
-    expect(Object.keys(KIND_HELP).sort()).toEqual([...RUN_KINDS].sort());
-  });
-
-  test("says what came in, then its calls", () => {
-    const c = checkin({ kind: "event", events: [event(1, "availability")], decisions: 1, changes: 1, agree: 0 });
-    expect(checkinLine(c)).toBe("1 thing came in · 1 call · 1 change · not rated · $0.41");
-    expect(checkinLine(checkin({ events: [event(1), event(2)] }))).toBe(
-      "2 things came in · 3 calls · 1 change · 2 agree · $0.41"
-    );
   });
 
   test("one with nothing left to take says why it was skipped", () => {
-    expect(checkinLine(checkin({ kind: "event", state: "skipped", reason: "no_events" }))).toBe(
+    expect(stateLine(checkin({ kind: "event", state: "skipped", reason: "no_events" }))).toBe(
       "Skipped: the news it was for went to another check-in"
     );
   });

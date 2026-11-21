@@ -3939,6 +3939,429 @@
         "title": "AiTextPart",
         "type": "object"
       },
+      "AiTimelineCall": {
+        "description": "One call a check-in made, as the timeline shows it: the decision, what Dime did about it on its\nown, and how the move it sent went.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiDecisionAction"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What Dime did about it on its own, where its row is at AI; null where the change is a review"
+          },
+          "area": {
+            "enum": [
+              "lineup",
+              "streaming",
+              "adds_drops",
+              "other"
+            ],
+            "title": "Area",
+            "type": "string"
+          },
+          "automation": {
+            "enum": [
+              "auto_lineup",
+              "stream_lane",
+              "scheduled_pickup",
+              "none"
+            ],
+            "title": "Automation",
+            "type": "string"
+          },
+          "call": {
+            "enum": [
+              "hold",
+              "change"
+            ],
+            "title": "Call",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoveOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How the move it sent went: the move ledger's row for its proposal, rebuilt each night; null until the ledger has it, and for anything not sent"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "agree",
+                  "disagree"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The user's call on it; null until they make one",
+            "title": "Verdict"
+          }
+        },
+        "required": [
+          "decision_id",
+          "area",
+          "automation",
+          "call",
+          "summary",
+          "reason",
+          "proposal_id",
+          "verdict",
+          "action",
+          "result"
+        ],
+        "title": "AiTimelineCall",
+        "type": "object"
+      },
+      "AiTimelineCheckin": {
+        "description": "A check-in on the timeline: its summary, its calls and the notes its own turn wrote.",
+        "properties": {
+          "agree": {
+            "title": "Agree",
+            "type": "integer"
+          },
+          "calls": {
+            "description": "In the order it made them",
+            "items": {
+              "$ref": "#/components/schemas/AiTimelineCall"
+            },
+            "title": "Calls",
+            "type": "array"
+          },
+          "changes": {
+            "description": "Of those, the ones that would change an automation's plan or the roster",
+            "title": "Changes",
+            "type": "integer"
+          },
+          "checkin_id": {
+            "title": "Checkin Id",
+            "type": "integer"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its conversation; null when it never ran",
+            "title": "Conversation Id"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "date": {
+            "description": "The fantasy day it is about",
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "decisions": {
+            "description": "Calls it logged, holds included",
+            "title": "Decisions",
+            "type": "integer"
+          },
+          "disagree": {
+            "title": "Disagree",
+            "type": "integer"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "events": {
+            "description": "What came in that it was told about: an event check-in's reason, or what a scheduled one picked up",
+            "items": {
+              "$ref": "#/components/schemas/AiCheckinEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "kind": {
+            "description": "morning, weekly (a matchup's first morning), pre_lock (before the first tip), night (the next morning's follow-up) or event (news about a rostered player)",
+            "enum": [
+              "morning",
+              "weekly",
+              "pre_lock",
+              "night",
+              "event"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "manual": {
+            "description": "Run from the AI desk rather than on the schedule",
+            "title": "Manual",
+            "type": "boolean"
+          },
+          "notes": {
+            "description": "Notes its own turn wrote (a revision is a new note), retired ones included",
+            "items": {
+              "$ref": "#/components/schemas/AiNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it failed, was missed or skipped (e.g. window_closed, budget, daily_cap, AI_TIMEOUT)",
+            "title": "Reason"
+          },
+          "sent": {
+            "default": 0,
+            "description": "Moves it sent on its own (on automations at AI)",
+            "title": "Sent",
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "running",
+              "done",
+              "failed",
+              "missed",
+              "skipped"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkin_id",
+          "team_id",
+          "kind",
+          "date",
+          "manual",
+          "state",
+          "reason",
+          "due_at",
+          "started_at",
+          "finished_at",
+          "conversation_id",
+          "title",
+          "cost_usd",
+          "decisions",
+          "changes",
+          "agree",
+          "disagree",
+          "sent",
+          "events",
+          "calls",
+          "notes"
+        ],
+        "title": "AiTimelineCheckin",
+        "type": "object"
+      },
+      "AiTimelineData": {
+        "properties": {
+          "checkins": {
+            "description": "The check-ins that ran in the day, oldest first (by when they ran: the night follow-up about Thursday is on Friday)",
+            "items": {
+              "$ref": "#/components/schemas/AiTimelineCheckin"
+            },
+            "title": "Checkins",
+            "type": "array"
+          },
+          "checkins_on": {
+            "description": "The team's check-ins run on the schedule",
+            "title": "Checkins On",
+            "type": "boolean"
+          },
+          "date": {
+            "description": "The fantasy day shown (ESPN's day, turning at 3 AM ET)",
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "ends_at": {
+            "description": "When it ends: 3 AM ET the next day",
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "first_tip": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The day's first fantasy tip; null on a day with no games",
+            "title": "First Tip"
+          },
+          "notes_due": {
+            "description": "Live notes set to recheck on the day",
+            "items": {
+              "$ref": "#/components/schemas/AiNote"
+            },
+            "title": "Notes Due",
+            "type": "array"
+          },
+          "starts_at": {
+            "description": "When the day began: 3 AM ET on it",
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "today": {
+            "description": "The fantasy day it is now",
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "upcoming": {
+            "description": "The day's scheduled check-ins still to come; none on a past day or while check-ins are off",
+            "items": {
+              "$ref": "#/components/schemas/AiCheckinSlot"
+            },
+            "title": "Upcoming",
+            "type": "array"
+          }
+        },
+        "required": [
+          "team_id",
+          "date",
+          "today",
+          "starts_at",
+          "ends_at",
+          "checkins_on",
+          "first_tip",
+          "checkins",
+          "upcoming",
+          "notes_due"
+        ],
+        "title": "AiTimelineData",
+        "type": "object"
+      },
+      "AiTimelineResp": {
+        "description": "Response for GET /v1/internal/ai/timeline.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiTimelineData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiTimelineResp",
+        "type": "object"
+      },
       "AiToolCall": {
         "description": "One Court Vision lookup the model made while answering.",
         "properties": {
@@ -29807,6 +30230,84 @@
           }
         ],
         "summary": "Turn the account's AI features on or off",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/timeline": {
+      "get": {
+        "description": "A fantasy day of one team (ESPN's day, turning at 3 AM ET; today's without `date`), read-only: the check-ins that ran in it, oldest first, each with its calls, what Dime did about each on its own, how each move it sent went (the move ledger's row for its proposal) and the notes its own turn wrote; the day's scheduled check-ins still to come while the team's check-ins are on; the day's first tip; and the notes set to recheck that day.",
+        "operationId": "get_timeline_v1_internal_ai_timeline_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Team Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "The fantasy day, YYYY-MM-DD; default today's",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The fantasy day, YYYY-MM-DD; default today's",
+              "title": "Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiTimelineResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "team_id is not one of the caller's teams (TEAM_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One team's day on the AI desk's timeline",
         "tags": [
           "AI"
         ]

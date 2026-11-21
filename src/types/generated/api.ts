@@ -475,6 +475,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One team's day on the AI desk's timeline
+         * @description A fantasy day of one team (ESPN's day, turning at 3 AM ET; today's without `date`), read-only: the check-ins that ran in it, oldest first, each with its calls, what Dime did about each on its own, how each move it sent went (the move ledger's row for its proposal) and the notes its own turn wrote; the day's scheduled check-ins still to come while the team's check-ins are on; the day's first tip; and the notes set to recheck that day.
+         */
+        get: operations["get_timeline_v1_internal_ai_timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/ai/turns/{turn_id}/comment": {
         parameters: {
             query?: never;
@@ -4724,6 +4744,206 @@ export interface components {
             kind: "text";
             /** Text */
             text: string;
+        };
+        /**
+         * AiTimelineCall
+         * @description One call a check-in made, as the timeline shows it: the decision, what Dime did about it on its
+         *     own, and how the move it sent went.
+         */
+        AiTimelineCall: {
+            /** @description What Dime did about it on its own, where its row is at AI; null where the change is a review */
+            action: components["schemas"]["AiDecisionAction"] | null;
+            /**
+             * Area
+             * @enum {string}
+             */
+            area: "lineup" | "streaming" | "adds_drops" | "other";
+            /**
+             * Automation
+             * @enum {string}
+             */
+            automation: "auto_lineup" | "stream_lane" | "scheduled_pickup" | "none";
+            /**
+             * Call
+             * @enum {string}
+             */
+            call: "hold" | "change";
+            /** Decision Id */
+            decision_id: number;
+            /** Proposal Id */
+            proposal_id: number | null;
+            /** Reason */
+            reason: string;
+            /** @description How the move it sent went: the move ledger's row for its proposal, rebuilt each night; null until the ledger has it, and for anything not sent */
+            result: components["schemas"]["MoveOutcome"] | null;
+            /** Summary */
+            summary: string;
+            /**
+             * Verdict
+             * @description The user's call on it; null until they make one
+             */
+            verdict: ("agree" | "disagree") | null;
+        };
+        /**
+         * AiTimelineCheckin
+         * @description A check-in on the timeline: its summary, its calls and the notes its own turn wrote.
+         */
+        AiTimelineCheckin: {
+            /** Agree */
+            agree: number;
+            /**
+             * Calls
+             * @description In the order it made them
+             */
+            calls: components["schemas"]["AiTimelineCall"][];
+            /**
+             * Changes
+             * @description Of those, the ones that would change an automation's plan or the roster
+             */
+            changes: number;
+            /** Checkin Id */
+            checkin_id: number;
+            /**
+             * Conversation Id
+             * @description Its conversation; null when it never ran
+             */
+            conversation_id: number | null;
+            /** Cost Usd */
+            cost_usd: number;
+            /**
+             * Date
+             * Format: date
+             * @description The fantasy day it is about
+             */
+            date: string;
+            /**
+             * Decisions
+             * @description Calls it logged, holds included
+             */
+            decisions: number;
+            /** Disagree */
+            disagree: number;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /**
+             * Events
+             * @description What came in that it was told about: an event check-in's reason, or what a scheduled one picked up
+             */
+            events: components["schemas"]["AiCheckinEvent"][];
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Kind
+             * @description morning, weekly (a matchup's first morning), pre_lock (before the first tip), night (the next morning's follow-up) or event (news about a rostered player)
+             * @enum {string}
+             */
+            kind: "morning" | "weekly" | "pre_lock" | "night" | "event";
+            /**
+             * Manual
+             * @description Run from the AI desk rather than on the schedule
+             */
+            manual: boolean;
+            /**
+             * Notes
+             * @description Notes its own turn wrote (a revision is a new note), retired ones included
+             */
+            notes: components["schemas"]["AiNote"][];
+            /**
+             * Reason
+             * @description Why it failed, was missed or skipped (e.g. window_closed, budget, daily_cap, AI_TIMEOUT)
+             */
+            reason: string | null;
+            /**
+             * Sent
+             * @description Moves it sent on its own (on automations at AI)
+             * @default 0
+             */
+            sent: number;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "running" | "done" | "failed" | "missed" | "skipped";
+            /** Team Id */
+            team_id: number;
+            /** Title */
+            title: string;
+        };
+        /** AiTimelineData */
+        AiTimelineData: {
+            /**
+             * Checkins
+             * @description The check-ins that ran in the day, oldest first (by when they ran: the night follow-up about Thursday is on Friday)
+             */
+            checkins: components["schemas"]["AiTimelineCheckin"][];
+            /**
+             * Checkins On
+             * @description The team's check-ins run on the schedule
+             */
+            checkins_on: boolean;
+            /**
+             * Date
+             * Format: date
+             * @description The fantasy day shown (ESPN's day, turning at 3 AM ET)
+             */
+            date: string;
+            /**
+             * Ends At
+             * Format: date-time
+             * @description When it ends: 3 AM ET the next day
+             */
+            ends_at: string;
+            /**
+             * First Tip
+             * @description The day's first fantasy tip; null on a day with no games
+             */
+            first_tip: string | null;
+            /**
+             * Notes Due
+             * @description Live notes set to recheck on the day
+             */
+            notes_due: components["schemas"]["AiNote"][];
+            /**
+             * Starts At
+             * Format: date-time
+             * @description When the day began: 3 AM ET on it
+             */
+            starts_at: string;
+            /** Team Id */
+            team_id: number;
+            /**
+             * Today
+             * Format: date
+             * @description The fantasy day it is now
+             */
+            today: string;
+            /**
+             * Upcoming
+             * @description The day's scheduled check-ins still to come; none on a past day or while check-ins are off
+             */
+            upcoming: components["schemas"]["AiCheckinSlot"][];
+        };
+        /**
+         * AiTimelineResp
+         * @description Response for GET /v1/internal/ai/timeline.
+         */
+        AiTimelineResp: {
+            data: components["schemas"]["AiTimelineData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /**
          * AiToolCall
@@ -14851,6 +15071,60 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_timeline_v1_internal_ai_timeline_get: {
+        parameters: {
+            query: {
+                team_id: number;
+                /** @description The fantasy day, YYYY-MM-DD; default today's */
+                date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiTimelineResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description team_id is not one of the caller's teams (TEAM_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
             /** @description Turned off (AI_DISABLED) */
             503: {

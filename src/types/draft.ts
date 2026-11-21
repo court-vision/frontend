@@ -191,7 +191,3 @@ export type DimeDraftNote = S["DimeDraftNote"];
 export type DimeDraftNoteResponse = S["DimeDraftNoteResp"];
 export type DimeDraftNoteKind = DimeDraftNote["kind"];
 export type DimeDraftSeat = S["DimeDraftSeat"];
-/** The AI desk's Draft notes: what Dime wrote in each of the user's rooms. */
-export type DimeDraftDesk = S["DimeDraftDesk"];
-export type DimeDraftDeskRoom = S["DimeDraftDeskRoom"];
-export type DimeDraftDeskResponse = S["DimeDraftDeskResp"];

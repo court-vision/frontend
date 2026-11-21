@@ -86,6 +86,18 @@ export type AiAutopilotResponse = S["AiAutopilotResp"];
 export type AiDecisionVerdictResponse = S["AiDecisionVerdictResp"];
 
 /**
+ * One team's fantasy day on the AI desk's timeline (`/v1/internal/ai/timeline`; the Dime desk
+ * redesign, step 1): the check-ins that ran in it (by when they ran), each with its calls, what
+ * Dime did about each, how a move it sent went and the notes its turn wrote; the day's check-ins
+ * still to come; the first tip; the notes due that day.
+ */
+export type AiTimeline = S["AiTimelineData"];
+export type AiTimelineResponse = S["AiTimelineResp"];
+export type AiTimelineCheckin = S["AiTimelineCheckin"];
+export type AiTimelineCall = S["AiTimelineCall"];
+export type AiCheckinSlot = S["AiCheckinSlot"];
+
+/**
  * A team's automations (the Dime autopilot plan's "Automation levels", step 5;
  * backend services/ai/autonomy.py). Each row has one level: off, notify (an
  * email), act (Court Vision does it, no AI) or ai (Dime does it, and sends its
@@ -110,9 +122,6 @@ export type AiAutopilotChange = {
   autopilot?: boolean;
   levels?: Partial<Record<AiAutomationName, AiLevel>>;
 };
-/** One move Dime handled on its own (`/v1/internal/ai/actions`): sent, or held back as a chip with the rule. */
-export type AiAutopilotAction = S["AiAutopilotActionItem"];
-export type AiAutopilotActionsResponse = S["AiAutopilotActionsResp"];
 /** The account's AI features (`/v1/internal/ai/settings`): Dime's memory and its side of the Draft desk. */
 export type AiFeatures = S["AiFeatures"];
 export type AiSettingsResponse = S["AiSettingsResp"];

@@ -8,7 +8,7 @@
  * which note is about which pick, and when the switch should ask.
  */
 import { prose } from "@/lib/ai-prose";
-import type { DimeDraftDeskRoom, DimeDraftNote, DimeDraftRoom, DraftSession } from "@/types/draft";
+import type { DimeDraftNote, DimeDraftRoom, DraftSession } from "@/types/draft";
 
 /** One of the three recommendations a pick note was written beside. */
 export interface DimePickTop {
@@ -184,14 +184,7 @@ export function puntLine(punts: readonly string[] | null | undefined, labels: Re
   return `punt ${punts.map((p) => labels[p] ?? p.toUpperCase()).join(", ")}`;
 }
 
-/** A room in the AI desk's Draft notes, as its head names it: the user's label, or what kind of room. */
-export function deskRoomLabel(room: Pick<DimeDraftDeskRoom, "name" | "kind" | "room_id">): string {
-  const name = room.name?.trim();
-  if (name) return name;
-  return room.kind === "mock" ? `Mock draft ${room.room_id}` : `Draft ${room.room_id}`;
-}
-
-/** A note's first paragraph (or first bullet) as plain text, cut to `max`: its line in Draft notes. */
+/** A note's first paragraph (or first bullet) as plain text, cut to `max`: its line on a room's recap. */
 export function notePreview(text: string | null | undefined, max = 240): string | null {
   if (!text) return null;
   const first = prose(text)[0];

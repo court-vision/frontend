@@ -1,66 +1,85 @@
 /**
- * Where the AI desk is, in its URL. The side list has two sections: Conversations (the chats)
- * and Dime (its check-ins, its own moves, its memory, how moves went, its draft notes). Each Dime
- * view renders in the main area; a check-in (or a draft note) opens there as its conversation, with
- * Dime's Check-ins (or Draft notes) still selected.
+ * Where the AI desk is, in its URL. The desk is two half panes: on the left the team's day on a
+ * timeline (or its Notebook, or how its moves went), on the right the chat. Opening a check-in
+ * from the timeline opens its conversation in the chat. Either pane can be expanded; that is the
+ * desk's own state, not the URL's.
  *
- *   /ai                    a new conversation
- *   /ai?c=12               conversation 12
- *   /ai?v=checkins         Dime's check-ins
- *   /ai?v=checkins&c=31    a check-in's conversation, opened from the check-ins
- *   /ai?v=moves            everything Dime sent itself, and what it held back
- *   /ai?v=memory           what Dime knows
- *   /ai?v=results          how moves went
- *   /ai?v=drafts           what Dime wrote in draft rooms
- *   /ai?v=drafts&c=40      a draft note's conversation, opened from Draft notes
+ *   /ai                       today's timeline, a new conversation
+ *   /ai?c=12                  conversation 12 (a chat or a check-in's) in the chat pane
+ *   /ai?d=2026-11-19          that fantasy day on the timeline
+ *   /ai?v=notebook            the Notebook in the left pane (?v=results: how moves went)
+ *
+ * The links of the desk before it (?v=checkins, moves, memory, results with or without ?c=)
+ * land on the closest place in this one; ?v=drafts went to each room's recap (`draftsRedirect`).
  */
 
-export type AiView = "chat" | "checkins" | "moves" | "memory" | "results" | "drafts";
+export type AiPaneView = "timeline" | "notebook" | "results";
 
 export interface AiLocation {
-  view: AiView;
-  /** The open conversation: a chat, or (in the check-ins, or draft notes) one of Dime's. Null on the other views. */
+  /** What the left pane shows. */
+  view: AiPaneView;
+  /** The conversation open in the chat pane: a chat or a check-in's. Null for a new one. */
   conversation: number | null;
+  /** The fantasy day on the timeline, YYYY-MM-DD; null for today. */
+  day: string | null;
 }
 
-/** The Dime views a conversation opens inside, by the conversation's kind. */
-const HOME_OF_KIND: Record<string, AiView> = { checkin: "checkins", draft: "drafts" };
-
-/** Where a conversation of this kind belongs: a check-in under Check-ins, a draft note under Draft notes, a chat under Conversations. */
-export function viewOfKind(kind: string | null | undefined): AiView {
-  return (kind && HOME_OF_KIND[kind]) || "chat";
-}
-
-/** A view that can hold an open conversation (a chat, a check-in's, a draft note's). */
-export function holdsConversation(view: AiView): boolean {
-  return view === "chat" || view === "checkins" || view === "drafts";
-}
-
-export const VIEW_LABEL: Record<Exclude<AiView, "chat">, string> = {
-  checkins: "Check-ins",
-  moves: "Dime's moves",
-  memory: "Memory",
+export const PANE_LABEL: Record<AiPaneView, string> = {
+  timeline: "Timeline",
+  notebook: "Notebook",
   results: "Move results",
-  drafts: "Draft notes",
 };
 
-/** The location `?v=` and `?c=` name; anything unknown is a new conversation. */
-export function aiLocation(v: string | null | undefined, c: string | null | undefined): AiLocation {
+/** The old desk's views, each to the pane that holds it now (a Map, so `?v=constructor` is unknown). */
+const OLD_VIEW = new Map<string, AiPaneView>([
+  ["checkins", "timeline"],
+  ["moves", "timeline"],
+  ["memory", "notebook"],
+  ["results", "results"],
+  ["drafts", "timeline"],
+]);
+
+function readDay(d: string | null | undefined): string | null {
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  const t = Date.parse(`${d}T12:00:00Z`);
+  return Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== d ? null : d;
+}
+
+function readId(c: string | null | undefined): number | null {
   const n = c ? Number(c) : NaN;
-  const id = Number.isInteger(n) && n > 0 ? n : null;
-  if (v === "moves" || v === "memory" || v === "results") return { view: v, conversation: null };
-  if (v === "checkins" || v === "drafts") return { view: v, conversation: id };
-  return { view: "chat", conversation: id };
+  return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-/** The query string for a location: "" for a new conversation. */
+/** The location `?v=`, `?c=` and `?d=` name; anything unknown is today's timeline and a new conversation. */
+export function aiLocation(v: string | null | undefined, c: string | null | undefined, d?: string | null): AiLocation {
+  const view: AiPaneView = v === "notebook" || v === "results" ? v : (v && OLD_VIEW.get(v)) || "timeline";
+  return { view, conversation: readId(c), day: readDay(d) };
+}
+
+/** The query string for a location: "" for today's timeline with a new conversation. */
 export function aiSearch(loc: AiLocation): string {
-  if (loc.view === "moves" || loc.view === "memory" || loc.view === "results") return `?v=${loc.view}`;
-  if (loc.view === "checkins" || loc.view === "drafts") return loc.conversation != null ? `?v=${loc.view}&c=${loc.conversation}` : `?v=${loc.view}`;
-  return loc.conversation != null ? `?c=${loc.conversation}` : "";
+  const q = new URLSearchParams();
+  if (loc.view !== "timeline") q.set("v", loc.view);
+  if (loc.day) q.set("d", loc.day);
+  if (loc.conversation != null) q.set("c", String(loc.conversation));
+  const s = q.toString();
+  return s ? `?${s}` : "";
 }
 
-/** The main area shows a conversation (a chat, a check-in's, a draft note's), not one of Dime's lists. */
-export function showsConversation(loc: AiLocation): boolean {
-  return loc.view === "chat" || ((loc.view === "checkins" || loc.view === "drafts") && loc.conversation != null);
+/**
+ * Where an old Draft notes link goes now that draft notes live on each room's recap: a note's
+ * conversation opens in the chat; the list itself is the Draft desk's rooms. Null for any other link.
+ */
+export function draftsRedirect(v: string | null | undefined, c: string | null | undefined, draftDesk: string, aiDesk: string): string | null {
+  if (v !== "drafts") return null;
+  const id = readId(c);
+  return id != null ? `${aiDesk}?c=${id}` : draftDesk;
+}
+
+/** Which panes show: both, or the one expanded. */
+export type AiExpand = "none" | "timeline" | "chat";
+
+/** The E key: split, then the timeline alone, then the chat alone, then split again. */
+export function nextExpand(e: AiExpand): AiExpand {
+  return e === "none" ? "timeline" : e === "timeline" ? "chat" : "none";
 }
