@@ -20,6 +20,13 @@ export type ESPNMarketPlayer = S["ESPNMarketPlayer"];
 export type ESPNMarketData = S["ESPNMarketData"];
 export type ESPNMarketMovementPlayer = S["ESPNMarketMovementPlayer"];
 export type ESPNMarketMovementData = S["ESPNMarketMovementData"];
+/** Court Vision's rest-of-season boards as stored each morning (`/v1/rankings/live`). */
+export type LiveRankingsData = S["LiveRankingsData"];
+export type LiveRankingsPlayer = S["LiveRankingsPlayer"];
+export type LiveBoardPlace = S["LiveBoardPlace"];
+export type LivePlayerRankData = S["LivePlayerRankData"];
+export type LiveRankDay = S["LiveRankDay"];
+export type EspnRankAge = S["EspnRankAge"];
 
 /** The ESPN market's sort keys and the movement endpoint's direction, as the API spells them. */
 export type MarketSort = "rank" | "adp" | "auction_value" | "auction_value_avg";

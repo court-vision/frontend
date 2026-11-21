@@ -97,6 +97,8 @@ import type {
 import type {
   ESPNMarketData,
   ESPNMarketMovementData,
+  LivePlayerRankData,
+  LiveRankingsData,
   MarketDirection,
   MarketSort,
   PlayerProfileData,
@@ -959,6 +961,16 @@ class ApiClient {
     if (params.direction) q.set("direction", params.direction);
     if (params.limit !== undefined) q.set("limit", params.limit.toString());
     return this.getData<ESPNMarketMovementData>(`${RANKINGS_API}/espn/movement?${q.toString()}`, opts);
+  }
+
+  /** Court Vision's two rest-of-season boards as stored this morning, with each player's moves and ESPN's rank. */
+  async getLiveRankings(opts?: RequestOptions): Promise<LiveRankingsData | null> {
+    return this.getData<LiveRankingsData>(`${RANKINGS_API}/live`, opts);
+  }
+
+  /** One player's place on this morning's boards and his rank on every stored day. */
+  async getLivePlayerRanking(playerId: number, opts?: RequestOptions): Promise<LivePlayerRankData | null> {
+    return nullOn404(this.getData<LivePlayerRankData>(`${RANKINGS_API}/live/players/${playerId}`, opts));
   }
 
   async getTeamSchedule(teamAbbrev: string, upcoming: boolean = false, limit: number = 12): Promise<TeamScheduleData | null> {

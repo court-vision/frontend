@@ -120,6 +120,35 @@ export function KV({ items }: { items: KVItem[] }) {
   );
 }
 
+/** The strip of headline numbers under an overview's head; a tick with somewhere to go is a button. */
+export function Tape({ ticks }: { ticks: Array<{ label: string; value: React.ReactNode; sub?: React.ReactNode; onClick?: () => void }> }) {
+  return (
+    <div className={s.tape}>
+      {ticks.map((t, i) => (
+        <div key={i} className={`${s.tick} ${t.onClick ? s.tickClick : ""}`} onClick={t.onClick} role={t.onClick ? "button" : undefined} tabIndex={t.onClick ? 0 : undefined}>
+          <span className={dk.label}>{t.label}</span>
+          <span className={s.tickValue}>{t.value}</span>
+          {t.sub ? <span className={s.tickSub}>{t.sub}</span> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A small segmented control: one of a few choices, in a sheet's head or a block's corner. */
+export function MiniRail<T extends string | number | null>({ value, options, onChange, label }: { value: T; options: ReadonlyArray<{ v: T; label: string; title?: string; disabled?: boolean }>; onChange: (v: T) => void; label: string }) {
+  return (
+    <div className={dk.rail} role="radiogroup" aria-label={label} style={{ padding: 1 }}>
+      {options.map((o) => (
+        <button key={String(o.v)} type="button" role="radio" aria-checked={o.v === value} disabled={o.disabled} className={`${dk.seg} ${o.v === value ? dk.segOn : ""}`} style={{ height: 24, padding: "0 8px", fontSize: 10.5 }} onClick={() => onChange(o.v)} title={o.title}>
+          {o.v === value ? <span className={dk.segPill} /> : null}
+          <span className={dk.segLabel}>{o.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function Skeleton({ rows = 6, className }: { rows?: number; className?: string }) {
   return (
     <div className={className ?? s.sheetSkel} aria-busy>

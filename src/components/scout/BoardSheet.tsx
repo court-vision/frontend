@@ -4,10 +4,12 @@ import { useGamesOnDateQuery } from "@/hooks/useGames";
 import { useOwnershipTrendingQuery } from "@/hooks/useOwnershipTrending";
 import { Headshot } from "@/components/desk/Headshot";
 import { TeamLogo } from "@/components/desk/TeamLogo";
+import type { LiveBoard } from "@/lib/live-rankings";
 import { dayName, fmtDelta, gameState, shortName, type Focus, type Lens } from "@/lib/scout";
 import type { LivePlayerData } from "@/types/live";
 import type { RankingsPlayer } from "@/types/rankings";
 import { Block, Skeleton } from "./blocks";
+import { LiveMovers } from "./LiveRankings";
 const TRENDING_PARAMS = { days: 7, limit: 50, sort_by: "change" as const, direction: "both" as const };
 import { GameCards, LeadersTable } from "./Slate";
 import dk from "@/components/desk/desk.module.css";
@@ -25,10 +27,14 @@ export interface BoardSheetProps {
   pool: RankingsPlayer[];
   poolById: Map<number, RankingsPlayer>;
   seasonNote: string | null;
+  /** Which rest-of-season board the morning's movers are read from: the pool's own format. */
+  liveBoard: LiveBoard;
+  /** Open the Rankings overview on the rest-of-season board. */
+  openLiveBoard: () => void;
 }
 
 /** What the sheet shows with nothing open: tonight, who is scoring, who is moving, where you were. */
-export function BoardSheet({ today, open, setLens, openSearch, leaders, leadersLoading, recent, nameOf, pool, poolById, seasonNote }: BoardSheetProps) {
+export function BoardSheet({ today, open, setLens, openSearch, leaders, leadersLoading, recent, nameOf, pool, poolById, seasonNote, liveBoard, openLiveBoard }: BoardSheetProps) {
   const games = useGamesOnDateQuery(today);
   const trending = useOwnershipTrendingQuery(TRENDING_PARAMS);
   const live = (games.data?.games ?? []).filter((g) => gameState(g.status) === "live").length;
@@ -132,6 +138,8 @@ export function BoardSheet({ today, open, setLens, openSearch, leaders, leadersL
           <TrendList rows={trending.data?.trending_down ?? []} loading={trending.isLoading} open={open} />
         </Block>
       </div>
+
+      <LiveMovers board={liveBoard} open={open} onBoard={openLiveBoard} />
 
       {top.length ? (
         <Block
