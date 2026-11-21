@@ -12,11 +12,9 @@ import {
   checkinsLabels,
   lineupLevel,
   lineupPrefs,
-  movesOf,
   pauseLine,
   policyLine,
   prefsTable,
-  ruleLabel,
   tableLine,
   tableOf,
   teamLine,
@@ -307,24 +305,5 @@ describe("what became of a move", () => {
     expect(checkinBanner(conversation([{ type: "proposal", state: "review" }, { type: "decision", action: null }]))).toMatch(
       /^A review: nothing in this check-in was sent to ESPN/
     );
-  });
-});
-
-describe("Dime's moves", () => {
-  test("a rule reads as its chip; a passed-through code as itself", () => {
-    expect(ruleLabel("cap_day")).toBe("Day's adds used");
-    // The user's lock and Dime's own top-player rule are different chips
-    expect(ruleLabel("user_protected")).toBe("Protected");
-    expect(ruleLabel("protected")).toBe("Top player");
-    expect(ruleLabel("league_limit")).toBe("League's add limit");
-    expect(ruleLabel("AI_PROPOSAL_STALE")).toBe("Proposal stale");
-    expect(ruleLabel(null)).toBeNull();
-  });
-
-  test("the filter splits what Dime sent from what it held back", () => {
-    const moves = [{ outcome: "sent" }, { outcome: "blocked" }, { outcome: "refused" }, { outcome: "failed" }];
-    expect(movesOf(moves, "all")).toHaveLength(4);
-    expect(movesOf(moves, "sent").map((m) => m.outcome)).toEqual(["sent"]);
-    expect(movesOf(moves, "held").map((m) => m.outcome)).toEqual(["blocked", "refused", "failed"]);
   });
 });

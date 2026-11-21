@@ -1,61 +1,57 @@
 import { describe, expect, test } from "bun:test";
-import { aiLocation, aiSearch, holdsConversation, showsConversation, viewOfKind, type AiLocation } from "../ai-desk";
+import { aiLocation, aiSearch, draftsRedirect, nextExpand, type AiLocation } from "../ai-desk";
 
 describe("the AI desk's URL", () => {
-  test("reads a conversation, Dime's views, and a check-in opened from its list", () => {
-    expect(aiLocation(null, null)).toEqual({ view: "chat", conversation: null });
-    expect(aiLocation(null, "12")).toEqual({ view: "chat", conversation: 12 });
-    expect(aiLocation("checkins", null)).toEqual({ view: "checkins", conversation: null });
-    expect(aiLocation("checkins", "31")).toEqual({ view: "checkins", conversation: 31 });
-    expect(aiLocation("memory", "12")).toEqual({ view: "memory", conversation: null });
-    expect(aiLocation("results", null)).toEqual({ view: "results", conversation: null });
-    expect(aiLocation("moves", "7")).toEqual({ view: "moves", conversation: null });
-    expect(aiLocation("drafts", null)).toEqual({ view: "drafts", conversation: null });
-    expect(aiLocation("drafts", "40")).toEqual({ view: "drafts", conversation: 40 });
+  test("reads the left pane, the open conversation and the day", () => {
+    expect(aiLocation(null, null)).toEqual({ view: "timeline", conversation: null, day: null });
+    expect(aiLocation(null, "12")).toEqual({ view: "timeline", conversation: 12, day: null });
+    expect(aiLocation("notebook", null)).toEqual({ view: "notebook", conversation: null, day: null });
+    expect(aiLocation("results", "7", "2026-11-19")).toEqual({ view: "results", conversation: 7, day: "2026-11-19" });
+    expect(aiLocation(null, null, "2026-11-19")).toEqual({ view: "timeline", conversation: null, day: "2026-11-19" });
   });
 
-  test("anything it doesn't know is a new conversation", () => {
-    expect(aiLocation("chats", null)).toEqual({ view: "chat", conversation: null });
+  test("the old desk's links land on the closest place, a check-in still opening in the chat", () => {
+    expect(aiLocation("checkins", null)).toEqual({ view: "timeline", conversation: null, day: null });
+    expect(aiLocation("checkins", "31")).toEqual({ view: "timeline", conversation: 31, day: null });
+    expect(aiLocation("moves", null).view).toBe("timeline");
+    expect(aiLocation("memory", null).view).toBe("notebook");
+    expect(aiLocation("results", null).view).toBe("results");
+  });
+
+  test("anything it doesn't know is today's timeline and a new conversation", () => {
+    expect(aiLocation("chats", null)).toEqual({ view: "timeline", conversation: null, day: null });
     for (const c of ["", "0", "-3", "1.5", "abc"]) expect(aiLocation(null, c).conversation).toBeNull();
+    for (const d of ["", "today", "2026-13-01", "2026-02-30", "2026-1-5", "20261119"]) expect(aiLocation(null, null, d).day).toBeNull();
   });
 
   test("writes each location back the way it reads", () => {
     const all: AiLocation[] = [
-      { view: "chat", conversation: null },
-      { view: "chat", conversation: 12 },
-      { view: "checkins", conversation: null },
-      { view: "checkins", conversation: 31 },
-      { view: "moves", conversation: null },
-      { view: "memory", conversation: null },
-      { view: "results", conversation: null },
-      { view: "drafts", conversation: null },
-      { view: "drafts", conversation: 40 },
+      { view: "timeline", conversation: null, day: null },
+      { view: "timeline", conversation: 12, day: null },
+      { view: "timeline", conversation: 31, day: "2026-11-19" },
+      { view: "notebook", conversation: null, day: null },
+      { view: "results", conversation: 4, day: null },
     ];
     for (const loc of all) {
       const q = new URLSearchParams(aiSearch(loc));
-      expect(aiLocation(q.get("v"), q.get("c"))).toEqual(loc);
+      expect(aiLocation(q.get("v"), q.get("c"), q.get("d"))).toEqual(loc);
     }
-    expect(aiSearch({ view: "chat", conversation: null })).toBe("");
-    expect(aiSearch({ view: "checkins", conversation: 31 })).toBe("?v=checkins&c=31");
-    expect(aiSearch({ view: "moves", conversation: null })).toBe("?v=moves");
-    expect(aiSearch({ view: "drafts", conversation: 40 })).toBe("?v=drafts&c=40");
+    expect(aiSearch({ view: "timeline", conversation: null, day: null })).toBe("");
+    expect(aiSearch({ view: "timeline", conversation: 31, day: "2026-11-19" })).toBe("?d=2026-11-19&c=31");
+    expect(aiSearch({ view: "notebook", conversation: null, day: null })).toBe("?v=notebook");
   });
 
-  test("shows a conversation for a chat or an opened check-in, a list otherwise", () => {
-    expect(showsConversation({ view: "chat", conversation: null })).toBe(true);
-    expect(showsConversation({ view: "checkins", conversation: 31 })).toBe(true);
-    expect(showsConversation({ view: "checkins", conversation: null })).toBe(false);
-    expect(showsConversation({ view: "memory", conversation: null })).toBe(false);
-    expect(showsConversation({ view: "drafts", conversation: 40 })).toBe(true);
-    expect(showsConversation({ view: "drafts", conversation: null })).toBe(false);
+  test("an old Draft notes link goes to the note's conversation, or to the Draft desk's rooms", () => {
+    expect(draftsRedirect("drafts", "40", "/draft", "/ai")).toBe("/ai?c=40");
+    expect(draftsRedirect("drafts", null, "/draft", "/ai")).toBe("/draft");
+    expect(draftsRedirect("drafts", "x", "/draft", "/ai")).toBe("/draft");
+    expect(draftsRedirect("checkins", "40", "/draft", "/ai")).toBeNull();
+    expect(draftsRedirect(null, null, "/draft", "/ai")).toBeNull();
   });
 
-  test("a conversation opens under the section of its kind", () => {
-    expect(viewOfKind("checkin")).toBe("checkins");
-    expect(viewOfKind("draft")).toBe("drafts");
-    expect(viewOfKind("chat")).toBe("chat");
-    expect(viewOfKind(undefined)).toBe("chat");
-    expect(["chat", "checkins", "drafts"].every((v) => holdsConversation(v as AiLocation["view"]))).toBe(true);
-    expect(holdsConversation("memory")).toBe(false);
+  test("E goes split, timeline alone, chat alone, split", () => {
+    expect(nextExpand("none")).toBe("timeline");
+    expect(nextExpand("timeline")).toBe("chat");
+    expect(nextExpand("chat")).toBe("none");
   });
 });

@@ -8,7 +8,6 @@ import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
 import { VerdictSaves, verdictOf, withVerdict } from "@/lib/ai-checkins";
 import { notificationKeys } from "@/hooks/useNotificationPreferences";
 import type {
-  AiAutopilotAction,
   AiAutopilotChange,
   AiFeatures,
   AiBlock,
@@ -18,6 +17,7 @@ import type {
   AiConversationSummary,
   AiFeedback,
   AiNote,
+  AiTimeline,
   AiNoteCreateRequest,
   AiNoteEditRequest,
   AiUsage,
@@ -50,7 +50,9 @@ export const aiKeys = {
   conversation: (userId: string | null | undefined, id: number) => [...aiKeys.user(userId), "conversation", id] as const,
   notes: (userId: string | null | undefined) => [...aiKeys.user(userId), "notes"] as const,
   checkins: (userId: string | null | undefined) => [...aiKeys.user(userId), "checkins"] as const,
-  actions: (userId: string | null | undefined, teamId: number | null) => [...aiKeys.user(userId), "actions", teamId] as const,
+  timelines: (userId: string | null | undefined) => [...aiKeys.user(userId), "timeline"] as const,
+  timeline: (userId: string | null | undefined, teamId: number, day: string | null) =>
+    [...aiKeys.timelines(userId), teamId, day ?? "today"] as const,
   moves: (userId: string | null | undefined, teamId: number, scope: MoveScope) =>
     [...aiKeys.user(userId), "moves", teamId, scope] as const,
 };
@@ -191,6 +193,7 @@ export function useRunAiCheckin() {
         d ? { ...d, checkins: [checkin, ...d.checkins.filter((c) => c.checkin_id !== checkin.checkin_id)] } : d
       );
       void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
+      void queryClient.invalidateQueries({ queryKey: aiKeys.timelines(userId) });
     },
   });
 }
@@ -233,14 +236,23 @@ export function useSetAiFeatures() {
   });
 }
 
-/** Everything Dime did on its own on a team (all teams with null), newest first. */
-export function useAiActionsQuery(teamId: number | null, enabled = true) {
+/**
+ * One team's fantasy day on the timeline (null `day`: today's). Today is read again every 15
+ * seconds while a check-in runs and every 2 minutes otherwise (the schedule starts them on its
+ * own); a past day doesn't change, so it isn't polled.
+ */
+export function useAiTimelineQuery(teamId: number | null, day: string | null, enabled: boolean) {
   const { getToken, isSignedIn, userId } = useAuth();
-  return useQuery<AiAutopilotAction[]>({
-    queryKey: aiKeys.actions(userId, teamId),
-    queryFn: ({ signal }) => apiClient.getAiActions(getToken, teamId, { signal }),
-    enabled: enabled && isSignedIn === true,
-    staleTime: 60_000,
+  return useQuery<AiTimeline>({
+    queryKey: aiKeys.timeline(userId, teamId ?? 0, day),
+    queryFn: ({ signal }) => apiClient.getAiTimeline(getToken, teamId!, day, { signal }),
+    enabled: enabled && teamId != null && isSignedIn === true,
+    staleTime: 15_000,
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      if (!d || d.date < d.today) return false;
+      return d.checkins.some((c) => c.state === "running") ? 15_000 : 2 * 60_000;
+    },
     retry: false,
     meta: { toast: false },
   });
@@ -278,8 +290,9 @@ export function useAiDecisionVerdict(conversationId: number | null) {
       queryClient.setQueryData<AiConversation>(ctx.key, (c) => (c ? withVerdict(c, decisionId, previous) : c));
     },
     onSettled: () => {
-      // The inbox's agree / disagree tallies
+      // The inbox's agree / disagree tallies, and the timeline's calls
       void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
+      void queryClient.invalidateQueries({ queryKey: aiKeys.timelines(userId) });
       // Once no save is in flight, the stored conversations say which verdicts were kept
       if (verdictSaves.settle()) {
         void queryClient.invalidateQueries({ queryKey: [...aiKeys.user(userId), "conversation"] });

@@ -4,13 +4,12 @@
  * runs on: it reads what the automations will do and logs every call it makes
  * (holds included). On an automation at AI it sends its changes itself within the
  * limits (step 5); anywhere else a change is a review, logged and never sent. The
- * AI desk lists them beside the chats; the user marks each call agree or disagree.
+ * AI desk puts them on the team's timeline (ai-timeline.ts); the user marks each call agree or disagree.
  */
 import type {
   AiCheckin,
   AiCheckinEvent,
   AiCheckinKind,
-  AiCheckinRunKind,
   AiCheckinState,
   AiConversation,
   AiDecisionBlock,
@@ -23,17 +22,6 @@ export const KIND_LABEL: Record<AiCheckinKind, string> = {
   pre_lock: "Pre-lock",
   night: "Night follow-up",
   event: "Event",
-};
-
-/** The kinds the Run menu offers: an event check-in starts only when news comes in about the roster. */
-export const RUN_KINDS: AiCheckinRunKind[] = ["morning", "weekly", "pre_lock", "night"];
-
-/** What each kind does, for the Run menu's titles. */
-export const KIND_HELP: Record<AiCheckinRunKind, string> = {
-  morning: "Today's plan: what each automation will do, and any move none of them makes",
-  weekly: "The morning check-in plus the week's preview and last week's retro",
-  pre_lock: "The lineup after the fill, before the first tip",
-  night: "How yesterday's calls went, and what that teaches",
 };
 
 export const STATE_LABEL: Record<AiCheckinState, string> = {
@@ -62,50 +50,10 @@ export function reasonWords(reason: string | null | undefined): string | null {
   return REASONS[reason] ?? reason.replace(/_/g, " ").toLowerCase();
 }
 
-/** The row's second line: "3 calls · 1 change · 1 sent by Dime · 2 agree · $0.41", or why it didn't run. */
-export function checkinLine(c: AiCheckin): string {
-  if (c.state === "missed" || c.state === "skipped") {
-    return `${STATE_LABEL[c.state]}: ${reasonWords(c.reason) ?? "it didn't run"}`;
-  }
-  if (c.state === "running") return "Running…";
-  const parts: string[] = [];
-  if (c.state === "failed") parts.push(`Failed${c.reason ? `: ${reasonWords(c.reason)}` : ""}`);
-  const news = c.events?.length ?? 0;
-  if (news) parts.push(`${news} ${news === 1 ? "thing" : "things"} came in`);
-  parts.push(`${c.decisions} ${c.decisions === 1 ? "call" : "calls"}`);
-  if (c.changes) parts.push(`${c.changes} ${c.changes === 1 ? "change" : "changes"}`);
-  if (c.sent) parts.push(`${c.sent} sent by Dime`);
-  const rated = c.agree + c.disagree;
-  if (rated) parts.push(c.disagree ? `${c.agree} agree, ${c.disagree} disagree` : `${c.agree} agree`);
-  else if (c.decisions) parts.push("not rated");
-  if (c.cost_usd > 0) parts.push(c.cost_usd < 0.01 ? "<$0.01" : `$${c.cost_usd.toFixed(2)}`);
-  return parts.join(" · ");
-}
-
 /** At most `max` of what a check-in took (oldest first, as it came in), and how many more there are. */
 export function eventsShown(c: Pick<AiCheckin, "events">, max = 3): { shown: AiCheckinEvent[]; more: number } {
   const all = c.events ?? [];
   return { shown: all.slice(0, max), more: Math.max(0, all.length - max) };
-}
-
-/** How many of a list's calls the user agreed with, of those they rated. */
-export function agreement(checkins: readonly AiCheckin[]): { agree: number; rated: number } {
-  let agree = 0;
-  let rated = 0;
-  for (const c of checkins) {
-    agree += c.agree;
-    rated += c.agree + c.disagree;
-  }
-  return { agree, rated };
-}
-
-/** The calls in finished check-ins the user hasn't marked yet. */
-export function unrated(checkins: readonly AiCheckin[]): number {
-  let n = 0;
-  for (const c of checkins) {
-    if (c.state === "done" || c.state === "failed") n += Math.max(0, c.decisions - c.agree - c.disagree);
-  }
-  return n;
 }
 
 export const AREA_LABEL: Record<AiDecisionBlock["area"], string> = {
