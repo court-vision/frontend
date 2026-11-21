@@ -30,14 +30,14 @@ export const PANE_LABEL: Record<AiPaneView, string> = {
   results: "Move results",
 };
 
-/** The old desk's views, each to the pane that holds it now. */
-const OLD_VIEW: Record<string, AiPaneView> = {
-  checkins: "timeline",
-  moves: "timeline",
-  memory: "notebook",
-  results: "results",
-  drafts: "timeline",
-};
+/** The old desk's views, each to the pane that holds it now (a Map, so `?v=constructor` is unknown). */
+const OLD_VIEW = new Map<string, AiPaneView>([
+  ["checkins", "timeline"],
+  ["moves", "timeline"],
+  ["memory", "notebook"],
+  ["results", "results"],
+  ["drafts", "timeline"],
+]);
 
 function readDay(d: string | null | undefined): string | null {
   if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
@@ -52,7 +52,7 @@ function readId(c: string | null | undefined): number | null {
 
 /** The location `?v=`, `?c=` and `?d=` name; anything unknown is today's timeline and a new conversation. */
 export function aiLocation(v: string | null | undefined, c: string | null | undefined, d?: string | null): AiLocation {
-  const view: AiPaneView = v === "notebook" || v === "results" ? v : (v && OLD_VIEW[v]) || "timeline";
+  const view: AiPaneView = v === "notebook" || v === "results" ? v : (v && OLD_VIEW.get(v)) || "timeline";
   return { view, conversation: readId(c), day: readDay(d) };
 }
 

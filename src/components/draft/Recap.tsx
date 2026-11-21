@@ -98,6 +98,12 @@ export function RecapView({ model }: { model: RecapModel }) {
               Back to the room
             </Link>
           ) : null}
+          {/* A plan Dime wrote before the first pick is still the room's note */}
+          {model.demo ? null : (
+            <div style={{ width: "min(420px, 100%)", textAlign: "left" }}>
+              <DimeNotes sessionId={session.id} />
+            </div>
+          )}
         </div>
       ) : (
         <RecapBody recap={model.recap} roomHref={session.kind === "import" ? null : model.hrefs.room} dimeRoom={model.demo ? null : session.id} />

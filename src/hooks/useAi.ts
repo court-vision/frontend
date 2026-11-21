@@ -119,6 +119,13 @@ export function useDeleteAiConversation() {
         d ? { ...d, checkins: d.checkins.map((c) => (c.conversation_id === id ? { ...c, conversation_id: null } : c)) } : d
       );
       void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
+      // The timeline's days too: a past day isn't read again on its own, and would still offer it
+      queryClient.setQueriesData<AiTimeline>({ queryKey: aiKeys.timelines(userId) }, (t) =>
+        t && t.checkins.some((c) => c.conversation_id === id)
+          ? { ...t, checkins: t.checkins.map((c) => (c.conversation_id === id ? { ...c, conversation_id: null } : c)) }
+          : t
+      );
+      void queryClient.invalidateQueries({ queryKey: aiKeys.timelines(userId) });
     },
   });
 }
@@ -189,12 +196,14 @@ export function useRunAiCheckin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ teamId, kind }: { teamId: number; kind?: AiCheckinRunKind }) => apiClient.runAiCheckin(getToken, teamId, kind),
-    onSuccess: (checkin) => {
+    onSuccess: async (checkin) => {
       queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
         d ? { ...d, checkins: [checkin, ...d.checkins.filter((c) => c.checkin_id !== checkin.checkin_id)] } : d
       );
       void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
-      void queryClient.invalidateQueries({ queryKey: aiKeys.timelines(userId) });
+      // Pending until the timeline has read the running check-in, so its Run now stays off in between
+      // (the server refuses a second run on a team with one running all the same)
+      await queryClient.invalidateQueries({ queryKey: aiKeys.timelines(userId) });
     },
   });
 }

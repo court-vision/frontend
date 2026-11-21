@@ -158,8 +158,9 @@ function DayView({
   const canNext = !!data && !!today && data.date <= today;
   const go = (n: number) => {
     if (!shown || !today || (n > 0 && !canNext)) return;
-    const next = shiftDay(shown, n);
-    onDay(next === today ? null : next);
+    // The step names its day: a past day isn't read again, so its `today` can be a day behind after
+    // the 3 AM turn, and null (the server's today) would skip a day. Today follows the server
+    onDay(shiftDay(shown, n));
   };
 
   // [ and ] go a day back and on; up and down walk the check-ins, Enter opens one in the chat

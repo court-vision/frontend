@@ -20,6 +20,7 @@ describe("the AI desk's URL", () => {
 
   test("anything it doesn't know is today's timeline and a new conversation", () => {
     expect(aiLocation("chats", null)).toEqual({ view: "timeline", conversation: null, day: null });
+    for (const v of ["constructor", "toString", "__proto__", "hasOwnProperty"]) expect(aiLocation(v, null).view).toBe("timeline");
     for (const c of ["", "0", "-3", "1.5", "abc"]) expect(aiLocation(null, c).conversation).toBeNull();
     for (const d of ["", "today", "2026-13-01", "2026-02-30", "2026-1-5", "20261119"]) expect(aiLocation(null, null, d).day).toBeNull();
   });

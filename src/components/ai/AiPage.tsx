@@ -29,7 +29,7 @@ import { useChipTray } from "@/hooks/useAiProposals";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { autopilotLive, checkinBanner } from "@/lib/ai-autonomy";
 import { aiLocation, aiSearch, nextExpand, type AiExpand, type AiLocation, type AiPaneView } from "@/lib/ai-desk";
-import { draftKey } from "@/lib/ai-drafts";
+import { draftKey, loadDraft, saveDraft } from "@/lib/ai-drafts";
 import { pausedLine, showsTimeline } from "@/lib/ai-timeline";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { teamName, teamTag } from "@/lib/account";
@@ -43,6 +43,10 @@ import dk from "@/components/desk/desk.module.css";
 import s from "./ai.module.css";
 
 /** The keys with the timeline beside the chat, and with the chat alone. */
+/** The pane a phone shows (one at a time), and the history entry's key that keeps it. */
+type NarrowPane = "timeline" | "chat";
+const PANE_STATE = "aiPane";
+
 const KEYS: Array<[string, string]> = [
   ["[ ]", "day"],
   ["↑ ↓", "move"],
@@ -148,7 +152,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
   // Which pane is expanded: the desk's own state, not the URL's
   const [expand, setExpand] = useState<AiExpand>("none");
   // Narrow screens show one pane at a time: the chat once a conversation is open, else the day
-  const [narrow, setNarrow] = useState<"timeline" | "chat">(initial.conversation != null ? "chat" : "timeline");
+  const [narrow, setNarrow] = useState<NarrowPane>(initial.conversation != null ? "chat" : "timeline");
   const [confirmDelete, setConfirmDelete] = useState(false);
   // The chats unroll under the chat pane's header, in the pane (no menu floating over it)
   const [chatsOpen, setChatsOpen] = useState(false);
@@ -205,20 +209,26 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
   useEffect(() => {
     locRef.current = loc;
   }, [loc]);
-  const go = useCallback((patch: Partial<AiLocation>, mode: "push" | "replace" = "push") => {
+  // Each history entry keeps the pane a phone showed with it, so Back and Forward bring it back
+  const narrowRef = useRef(narrow);
+  useEffect(() => {
+    narrowRef.current = narrow;
+  }, [narrow]);
+  const go = useCallback((patch: Partial<AiLocation>, mode: "push" | "replace" = "push", pane?: NarrowPane) => {
     const next = { ...locRef.current, ...patch };
     locRef.current = next;
     setLoc(next);
     const url = `${AI_DESK}${aiSearch(next)}`;
     if (`${window.location.pathname}${window.location.search}` === url) return;
-    if (mode === "push") window.history.pushState(null, "", url);
-    else window.history.replaceState(null, "", url);
+    const state = { [PANE_STATE]: pane ?? narrowRef.current };
+    if (mode === "push") window.history.pushState(state, "", url);
+    else window.history.replaceState(state, "", url);
   }, []);
 
   /** Puts a conversation (or a new one) in the chat, and the chat in view. */
   const showChat = useCallback(
     (id: number | null, mode: "push" | "replace" = "push") => {
-      go({ conversation: id }, mode);
+      go({ conversation: id }, mode, "chat");
       setChatsOpen(false);
       setNarrow("chat");
       setExpand((e) => (e === "timeline" ? "none" : e));
@@ -227,7 +237,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
   );
   const onView = useCallback(
     (view: AiPaneView) => {
-      go({ view });
+      go({ view }, "push", "timeline");
       setNarrow("timeline");
       setExpand((e) => (e === "chat" ? "none" : e));
     },
@@ -235,11 +245,14 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
   );
 
   useEffect(() => {
-    const onPop = () => {
+    const onPop = (e: PopStateEvent) => {
       const q = new URLSearchParams(window.location.search);
       const next = aiLocation(q.get("v"), q.get("c"), q.get("d"));
       locRef.current = next;
       setLoc(next);
+      // The pane the entry was left on; an entry from outside the desk shows the chat with a conversation
+      const pane: unknown = (e.state as Record<string, unknown> | null)?.[PANE_STATE];
+      setNarrow(pane === "chat" || pane === "timeline" ? pane : next.conversation != null ? "chat" : "timeline");
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -276,25 +289,36 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
 
   const onSend = useCallback(
     async (message: string) => {
+      const origin = current;
+      // A message that didn't go goes back: into the composer while the chat still shows `shown`,
+      // else kept as the draft of the chat it was typed in. Never over newer text, or another chat's
+      const giveBack = (shown: number | null) => {
+        if (locRef.current.conversation === shown) {
+          if (!loadDraft(draftKey(userId, shown)).trim()) composer.current?.fill(message);
+          return;
+        }
+        const key = draftKey(userId, origin);
+        if (!loadDraft(key).trim()) saveDraft(key, message);
+      };
       let id = current;
       if (id == null) {
         try {
           id = (await create.mutateAsync(teamId)).id;
         } catch (err) {
           toast.error(aiMessage(err, "Couldn't start a conversation"));
-          composer.current?.fill(message);
+          giveBack(null);
           return;
         }
-        showChat(id, "replace");
+        // Into the chat only while it still shows the new conversation: one opened meanwhile (a
+        // check-in from the timeline) stays where it is, and the message goes to its own conversation
+        if (locRef.current.conversation == null) showChat(id, "replace");
       }
       pinned.current = true;
       const ok = await send(id, message);
-      if (!ok) {
-        // Refused before it began: give the message back so it can be sent again
-        composer.current?.fill(message);
-      }
+      // Refused before it began: give the message back so it can be sent again
+      if (!ok) giveBack(id);
     },
-    [current, create, teamId, showChat, send]
+    [current, create, teamId, showChat, send, userId]
   );
 
   const onVote = useCallback(
@@ -554,7 +578,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
             onExpand={() => setExpand((e) => (e === "timeline" ? "none" : "timeline"))}
             onChat={() => setNarrow("chat")}
             onClose={() => {
-              go({ view: "timeline" });
+              go({ view: "timeline" }, "push", "chat");
               setExpand("none");
               setNarrow("chat");
             }}
