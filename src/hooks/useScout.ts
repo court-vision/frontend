@@ -18,6 +18,8 @@ export const scoutKeys = {
   market: (name: string) => ["market", "espn", "by-name", name] as const,
   movers: (from: string, to: string, metric: MarketSort, direction: MarketDirection, limit: number) =>
     ["market", "espn", "movement", from, to, metric, direction, limit] as const,
+  liveBoard: () => ["rankings", "live"] as const,
+  liveRank: (id: number) => ["players", "live-rank", id] as const,
 };
 
 /**
@@ -102,6 +104,34 @@ export function useEspnMarketMoversQuery(
     queryFn: ({ signal }) => apiClient.getEspnMarketMovement({ fromAsOf: from, toAsOf: to, metric, direction, limit }, { signal }),
     enabled,
     staleTime: 1000 * 60 * 30,
+    meta: { toast: false },
+  });
+}
+
+/**
+ * Court Vision's two rest-of-season boards as stored this morning: everyone
+ * ranked, his move over a day and a week, and ESPN's rank beside him. One
+ * body for both boards, rebuilt once a morning, so it is asked for once and
+ * kept; the Rankings board, the front sheet's movers and a board switch all
+ * read the same copy.
+ */
+export function useLiveRankingsQuery(enabled: boolean = true) {
+  return useQuery({
+    queryKey: scoutKeys.liveBoard(),
+    queryFn: ({ signal }) => apiClient.getLiveRankings({ signal }),
+    enabled,
+    staleTime: 1000 * 60 * 10,
+    meta: { toast: false },
+  });
+}
+
+/** One player's place on this morning's boards and his rank on every stored day. */
+export function useLivePlayerRankQuery(playerId: number | null, enabled: boolean = true) {
+  return useQuery({
+    queryKey: scoutKeys.liveRank(playerId!),
+    queryFn: ({ signal }) => apiClient.getLivePlayerRanking(playerId!, { signal }),
+    enabled: !!playerId && enabled,
+    staleTime: 1000 * 60 * 10,
     meta: { toast: false },
   });
 }

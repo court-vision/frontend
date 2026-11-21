@@ -1064,6 +1064,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/jobs/analyst/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyst Read
+         * @description One read of one player by the live rankings' analyst (the Live rankings plan, step 4).
+         *
+         *     Called by data-platform's analyst pipeline for each player its morning
+         *     screen picks, with what the live projection assumes about him and the stored
+         *     items about him. The answer is a proposal in the projection's own inputs (a
+         *     return date, minutes, a share of the offense, an end, the items it rests
+         *     on), or that nothing should be written. Nothing is written here: the data
+         *     platform checks the proposal against its stored items and bounds and owns
+         *     the tables. `data.outcome` carries every business result (`read`, `declined`,
+         *     `malformed`, `budget`, `off`); only a provider failure is an error, and the
+         *     pipeline reads the player again on its next run.
+         */
+        post: operations["analyst_read_v1_internal_jobs_analyst_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/jobs/analyst/spend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Analyst Spend
+         * @description What the analyst's reads have spent this month and what they may, for the
+         *     data platform's morning digest.
+         */
+        get: operations["analyst_spend_v1_internal_jobs_analyst_spend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/jobs/checkins/events": {
         parameters: {
             query?: never;
@@ -1081,7 +1132,7 @@ export interface paths {
          *
          *     Called by data-platform's availability pipeline (its late-scratch events, every 2-minute tick that
          *     has one) and its news feed (every 5 minutes). Keys only: the verdicts and items are read here. Only
-         *     teams on AUTOPILOT_TEAM_IDS with Late scratches at AI hear them; the check-ins run on here after
+         *     teams of accounts with CV AI, with Late scratches at AI, hear them; the check-ins run on here after
          *     the response.
          */
         post: operations["checkin_events_v1_internal_jobs_checkins_events_post"];
@@ -1213,6 +1264,39 @@ export interface paths {
          *     is attempted and due rows are pushed back ten minutes.
          */
         post: operations["execute_pickups_v1_internal_jobs_pickups_execute_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/jobs/rankings/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build Daily Rankings
+         * @description Today's two standard boards (points and 9-cat), for the data platform to store.
+         *
+         *     Called by data-platform's daily_rankings pipeline each morning, which writes
+         *     them to nba.daily_rankings beside ESPN's rank that day. The boards are the
+         *     ones a room with no league shows right now: in season the morning's live
+         *     projection (the pipeline builds it first), or with no fresh one the
+         *     projection blended with this season's games; before opening night the
+         *     projection alone. `model` says which. `in_season` is false outside the
+         *     regular season, and the pipeline stores nothing then. Nothing is written here.
+         *
+         *     `shadow=true` is the analyst's second pair (the Live rankings plan, step 4):
+         *     the same boards built on the projection with its notes applied, which the
+         *     data platform's analyst pipeline stores under the source `cv_shadow`. No
+         *     user-facing board reads that projection.
+         */
+        post: operations["build_daily_rankings_v1_internal_jobs_rankings_daily_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2989,6 +3073,48 @@ export interface paths {
          * @description Compare the union of players in two independently resolved ESPN market snapshots. Each selector uses the newest snapshot on or before its date. Positive rank and ADP changes mean an earlier, improved position; positive auction changes mean an increase. Entrants, exits, and missing measurements remain null instead of becoming zero. If the selectors cannot resolve two distinct snapshots, the response is a successful empty collection.
          */
         get: operations["get_espn_market_movement_v1_rankings_espn_movement_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rankings/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Court Vision's live rest-of-season rankings
+         * @description Court Vision's two standard rest-of-season boards as stored this morning: ESPN default points (`points`) and standard 9-cat (`categories`). Each player carries his rank and per-game value on both, the places he gained since the previous stored board (`move_1d`) and since the board of a week ago (`move_7d`), and ESPN's own draft rank that day. `compared` names the two earlier boards; a move against a board that does not exist is null, never zero. The boards are rebuilt once a morning from box scores and availability, and price each player from that day to the end of the season; `GET /v1/rankings/` ranks what players have scored so far. Before the first board of a season is stored the response is a successful empty one.
+         *
+         *     Responses are cached briefly and carry an `ETag`; a conditional request with `If-None-Match` is answered 304.
+         */
+        get: operations["get_live_rankings_v1_rankings_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rankings/live/players/{player_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one player's live ranking and its history
+         * @description One player's place on this morning's two boards with his moves over a day and a week, how long ESPN has held its own rank for him, and his rank on every stored day of the season, oldest first. `points` and `categories` are null when he is not on the newest board; his history still lists the days he was. A player with no stored rank this season returns a successful response with an empty history.
+         */
+        get: operations["get_live_player_ranking_v1_rankings_live_players__player_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4902,6 +5028,289 @@ export interface components {
             timestamp: string | null;
         };
         /**
+         * AnalystItem
+         * @description A stored item about the player: a news item or an availability report.
+         */
+        AnalystItem: {
+            /**
+             * At
+             * @description When the source published it, Eastern
+             */
+            at?: string | null;
+            /**
+             * Citable
+             * @description Whether a note may rest on it: never a rumor or a performance item
+             */
+            citable: boolean;
+            /**
+             * Kind
+             * @description injury, availability, lineup, transaction, performance, rumor, other
+             */
+            kind: string;
+            /**
+             * Ref
+             * @description news:<id> or report:<id>: what a note cites
+             */
+            ref: string;
+            /** Source */
+            source: string;
+            /**
+             * Text
+             * @description The headline and the blurb
+             */
+            text: string;
+        };
+        /**
+         * AnalystProposal
+         * @description What the analyst answered. Inputs only: a date, minutes, a share of the offense.
+         */
+        AnalystProposal: {
+            /** Against Owner Note */
+            against_owner_note: string | null;
+            /** Cites */
+            cites: string[];
+            /**
+             * Confidence
+             * @default possible
+             * @enum {string}
+             */
+            confidence: "confirmed" | "likely" | "possible";
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "write" | "keep" | "retire" | "none";
+            /**
+             * Kind
+             * @default other
+             * @enum {string}
+             */
+            kind: "injury_current" | "injury_return" | "role" | "trade" | "other";
+            /** Minutes */
+            minutes: number | null;
+            /**
+             * Out For Season
+             * @default false
+             */
+            out_for_season: boolean;
+            /**
+             * Reason
+             * @description One or two plain sentences: what the items say and what follows
+             */
+            reason: string;
+            /** Return Date */
+            return_date: string | null;
+            /** Return Earliest */
+            return_earliest: string | null;
+            /** Return Latest */
+            return_latest: string | null;
+            /** Review Date */
+            review_date: string | null;
+            /** Until Date */
+            until_date: string | null;
+            /** Until Player Id */
+            until_player_id: number | null;
+            /** Usage */
+            usage: number | null;
+        };
+        /**
+         * AnalystReadData
+         * @description How one read went.
+         *
+         *     `outcome`: `read` (a proposal came back), `declined` (the model declined
+         *     the request), `malformed` (the answer could not be read as a proposal),
+         *     `budget` (this month's budget for reads is used up: nothing was asked) or
+         *     `off` (the analyst is switched off: nothing was asked).
+         */
+        AnalystReadData: {
+            /** Detail */
+            detail: string | null;
+            /**
+             * Month Cap Micros
+             * @default 0
+             */
+            month_cap_micros: number;
+            /**
+             * Month Spent Micros
+             * @default 0
+             */
+            month_spent_micros: number;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "read" | "declined" | "malformed" | "budget" | "off";
+            /** Prompt Version */
+            prompt_version: string;
+            proposal: components["schemas"]["AnalystProposal"] | null;
+            usage: components["schemas"]["AnalystUsage"] | null;
+        };
+        /** AnalystReadReq */
+        AnalystReadReq: {
+            /**
+             * As Of
+             * Format: date
+             * @description The morning the read is for
+             */
+            as_of: string;
+            /**
+             * Availability
+             * @description The availability feed's latest verdict
+             */
+            availability?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Bounds
+             * @description The limits a note is held to
+             */
+            bounds?: {
+                [key: string]: unknown;
+            };
+            /** Items */
+            items?: components["schemas"]["AnalystItem"][];
+            /** Name */
+            name: string;
+            /**
+             * Own Note
+             * @description The analyst's own live note, if it has one
+             */
+            own_note?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Owner Note
+             * @description The note written by hand, if there is one
+             */
+            owner_note?: {
+                [key: string]: unknown;
+            } | null;
+            /** Player Id */
+            player_id: number;
+            /**
+             * Projection
+             * @description What the live projection assumes about him this morning (see the prompt)
+             */
+            projection?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Reasons
+             * @description Why the screen picked him, in words
+             */
+            reasons?: string[];
+            /** Recent Games */
+            recent_games?: {
+                [key: string]: unknown;
+            }[];
+            /** Season */
+            season: string;
+            /** Team */
+            team?: string | null;
+            /** Teammates */
+            teammates?: components["schemas"]["AnalystTeammate"][];
+        };
+        /** AnalystReadResp */
+        AnalystReadResp: {
+            data: components["schemas"]["AnalystReadData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AnalystSpendData
+         * @description This month's spend on reads and the line's cap, in millionths of a dollar.
+         */
+        AnalystSpendData: {
+            /** Enabled */
+            enabled: boolean;
+            /** Model */
+            model: string;
+            /** Month Cap Micros */
+            month_cap_micros: number;
+            /** Month Spent Micros */
+            month_spent_micros: number;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Read Max Micros */
+            read_max_micros: number;
+        };
+        /** AnalystSpendResp */
+        AnalystSpendResp: {
+            data: components["schemas"]["AnalystSpendData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AnalystTeammate
+         * @description A rotation teammate: who the player's role may depend on.
+         */
+        AnalystTeammate: {
+            /** Expected Return */
+            expected_return?: string | null;
+            /**
+             * Minutes
+             * @description His usual minutes a game
+             */
+            minutes?: number | null;
+            /** Name */
+            name: string;
+            /**
+             * Out
+             * @description Whether the projection has him out now
+             * @default false
+             */
+            out?: boolean;
+            /** Player Id */
+            player_id: number;
+            /** Status */
+            status?: string | null;
+        };
+        /** AnalystUsage */
+        AnalystUsage: {
+            /**
+             * Cache Creation Input Tokens
+             * @default 0
+             */
+            cache_creation_input_tokens: number;
+            /**
+             * Cache Read Input Tokens
+             * @default 0
+             */
+            cache_read_input_tokens: number;
+            /**
+             * Cost Micros
+             * @default 0
+             */
+            cost_micros: number;
+            /**
+             * Fallback
+             * @default false
+             */
+            fallback: boolean;
+            /**
+             * Input Tokens
+             * @default 0
+             */
+            input_tokens: number;
+            /** Model */
+            model: string;
+            /**
+             * Output Tokens
+             * @default 0
+             */
+            output_tokens: number;
+        };
+        /**
          * ApiKeyListItem
          * @description Single API key item for list responses (never includes the raw key or hash).
          */
@@ -5637,6 +6046,29 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** DailyBoardPlace */
+        DailyBoardPlace: {
+            /**
+             * Games
+             * @description The games he is expected to play from the board's day on
+             */
+            games: number;
+            /**
+             * Rank
+             * @description Place on this board, 1 is best
+             */
+            rank: number;
+            /**
+             * Score
+             * @description What the rank is ordered by: fantasy points over the games left, or the summed category score
+             */
+            score: number;
+            /**
+             * Value
+             * @description The per-game number the board shows: fantasy points, or the 9-cat index
+             */
+            value: number;
+        };
         /**
          * DailyMatchupData
          * @description Response data for daily matchup drill-down.
@@ -5790,6 +6222,102 @@ export interface components {
             team_name: string;
             /** Total Fpts */
             total_fpts: number | null;
+        };
+        /** DailyRankResp */
+        DailyRankResp: {
+            /** @description Standard nine-category league */
+            categories: components["schemas"]["DailyBoardPlace"];
+            /**
+             * Injury Status
+             * @description Today's flag (OUT, DAY_TO_DAY, ...); null when he plays
+             */
+            injury_status: string | null;
+            /**
+             * Line Source
+             * @description Where his line came from: live (the morning's live projection), projection, season or baseline
+             */
+            line_source: string;
+            /** Name */
+            name: string;
+            /**
+             * Player Id
+             * @description NBA player id (nba.players.id)
+             */
+            player_id: number;
+            /** @description Standard points league, ESPN's default weights */
+            points: components["schemas"]["DailyBoardPlace"];
+            /**
+             * Season Gp
+             * @description Games played this season; null before opening night
+             */
+            season_gp: number | null;
+            /**
+             * Team
+             * @description Current NBA team tricode
+             */
+            team: string | null;
+        };
+        /** DailyRankingsData */
+        DailyRankingsData: {
+            /**
+             * As Of
+             * Format: date
+             * @description The fantasy day the boards are for: games from this day on are counted
+             */
+            as_of: string;
+            /**
+             * In Season
+             * @description False before opening night and after the regular season
+             */
+            in_season: boolean;
+            /** League Size */
+            league_size: number;
+            /**
+             * Live As Of
+             * @description The morning of the live projection the boards read; null without one
+             */
+            live_as_of: string | null;
+            /**
+             * Model
+             * @description What built the boards; stored with every row. three-part-1: the morning's live projection. season-blend-1: the preseason projection blended with this season's games, on a morning with no fresh live projection. projection-1: before opening night
+             */
+            model: string;
+            /**
+             * Players
+             * @description Every valued player, in points-board order
+             */
+            players: components["schemas"]["DailyRankResp"][];
+            /** Playoff Weight */
+            playoff_weight: number;
+            /**
+             * Prior Games
+             * @description The projection's weight against this season, in games
+             */
+            prior_games: number;
+            /** Projection Source */
+            projection_source: string | null;
+            /** Projections As Of */
+            projections_as_of: string | null;
+            /** Rounds */
+            rounds: number;
+            /** Season */
+            season: string;
+            /**
+             * Season As Of
+             * @description The newest box score the lines read; null out of season
+             */
+            season_as_of: string | null;
+        };
+        /** DailyRankingsResp */
+        DailyRankingsResp: {
+            data: components["schemas"]["DailyRankingsData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /**
          * DailyScorePoint
@@ -6114,6 +6642,8 @@ export interface components {
             congestion: components["schemas"]["DraftCongestionResp"] | null;
             /** Format */
             format: string;
+            /** @description Set for a draft held after opening night: values blend this season's games with the projection, count only the games left, and injury flags are today's. ADP and ESPN's ranks stay the last preseason snapshot (`market_as_of`). None for a draft before opening night, an imported draft, and a room whose draft started before it. */
+            in_season: components["schemas"]["DraftInSeasonResp"] | null;
             /** League Size */
             league_size: number | null;
             /** Market As Of */
@@ -6401,10 +6931,20 @@ export interface components {
              */
             score: number | null;
             /**
+             * Season Fpts Avg
+             * @description In a draft held after opening night: this season's fantasy points per game under the platform default formula, unblended (compare `fpts_avg`, the blended line's).
+             */
+            season_fpts_avg: number | null;
+            /**
              * Season Games
              * @description The games Court Vision's value is built on: projected games (65 when nothing projects him) spread over his team's schedule, with games in the league's fantasy-playoff weeks counted `meta.playoffs.weight` times and games after the fantasy season not at all, renormalized so the league-average player keeps his games. Roto counts every game once.
              */
             season_games: number | null;
+            /**
+             * Season Gp
+             * @description In a draft held after opening night (`meta.in_season`): games he has played this season, which is how much this season counts in his value. None before opening night, and for a player who hasn't played.
+             */
+            season_gp: number | null;
             /**
              * Team
              * @description Current NBA team abbreviation (nba.player_profiles), falling back to last season's stats team; None when neither knows him (a rookie before his profile syncs)
@@ -6422,10 +6962,10 @@ export interface components {
             value_season: string | null;
             /**
              * Value Source
-             * @description projection: a per-game projection for the coming season (`meta.projection_source` says whose). baseline: last season's per-game averages. market: no stat line at all — the row exists because ESPN drafts him.
+             * @description projection: a per-game projection for the coming season (`meta.projection_source` says whose). baseline: last season's per-game averages. In a draft held after opening night (`meta.in_season`) both are blended with this season's games (`season_gp`). season: nothing projects him and he had no qualifying last season, so this season's games alone value him (in season only, and only with enough of them). live: Court Vision's live projection, repriced every morning of the season (`meta.in_season.live_as_of`): his line in a game he plays from here on, and the games he is expected to play. market: no stat line at all — the row exists because ESPN drafts him.
              * @enum {string}
              */
-            value_source: "projection" | "baseline" | "market";
+            value_source: "projection" | "baseline" | "season" | "live" | "market";
         };
         /**
          * DraftCongestionResp
@@ -6541,6 +7081,65 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /**
+         * DraftInSeasonResp
+         * @description A draft held after opening night, and what the board valued differently for it.
+         */
+        DraftInSeasonResp: {
+            /**
+             * Blended
+             * @description Players whose value took this season's games
+             */
+            blended: number;
+            /**
+             * Games From
+             * Format: date
+             * @description The first day counted: values and lineup congestion cover the games from here on
+             */
+            games_from: string;
+            /**
+             * Injured
+             * @description Players with an injury flag on today's report, which replaces the market snapshot's flags
+             */
+            injured: number;
+            /**
+             * Injured Since Projection
+             * @description Of them, those the market snapshot listed healthy and the live projection does not value: their injury term applies even where their games are projected, since an October projection couldn't know
+             */
+            injured_since_projection: number;
+            /**
+             * Live
+             * @description Players valued by the live projection (`value_source` live)
+             * @default 0
+             */
+            live: number;
+            /**
+             * Live As Of
+             * @description The morning of the live projection the board read; null when it is built on the blend
+             */
+            live_as_of: string | null;
+            /**
+             * Model
+             * @description What built the values. three-part-1: the live projection, repriced every morning (skill per minute with a weight per stat, minutes by who is out, a chance for each game left); a game he misses is charged at the gap to a replacement, and no injury term is added on top. season-blend-1: the projection blended with this season's games by `prior_games`, his projected share of the games left; what a board shows on a morning with no fresh live projection
+             * @default season-blend-1
+             */
+            model: string;
+            /**
+             * Prior Games
+             * @description On the blend: how many of this season's games the projection (or last season's line) counts as, so a player with this many games played is valued half on this season. The live projection weighs each stat on its own instead
+             */
+            prior_games: number;
+            /**
+             * Season As Of
+             * @description The newest of this season's stat rows the values were blended with
+             */
+            season_as_of: string | null;
+            /**
+             * Season Only
+             * @description Players valued off this season alone (`value_source` season)
+             */
+            season_only: number;
         };
         /**
          * DraftInitSyncRequest
@@ -7011,7 +7610,7 @@ export interface components {
              * @default baseline
              * @enum {string}
              */
-            value_source: "projection" | "baseline" | "market";
+            value_source: "projection" | "baseline" | "season" | "live" | "market";
         };
         /**
          * DraftSessionCreate
@@ -7525,6 +8124,25 @@ export interface components {
             espn_s2: string;
             /** Swid */
             swid: string;
+        };
+        /**
+         * EspnRankAge
+         * @description ESPN's rank for one player and how long it has stood.
+         */
+        EspnRankAge: {
+            /** Rank */
+            rank: number;
+            /**
+             * Since First Stored
+             * @description True when the run reaches back to the first stored day, so the rank may be older than `unchanged_since`
+             */
+            since_first_stored: boolean;
+            /**
+             * Unchanged Since
+             * Format: date
+             * @description The first stored day of the run of days ESPN has held this rank
+             */
+            unchanged_since: string;
         };
         /**
          * FantasyProvider
@@ -9027,6 +9645,37 @@ export interface components {
             /** Slot */
             slot: string;
         };
+        /**
+         * LiveBoardPlace
+         * @description One player's place on one board this morning.
+         */
+        LiveBoardPlace: {
+            /**
+             * Espn Rank
+             * @description ESPN's own draft rank on `espn_as_of`: STANDARD beside the points board, ROTO beside the categories board. Null when ESPN does not rank him.
+             */
+            espn_rank: number | null;
+            /**
+             * Move 1D
+             * @description Places gained since the previous stored board (`compared.day`); positive is an improvement. Null when there is no such board or he was not on it.
+             */
+            move_1d: number | null;
+            /**
+             * Move 7D
+             * @description Places gained since the board of a week ago (`compared.week`); positive is an improvement. Null when there is no such board or he was not on it.
+             */
+            move_7d: number | null;
+            /**
+             * Rank
+             * @description Rest-of-season rank on this board; 1 is best
+             */
+            rank: number;
+            /**
+             * Value
+             * @description The per-game number the board shows: fantasy points on the points board, the 9-cat index on the categories board
+             */
+            value: number | null;
+        };
         /** LiveMatchupData */
         LiveMatchupData: {
             /**
@@ -9119,6 +9768,16 @@ export interface components {
             /** Team Name */
             team_name: string;
         };
+        /** LivePlayerEspn */
+        LivePlayerEspn: {
+            /**
+             * As Of
+             * @description The day ESPN's ranks were last read
+             */
+            as_of: string | null;
+            categories: components["schemas"]["EspnRankAge"] | null;
+            points: components["schemas"]["EspnRankAge"] | null;
+        };
         /**
          * LivePlayerItem
          * @description One player's current box score from nba.live_player_stats.
@@ -9171,6 +9830,64 @@ export interface components {
             /** Tov */
             tov: number;
         };
+        /** LivePlayerRankData */
+        LivePlayerRankData: {
+            /**
+             * As Of
+             * @description The fantasy day of the newest board; null before the first one is stored
+             */
+            as_of: string | null;
+            /**
+             * Board Days
+             * @description Every day of the season a Court Vision board was stored, oldest first. A day here that `history` has no Court Vision rank for is a day he was off the board, not a morning the board is missing.
+             */
+            board_days: string[];
+            /** @description His place on the newest categories board; null when he is not on it */
+            categories: components["schemas"]["LiveBoardPlace"] | null;
+            compared: components["schemas"]["LiveRankingsCompared"];
+            espn: components["schemas"]["LivePlayerEspn"];
+            /**
+             * Espn Days
+             * @description Every day of the season ESPN's ranks were stored, oldest first; read beside `history` as `board_days` is
+             */
+            espn_days: string[];
+            /** Games */
+            games: number | null;
+            /**
+             * History
+             * @description His ranks on every stored day of the season he had one, oldest first
+             */
+            history: components["schemas"]["LiveRankDay"][];
+            /** Injury Status */
+            injury_status: string | null;
+            /** Model */
+            model: string | null;
+            /** Name */
+            name: string;
+            /** Player Id */
+            player_id: number;
+            /** @description His place on the newest points board; null when he is not on it */
+            points: components["schemas"]["LiveBoardPlace"] | null;
+            /** Position */
+            position: string | null;
+            /** Season */
+            season: string;
+            /** Season Gp */
+            season_gp: number | null;
+            /** Team */
+            team: string | null;
+        };
+        /** LivePlayerRankResp */
+        LivePlayerRankResp: {
+            data: components["schemas"]["LivePlayerRankData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /** LivePlayersData */
         LivePlayersData: {
             /** Game Date */
@@ -9188,6 +9905,112 @@ export interface components {
          */
         LivePlayersResp: {
             data: components["schemas"]["LivePlayersData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * LiveRankDay
+         * @description One player's ranks on one stored day.
+         */
+        LiveRankDay: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Categories */
+            categories: number | null;
+            /** Espn Categories */
+            espn_categories: number | null;
+            /** Espn Points */
+            espn_points: number | null;
+            /** Points */
+            points: number | null;
+        };
+        /**
+         * LiveRankingsCompared
+         * @description The earlier boards the moves are measured against.
+         */
+        LiveRankingsCompared: {
+            /**
+             * Day
+             * @description The previous stored board, at most three days back; null when there is none
+             */
+            day: string | null;
+            /**
+             * Week
+             * @description The newest board at least seven days back, at most ten; null when there is none
+             */
+            week: string | null;
+        };
+        /** LiveRankingsData */
+        LiveRankingsData: {
+            /**
+             * As Of
+             * @description The fantasy day of the board; null before the first one is stored
+             */
+            as_of: string | null;
+            compared: components["schemas"]["LiveRankingsCompared"];
+            /**
+             * Espn As Of
+             * @description The day ESPN's ranks beside the board were read
+             */
+            espn_as_of: string | null;
+            /**
+             * Model
+             * @description The name of the model that built the board
+             */
+            model: string | null;
+            /**
+             * Players
+             * @description Every ranked player, in points-board order
+             */
+            players: components["schemas"]["LiveRankingsPlayer"][];
+            /** Season */
+            season: string;
+        };
+        /** LiveRankingsPlayer */
+        LiveRankingsPlayer: {
+            categories: components["schemas"]["LiveBoardPlace"] | null;
+            /**
+             * Games
+             * @description Games he is expected to play from the board's day to the end of the season
+             */
+            games: number | null;
+            /**
+             * Injury Status
+             * @description The availability flag the board was built with; null plays
+             */
+            injury_status: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Player Id
+             * @description NBA player ID
+             */
+            player_id: number;
+            points: components["schemas"]["LiveBoardPlace"] | null;
+            /** Position */
+            position: string | null;
+            /**
+             * Season Gp
+             * @description Games played this season when the board was built
+             */
+            season_gp: number | null;
+            /**
+             * Team
+             * @description Current NBA team abbreviation; null without a team on record
+             */
+            team: string | null;
+        };
+        /** LiveRankingsResp */
+        LiveRankingsResp: {
+            data: components["schemas"]["LiveRankingsData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -13845,7 +14668,7 @@ export interface operations {
                     "application/json": components["schemas"]["AiAutopilotResp"];
                 };
             };
-            /** @description Not on the invite list (AI_INVITE_ONLY), or check-ins aren't open for this team (AI_AUTOPILOT_NOT_ALLOWED) */
+            /** @description Not on the invite list (AI_INVITE_ONLY, which also covers every team of the account: AI_AUTOPILOT_NOT_ALLOWED) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -13956,7 +14779,7 @@ export interface operations {
                     "application/json": components["schemas"]["AiCheckinResp"];
                 };
             };
-            /** @description Not on the invite list (AI_INVITE_ONLY), or check-ins aren't open for this team (AI_AUTOPILOT_NOT_ALLOWED) */
+            /** @description Not on the invite list (AI_INVITE_ONLY, which also covers every team of the account: AI_AUTOPILOT_NOT_ALLOWED) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -16123,6 +16946,59 @@ export interface operations {
             };
         };
     };
+    analyst_read_v1_internal_jobs_analyst_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalystReadReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalystReadResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyst_spend_v1_internal_jobs_analyst_spend_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalystSpendResp"];
+                };
+            };
+        };
+    };
     checkin_events_v1_internal_jobs_checkins_events_post: {
         parameters: {
             query?: never;
@@ -16295,6 +17171,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PickupExecuteResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    build_daily_rankings_v1_internal_jobs_rankings_daily_post: {
+        parameters: {
+            query?: {
+                /** @description Build the boards on the projection that has the analyst's notes applied (cv_live_shadow). */
+                shadow?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyRankingsResp"];
                 };
             };
             /** @description Validation Error */
@@ -19430,6 +20338,93 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_live_rankings_v1_rankings_live_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveRankingsResp"];
+                };
+            };
+            /** @description Not modified — the client's `If-None-Match` matches the current response */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_live_player_ranking_v1_rankings_live_players__player_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description NBA player ID */
+                player_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LivePlayerRankResp"];
+                };
+            };
+            /** @description Not modified — the client's `If-None-Match` matches the current response */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Player not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
             /** @description Rate limit exceeded */
             429: {
