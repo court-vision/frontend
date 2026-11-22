@@ -3939,6 +3939,429 @@
         "title": "AiTextPart",
         "type": "object"
       },
+      "AiTimelineCall": {
+        "description": "One call a check-in made, as the timeline shows it: the decision, what Dime did about it on its\nown, and how the move it sent went.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiDecisionAction"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What Dime did about it on its own, where its row is at AI; null where the change is a review"
+          },
+          "area": {
+            "enum": [
+              "lineup",
+              "streaming",
+              "adds_drops",
+              "other"
+            ],
+            "title": "Area",
+            "type": "string"
+          },
+          "automation": {
+            "enum": [
+              "auto_lineup",
+              "stream_lane",
+              "scheduled_pickup",
+              "none"
+            ],
+            "title": "Automation",
+            "type": "string"
+          },
+          "call": {
+            "enum": [
+              "hold",
+              "change"
+            ],
+            "title": "Call",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoveOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How the move it sent went: the move ledger's row for its proposal, rebuilt each night; null until the ledger has it, and for anything not sent"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "agree",
+                  "disagree"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The user's call on it; null until they make one",
+            "title": "Verdict"
+          }
+        },
+        "required": [
+          "decision_id",
+          "area",
+          "automation",
+          "call",
+          "summary",
+          "reason",
+          "proposal_id",
+          "verdict",
+          "action",
+          "result"
+        ],
+        "title": "AiTimelineCall",
+        "type": "object"
+      },
+      "AiTimelineCheckin": {
+        "description": "A check-in on the timeline: its summary, its calls and the notes its own turn wrote.",
+        "properties": {
+          "agree": {
+            "title": "Agree",
+            "type": "integer"
+          },
+          "calls": {
+            "description": "In the order it made them",
+            "items": {
+              "$ref": "#/components/schemas/AiTimelineCall"
+            },
+            "title": "Calls",
+            "type": "array"
+          },
+          "changes": {
+            "description": "Of those, the ones that would change an automation's plan or the roster",
+            "title": "Changes",
+            "type": "integer"
+          },
+          "checkin_id": {
+            "title": "Checkin Id",
+            "type": "integer"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its conversation; null when it never ran",
+            "title": "Conversation Id"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "date": {
+            "description": "The fantasy day it is about",
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "decisions": {
+            "description": "Calls it logged, holds included",
+            "title": "Decisions",
+            "type": "integer"
+          },
+          "disagree": {
+            "title": "Disagree",
+            "type": "integer"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "events": {
+            "description": "What came in that it was told about: an event check-in's reason, or what a scheduled one picked up",
+            "items": {
+              "$ref": "#/components/schemas/AiCheckinEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "kind": {
+            "description": "morning, weekly (a matchup's first morning), pre_lock (before the first tip), night (the next morning's follow-up) or event (news about a rostered player)",
+            "enum": [
+              "morning",
+              "weekly",
+              "pre_lock",
+              "night",
+              "event"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "manual": {
+            "description": "Run from the AI desk rather than on the schedule",
+            "title": "Manual",
+            "type": "boolean"
+          },
+          "notes": {
+            "description": "Notes its own turn wrote (a revision is a new note), retired ones included",
+            "items": {
+              "$ref": "#/components/schemas/AiNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it failed, was missed or skipped (e.g. window_closed, budget, daily_cap, AI_TIMEOUT)",
+            "title": "Reason"
+          },
+          "sent": {
+            "default": 0,
+            "description": "Moves it sent on its own (on automations at AI)",
+            "title": "Sent",
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "running",
+              "done",
+              "failed",
+              "missed",
+              "skipped"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkin_id",
+          "team_id",
+          "kind",
+          "date",
+          "manual",
+          "state",
+          "reason",
+          "due_at",
+          "started_at",
+          "finished_at",
+          "conversation_id",
+          "title",
+          "cost_usd",
+          "decisions",
+          "changes",
+          "agree",
+          "disagree",
+          "sent",
+          "events",
+          "calls",
+          "notes"
+        ],
+        "title": "AiTimelineCheckin",
+        "type": "object"
+      },
+      "AiTimelineData": {
+        "properties": {
+          "checkins": {
+            "description": "The check-ins that ran in the day, oldest first (by when they ran: the night follow-up about Thursday is on Friday)",
+            "items": {
+              "$ref": "#/components/schemas/AiTimelineCheckin"
+            },
+            "title": "Checkins",
+            "type": "array"
+          },
+          "checkins_on": {
+            "description": "The team's check-ins run on the schedule",
+            "title": "Checkins On",
+            "type": "boolean"
+          },
+          "date": {
+            "description": "The fantasy day shown (ESPN's day, turning at 3 AM ET)",
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "ends_at": {
+            "description": "When it ends: 3 AM ET the next day",
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "first_tip": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The day's first fantasy tip; null on a day with no games",
+            "title": "First Tip"
+          },
+          "notes_due": {
+            "description": "Live notes set to recheck on the day",
+            "items": {
+              "$ref": "#/components/schemas/AiNote"
+            },
+            "title": "Notes Due",
+            "type": "array"
+          },
+          "starts_at": {
+            "description": "When the day began: 3 AM ET on it",
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "today": {
+            "description": "The fantasy day it is now",
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "upcoming": {
+            "description": "The day's scheduled check-ins still to come; none on a past day or while check-ins are off",
+            "items": {
+              "$ref": "#/components/schemas/AiCheckinSlot"
+            },
+            "title": "Upcoming",
+            "type": "array"
+          }
+        },
+        "required": [
+          "team_id",
+          "date",
+          "today",
+          "starts_at",
+          "ends_at",
+          "checkins_on",
+          "first_tip",
+          "checkins",
+          "upcoming",
+          "notes_due"
+        ],
+        "title": "AiTimelineData",
+        "type": "object"
+      },
+      "AiTimelineResp": {
+        "description": "Response for GET /v1/internal/ai/timeline.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiTimelineData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiTimelineResp",
+        "type": "object"
+      },
       "AiToolCall": {
         "description": "One Court Vision lookup the model made while answering.",
         "properties": {
@@ -4399,6 +4822,699 @@
           "timestamp"
         ],
         "title": "AiUsageResp",
+        "type": "object"
+      },
+      "AnalystItem": {
+        "description": "A stored item about the player: a news item or an availability report.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the source published it, Eastern",
+            "title": "At"
+          },
+          "citable": {
+            "description": "Whether a note may rest on it: never a rumor or a performance item",
+            "title": "Citable",
+            "type": "boolean"
+          },
+          "kind": {
+            "description": "injury, availability, lineup, transaction, performance, rumor, other",
+            "maxLength": 16,
+            "title": "Kind",
+            "type": "string"
+          },
+          "ref": {
+            "description": "news:<id> or report:<id>: what a note cites",
+            "maxLength": 40,
+            "minLength": 3,
+            "title": "Ref",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 40,
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "description": "The headline and the blurb",
+            "maxLength": 2400,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "kind",
+          "citable",
+          "source",
+          "text"
+        ],
+        "title": "AnalystItem",
+        "type": "object"
+      },
+      "AnalystProposal": {
+        "description": "What the analyst answered. Inputs only: a date, minutes, a share of the offense.",
+        "properties": {
+          "against_owner_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Against Owner Note"
+          },
+          "cites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cites",
+            "type": "array"
+          },
+          "confidence": {
+            "default": "possible",
+            "enum": [
+              "confirmed",
+              "likely",
+              "possible"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "write",
+              "keep",
+              "retire",
+              "none"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "kind": {
+            "default": "other",
+            "enum": [
+              "injury_current",
+              "injury_return",
+              "role",
+              "trade",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes"
+          },
+          "out_for_season": {
+            "default": false,
+            "title": "Out For Season",
+            "type": "boolean"
+          },
+          "reason": {
+            "description": "One or two plain sentences: what the items say and what follows",
+            "title": "Reason",
+            "type": "string"
+          },
+          "return_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Date"
+          },
+          "return_earliest": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Earliest"
+          },
+          "return_latest": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Latest"
+          },
+          "review_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Date"
+          },
+          "until_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until Date"
+          },
+          "until_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until Player Id"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage"
+          }
+        },
+        "required": [
+          "decision",
+          "reason",
+          "kind",
+          "return_date",
+          "return_earliest",
+          "return_latest",
+          "out_for_season",
+          "minutes",
+          "usage",
+          "until_date",
+          "until_player_id",
+          "confidence",
+          "review_date",
+          "cites",
+          "against_owner_note"
+        ],
+        "title": "AnalystProposal",
+        "type": "object"
+      },
+      "AnalystReadData": {
+        "description": "How one read went.\n\n`outcome`: `read` (a proposal came back), `declined` (the model declined\nthe request), `malformed` (the answer could not be read as a proposal),\n`budget` (this month's budget for reads is used up: nothing was asked) or\n`off` (the analyst is switched off: nothing was asked).",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "month_cap_micros": {
+            "default": 0,
+            "title": "Month Cap Micros",
+            "type": "integer"
+          },
+          "month_spent_micros": {
+            "default": 0,
+            "title": "Month Spent Micros",
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": [
+              "read",
+              "declined",
+              "malformed",
+              "budget",
+              "off"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalystProposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalystUsage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "outcome",
+          "proposal",
+          "detail",
+          "usage",
+          "prompt_version",
+          "month_spent_micros",
+          "month_cap_micros"
+        ],
+        "title": "AnalystReadData",
+        "type": "object"
+      },
+      "AnalystReadReq": {
+        "properties": {
+          "as_of": {
+            "description": "The morning the read is for",
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "availability": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The availability feed's latest verdict",
+            "title": "Availability"
+          },
+          "bounds": {
+            "additionalProperties": true,
+            "description": "The limits a note is held to",
+            "title": "Bounds",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AnalystItem"
+            },
+            "maxItems": 30,
+            "title": "Items",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "own_note": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The analyst's own live note, if it has one",
+            "title": "Own Note"
+          },
+          "owner_note": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The note written by hand, if there is one",
+            "title": "Owner Note"
+          },
+          "player_id": {
+            "minimum": 1.0,
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "projection": {
+            "additionalProperties": true,
+            "description": "What the live projection assumes about him this morning (see the prompt)",
+            "title": "Projection",
+            "type": "object"
+          },
+          "reasons": {
+            "description": "Why the screen picked him, in words",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Reasons",
+            "type": "array"
+          },
+          "recent_games": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "maxItems": 12,
+            "title": "Recent Games",
+            "type": "array"
+          },
+          "season": {
+            "maxLength": 7,
+            "minLength": 7,
+            "title": "Season",
+            "type": "string"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "teammates": {
+            "items": {
+              "$ref": "#/components/schemas/AnalystTeammate"
+            },
+            "maxItems": 20,
+            "title": "Teammates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "season",
+          "as_of",
+          "player_id",
+          "name"
+        ],
+        "title": "AnalystReadReq",
+        "type": "object"
+      },
+      "AnalystReadResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalystReadData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AnalystReadResp",
+        "type": "object"
+      },
+      "AnalystSpendData": {
+        "description": "This month's spend on reads and the line's cap, in millionths of a dollar.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "month_cap_micros": {
+            "title": "Month Cap Micros",
+            "type": "integer"
+          },
+          "month_spent_micros": {
+            "title": "Month Spent Micros",
+            "type": "integer"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "read_max_micros": {
+            "title": "Read Max Micros",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "month_spent_micros",
+          "month_cap_micros",
+          "read_max_micros",
+          "model",
+          "prompt_version"
+        ],
+        "title": "AnalystSpendData",
+        "type": "object"
+      },
+      "AnalystSpendResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalystSpendData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AnalystSpendResp",
+        "type": "object"
+      },
+      "AnalystTeammate": {
+        "description": "A rotation teammate: who the player's role may depend on.",
+        "properties": {
+          "expected_return": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Return"
+          },
+          "minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "His usual minutes a game",
+            "title": "Minutes"
+          },
+          "name": {
+            "maxLength": 80,
+            "title": "Name",
+            "type": "string"
+          },
+          "out": {
+            "default": false,
+            "description": "Whether the projection has him out now",
+            "title": "Out",
+            "type": "boolean"
+          },
+          "player_id": {
+            "minimum": 1.0,
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "maxLength": 24,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "player_id",
+          "name"
+        ],
+        "title": "AnalystTeammate",
+        "type": "object"
+      },
+      "AnalystUsage": {
+        "properties": {
+          "cache_creation_input_tokens": {
+            "default": 0,
+            "title": "Cache Creation Input Tokens",
+            "type": "integer"
+          },
+          "cache_read_input_tokens": {
+            "default": 0,
+            "title": "Cache Read Input Tokens",
+            "type": "integer"
+          },
+          "cost_micros": {
+            "default": 0,
+            "title": "Cost Micros",
+            "type": "integer"
+          },
+          "fallback": {
+            "default": false,
+            "title": "Fallback",
+            "type": "boolean"
+          },
+          "input_tokens": {
+            "default": 0,
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "output_tokens": {
+            "default": 0,
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model",
+          "input_tokens",
+          "output_tokens",
+          "cache_read_input_tokens",
+          "cache_creation_input_tokens",
+          "cost_micros",
+          "fallback"
+        ],
+        "title": "AnalystUsage",
         "type": "object"
       },
       "ApiKeyListItem": {
@@ -6498,6 +7614,38 @@
         "title": "DailyActionsResp",
         "type": "object"
       },
+      "DailyBoardPlace": {
+        "properties": {
+          "games": {
+            "description": "The games he is expected to play from the board's day on",
+            "title": "Games",
+            "type": "number"
+          },
+          "rank": {
+            "description": "Place on this board, 1 is best",
+            "title": "Rank",
+            "type": "integer"
+          },
+          "score": {
+            "description": "What the rank is ordered by: fantasy points over the games left, or the summed category score",
+            "title": "Score",
+            "type": "number"
+          },
+          "value": {
+            "description": "The per-game number the board shows: fantasy points, or the 9-cat index",
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "rank",
+          "value",
+          "score",
+          "games"
+        ],
+        "title": "DailyBoardPlace",
+        "type": "object"
+      },
       "DailyMatchupData": {
         "description": "Response data for daily matchup drill-down.",
         "properties": {
@@ -7051,6 +8199,247 @@
           "lineup_captured_at"
         ],
         "title": "DailyMatchupTeam",
+        "type": "object"
+      },
+      "DailyRankResp": {
+        "properties": {
+          "categories": {
+            "$ref": "#/components/schemas/DailyBoardPlace",
+            "description": "Standard nine-category league"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Today's flag (OUT, DAY_TO_DAY, ...); null when he plays",
+            "title": "Injury Status"
+          },
+          "line_source": {
+            "description": "Where his line came from: live (the morning's live projection), projection, season or baseline",
+            "title": "Line Source",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "description": "NBA player id (nba.players.id)",
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "points": {
+            "$ref": "#/components/schemas/DailyBoardPlace",
+            "description": "Standard points league, ESPN's default weights"
+          },
+          "season_gp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Games played this season; null before opening night",
+            "title": "Season Gp"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Current NBA team tricode",
+            "title": "Team"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "team",
+          "line_source",
+          "season_gp",
+          "injury_status",
+          "points",
+          "categories"
+        ],
+        "title": "DailyRankResp",
+        "type": "object"
+      },
+      "DailyRankingsData": {
+        "properties": {
+          "as_of": {
+            "description": "The fantasy day the boards are for: games from this day on are counted",
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "in_season": {
+            "description": "False before opening night and after the regular season",
+            "title": "In Season",
+            "type": "boolean"
+          },
+          "league_size": {
+            "title": "League Size",
+            "type": "integer"
+          },
+          "live_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The morning of the live projection the boards read; null without one",
+            "title": "Live As Of"
+          },
+          "model": {
+            "description": "What built the boards; stored with every row. three-part-1: the morning's live projection. season-blend-1: the preseason projection blended with this season's games, on a morning with no fresh live projection. projection-1: before opening night",
+            "title": "Model",
+            "type": "string"
+          },
+          "players": {
+            "description": "Every valued player, in points-board order",
+            "items": {
+              "$ref": "#/components/schemas/DailyRankResp"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "playoff_weight": {
+            "title": "Playoff Weight",
+            "type": "number"
+          },
+          "prior_games": {
+            "description": "The projection's weight against this season, in games",
+            "title": "Prior Games",
+            "type": "integer"
+          },
+          "projection_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection Source"
+          },
+          "projections_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projections As Of"
+          },
+          "rounds": {
+            "title": "Rounds",
+            "type": "integer"
+          },
+          "season": {
+            "title": "Season",
+            "type": "string"
+          },
+          "season_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The newest box score the lines read; null out of season",
+            "title": "Season As Of"
+          }
+        },
+        "required": [
+          "season",
+          "as_of",
+          "in_season",
+          "model",
+          "live_as_of",
+          "season_as_of",
+          "projections_as_of",
+          "projection_source",
+          "prior_games",
+          "league_size",
+          "rounds",
+          "playoff_weight",
+          "players"
+        ],
+        "title": "DailyRankingsData",
+        "type": "object"
+      },
+      "DailyRankingsResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DailyRankingsData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DailyRankingsResp",
         "type": "object"
       },
       "DailyScorePoint": {
@@ -7819,6 +9208,17 @@
             "title": "Format",
             "type": "string"
           },
+          "in_season": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftInSeasonResp"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set for a draft held after opening night: values blend this season's games with the projection, count only the games left, and injury flags are today's. ADP and ESPN's ranks stay the last preseason snapshot (`market_as_of`). None for a draft before opening night, an imported draft, and a room whose draft started before it."
+          },
           "league_size": {
             "anyOf": [
               {
@@ -8094,7 +9494,8 @@
           "settings_synced",
           "unsupported",
           "congestion",
-          "playoffs"
+          "playoffs",
+          "in_season"
         ],
         "title": "DraftBoardMeta",
         "type": "object"
@@ -8519,6 +9920,18 @@
             "description": "Sum of `category_z`; what `value` is mapped from and `cv_rank` is ordered by",
             "title": "Score"
           },
+          "season_fpts_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "In a draft held after opening night: this season's fantasy points per game under the platform default formula, unblended (compare `fpts_avg`, the blended line's).",
+            "title": "Season Fpts Avg"
+          },
           "season_games": {
             "anyOf": [
               {
@@ -8530,6 +9943,18 @@
             ],
             "description": "The games Court Vision's value is built on: projected games (65 when nothing projects him) spread over his team's schedule, with games in the league's fantasy-playoff weeks counted `meta.playoffs.weight` times and games after the fantasy season not at all, renormalized so the league-average player keeps his games. Roto counts every game once.",
             "title": "Season Games"
+          },
+          "season_gp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "In a draft held after opening night (`meta.in_season`): games he has played this season, which is how much this season counts in his value. None before opening night, and for a player who hasn't played.",
+            "title": "Season Gp"
           },
           "team": {
             "anyOf": [
@@ -8568,10 +9993,12 @@
             "title": "Value Season"
           },
           "value_source": {
-            "description": "projection: a per-game projection for the coming season (`meta.projection_source` says whose). baseline: last season's per-game averages. market: no stat line at all \u2014 the row exists because ESPN drafts him.",
+            "description": "projection: a per-game projection for the coming season (`meta.projection_source` says whose). baseline: last season's per-game averages. In a draft held after opening night (`meta.in_season`) both are blended with this season's games (`season_gp`). season: nothing projects him and he had no qualifying last season, so this season's games alone value him (in season only, and only with enough of them). live: Court Vision's live projection, repriced every morning of the season (`meta.in_season.live_as_of`): his line in a game he plays from here on, and the games he is expected to play. market: no stat line at all \u2014 the row exists because ESPN drafts him.",
             "enum": [
               "projection",
               "baseline",
+              "season",
+              "live",
               "market"
             ],
             "title": "Value Source",
@@ -8601,6 +10028,8 @@
           "playoff_light_games",
           "playoff_games_by_week",
           "fpts_avg",
+          "season_gp",
+          "season_fpts_avg",
           "market_rank",
           "adp",
           "auction_value",
@@ -8814,6 +10243,94 @@
           "timestamp"
         ],
         "title": "DraftImportResponse",
+        "type": "object"
+      },
+      "DraftInSeasonResp": {
+        "description": "A draft held after opening night, and what the board valued differently for it.",
+        "properties": {
+          "blended": {
+            "description": "Players whose value took this season's games",
+            "title": "Blended",
+            "type": "integer"
+          },
+          "games_from": {
+            "description": "The first day counted: values and lineup congestion cover the games from here on",
+            "format": "date",
+            "title": "Games From",
+            "type": "string"
+          },
+          "injured": {
+            "description": "Players with an injury flag on today's report, which replaces the market snapshot's flags",
+            "title": "Injured",
+            "type": "integer"
+          },
+          "injured_since_projection": {
+            "description": "Of them, those the market snapshot listed healthy and the live projection does not value: their injury term applies even where their games are projected, since an October projection couldn't know",
+            "title": "Injured Since Projection",
+            "type": "integer"
+          },
+          "live": {
+            "default": 0,
+            "description": "Players valued by the live projection (`value_source` live)",
+            "title": "Live",
+            "type": "integer"
+          },
+          "live_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The morning of the live projection the board read; null when it is built on the blend",
+            "title": "Live As Of"
+          },
+          "model": {
+            "default": "season-blend-1",
+            "description": "What built the values. three-part-1: the live projection, repriced every morning (skill per minute with a weight per stat, minutes by who is out, a chance for each game left); a game he misses is charged at the gap to a replacement, and no injury term is added on top. season-blend-1: the projection blended with this season's games by `prior_games`, his projected share of the games left; what a board shows on a morning with no fresh live projection",
+            "title": "Model",
+            "type": "string"
+          },
+          "prior_games": {
+            "description": "On the blend: how many of this season's games the projection (or last season's line) counts as, so a player with this many games played is valued half on this season. The live projection weighs each stat on its own instead",
+            "title": "Prior Games",
+            "type": "integer"
+          },
+          "season_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The newest of this season's stat rows the values were blended with",
+            "title": "Season As Of"
+          },
+          "season_only": {
+            "description": "Players valued off this season alone (`value_source` season)",
+            "title": "Season Only",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "games_from",
+          "season_as_of",
+          "model",
+          "live_as_of",
+          "live",
+          "prior_games",
+          "blended",
+          "season_only",
+          "injured",
+          "injured_since_projection"
+        ],
+        "title": "DraftInSeasonResp",
         "type": "object"
       },
       "DraftInitSyncRequest": {
@@ -9890,6 +11407,8 @@
             "enum": [
               "projection",
               "baseline",
+              "season",
+              "live",
               "market"
             ],
             "title": "Value Source",
@@ -11461,6 +12980,33 @@
           "swid"
         ],
         "title": "EspnConnectReq",
+        "type": "object"
+      },
+      "EspnRankAge": {
+        "description": "ESPN's rank for one player and how long it has stood.",
+        "properties": {
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "since_first_stored": {
+            "description": "True when the run reaches back to the first stored day, so the rank may be older than `unchanged_since`",
+            "title": "Since First Stored",
+            "type": "boolean"
+          },
+          "unchanged_since": {
+            "description": "The first stored day of the run of days ESPN has held this rank",
+            "format": "date",
+            "title": "Unchanged Since",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rank",
+          "unchanged_since",
+          "since_first_stored"
+        ],
+        "title": "EspnRankAge",
         "type": "object"
       },
       "FantasyProvider": {
@@ -15379,6 +16925,73 @@
         "title": "LineupUnfilled",
         "type": "object"
       },
+      "LiveBoardPlace": {
+        "description": "One player's place on one board this morning.",
+        "properties": {
+          "espn_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ESPN's own draft rank on `espn_as_of`: STANDARD beside the points board, ROTO beside the categories board. Null when ESPN does not rank him.",
+            "title": "Espn Rank"
+          },
+          "move_1d": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Places gained since the previous stored board (`compared.day`); positive is an improvement. Null when there is no such board or he was not on it.",
+            "title": "Move 1D"
+          },
+          "move_7d": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Places gained since the board of a week ago (`compared.week`); positive is an improvement. Null when there is no such board or he was not on it.",
+            "title": "Move 7D"
+          },
+          "rank": {
+            "description": "Rest-of-season rank on this board; 1 is best",
+            "title": "Rank",
+            "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The per-game number the board shows: fantasy points on the points board, the 9-cat index on the categories board",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "rank",
+          "value",
+          "move_1d",
+          "move_7d",
+          "espn_rank"
+        ],
+        "title": "LiveBoardPlace",
+        "type": "object"
+      },
       "LiveMatchupData": {
         "properties": {
           "baseline_stale_days": {
@@ -15670,6 +17283,50 @@
         "title": "LiveMatchupTeam",
         "type": "object"
       },
+      "LivePlayerEspn": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The day ESPN's ranks were last read",
+            "title": "As Of"
+          },
+          "categories": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EspnRankAge"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "points": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EspnRankAge"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "as_of",
+          "points",
+          "categories"
+        ],
+        "title": "LivePlayerEspn",
+        "type": "object"
+      },
       "LivePlayerItem": {
         "description": "One player's current box score from nba.live_player_stats.",
         "properties": {
@@ -15822,6 +17479,228 @@
         "title": "LivePlayerItem",
         "type": "object"
       },
+      "LivePlayerRankData": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The fantasy day of the newest board; null before the first one is stored",
+            "title": "As Of"
+          },
+          "board_days": {
+            "description": "Every day of the season a Court Vision board was stored, oldest first. A day here that `history` has no Court Vision rank for is a day he was off the board, not a morning the board is missing.",
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Board Days",
+            "type": "array"
+          },
+          "categories": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveBoardPlace"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "His place on the newest categories board; null when he is not on it"
+          },
+          "compared": {
+            "$ref": "#/components/schemas/LiveRankingsCompared"
+          },
+          "espn": {
+            "$ref": "#/components/schemas/LivePlayerEspn"
+          },
+          "espn_days": {
+            "description": "Every day of the season ESPN's ranks were stored, oldest first; read beside `history` as `board_days` is",
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Espn Days",
+            "type": "array"
+          },
+          "games": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Games"
+          },
+          "history": {
+            "description": "His ranks on every stored day of the season he had one, oldest first",
+            "items": {
+              "$ref": "#/components/schemas/LiveRankDay"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injury Status"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveBoardPlace"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "His place on the newest points board; null when he is not on it"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "season": {
+            "title": "Season",
+            "type": "string"
+          },
+          "season_gp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season Gp"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "team",
+          "position",
+          "season",
+          "as_of",
+          "model",
+          "compared",
+          "injury_status",
+          "season_gp",
+          "games",
+          "points",
+          "categories",
+          "espn",
+          "history",
+          "board_days",
+          "espn_days"
+        ],
+        "title": "LivePlayerRankData",
+        "type": "object"
+      },
+      "LivePlayerRankResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LivePlayerRankData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "LivePlayerRankResp",
+        "type": "object"
+      },
       "LivePlayersData": {
         "properties": {
           "game_date": {
@@ -15911,6 +17790,330 @@
           "timestamp"
         ],
         "title": "LivePlayersResp",
+        "type": "object"
+      },
+      "LiveRankDay": {
+        "description": "One player's ranks on one stored day.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "categories": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categories"
+          },
+          "espn_categories": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Categories"
+          },
+          "espn_points": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Points"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points"
+          }
+        },
+        "required": [
+          "as_of",
+          "points",
+          "categories",
+          "espn_points",
+          "espn_categories"
+        ],
+        "title": "LiveRankDay",
+        "type": "object"
+      },
+      "LiveRankingsCompared": {
+        "description": "The earlier boards the moves are measured against.",
+        "properties": {
+          "day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The previous stored board, at most three days back; null when there is none",
+            "title": "Day"
+          },
+          "week": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The newest board at least seven days back, at most ten; null when there is none",
+            "title": "Week"
+          }
+        },
+        "required": [
+          "day",
+          "week"
+        ],
+        "title": "LiveRankingsCompared",
+        "type": "object"
+      },
+      "LiveRankingsData": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The fantasy day of the board; null before the first one is stored",
+            "title": "As Of"
+          },
+          "compared": {
+            "$ref": "#/components/schemas/LiveRankingsCompared"
+          },
+          "espn_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The day ESPN's ranks beside the board were read",
+            "title": "Espn As Of"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The name of the model that built the board",
+            "title": "Model"
+          },
+          "players": {
+            "description": "Every ranked player, in points-board order",
+            "items": {
+              "$ref": "#/components/schemas/LiveRankingsPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "season": {
+            "title": "Season",
+            "type": "string"
+          }
+        },
+        "required": [
+          "season",
+          "as_of",
+          "model",
+          "espn_as_of",
+          "compared",
+          "players"
+        ],
+        "title": "LiveRankingsData",
+        "type": "object"
+      },
+      "LiveRankingsPlayer": {
+        "properties": {
+          "categories": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveBoardPlace"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "games": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Games he is expected to play from the board's day to the end of the season",
+            "title": "Games"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The availability flag the board was built with; null plays",
+            "title": "Injury Status"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "description": "NBA player ID",
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveBoardPlace"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "season_gp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Games played this season when the board was built",
+            "title": "Season Gp"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Current NBA team abbreviation; null without a team on record",
+            "title": "Team"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "team",
+          "position",
+          "injury_status",
+          "season_gp",
+          "games",
+          "points",
+          "categories"
+        ],
+        "title": "LiveRankingsPlayer",
+        "type": "object"
+      },
+      "LiveRankingsResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveRankingsData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "LiveRankingsResp",
         "type": "object"
       },
       "LiveScheduleData": {
@@ -28726,7 +30929,7 @@
             "description": "Successful Response"
           },
           "403": {
-            "description": "Not on the invite list (AI_INVITE_ONLY), or check-ins aren't open for this team (AI_AUTOPILOT_NOT_ALLOWED)"
+            "description": "Not on the invite list (AI_INVITE_ONLY, which also covers every team of the account: AI_AUTOPILOT_NOT_ALLOWED)"
           },
           "404": {
             "description": "team_id is not one of the caller's teams (TEAM_NOT_FOUND)"
@@ -28842,7 +31045,7 @@
             "description": "Successful Response"
           },
           "403": {
-            "description": "Not on the invite list (AI_INVITE_ONLY), or check-ins aren't open for this team (AI_AUTOPILOT_NOT_ALLOWED)"
+            "description": "Not on the invite list (AI_INVITE_ONLY, which also covers every team of the account: AI_AUTOPILOT_NOT_ALLOWED)"
           },
           "404": {
             "description": "team_id is not one of the caller's teams (TEAM_NOT_FOUND)"
@@ -29807,6 +32010,84 @@
           }
         ],
         "summary": "Turn the account's AI features on or off",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/internal/ai/timeline": {
+      "get": {
+        "description": "A fantasy day of one team (ESPN's day, turning at 3 AM ET; today's without `date`), read-only: the check-ins that ran in it, oldest first, each with its calls, what Dime did about each on its own, how each move it sent went (the move ledger's row for its proposal) and the notes its own turn wrote; the day's scheduled check-ins still to come while the team's check-ins are on; the day's first tip; and the notes set to recheck that day.",
+        "operationId": "get_timeline_v1_internal_ai_timeline_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Team Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "The fantasy day, YYYY-MM-DD; default today's",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The fantasy day, YYYY-MM-DD; default today's",
+              "title": "Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiTimelineResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller is not on the invite list (AI_INVITE_ONLY)"
+          },
+          "404": {
+            "description": "team_id is not one of the caller's teams (TEAM_NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Turned off (AI_DISABLED)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One team's day on the AI desk's timeline",
         "tags": [
           "AI"
         ]
@@ -31503,9 +33784,83 @@
         ]
       }
     },
+    "/v1/internal/jobs/analyst/read": {
+      "post": {
+        "description": "One read of one player by the live rankings' analyst (the Live rankings plan, step 4).\n\nCalled by data-platform's analyst pipeline for each player its morning\nscreen picks, with what the live projection assumes about him and the stored\nitems about him. The answer is a proposal in the projection's own inputs (a\nreturn date, minutes, a share of the offense, an end, the items it rests\non), or that nothing should be written. Nothing is written here: the data\nplatform checks the proposal against its stored items and bounds and owns\nthe tables. `data.outcome` carries every business result (`read`, `declined`,\n`malformed`, `budget`, `off`); only a provider failure is an error, and the\npipeline reads the player again on its next run.",
+        "operationId": "analyst_read_v1_internal_jobs_analyst_read_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalystReadReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalystReadResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Analyst Read",
+        "tags": [
+          "internal jobs"
+        ]
+      }
+    },
+    "/v1/internal/jobs/analyst/spend": {
+      "get": {
+        "description": "What the analyst's reads have spent this month and what they may, for the\ndata platform's morning digest.",
+        "operationId": "analyst_spend_v1_internal_jobs_analyst_spend_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalystSpendResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Analyst Spend",
+        "tags": [
+          "internal jobs"
+        ]
+      }
+    },
     "/v1/internal/jobs/checkins/events": {
       "post": {
-        "description": "What came in about players: verdicts that changed for games not yet tipped, news items just\nstored. Each becomes an event on every team Dime runs that rosters the player, and a team with a\nnew one gets a check-in about it (or the scheduled one about to run takes it).\n\nCalled by data-platform's availability pipeline (its late-scratch events, every 2-minute tick that\nhas one) and its news feed (every 5 minutes). Keys only: the verdicts and items are read here. Only\nteams on AUTOPILOT_TEAM_IDS with Late scratches at AI hear them; the check-ins run on here after\nthe response.",
+        "description": "What came in about players: verdicts that changed for games not yet tipped, news items just\nstored. Each becomes an event on every team Dime runs that rosters the player, and a team with a\nnew one gets a check-in about it (or the scheduled one about to run takes it).\n\nCalled by data-platform's availability pipeline (its late-scratch events, every 2-minute tick that\nhas one) and its news feed (every 5 minutes). Keys only: the verdicts and items are read here. Only\nteams of accounts with CV AI, with Late scratches at AI, hear them; the check-ins run on here after\nthe response.",
         "operationId": "checkin_events_v1_internal_jobs_checkins_events_post",
         "requestBody": {
           "content": {
@@ -31760,6 +34115,57 @@
           }
         ],
         "summary": "Execute Pickups",
+        "tags": [
+          "internal jobs"
+        ]
+      }
+    },
+    "/v1/internal/jobs/rankings/daily": {
+      "post": {
+        "description": "Today's two standard boards (points and 9-cat), for the data platform to store.\n\nCalled by data-platform's daily_rankings pipeline each morning, which writes\nthem to nba.daily_rankings beside ESPN's rank that day. The boards are the\nones a room with no league shows right now: in season the morning's live\nprojection (the pipeline builds it first), or with no fresh one the\nprojection blended with this season's games; before opening night the\nprojection alone. `model` says which. `in_season` is false outside the\nregular season, and the pipeline stores nothing then. Nothing is written here.\n\n`shadow=true` is the analyst's second pair (the Live rankings plan, step 4):\nthe same boards built on the projection with its notes applied, which the\ndata platform's analyst pipeline stores under the source `cv_shadow`. No\nuser-facing board reads that projection.",
+        "operationId": "build_daily_rankings_v1_internal_jobs_rankings_daily_post",
+        "parameters": [
+          {
+            "description": "Build the boards on the projection that has the analyst's notes applied (cv_live_shadow).",
+            "in": "query",
+            "name": "shadow",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Build the boards on the projection that has the analyst's notes applied (cv_live_shadow).",
+              "title": "Shadow",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyRankingsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Build Daily Rankings",
         "tags": [
           "internal jobs"
         ]
@@ -37220,6 +39626,89 @@
           }
         },
         "summary": "Compare ESPN draft-market snapshots",
+        "tags": [
+          "Rankings"
+        ]
+      }
+    },
+    "/v1/rankings/live": {
+      "get": {
+        "description": "Court Vision's two standard rest-of-season boards as stored this morning: ESPN default points (`points`) and standard 9-cat (`categories`). Each player carries his rank and per-game value on both, the places he gained since the previous stored board (`move_1d`) and since the board of a week ago (`move_7d`), and ESPN's own draft rank that day. `compared` names the two earlier boards; a move against a board that does not exist is null, never zero. The boards are rebuilt once a morning from box scores and availability, and price each player from that day to the end of the season; `GET /v1/rankings/` ranks what players have scored so far. Before the first board of a season is stored the response is a successful empty one.\n\nResponses are cached briefly and carry an `ETag`; a conditional request with `If-None-Match` is answered 304.",
+        "operationId": "get_live_rankings_v1_rankings_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveRankingsResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "304": {
+            "description": "Not modified \u2014 the client's `If-None-Match` matches the current response"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "Get Court Vision's live rest-of-season rankings",
+        "tags": [
+          "Rankings"
+        ]
+      }
+    },
+    "/v1/rankings/live/players/{player_id}": {
+      "get": {
+        "description": "One player's place on this morning's two boards with his moves over a day and a week, how long ESPN has held its own rank for him, and his rank on every stored day of the season, oldest first. `points` and `categories` are null when he is not on the newest board; his history still lists the days he was. A player with no stored rank this season returns a successful response with an empty history.",
+        "operationId": "get_live_player_ranking_v1_rankings_live_players__player_id__get",
+        "parameters": [
+          {
+            "description": "NBA player ID",
+            "in": "path",
+            "name": "player_id",
+            "required": true,
+            "schema": {
+              "description": "NBA player ID",
+              "exclusiveMinimum": 0,
+              "title": "Player Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivePlayerRankResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "304": {
+            "description": "Not modified \u2014 the client's `If-None-Match` matches the current response"
+          },
+          "404": {
+            "description": "Player not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "Get one player's live ranking and its history",
         "tags": [
           "Rankings"
         ]

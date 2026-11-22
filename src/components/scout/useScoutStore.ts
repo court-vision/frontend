@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import type { LiveSort } from "@/lib/live-rankings";
 import { focusKey, sameFocus, type Focus, type Lens, type PoolSort, type PosFilter, type Window } from "@/lib/scout";
 import type { RankingsScope, RankingsWindow } from "@/types/rankings";
 import type { ScoringFormat } from "@/types/scoring";
@@ -9,13 +10,24 @@ import type { ScoringFormat } from "@/types/scoring";
 export const MAX_PINNED = 8;
 const MAX_RECENT = 10;
 
+/**
+ * Which of Scout's two rankings the board shows. `season` ranks what players
+ * have scored so far (a span of it, or a league's own scoring); `live` is
+ * Court Vision's rest-of-season board, rebuilt every morning.
+ */
+export type PoolBoard = "season" | "live";
+
 export interface PoolConfig {
+  board: PoolBoard;
   /** `league`: scored by the signed-in user's league (which decides the format); `global`: by `format`. */
   scope: RankingsScope;
+  /** The rest-of-season board reads this too: its two boards are the two formats. */
   format: ScoringFormat;
   span: RankingsWindow;
   pos: PosFilter;
   sort: PoolSort;
+  /** The rest-of-season board's own order: it has moves and ESPN's rank where the other has games and averages. */
+  liveSort: LiveSort;
 }
 
 interface ScoutStore {
@@ -38,7 +50,16 @@ interface ScoutStore {
 
 const pinnable = (f: Focus) => f.kind === "player" || f.kind === "team";
 
-const DEFAULT_POOL: PoolConfig = { scope: "global", format: "points", span: null, pos: "ALL", sort: "rank" };
+const DEFAULT_POOL: PoolConfig = { board: "season", scope: "global", format: "points", span: null, pos: "ALL", sort: "rank", liveSort: "rank" };
+
+/** What an older browser stored, brought up to this version: a control added since takes its default. */
+export function migrateScout(persisted: unknown, version: number) {
+  const st = (persisted ?? {}) as Partial<ScoutStore>;
+  if (version < 2) return { lens: st.lens ?? "pool", window: st.window ?? "season", pool: DEFAULT_POOL, pinned: [], recent: [] };
+  if (version < 3) return { ...st, pool: { ...DEFAULT_POOL, ...st.pool, scope: "global" as const } };
+  if (version < 4) return { ...st, pool: { ...DEFAULT_POOL, ...st.pool } };
+  return st;
+}
 
 /**
  * What the Scout desk remembers per browser: the list showing, the stat
@@ -72,17 +93,13 @@ export const useScoutStore = create<ScoutStore>()(
     }),
     {
       name: "cv.scout",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ lens: s.lens, window: s.window, pool: s.pool, pinned: s.pinned, recent: s.recent }),
       // v2 changed the focus shapes (a night became an overview); anything older is dropped.
       // v3 added the pool's scope (the league score option).
-      migrate: (persisted, version) => {
-        const st = (persisted ?? {}) as Partial<ScoutStore>;
-        if (version < 2) return { lens: st.lens ?? "pool", window: st.window ?? "season", pool: DEFAULT_POOL, pinned: [], recent: [] };
-        if (version < 3) return { ...st, pool: { ...DEFAULT_POOL, ...st.pool, scope: "global" } };
-        return st;
-      },
+      // v4 added the pool's board (the rest-of-season rankings) and its sort.
+      migrate: migrateScout,
       // Rehydrated by the page after mount: the server renders the defaults, and so must the first client render.
       skipHydration: true,
     }

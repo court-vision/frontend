@@ -59,8 +59,6 @@ import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData
 import type { NewsListData } from "@/types/news";
 import type { BaseApiResponse } from "@/types/auth";
 import type {
-  AiAutopilotAction,
-  AiAutopilotActionsResponse,
   AiAutopilotResponse,
   AiAutopilotChange,
   AiAutopilotTeam,
@@ -86,6 +84,8 @@ import type {
   AiProposalDismissResponse,
   AiProposalResponse,
   AiSettingsResponse,
+  AiTimeline,
+  AiTimelineResponse,
   AiTurnCommentResponse,
   AiTurnFeedbackResponse,
   AiUsage,
@@ -98,6 +98,8 @@ import type {
 import type {
   ESPNMarketData,
   ESPNMarketMovementData,
+  LivePlayerRankData,
+  LiveRankingsData,
   MarketDirection,
   MarketSort,
   PlayerProfileData,
@@ -197,8 +199,6 @@ import type {
   RecapPick,
   RecapSeat,
   RecapStanding,
-  DimeDraftDesk,
-  DimeDraftDeskResponse,
   DimeDraftNote,
   DimeDraftNoteKind,
   DimeDraftNoteResponse,
@@ -971,6 +971,16 @@ class ApiClient {
     return this.getData<ESPNMarketMovementData>(`${RANKINGS_API}/espn/movement?${q.toString()}`, opts);
   }
 
+  /** Court Vision's two rest-of-season boards as stored this morning, with each player's moves and ESPN's rank. */
+  async getLiveRankings(opts?: RequestOptions): Promise<LiveRankingsData | null> {
+    return this.getData<LiveRankingsData>(`${RANKINGS_API}/live`, opts);
+  }
+
+  /** One player's place on this morning's boards and his rank on every stored day. */
+  async getLivePlayerRanking(playerId: number, opts?: RequestOptions): Promise<LivePlayerRankData | null> {
+    return nullOn404(this.getData<LivePlayerRankData>(`${RANKINGS_API}/live/players/${playerId}`, opts));
+  }
+
   async getTeamSchedule(teamAbbrev: string, upcoming: boolean = false, limit: number = 12): Promise<TeamScheduleData | null> {
     const params = new URLSearchParams();
     if (upcoming) params.append("upcoming", "true");
@@ -1265,10 +1275,7 @@ class ApiClient {
     );
   }
 
-  /** What Dime wrote across the user's draft rooms, by room (the AI desk's Draft notes). */
-  async getDimeDraftNotes(getToken: GetTokenFn, opts?: RequestOptions): Promise<DimeDraftDesk> {
-    return unwrap(await fetchJson<DimeDraftDeskResponse>(`${AI_API}/draft-notes`, { ...opts, getToken }));
-  }
+
 
   /** Hand Dime the user's seat in a mock (it drafts to the end), or take it back after the pick it is making. */
   async setDimeDraftSeat(getToken: GetTokenFn, sessionId: number, on: boolean): Promise<DimeDraftRoom> {
@@ -1391,10 +1398,11 @@ class ApiClient {
     );
   }
 
-  /** Everything Dime did on its own, newest first: one team's, or every team's with null. */
-  async getAiActions(getToken: GetTokenFn, teamId: number | null, opts?: RequestOptions): Promise<AiAutopilotAction[]> {
-    const q = teamId != null ? `?team_id=${teamId}` : "";
-    return unwrap(await fetchJson<AiAutopilotActionsResponse>(`${AI_API}/actions${q}`, { ...opts, getToken }));
+  /** One team's fantasy day on the timeline; `day` null for today's. */
+  async getAiTimeline(getToken: GetTokenFn, teamId: number, day: string | null, opts?: RequestOptions): Promise<AiTimeline> {
+    const q = new URLSearchParams({ team_id: String(teamId) });
+    if (day) q.set("date", day);
+    return unwrap(await fetchJson<AiTimelineResponse>(`${AI_API}/timeline?${q}`, { ...opts, getToken }));
   }
 
   /** Turn the account's AI features on or off; returns them as they now stand. */

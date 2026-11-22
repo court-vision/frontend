@@ -69,24 +69,24 @@ function firstRender(over: Partial<PlayerSheetProps>, client = new QueryClient()
 }
 
 const FOUR = ["ownership", "percentiles", "stats", "status"];
-const EXTRAS = ["profile", "projection", "trends"];
+const EXTRAS = ["live-rank", "profile", "projection", "trends"];
 /** The News block mounts under the header, so it waits with the header for a name. */
 const NEWS = "news";
 
 describe("a player sheet's first requests", () => {
-  test("a click asks for all ten at once: the market by the pool row's name, the schedule by its team", () => {
+  test("a click asks for all eleven at once: the market by the pool row's name, the schedule by its team", () => {
     const { asked, held } = firstRender({ poolRow });
     expect(asked).toEqual([...FOUR, ...EXTRAS, NEWS, 'market by "Nikola Jokić"', "schedule of DEN"].sort());
     expect(held).toEqual([]);
   });
 
-  test("an arrow-key flip asks for four and holds the other six until the sheet rests", () => {
+  test("an arrow-key flip asks for four and holds the other seven until the sheet rests", () => {
     const { asked, held } = firstRender({ poolRow, flip: true });
     expect(asked).toEqual(FOUR);
     expect(held).toEqual([...EXTRAS, NEWS, 'market by "Nikola Jokić"', "schedule of null"].sort());
   });
 
-  test("a link that lands before the pool asks for seven; the market and the schedule wait for a name and a team", () => {
+  test("a link that lands before the pool asks for eight; the market and the schedule wait for a name and a team", () => {
     const { asked, held } = firstRender({});
     expect(asked).toEqual([...FOUR, ...EXTRAS].sort());
     expect(held).toEqual(['market by ""', "schedule of null"]);
