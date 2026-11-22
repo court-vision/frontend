@@ -8,7 +8,7 @@ import { usePlayerPercentilesQuery, usePlayerStatsQuery } from "@/hooks/usePlaye
 import { usePlayerOwnershipQuery } from "@/hooks/usePlayerOwnership";
 import { usePlayerStatusQuery } from "@/hooks/usePlayerStatus";
 import { useViewerZone } from "@/hooks/useViewerZone";
-import { useEspnMarketLineQuery, usePlayerProfileQuery, usePlayerProjectionQuery, usePlayerTrendsQuery } from "@/hooks/useScout";
+import { useEspnMarketLineQuery, useLivePlayerRankQuery, usePlayerProfileQuery, usePlayerProjectionQuery, usePlayerTrendsQuery } from "@/hooks/useScout";
 import { useTeamScheduleQuery } from "@/hooks/useTeamSchedule";
 import { formatCategoryValue } from "@/lib/category-format";
 import { userMessage } from "@/lib/api-error";
@@ -39,6 +39,7 @@ import {
   teamInfo,
   type PlayerIdentity,
 } from "@/lib/scout";
+import type { LiveBoard } from "@/lib/live-rankings";
 import { localDate } from "@/lib/local-time";
 import { windowGames } from "@/lib/statWindow";
 import type { GameLog, PercentileData, PlayerStats } from "@/types/player";
@@ -46,6 +47,7 @@ import type { RankingsPlayer } from "@/types/rankings";
 import type { CategoryDef } from "@/types/scoring";
 import type { LivePlayerData } from "@/types/live";
 import { Block, KV, MoveChip, PercentBar, Skeleton, StatTile, StatusChip, ZBar, useSettled, type KVItem } from "./blocks";
+import { RankBlock } from "./LiveRankings";
 import dk from "@/components/desk/desk.module.css";
 import s from "./scout.module.css";
 
@@ -68,6 +70,8 @@ export interface PlayerSheetProps {
   known: PlayerIdentity | undefined;
   /** Tell the page the player's name and team once known, for chips and the G key. */
   onIdentity: (identity: { id: number; name: string; team: string | null }) => void;
+  /** Which rest-of-season board his rank block opens on: the pool's own format. Points when not said. */
+  liveBoard?: LiveBoard;
 }
 
 /** How long a flipped-to sheet must rest before its extras load. */
@@ -107,7 +111,7 @@ function ordinal(n: number): string {
 }
 
 export function PlayerSheet(props: PlayerSheetProps) {
-  const { id, window, setWindow, poolRow, categories, today, open, pinned, togglePin, canCompare, onCompare, live, flip, known, onIdentity } = props;
+  const { id, window, setWindow, poolRow, categories, today, open, pinned, togglePin, canCompare, onCompare, live, flip, known, onIdentity, liveBoard = "points" } = props;
   const stats = usePlayerStatsQuery(id, "nba", window);
   const season = usePlayerStatsQuery(id, "nba", "season");
   const percentiles = usePlayerPercentilesQuery(id);
@@ -115,13 +119,14 @@ export function PlayerSheet(props: PlayerSheetProps) {
   const ownership = usePlayerOwnershipQuery(id);
   const tz = useViewerZone();
   // While flipping through the pool with the arrow keys the extras wait until
-  // the sheet rests on a player: four requests a flip, not nine. A click, a
+  // the sheet rests on a player: four requests a flip, not ten. A click, a
   // search pick or a link asks for all of them at once; waiting there only
   // held the sheet's lower half back by the full 400 ms.
   const settled = useSettled(id, flip ? FLIP_SETTLE_MS : 0);
   const profile = usePlayerProfileQuery(id, settled);
   const trends = usePlayerTrendsQuery(id, settled);
   const projection = usePlayerProjectionQuery(id, settled);
+  const rank = useLivePlayerRankQuery(id, settled);
   const statsLoading = stats.isLoading && !stats.data;
   const { name, team } = sheetIdentity({
     stats: stats.data,
@@ -284,6 +289,8 @@ export function PlayerSheet(props: PlayerSheetProps) {
           </div>
         </Block>
       ) : null}
+
+      <RankBlock data={rank.data} loading={rank.isLoading || !settled} error={rank.error} name={name ?? "This player"} board={liveBoard} />
 
       {statsLoading ? (
         <Skeleton rows={8} />

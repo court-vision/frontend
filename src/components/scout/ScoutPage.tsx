@@ -23,6 +23,7 @@ import { Bench } from "./Bench";
 import { BoardSheet } from "./BoardSheet";
 import { CompareSheet } from "./CompareSheet";
 import { Ledger, type PoolState } from "./Ledger";
+import { LivePoolOverview } from "./LiveRankings";
 import { MarketOverview, MarketSheet, PoolOverview, TeamsOverview } from "./Overviews";
 import { PlayerSheet } from "./PlayerSheet";
 import { SearchBox, fallbackName, type SearchPick } from "./SearchBox";
@@ -177,6 +178,12 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
     },
     [pathname, remember]
   );
+
+  // The rest-of-season board, from anywhere on the desk: the Rankings overview with its board switched.
+  const openLiveBoard = useCallback(() => {
+    setPoolConfig({ board: "live" });
+    open({ kind: "overview", lens: "pool" });
+  }, [open, setPoolConfig]);
 
   const onSearchPick = useCallback(
     (pick: SearchPick) => {
@@ -374,6 +381,8 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
         pool={poolRows}
         poolById={poolById}
         seasonNote={seasonNote}
+        liveBoard={poolConfig.format}
+        openLiveBoard={openLiveBoard}
       />
     );
   } else if (focus.kind === "player") {
@@ -395,6 +404,7 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
         flip={flipped}
         known={identities[focus.id]}
         onIdentity={onIdentity}
+        liveBoard={poolConfig.format}
       />
     );
   } else if (focus.kind === "team") {
@@ -403,6 +413,8 @@ export function ScoutPage({ initialFocus }: { initialFocus: Focus | null }) {
     sheetBody = <GameSheet key={`${focus.date}:${focus.gameId}`} date={focus.date} gameId={focus.gameId} today={today} open={(f) => open(f)} live={live} />;
   } else if (focus.kind === "market") {
     sheetBody = <MarketSheet key={focus.section} section={focus.section} open={(f) => open(f)} focus={focus} />;
+  } else if (focus.lens === "pool" && poolConfig.board === "live") {
+    sheetBody = <LivePoolOverview config={poolConfig} setConfig={setPoolConfig} focus={focus} open={(f) => open(f)} />;
   } else if (focus.lens === "pool") {
     sheetBody = (
       <PoolOverview
