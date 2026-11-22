@@ -48,6 +48,7 @@ import type { CategoryDef } from "@/types/scoring";
 import type { LivePlayerData } from "@/types/live";
 import { Block, KV, MoveChip, PercentBar, Skeleton, StatTile, StatusChip, ZBar, useSettled, type KVItem } from "./blocks";
 import { RankBlock } from "./LiveRankings";
+import { NewsBlock } from "./NewsBlock";
 import dk from "@/components/desk/desk.module.css";
 import s from "./scout.module.css";
 
@@ -119,7 +120,7 @@ export function PlayerSheet(props: PlayerSheetProps) {
   const ownership = usePlayerOwnershipQuery(id);
   const tz = useViewerZone();
   // While flipping through the pool with the arrow keys the extras wait until
-  // the sheet rests on a player: four requests a flip, not ten. A click, a
+  // the sheet rests on a player: four requests a flip, not eleven. A click, a
   // search pick or a link asks for all of them at once; waiting there only
   // held the sheet's lower half back by the full 400 ms.
   const settled = useSettled(id, flip ? FLIP_SETTLE_MS : 0);
@@ -272,6 +273,8 @@ export function PlayerSheet(props: PlayerSheetProps) {
           </div>
         </div>
       </header>
+
+      <NewsBlock playerId={id} name={name} settled={settled} open={open} />
 
       {live ? (
         <Block title="On the floor" note={live.game_status >= 3 ? "final" : `${periodName(live.period)} ${clockText(live.game_clock)}`} right={<span className={`${s.live} ${dk.sub}`}>live</span>}>

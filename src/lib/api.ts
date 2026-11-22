@@ -56,6 +56,7 @@ import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actio
 import type { TeamAvailabilityData, TeamAvailabilityResponse } from "@/types/availability";
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
+import type { NewsListData } from "@/types/news";
 import type { BaseApiResponse } from "@/types/auth";
 import type {
   AiAutopilotResponse,
@@ -933,6 +934,15 @@ class ApiClient {
   /** ESPN's preseason per-game projection; null for a player without one. */
   async getPlayerProjection(playerId: number, opts?: RequestOptions): Promise<PlayerProjectionData | null> {
     return nullOn404(this.getData<PlayerProjectionData>(`${PLAYERS_API}/${playerId}/projection`, opts));
+  }
+
+  /** The news items about a player, newest first, blurbs included (ESPN, Rotowire, RealGM). */
+  async getPlayerNews(playerId: number, params: { days?: number; limit?: number } = {}, opts?: RequestOptions): Promise<NewsListData | null> {
+    const q = new URLSearchParams();
+    if (params.days !== undefined) q.set("days", params.days.toString());
+    if (params.limit !== undefined) q.set("limit", params.limit.toString());
+    const qs = q.toString();
+    return nullOn404(this.getData<NewsListData>(`${PLAYERS_API}/${playerId}/news${qs ? `?${qs}` : ""}`, opts));
   }
 
   /** ESPN's draft market (editorial rank, ADP, auction values), newest snapshot, optionally by name. */
