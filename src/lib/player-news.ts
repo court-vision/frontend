@@ -103,12 +103,14 @@ function sameStory(group: NewsItem[], item: NewsItem): boolean {
   if (group.some((m) => m.source === item.source)) return false;
   const head = words(item.headline);
   if (head && group.some((m) => words(m.headline) === head)) return true;
-  if (group[0].kind !== item.kind) return false;
   const t = timeOf(item);
   if (t == null) return false;
+  // One member has to share both the kind and the half hour. A story folded
+  // by its headline can hold two kinds, and one member's kind with another
+  // member's time is no match.
   return group.some((m) => {
     const mt = timeOf(m);
-    return mt != null && Math.abs(mt - t) <= SAME_STORY_MS;
+    return m.kind === item.kind && mt != null && Math.abs(mt - t) <= SAME_STORY_MS;
   });
 }
 

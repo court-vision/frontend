@@ -126,6 +126,36 @@ describe("newsStories", () => {
     expect(stories.map((s) => s.key)).toEqual([3, 2, 1]);
   });
 
+  test("a story folded across kinds takes a third item only beside a member of its kind", () => {
+    const head = "Grant (head) is questionable for Saturday's game against the Nets.";
+    const stories = newsStories(
+      [
+        item({ news_id: 1, source: "espn_player_news", kind: "injury", headline: head, published_at: "2026-11-14T20:00:00Z" }),
+        item({ news_id: 2, source: "espn_injuries", kind: "availability", headline: head, published_at: "2026-11-14T16:00:00Z" }),
+        // an injury item ten minutes from the availability note, four hours from the injury one
+        item({ news_id: 3, source: "rotowire_rss", kind: "injury", headline: "Jerami Grant: Dealing with head injury", published_at: "2026-11-14T15:50:00Z" }),
+      ],
+      GRANT
+    );
+    expect(stories).toHaveLength(2);
+    expect(stories[1].key).toBe(3);
+  });
+
+  test("a story folded across kinds takes a third item beside any member of its kind", () => {
+    const head = "Grant (head) is questionable for Saturday's game against the Nets.";
+    const stories = newsStories(
+      [
+        item({ news_id: 1, source: "espn_player_news", kind: "availability", headline: head, published_at: "2026-11-14T20:00:00Z" }),
+        item({ news_id: 2, source: "espn_injuries", kind: "injury", headline: head, published_at: "2026-11-14T19:50:00Z" }),
+        // the same kind as the second member, ten minutes from it
+        item({ news_id: 3, source: "rotowire_rss", kind: "injury", headline: "Jerami Grant: Questionable Saturday", published_at: "2026-11-14T19:40:00Z" }),
+      ],
+      GRANT
+    );
+    expect(stories).toHaveLength(1);
+    expect(stories[0].sources.map((s) => s.label)).toEqual(["ESPN", "Rotowire"]);
+  });
+
   test("newest first, the other players named for links, a reporter kept", () => {
     const stories = newsStories(
       [
