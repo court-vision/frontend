@@ -1,79 +1,10 @@
 /*
- * The AI desk: Dime's views and the conversations on the left, the open one
- * (or one of Dime's views) on the right, with the composer docked under a
- * conversation. Desk tokens only (desk.module.css), so every theme
- * carries over.
+ * The AI desk: the team's day on a timeline (or its Notebook, or how its moves
+ * went) on the left, the chat on the right with the composer docked under it.
+ * Desk tokens only (desk.module.css), so every theme carries over.
  */
 
-.body {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-}
-
-/* ---------------------------------------------------------------- the list */
-
-.list {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border-right: 1px solid var(--line);
-  background: var(--surface);
-}
-
-.listHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 14px 10px;
-}
-
-.listScroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-bottom: 12px;
-}
-
-.row {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-  padding: 8px 14px;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.row:hover {
-  background: var(--hover);
-}
-
-.row:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.rowOn {
-  background: var(--accent-soft);
-}
-
-.rowOn::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-  border-radius: 0 calc(2px * var(--round, 1)) calc(2px * var(--round, 1)) 0;
-  background: var(--accent);
-}
+/* ---------------------------------------------------------------- the chats menu */
 
 .rowTitle {
   font-size: 12.5px;
@@ -89,18 +20,7 @@
   color: var(--text-3);
 }
 
-.listToggle {
-  display: none;
-}
-
 /* ---------------------------------------------------------------- the conversation */
-
-.main {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  min-width: 0;
-}
 
 .thread {
   flex: 1;
@@ -821,23 +741,6 @@
 }
 
 @media (max-width: 899.98px) {
-  .body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .list {
-    border-right: 0;
-  }
-
-  .body[data-pane="thread"] .list,
-  .body[data-pane="list"] .main {
-    display: none;
-  }
-
-  .listToggle {
-    display: inline-flex;
-  }
-
   .examples {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -970,61 +873,7 @@
   backdrop-filter: none;
 }
 
-/* ---------------------------------------------------------------- the side list's Dime section */
-
-.listSection {
-  display: flex;
-  flex-direction: column;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--line);
-}
-.navRow {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 14px;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 12.5px;
-  text-align: left;
-  cursor: pointer;
-}
-.navRow:hover {
-  background: var(--hover);
-}
-.navRow:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-.navRow[aria-current="page"] {
-  background: var(--accent-soft);
-}
-.navRow[aria-current="page"]::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 2px;
-  border-radius: 0 calc(2px * var(--round, 1)) calc(2px * var(--round, 1)) 0;
-  background: var(--accent);
-}
-.navCount {
-  min-width: 18px;
-  padding: 1px 6px;
-  border-radius: calc(9px * var(--round, 1));
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 600;
-  text-align: center;
-}
-
-/* ---------------------------------------------------------------- Dime's views in the main area */
+/* ---------------------------------------------------------------- the Notebook and Move results, in the left pane */
 
 .view {
   max-width: 820px;
@@ -1052,20 +901,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-}
-.viewList {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--line);
-  border-radius: calc(8px * var(--round, 1));
-  background: var(--surface);
-  overflow: hidden;
-}
-.viewList > .row + .row {
-  border-top: 1px solid var(--line);
-}
-.viewList > .row {
-  padding: 10px 14px;
 }
 
 .select,
@@ -1265,124 +1100,7 @@
   }
 }
 
-/* ---------------------------------------------------------------- Dime's check-ins, in shadow */
-
-/* A check-in that has nothing to open (running, missed, skipped) */
-.rowStatic {
-  cursor: default;
-}
-.rowStatic:hover {
-  background: transparent;
-}
-.row [data-state="failed"] {
-  color: var(--down);
-}
-.row [data-state="missed"],
-.row [data-state="skipped"] {
-  color: var(--warn);
-}
-
-.teamCards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 10px;
-}
-.autopilot {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: calc(8px * var(--round, 1));
-  background: var(--raised);
-}
-/* Autopilot is running the team: the desk's spectrum edge, drawn over this card's own 1px border */
-.autopilot.autopilotLive {
-  --edge-w: 1px;
-}
-.autopilotHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.autopilotName {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12.5px;
-  font-weight: 600;
-}
-/* How much Dime may do here; a link to its settings in Account */
-.autopilotMode {
-  align-self: flex-start;
-  font-family: var(--desk-mono), ui-monospace, monospace;
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  color: var(--text-2);
-  text-decoration: none;
-  border-bottom: 1px dashed var(--line-2);
-}
-.autopilotMode:hover {
-  color: var(--text);
-  border-bottom-color: var(--accent);
-}
-.autopilot [data-paused-by="system"] {
-  color: var(--warn);
-}
-.autopilotRun {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.autopilotRun .select {
-  flex: 1;
-  min-width: 0;
-  height: 26px;
-  font-size: 12px;
-}
-
-.checkinMeta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 14px;
-  font-size: 12px;
-  color: var(--text-3);
-}
-
-/* What came in that a check-in took: a verdict change, a news item, one line each */
-.checkinEvents {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  margin-top: 3px;
-  min-width: 0;
-}
-
-.checkinEvent {
-  font-size: 11.5px;
-  line-height: 1.35;
-  color: var(--text-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.checkinEvent::before {
-  content: "";
-  display: inline-block;
-  width: 4px;
-  height: 4px;
-  margin: 0 6px 1px 0;
-  border-radius: 50%;
-  background: var(--accent);
-  vertical-align: middle;
-}
-
-.checkinEvent[data-source="availability"]::before {
-  background: var(--warn, var(--accent));
-}
+/* ---------------------------------------------------------------- a check-in's conversation */
 
 /* The check-in's opening message is the server's brief: folded away, readable on demand */
 .brief {
@@ -1515,4 +1233,550 @@
 
 .chip[data-state="shadow"] {
   border-style: dashed;
+}
+
+/* ---------------------------------------------------------------- the split desk (the Dime desk redesign) */
+
+/* Two half panes, the team's day on the left and the chat on the right; E expands one. With
+ * check-ins off on the team there is no timeline and the chat stands alone (data-solo). */
+.split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.split[data-solo],
+.split[data-expand="timeline"],
+.split[data-expand="chat"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.split[data-expand="timeline"] > .chatPane,
+.split[data-expand="chat"] > .timelinePane {
+  display: none;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.timelinePane {
+  border-right: 1px solid var(--line);
+}
+.split[data-expand="timeline"] > .timelinePane {
+  border-right: 0;
+}
+
+.paneHead {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  min-width: 0;
+  padding: 0 10px 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.paneTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+.paneNote {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.narrowOnly {
+  display: none;
+}
+
+.chatList {
+  flex: 0 0 auto;
+  max-height: 40%;
+  overflow-y: auto;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.chatRow {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: 7px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.chatRow:hover {
+  background: var(--hover);
+}
+.chatRow[aria-current="true"] {
+  background: var(--accent-soft);
+}
+.chatRow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ---------------------------------------------------------------- the timeline */
+
+.tlBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dayBar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px 7px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.dayLabel {
+  min-width: 150px;
+  text-align: center;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.tlScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 32px 8px;
+}
+
+/* Dime's plan for the team (its newest plan note) and the notes due to recheck, above the day */
+.plan,
+.tlDue,
+.tlEmpty {
+  margin-left: 6px;
+}
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 12px 10px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: calc(6px * var(--round, 1));
+  background: var(--surface);
+}
+.planHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  min-height: 22px;
+}
+.planHead > span {
+  white-space: nowrap;
+}
+.planText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+.tlDue {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px dashed var(--line-2);
+  border-radius: calc(6px * var(--round, 1));
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+.tlEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px 6px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+/* The day itself: times on the left, a rail with a dot per row, the rows beside it */
+.tl {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tl::before {
+  content: "";
+  position: absolute;
+  left: 82px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--line-2);
+}
+.tlRow {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  column-gap: 22px;
+  align-items: start;
+}
+.tlWhen {
+  position: relative;
+  padding-top: 11px;
+  text-align: right;
+  white-space: nowrap;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-2);
+}
+.tlWhen::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  right: -14px;
+  box-sizing: border-box;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-3);
+  box-shadow: 0 0 0 3px var(--bg);
+}
+.tlRow[data-kind="upcoming"] .tlWhen::after {
+  border: 1.5px solid var(--text-3);
+  background: var(--bg);
+}
+.tlRow[data-kind="tip"] .tlWhen {
+  padding-top: 0;
+}
+.tlRow[data-kind="tip"] .tlWhen::after {
+  top: 3px;
+  background: var(--down);
+}
+.tlRow:has(.tlItem[aria-current="true"]) .tlWhen {
+  color: var(--accent);
+}
+.tlRow:has(.tlItem[aria-current="true"]) .tlWhen::after {
+  background: var(--accent);
+}
+.tlMark {
+  padding-top: 5px;
+  border-top: 1px dashed color-mix(in srgb, var(--down) 60%, transparent);
+  font-size: 12px;
+  color: var(--text-3);
+}
+.tlNow {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.tlNow > span:first-child {
+  text-align: right;
+  white-space: nowrap;
+}
+.tlNowLine {
+  height: 1px;
+  background: var(--accent);
+}
+
+/* A check-in, or one still to come (dashed) */
+.tlItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--surface);
+}
+.tlItem:has(> .tlHead) {
+  cursor: pointer;
+}
+.tlItem:has(> .tlHead):hover {
+  border-color: var(--line-2);
+}
+.tlItem[aria-current="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+.tlItem[data-plan] {
+  border-style: dashed;
+  background: transparent;
+  gap: 4px;
+}
+.tlItem[data-state="running"] {
+  border-color: color-mix(in srgb, var(--preview) 55%, var(--line));
+}
+.tlHead,
+.tlHeadStatic {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.tlHead {
+  cursor: pointer;
+}
+.tlHead:focus-visible,
+.tlHeadStatic:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+  border-radius: calc(4px * var(--round, 1));
+}
+.tlKind {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line-2);
+  border-radius: calc(4px * var(--round, 1));
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--text-2);
+}
+.tlKind[data-plan] {
+  border-style: dashed;
+}
+.tlTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.tlFaint {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+.tlLabel {
+  margin-right: 6px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.tlNotes {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+.tlNotes > [data-retired] {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
+/* Its calls: what Dime thought, why, what it did and how it went, with your agree or disagree */
+.tlCalls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tlCall {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.tlTag {
+  margin-top: 2px;
+  padding: 1px 5px;
+  border-radius: calc(3px * var(--round, 1));
+  background: var(--hover);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+}
+.tlTag[data-call="change"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.tlCallText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tlSummary {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+}
+.tlReason {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+/* The timeline alone has the room for every word */
+.split[data-expand="timeline"] .tlReason {
+  display: block;
+  -webkit-line-clamp: unset;
+}
+.tlAction {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+.tlAction[data-outcome="sent"] {
+  color: var(--up);
+}
+.tlAction[data-outcome="blocked"],
+.tlAction[data-outcome="refused"],
+.tlAction[data-outcome="failed"] {
+  color: var(--warn);
+}
+.tlSide {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tlSide [data-open] {
+  opacity: 0.8;
+}
+.tlVerdict {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: calc(5px * var(--round, 1));
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.tlVerdict:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.tlVerdict:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.tlVerdict[data-verdict="agree"][aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--up) 50%, transparent);
+  background: color-mix(in srgb, var(--up) 12%, transparent);
+  color: var(--up);
+}
+.tlVerdict[data-verdict="disagree"][aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--down) 50%, transparent);
+  background: color-mix(in srgb, var(--down) 12%, transparent);
+  color: var(--down);
+}
+
+/* Phones and narrow windows: one pane at a time, the header's button between them */
+@media (max-width: 899.98px) {
+  .split,
+  .split[data-expand="timeline"],
+  .split[data-expand="chat"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .split[data-narrow="chat"] > .chatPane,
+  .split[data-narrow="timeline"] > .timelinePane {
+    display: flex;
+  }
+  .split[data-narrow="chat"] > .timelinePane,
+  .split[data-narrow="timeline"] > .chatPane {
+    display: none;
+  }
+  .timelinePane {
+    border-right: 0;
+  }
+  .narrowOnly {
+    display: inline-flex;
+  }
+  .wideOnly {
+    display: none;
+  }
+  .tlReason {
+    display: block;
+    -webkit-line-clamp: unset;
+  }
+}
+
+@media (max-width: 639.98px) {
+  /* The title keeps its words: what it cost and what it did go under it */
+  .tlHead,
+  .tlHeadStatic {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .tlTitle {
+    white-space: normal;
+  }
+  /* A call's chip and verdicts go under its words */
+  .tlCall {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .tlSide {
+    grid-column: 2;
+  }
+  .tl::before {
+    left: 60px;
+  }
+  .tlRow,
+  .tlNow {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+  .tlRow {
+    column-gap: 18px;
+  }
+  .tlWhen {
+    font-size: 10.5px;
+  }
+  .tlWhen::after {
+    right: -12px;
+  }
 }

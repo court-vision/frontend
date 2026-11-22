@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { DeskBar, DeskStatus } from "@/components/desk/DeskBar";
 import { Headshot } from "@/components/desk/Headshot";
+import { AI_DESK } from "@/components/desk/routes";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import dk from "@/components/desk/desk.module.css";
 import {
@@ -28,7 +29,9 @@ import {
   standingsMode,
   type PickColumn,
 } from "@/lib/draft-recap";
-import type { DraftRecapResult, PickSortKey, RecapPick, RecapSeat, SortDirection } from "@/types/draft";
+import { useDimeDraftQuery } from "@/hooks/useDimeDraft";
+import { failedLine, noteLabel, notePreview } from "@/lib/draft-dime";
+import type { DimeDraftNote, DraftRecapResult, PickSortKey, RecapPick, RecapSeat, SortDirection } from "@/types/draft";
 import { num, ordinal, shortName, signed } from "./format";
 import { roomFacts, roomTitle } from "./RoomView";
 import { recapExit, type RecapModel } from "./model";
@@ -95,9 +98,15 @@ export function RecapView({ model }: { model: RecapModel }) {
               Back to the room
             </Link>
           ) : null}
+          {/* A plan Dime wrote before the first pick is still the room's note */}
+          {model.demo ? null : (
+            <div style={{ width: "min(420px, 100%)", textAlign: "left" }}>
+              <DimeNotes sessionId={session.id} />
+            </div>
+          )}
         </div>
       ) : (
-        <RecapBody recap={model.recap} roomHref={session.kind === "import" ? null : model.hrefs.room} />
+        <RecapBody recap={model.recap} roomHref={session.kind === "import" ? null : model.hrefs.room} dimeRoom={model.demo ? null : session.id} />
       )}
       <DeskStatus keys={[["R", exit.label], ["T", "theme"]]}>
         {model.recap ? <span>{asOfLabel(model.recap.meta)}</span> : null}
@@ -106,7 +115,7 @@ export function RecapView({ model }: { model: RecapModel }) {
   );
 }
 
-function RecapBody({ recap, roomHref }: { recap: DraftRecapResult; roomHref: string | null }) {
+function RecapBody({ recap, roomHref, dimeRoom }: { recap: DraftRecapResult; roomHref: string | null; dimeRoom: number | null }) {
   const meta = recap.meta;
   const gradedBy = meta?.graded_by ?? null;
   const seats = useMemo(() => sortSeats(recap.seats), [recap.seats]);
@@ -204,6 +213,7 @@ function RecapBody({ recap, roomHref }: { recap: DraftRecapResult; roomHref: str
               onSelect={() => setSeatFilter((x) => (x === seat.slot ? null : seat.slot))}
             />
           ))}
+          <DimeNotes sessionId={dimeRoom} />
         </aside>
         <div className={s.recapMain}>
           <PickTable recap={recap} seatFilter={seatFilter} onClearFilter={() => setSeatFilter(null)} />
@@ -211,6 +221,50 @@ function RecapBody({ recap, roomHref }: { recap: DraftRecapResult; roomHref: str
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * What Dime wrote in the room (its plan, a note at each of your picks, its recap), under the
+ * seats: each note's first line, and its conversation opens in the AI desk to follow up. Nothing
+ * shows for a room Dime wrote nothing in.
+ */
+function DimeNotes({ sessionId }: { sessionId: number | null }) {
+  const query = useDimeDraftQuery(sessionId, sessionId != null);
+  const notes = query.data?.notes ?? [];
+  if (!notes.length) return null;
+  return (
+    <section aria-label="Dime's notes">
+      <div className={s.sectionHead}>
+        <span className={dk.label}>Dime&apos;s notes</span>
+        <span className={s.right}>
+          <span className={dk.sub}>{notes.length}</span>
+        </span>
+      </div>
+      <div className={s.sectionBody} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {[...notes].reverse().map((note) => (
+          <DimeNoteRow key={note.id} note={note} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DimeNoteRow({ note }: { note: DimeDraftNote }) {
+  const line = note.state === "running" ? "Dime is writing it…" : (failedLine(note) ?? notePreview(note.text));
+  return (
+    <div className={s.dimeBlock}>
+      <span style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+        <span className={dk.label}>{noteLabel(note)}</span>
+        <span className={dk.spacer} />
+        {note.conversation_id != null && note.state !== "running" ? (
+          <Link href={`${AI_DESK}?c=${note.conversation_id}`} className={dk.link} title="Open the note's conversation in the AI desk, to ask a follow-up">
+            Follow up
+          </Link>
+        ) : null}
+      </span>
+      {line ? <span className={s.dimeText}>{line}</span> : null}
+    </div>
   );
 }
 

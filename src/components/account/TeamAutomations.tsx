@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Bell, ChevronRight, MessagesSquare } from "lucide-react";
 import { toast } from "sonner";
 import { aiMessage } from "@/hooks/useAi";
-import { AI_DESK } from "@/components/desk/routes";
+import { AI_DESK, DRAFT_DESK } from "@/components/desk/routes";
 import { whenTime } from "@/components/week/format";
 import { KIND_LABEL } from "@/lib/ai-checkins";
 import {
@@ -327,11 +327,11 @@ function Features({
           features.memory ? (
             <>
               Dime keeps notes on your teams, your league and how its moves went, and reads them every turn.{" "}
-              <Link href={`${AI_DESK}?v=memory`}>Read and edit them</Link> on the AI desk.
+              <Link href={`${AI_DESK}?v=notebook`}>Read and edit them</Link> in the AI desk&apos;s Notebook.
             </>
           ) : (
             <>
-              Dime neither reads nor writes notes. The notes stay, and you can still <Link href={`${AI_DESK}?v=memory`}>edit them</Link>.
+              Dime neither reads nor writes notes. The notes stay, and you can still <Link href={`${AI_DESK}?v=notebook`}>edit them</Link>.
             </>
           )
         }
@@ -344,13 +344,13 @@ function Features({
         help={
           features.draft_rooms ? (
             <>
-              A Dime section in every draft room: a plan that sets the room&apos;s punts, a note as each of your picks comes up, your seat in a mock, and a recap. Its notes are in{" "}
-              <Link href={`${AI_DESK}?v=drafts`}>Draft notes</Link> on the AI desk.
+              A Dime section in every draft room: a plan that sets the room&apos;s punts, a note as each of your picks comes up, your seat in a mock, and a recap. Its notes are on each room&apos;s recap in the{" "}
+              <Link href={DRAFT_DESK}>Draft desk</Link>.
             </>
           ) : (
             <>
-              Draft rooms show no Dime section, and Dime holding a mock seat hands it back before its next pick. Its notes stay in{" "}
-              <Link href={`${AI_DESK}?v=drafts`}>Draft notes</Link>.
+              Draft rooms show no Dime section, and Dime holding a mock seat hands it back before its next pick. Its notes stay on each room&apos;s recap in the{" "}
+              <Link href={DRAFT_DESK}>Draft desk</Link>.
             </>
           )
         }

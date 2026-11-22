@@ -6,9 +6,9 @@ import { toApiError, userMessage } from "@/lib/api-error";
 import type { GetTokenFn } from "@/lib/http";
 import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
 import { VerdictSaves, verdictOf, withVerdict } from "@/lib/ai-checkins";
+import { timelineVerdictOf, timelineWithVerdict } from "@/lib/ai-timeline";
 import { notificationKeys } from "@/hooks/useNotificationPreferences";
 import type {
-  AiAutopilotAction,
   AiAutopilotChange,
   AiFeatures,
   AiBlock,
@@ -18,6 +18,7 @@ import type {
   AiConversationSummary,
   AiFeedback,
   AiNote,
+  AiTimeline,
   AiNoteCreateRequest,
   AiNoteEditRequest,
   AiUsage,
@@ -50,7 +51,9 @@ export const aiKeys = {
   conversation: (userId: string | null | undefined, id: number) => [...aiKeys.user(userId), "conversation", id] as const,
   notes: (userId: string | null | undefined) => [...aiKeys.user(userId), "notes"] as const,
   checkins: (userId: string | null | undefined) => [...aiKeys.user(userId), "checkins"] as const,
-  actions: (userId: string | null | undefined, teamId: number | null) => [...aiKeys.user(userId), "actions", teamId] as const,
+  timelines: (userId: string | null | undefined) => [...aiKeys.user(userId), "timeline"] as const,
+  timeline: (userId: string | null | undefined, teamId: number, day: string | null) =>
+    [...aiKeys.timelines(userId), teamId, day ?? "today"] as const,
   moves: (userId: string | null | undefined, teamId: number, scope: MoveScope) =>
     [...aiKeys.user(userId), "moves", teamId, scope] as const,
 };
@@ -116,6 +119,13 @@ export function useDeleteAiConversation() {
         d ? { ...d, checkins: d.checkins.map((c) => (c.conversation_id === id ? { ...c, conversation_id: null } : c)) } : d
       );
       void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
+      // The timeline's days too: a past day isn't read again on its own, and would still offer it
+      queryClient.setQueriesData<AiTimeline>({ queryKey: aiKeys.timelines(userId) }, (t) =>
+        t && t.checkins.some((c) => c.conversation_id === id)
+          ? { ...t, checkins: t.checkins.map((c) => (c.conversation_id === id ? { ...c, conversation_id: null } : c)) }
+          : t
+      );
+      void queryClient.invalidateQueries({ queryKey: aiKeys.timelines(userId) });
     },
   });
 }
@@ -186,11 +196,14 @@ export function useRunAiCheckin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ teamId, kind }: { teamId: number; kind?: AiCheckinRunKind }) => apiClient.runAiCheckin(getToken, teamId, kind),
-    onSuccess: (checkin) => {
+    onSuccess: async (checkin) => {
       queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
         d ? { ...d, checkins: [checkin, ...d.checkins.filter((c) => c.checkin_id !== checkin.checkin_id)] } : d
       );
       void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
+      // Pending until the timeline has read the running check-in, so its Run now stays off in between
+      // (the server refuses a second run on a team with one running all the same)
+      await queryClient.invalidateQueries({ queryKey: aiKeys.timelines(userId) });
     },
   });
 }
@@ -233,14 +246,23 @@ export function useSetAiFeatures() {
   });
 }
 
-/** Everything Dime did on its own on a team (all teams with null), newest first. */
-export function useAiActionsQuery(teamId: number | null, enabled = true) {
+/**
+ * One team's fantasy day on the timeline (null `day`: today's). Today is read again every 15
+ * seconds while a check-in runs and every 2 minutes otherwise (the schedule starts them on its
+ * own); a past day doesn't change, so it isn't polled.
+ */
+export function useAiTimelineQuery(teamId: number | null, day: string | null, enabled: boolean) {
   const { getToken, isSignedIn, userId } = useAuth();
-  return useQuery<AiAutopilotAction[]>({
-    queryKey: aiKeys.actions(userId, teamId),
-    queryFn: ({ signal }) => apiClient.getAiActions(getToken, teamId, { signal }),
-    enabled: enabled && isSignedIn === true,
-    staleTime: 60_000,
+  return useQuery<AiTimeline>({
+    queryKey: aiKeys.timeline(userId, teamId ?? 0, day),
+    queryFn: ({ signal }) => apiClient.getAiTimeline(getToken, teamId!, day, { signal }),
+    enabled: enabled && teamId != null && isSignedIn === true,
+    staleTime: 15_000,
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      if (!d || d.date < d.today) return false;
+      return d.checkins.some((c) => c.state === "running") ? 15_000 : 2 * 60_000;
+    },
     retry: false,
     meta: { toast: false },
   });
@@ -263,25 +285,42 @@ export function useAiDecisionVerdict(conversationId: number | null) {
       apiClient.setAiDecisionVerdict(getToken, decisionId, verdict),
     onMutate: async ({ decisionId, verdict }) => {
       const save = verdictSaves.start(decisionId);
-      if (conversationId == null) return { save, key: null, previous: undefined };
+      // The timeline's days hold the same call: every cached day shows the new verdict at once, so
+      // both panes agree. A read of a day already on its way would land after this with the old one
+      const days = aiKeys.timelines(userId);
+      await queryClient.cancelQueries({ queryKey: days });
+      const dayBefore = queryClient
+        .getQueriesData<AiTimeline>({ queryKey: days })
+        .map(([, t]) => (t ? timelineVerdictOf(t, decisionId) : undefined))
+        .find((v) => v !== undefined);
+      queryClient.setQueriesData<AiTimeline>({ queryKey: days }, (t) => (t ? timelineWithVerdict(t, decisionId, verdict) : t));
+      if (conversationId == null) return { save, key: null, previous: undefined, dayBefore };
       const key = aiKeys.conversation(userId, conversationId);
-      // A read of the conversation already on its way would land after this and show the old verdict
       await queryClient.cancelQueries({ queryKey: key });
       const before = queryClient.getQueryData<AiConversation>(key);
       const previous = before ? verdictOf(before, decisionId) : undefined;
       if (before) queryClient.setQueryData<AiConversation>(key, withVerdict(before, decisionId, verdict));
-      return { save, key, previous };
+      return { save, key, previous, dayBefore };
     },
     onError: (_err, { decisionId }, ctx) => {
-      const previous = ctx?.previous;
-      if (!ctx?.key || previous === undefined || !verdictSaves.isNewest(decisionId, ctx.save)) return;
-      queryClient.setQueryData<AiConversation>(ctx.key, (c) => (c ? withVerdict(c, decisionId, previous) : c));
+      if (!ctx || !verdictSaves.isNewest(decisionId, ctx.save)) return;
+      const { key, previous, dayBefore } = ctx;
+      if (dayBefore !== undefined) {
+        queryClient.setQueriesData<AiTimeline>({ queryKey: aiKeys.timelines(userId) }, (t) =>
+          t ? timelineWithVerdict(t, decisionId, dayBefore) : t
+        );
+      }
+      if (key && previous !== undefined) {
+        queryClient.setQueryData<AiConversation>(key, (c) => (c ? withVerdict(c, decisionId, previous) : c));
+      }
     },
     onSettled: () => {
-      // The inbox's agree / disagree tallies
-      void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
-      // Once no save is in flight, the stored conversations say which verdicts were kept
+      // Once no save is in flight, the stored rows say which verdicts were kept: the inbox's agree /
+      // disagree tallies, the timeline's calls and the conversations. Reading them sooner could show
+      // an earlier save's verdict over a newer one still on its way
       if (verdictSaves.settle()) {
+        void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });
+        void queryClient.invalidateQueries({ queryKey: aiKeys.timelines(userId) });
         void queryClient.invalidateQueries({ queryKey: [...aiKeys.user(userId), "conversation"] });
       }
     },
