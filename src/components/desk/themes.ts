@@ -26,6 +26,8 @@ export const DESK_THEMES = [
   { id: "ember", label: "Ember", scheme: "dark", pair: "paper", note: "Warm charcoal and amber" },
   { id: "chalk", label: "Chalk", scheme: "light", pair: "blacktop", note: "Black ink, hard shadows, a volt highlighter" },
   { id: "blacktop", label: "Blacktop", scheme: "dark", pair: "chalk", note: "Asphalt grain, square corners and volt" },
+  { id: "harvest", label: "Harvest", scheme: "light", pair: "hearth", note: "Linen, pumpkin and cranberry, a gingham today" },
+  { id: "hearth", label: "Hearth", scheme: "dark", pair: "harvest", note: "Cranberry and firelight, a flannel today" },
 ] as const satisfies readonly DeskThemeInfo[];
 
 export type DeskThemeId = (typeof DESK_THEMES)[number]["id"];
