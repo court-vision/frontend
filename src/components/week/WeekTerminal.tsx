@@ -43,7 +43,7 @@ import {
   type WeekSource,
 } from "@/lib/week-grid";
 import { sourceFromStreamer } from "@/lib/week-source";
-import { heldMoves, lineupsBeforeSend, planDays, unstageHeld, wholeLineup } from "@/lib/week-autoslot";
+import { fillOpenSpots, heldMoves, lineupsBeforeSend, planDays, unstageHeld, wholeLineup } from "@/lib/week-autoslot";
 import { pickupTiming, pickupViews } from "@/lib/pickups";
 import { eventLine, laneCells, laneReason, laneRoomRefusal, laneStretches, passedDates, projectedSource } from "@/lib/lanes";
 import type { LaneNotify, LanePlayer } from "@/types/stream-lane";
@@ -860,7 +860,7 @@ export function WeekTerminal({
   const stagePlan = useLatestCallback((days: number[], which: "day" | "week", todayPlan: LineupPlanData | null) => {
     if (!source) return;
     const result = planDays({ boards, stagedByDay, held, played, leaves }, days, (day, b) =>
-      day === todayDay ? (todayPlan ? planToStaged(b, todayPlan) : null) : bestDayStaging(b, source, day)
+      day === todayDay ? (todayPlan ? fillOpenSpots(b, planToStaged(b, todayPlan), idleToday) : null) : bestDayStaging(b, source, day)
     );
     if (result.changed.length === 0) {
       toast("Nothing to change", {
@@ -893,7 +893,8 @@ export function WeekTerminal({
    * Plan `days` and stage each one's best lineup, in day order, each on the
    * lineup the days before it carry in (`planDays`), and hold them. Today's is
    * the server's fill-only plan, which knows locks and ESPN's rules; a later
-   * day's is the best lineup for its games. IR is never touched.
+   * day's is the best lineup for its games. Either way the spots left open take
+   * bench players who don't play that day (`fillOpenSpots`). IR is never touched.
    */
   const autoslotDays = useCallback(
     async (days: number[], which: "day" | "week") => {
@@ -2118,11 +2119,17 @@ function canSit(player: LineupPlayer, slot: number): boolean {
   return slot !== IR_SLOT_ID || isInjured(player);
 }
 
+/** Today's fill may start a bench player who can't score today: no game, or out. */
+function idleToday(p: LineupPlayer): boolean {
+  return !p.has_game_today || isOutStatus(p.injury_status);
+}
+
 /**
  * The best lineup for a later day, as staging on that day's ESPN lineup:
  * everyone healthy with a game seated to maximize projected points; players
- * who don't play keep a spot that's still free, else go to the bench (ESPN's
- * bench is unbounded, so a spot may stay empty); IR untouched.
+ * who don't play keep a spot that's still free, and the spots still open go
+ * to bench players who don't play either (`fillOpenSpots`), so the day shows
+ * no OPEN spot while the bench has someone for it; IR untouched.
  */
 function bestDayStaging(board: LineupState, source: WeekSource, day: number): Staged {
   const everyone = weekRoster(source);
@@ -2150,7 +2157,8 @@ function bestDayStaging(board: LineupState, source: WeekSource, day: number): St
     target[p.player_id] = slot;
     used.set(slot, (used.get(slot) ?? 0) + 1);
   }
-  return normalize(board, target);
+  const plays = new Set(playing.map((p) => p.player_id));
+  return fillOpenSpots(board, normalize(board, target), (p) => !plays.has(p.player_id));
 }
 
 /** A previewed add: made now, or scheduled for `from` (the roster stands until then). */

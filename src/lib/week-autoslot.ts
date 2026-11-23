@@ -19,8 +19,9 @@
  * day whose lineup matches the day before's (players staged to drop aside) has
  * no edit of its own yet.
  */
-import { assignment, diff, normalize, unstage, type Staged } from "./lineup-editor";
-import type { LineupMove, LineupState } from "@/types/lineup-editor";
+import { BENCH_SLOT_ID, assignment, diff, isActiveSlot, normalize, unstage, type Staged } from "./lineup-editor";
+import { isOutStatus } from "./week-grid";
+import type { LineupMove, LineupPlayer, LineupState } from "@/types/lineup-editor";
 
 /** Where everyone sits on a day: ESPN player id → slot id. */
 export type Lineup = Map<number, number>;
@@ -158,4 +159,76 @@ export function planDays(
     if (hadMoves || diff(from, whole).length > 0) changed.push(day);
   }
   return { stagedByDay, held, changed };
+}
+
+/**
+ * Start bench players in the active spots `staged` leaves open on a day, ones
+ * without a game too: it changes no score, and a lineup with no OPEN spot
+ * reads better than one with six on the bench (James, 2026-11-23). Only `idle`
+ * players go in (no game that day, or out), so nobody who would score is
+ * moved. Everyone already in an active spot stays in one, shifting only when
+ * that opens a spot someone can take (a free spot he fits is used first); the
+ * healthy go in before the out, then the higher average. Locked players and
+ * IR never move. Returns the staging with the fills added.
+ */
+export function fillOpenSpots(board: LineupState, staged: Staged, idle: (p: LineupPlayer) => boolean): Staged {
+  const seat = assignment(board, staged);
+  const room = new Map<number, number>();
+  for (const s of board.slots) if (isActiveSlot(s.slot_id) && s.count > 0) room.set(s.slot_id, s.count);
+  const starters: Array<{ id: number; at: number }> = [];
+  const fillers: LineupPlayer[] = [];
+  const fits = new Map<number, number[]>();
+  for (const p of board.players) {
+    const at = seat.get(p.player_id) ?? p.lineup_slot_id;
+    const fixed = p.locked || p.lineup_locked;
+    if (room.has(at) && (fixed || !p.eligible_slot_ids.includes(at))) {
+      // He keeps his spot whatever happens: it isn't free.
+      room.set(at, room.get(at)! - 1);
+      continue;
+    }
+    if (fixed) continue;
+    fits.set(p.player_id, p.eligible_slot_ids.filter((x) => room.has(x)));
+    if (room.has(at)) starters.push({ id: p.player_id, at });
+    else if (at === BENCH_SLOT_ID && fits.get(p.player_id)!.length > 0 && idle(p)) fillers.push(p);
+  }
+  // One entry per spot, its holder's id (null: open), starters where they sit.
+  const spots: number[] = [];
+  for (const [slot, n] of room) for (let k = 0; k < n; k++) spots.push(slot);
+  const holder: Array<number | null> = spots.map(() => null);
+  for (const st of starters) {
+    const i = spots.findIndex((slot, k) => slot === st.at && holder[k] === null);
+    if (i < 0) return staged; // more starters than spots: leave the day as it is
+    holder[i] = st.id;
+  }
+  if (!holder.includes(null) || fillers.length === 0) return staged;
+
+  // An augmenting path: the player takes a spot he fits, its holder shifting along to another.
+  const seatIn = (id: number, seen: Set<number>): boolean => {
+    const options = spots.map((_, i) => i).filter((i) => !seen.has(i) && fits.get(id)!.includes(spots[i]));
+    const open = options.find((i) => holder[i] === null);
+    if (open != null) {
+      holder[open] = id;
+      return true;
+    }
+    for (const i of options) {
+      if (seen.has(i)) continue;
+      seen.add(i);
+      if (seatIn(holder[i]!, seen)) {
+        holder[i] = id;
+        return true;
+      }
+    }
+    return false;
+  };
+  const rank = (p: LineupPlayer) => (isOutStatus(p.injury_status) ? 0 : 1) * 1e6 + p.avg_points;
+  for (const p of [...fillers].sort((a, b) => rank(b) - rank(a) || a.player_id - b.player_id)) {
+    if (!holder.includes(null)) break;
+    seatIn(p.player_id, new Set());
+  }
+
+  const out: Staged = { ...staged };
+  holder.forEach((id, i) => {
+    if (id != null) out[id] = spots[i];
+  });
+  return normalize(board, out);
 }
