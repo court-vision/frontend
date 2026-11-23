@@ -21,7 +21,7 @@ import {
 } from "@/lib/ai-autonomy";
 import { effectivePrefs, teamLine, teamName, type AccountFocus } from "@/lib/account";
 import type { AiActing, AiAutomationRow, AiAutopilotChange, AiAutopilotTeam, AiFeatures, AiLevel } from "@/types/ai";
-import type { LateScratchLevel, NotificationPreference } from "@/types/notifications";
+import type { DailyActionsLevel, LateScratchLevel, NotificationPreference } from "@/types/notifications";
 import type { TeamResponseData } from "@/types/team";
 import type { AccountModel } from "./model";
 import { Block, Skeleton, Toggle } from "./blocks";
@@ -214,9 +214,10 @@ function TeamAutomation({
   };
   const pick = (r: AiAutomationRow, level: AiLevel) => {
     if (!pilot) {
-      // Without CV AI a level is the team's own preference: lineup's email and fill, late scratches' level
+      // Without CV AI a level is the team's own preference: lineup's email and fill, late scratches' and daily actions' levels
       if (r.row === "lineup") run(model.saveTeamPrefs(team.team_id, lineupPrefs(level)));
       else if (r.row === "late_scratch") run(model.saveTeamPrefs(team.team_id, { late_scratch_level: level as LateScratchLevel }));
+      else if (r.row === "daily_actions") run(model.saveTeamPrefs(team.team_id, { daily_actions_level: level as DailyActionsLevel }));
       return;
     }
     // Pausing check-ins leaves the switch on; any other row changed under it turns it off, the rest staying at AI

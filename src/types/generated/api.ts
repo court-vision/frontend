@@ -1225,6 +1225,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/jobs/daily-actions/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Daily Actions
+         * @description Make one team's daily actions at Act: the Week desk's IR moves and a free agent for each
+         *     open roster spot, never a drop.
+         *
+         *     Called by data-platform's daily_actions pipeline once a day per team at Act, before the
+         *     first tip. The outcome is reported in `data.outcome`, never raised: applied (with the IR
+         *     moves and pickups made, and `held` when something was left), noop, skipped (why), rejected
+         *     or failed (nothing went).
+         */
+        post: operations["run_daily_actions_v1_internal_jobs_daily_actions_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/jobs/ledger/run": {
         parameters: {
             query?: never;
@@ -6409,6 +6435,22 @@ export interface components {
             drop_player_id: number | null;
             pickup: components["schemas"]["StreamerPlayerResp"];
         };
+        /**
+         * DailyActionsAdd
+         * @description A free agent the pass picked up for an open roster spot.
+         */
+        DailyActionsAdd: {
+            /** Audit Id */
+            audit_id: number | null;
+            /** Detail */
+            detail: string | null;
+            player: components["schemas"]["DailyActionPlayer"];
+            /**
+             * Verified
+             * @default false
+             */
+            verified: boolean;
+        };
         /** DailyActionsData */
         DailyActionsData: {
             /**
@@ -6447,6 +6489,68 @@ export interface components {
         /** DailyActionsResp */
         DailyActionsResp: {
             data: components["schemas"]["DailyActionsData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** DailyActionsRunData */
+        DailyActionsRunData: {
+            /**
+             * Adds
+             * @default []
+             */
+            adds: components["schemas"]["DailyActionsAdd"][];
+            /** First Game Time Et */
+            first_game_time_et: string | null;
+            /** Held */
+            held: string | null;
+            /**
+             * Ir Moves
+             * @default []
+             */
+            ir_moves: components["schemas"]["LineupMoveResult"][];
+            /** Nba Date */
+            nba_date: string | null;
+            /**
+             * Open Spots
+             * @default 0
+             */
+            open_spots: number;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "applied" | "noop" | "skipped" | "rejected" | "failed";
+            /** Reason */
+            reason: string | null;
+            /**
+             * Team Name
+             * @default
+             */
+            team_name: string;
+        };
+        /**
+         * DailyActionsRunReq
+         * @description One team's pass, from data-platform's daily_actions pipeline (once a day before the first tip).
+         */
+        DailyActionsRunReq: {
+            /**
+             * Nba Date
+             * Format: date
+             */
+            nba_date: string;
+            /** Team Id */
+            team_id: number;
+            /** User Id */
+            user_id: number;
+        };
+        /** DailyActionsRunResp */
+        DailyActionsRunResp: {
+            data: components["schemas"]["DailyActionsRunData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -11110,6 +11214,8 @@ export interface components {
              * @default false
              */
             auto_lineup_enabled?: boolean;
+            /** Daily Actions Level */
+            daily_actions_level?: ("off" | "act") | null;
             /** Email */
             email?: string | null;
             /** Late Scratch Level */
@@ -11150,6 +11256,12 @@ export interface components {
              * @default false
              */
             auto_lineup_enabled: boolean;
+            /**
+             * Daily Actions Level
+             * @default off
+             * @enum {string}
+             */
+            daily_actions_level: "off" | "act";
             /** Email */
             email: string | null;
             /**
@@ -11208,6 +11320,8 @@ export interface components {
             alert_minutes_before?: number | null;
             /** Auto Lineup Enabled */
             auto_lineup_enabled?: boolean | null;
+            /** Daily Actions Level */
+            daily_actions_level?: ("off" | "act") | null;
             /** Email */
             email?: string | null;
             /** Late Scratch Level */
@@ -11230,6 +11344,8 @@ export interface components {
             alert_minutes_before: number | null;
             /** Auto Lineup Enabled */
             auto_lineup_enabled: boolean | null;
+            /** Daily Actions Level */
+            daily_actions_level: ("off" | "act") | null;
             /** Email */
             email: string | null;
             /** Has Override */
@@ -17622,6 +17738,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckinRunResp"];
+                };
+            };
+        };
+    };
+    run_daily_actions_v1_internal_jobs_daily_actions_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DailyActionsRunReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyActionsRunResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

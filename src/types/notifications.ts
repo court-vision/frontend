@@ -1,6 +1,9 @@
 /** The Late scratches row below AI: off, notify (an email with the swap a ruling calls for) or act (Court Vision makes it). */
 export type LateScratchLevel = "off" | "notify" | "act";
 
+/** The Daily actions row below AI: off or act (Court Vision makes the IR moves and fills open roster spots, never a drop). Notify isn't built yet. */
+export type DailyActionsLevel = "off" | "act";
+
 export interface NotificationPreference {
   lineup_alerts_enabled: boolean;
   /** Legacy alert-type flags: the pipeline no longer reads them, but the API still carries them. */
@@ -12,6 +15,8 @@ export interface NotificationPreference {
   auto_lineup_enabled: boolean;
   /** Late scratches below AI (an API that predates it leaves it out: off). */
   late_scratch_level?: LateScratchLevel;
+  /** Daily actions below AI (an API that predates it leaves it out: off). */
+  daily_actions_level?: DailyActionsLevel;
   email: string | null;
 }
 
@@ -31,6 +36,7 @@ export interface NotificationTeamPreference {
   alert_minutes_before: number | null;
   auto_lineup_enabled: boolean | null;
   late_scratch_level?: LateScratchLevel | null;
+  daily_actions_level?: DailyActionsLevel | null;
   email: string | null;
 }
 
@@ -46,6 +52,7 @@ export interface NotificationTeamPreferenceRequest {
   alert_minutes_before?: number | null;
   auto_lineup_enabled?: boolean | null;
   late_scratch_level?: LateScratchLevel | null;
+  daily_actions_level?: DailyActionsLevel | null;
   email?: string | null;
 }
 
