@@ -9,6 +9,7 @@ import { useViewerZone } from "@/hooks/useViewerZone";
 import type { LivePart, LiveTurn } from "@/hooks/useAi";
 import type { AiFeedback, AiPart, AiTurn, AiVerdict } from "@/types/ai";
 import dk from "@/components/desk/desk.module.css";
+import { AskBlock } from "./Asks";
 import { ChartBlock, PlaceBlock, TableBlock } from "./Blocks";
 import { DecisionBlock } from "./Checkins";
 import { ProposalChip, type ChipActions } from "./Chips";
@@ -25,6 +26,7 @@ const OUTCOME_COPY: Record<string, string> = {
 /** Save a note; resolves true when it was stored. */
 type OnComment = (turnId: number, text: string | null) => Promise<boolean>;
 type OnVerdict = (decisionId: number, verdict: AiVerdict | null) => void;
+type OnOpen = (conversationId: number) => void;
 
 export function Thread({
   turns,
@@ -34,6 +36,7 @@ export function Thread({
   onComment,
   checkin = false,
   onVerdict,
+  onOpen,
 }: {
   turns: AiTurn[];
   /** The turn streaming now (or just finished), until the stored copy replaces it. */
@@ -46,11 +49,13 @@ export function Thread({
   checkin?: boolean;
   /** Agree / disagree on a check-in's calls. */
   onVerdict?: OnVerdict;
+  /** Open another conversation in the chat: the check-in that ran an ask. */
+  onOpen?: OnOpen;
 }) {
   return (
     <>
       {turns.map((t, i) => (
-        <StoredTurn key={t.id} turn={t} chips={chips} onVote={onVote} onComment={onComment} brief={checkin && i === 0} onVerdict={onVerdict} />
+        <StoredTurn key={t.id} turn={t} chips={chips} onVote={onVote} onComment={onComment} brief={checkin && i === 0} onVerdict={onVerdict} onOpen={onOpen} />
       ))}
       {live ? <Live turn={live} chips={chips} /> : null}
     </>
@@ -64,6 +69,7 @@ const StoredTurn = memo(function StoredTurn({
   onComment,
   brief,
   onVerdict,
+  onOpen,
 }: {
   turn: AiTurn;
   chips: ChipActions;
@@ -71,6 +77,7 @@ const StoredTurn = memo(function StoredTurn({
   onComment: OnComment;
   brief: boolean;
   onVerdict?: OnVerdict;
+  onOpen?: OnOpen;
 }) {
   const ok = turn.outcome === "ok";
   const [editing, setEditing] = useState(false);
@@ -89,7 +96,7 @@ const StoredTurn = memo(function StoredTurn({
         <div className={s.ask}>{turn.message}</div>
       )}
       <div className={s.answer}>
-        <Parts parts={turn.parts} chips={chips} onVerdict={onVerdict} date={date} />
+        <Parts parts={turn.parts} chips={chips} onVerdict={onVerdict} onOpen={onOpen} date={date} />
         {!ok ? <div className={s.failed}>{OUTCOME_COPY[turn.outcome] ?? "This answer didn't finish."}</div> : null}
         <div className={s.foot}>
           {ok ? <Vote turn={turn} onVote={onVote} /> : null}
@@ -203,12 +210,14 @@ function Parts({
   chips,
   caret = false,
   onVerdict,
+  onOpen,
   date,
 }: {
   parts: Array<AiPart | LivePart>;
   chips: ChipActions;
   caret?: boolean;
   onVerdict?: OnVerdict;
+  onOpen?: OnOpen;
   /** The NBA date the answer was written on; today's for one being written now. */
   date?: string;
 }) {
@@ -225,6 +234,8 @@ function Parts({
           <ChartBlock key={`${p.block.id}-${i}`} chart={p.block} />
         ) : p.block.type === "place" ? (
           <PlaceBlock key={`${p.block.id}-${i}`} place={p.block} />
+        ) : p.block.type === "ask" ? (
+          <AskBlock key={`${p.block.id}-${i}`} ask={p.block} onOpen={onOpen} />
         ) : (
           <TableBlock key={`${p.block.id}-${i}`} table={p.block} />
         )

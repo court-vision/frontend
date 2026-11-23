@@ -1,6 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { callResult, checkinTitle, dayLabel, didChip, pausedLine, planNote, shiftDay, showsTimeline, stateLine, timelineRows, timelineVerdictOf, timelineWithVerdict } from "../ai-timeline";
-import type { AiAutopilotTeam, AiNote, AiTimeline, AiTimelineCall, AiTimelineCheckin } from "@/types/ai";
+import {
+  askClosedLine,
+  askSoon,
+  askTone,
+  callResult,
+  checkinTitle,
+  dayLabel,
+  didChip,
+  pausedLine,
+  planNote,
+  shiftDay,
+  showsTimeline,
+  stateLine,
+  timelineRows,
+  timelineVerdictOf,
+  timelineWithVerdict,
+  unsentLine,
+} from "../ai-timeline";
+import type { AiAsk, AiAutopilotTeam, AiNote, AiTimeline, AiTimelineCall, AiTimelineCheckin } from "@/types/ai";
 
 function checkin(over: Partial<AiTimelineCheckin> = {}): AiTimelineCheckin {
   return {
@@ -25,6 +42,23 @@ function checkin(over: Partial<AiTimelineCheckin> = {}): AiTimelineCheckin {
     events: [],
     calls: [],
     notes: [],
+    ask: null,
+    ...over,
+  };
+}
+
+function ask(over: Partial<AiAsk> = {}): AiAsk {
+  return {
+    ask_id: 5,
+    team_id: 21,
+    what: "Check whether he plays and swap him out if he doesn't",
+    due_at: "2026-11-20T23:30:00Z",
+    state: "pending",
+    reason: null,
+    created_at: "2026-11-20T15:00:00Z",
+    asked_in: 40,
+    checkin_id: null,
+    conversation_id: null,
     ...over,
   };
 }
@@ -70,6 +104,65 @@ describe("the timeline's rows", () => {
     expect(today.map((r) => r.kind)).toEqual(["checkin", "now"]);
     const past = timelineRows({ ...DAY, checkins: [], upcoming: [], first_tip: null }, Date.parse("2026-11-21T09:00:00Z"));
     expect(past).toEqual([]);
+  });
+});
+
+describe("the user's asks", () => {
+  test("sit at their time, after a check-in that ran then and before a slot due then", () => {
+    const at = "2026-11-20T23:45:00Z";
+    const rows = timelineRows(
+      {
+        ...DAY,
+        checkins: [checkin({ started_at: at })],
+        asks: [ask({ due_at: at }), ask({ ask_id: 6, due_at: "2026-11-20T16:00:00Z", state: "cancelled", reason: "user" })],
+        upcoming: [{ kind: "pre_lock", date: "2026-11-20", due_at: at }],
+        first_tip: null,
+      },
+      Date.parse("2026-11-21T09:00:00Z")
+    );
+    expect(rows.map((r) => r.kind)).toEqual(["ask", "checkin", "ask", "upcoming"]);
+    expect(rows[0].kind === "ask" && rows[0].ask.ask_id).toBe(6);
+  });
+
+  test("a day read without asks still has its rows", () => {
+    const rows = timelineRows({ ...DAY, checkins: [checkin()], upcoming: [], first_tip: null }, Date.parse("2026-11-21T09:00:00Z"));
+    expect(rows.map((r) => r.kind)).toEqual(["checkin"]);
+  });
+
+  test("say why one closed without running", () => {
+    expect(askClosedLine(ask())).toBeNull();
+    expect(askClosedLine(ask({ state: "done" }))).toBeNull();
+    expect(askClosedLine(ask({ state: "cancelled", reason: "user" }))).toBe("Cancelled");
+    expect(askClosedLine(ask({ state: "missed", reason: "late" }))).toBe("Missed: it was still waiting an hour after its time");
+    expect(askClosedLine(ask({ state: "skipped", reason: "not_allowed" }))).toBe("Skipped: Dime no longer runs on this team");
+    expect(askClosedLine(ask({ state: "failed", reason: null }))).toBe("Failed");
+  });
+
+  test("are purple while they wait or run, quiet after", () => {
+    expect(askTone("pending")).toBe("pv");
+    expect(askTone("running")).toBe("pv");
+    expect(askTone("done")).toBe("flat");
+    expect(askTone("cancelled")).toBe("flat");
+    expect(askTone("missed")).toBe("warn");
+    expect(askTone("failed")).toBe("down");
+  });
+
+  test("are read again soon while one is about due, just due or running", () => {
+    const due = Date.parse("2026-11-20T23:30:00Z");
+    expect(askSoon([ask()], due - 10 * 60_000)).toBe(false);
+    expect(askSoon([ask()], due - 4 * 60_000)).toBe(true);
+    expect(askSoon([ask()], due + 30 * 60_000)).toBe(true);
+    expect(askSoon([ask()], due + 61 * 60_000)).toBe(false);
+    expect(askSoon([ask({ state: "running" })], due - 10 * 60_000)).toBe(true);
+    expect(askSoon([ask({ state: "cancelled" })], due)).toBe(false);
+    expect(askSoon(undefined, due)).toBe(false);
+  });
+
+  test("an ask's change below AI is left as a chip, not a review", () => {
+    const asked = checkin({ kind: "ask", manual: true, calls: [call({ call: "change" }), call({ call: "change" })] });
+    expect(didChip(asked)).toEqual({ text: "Left 2 for you", tone: "pv" });
+    expect(unsentLine("ask")).toContain("chip in the conversation");
+    expect(unsentLine("morning")).toContain("A review");
   });
 });
 

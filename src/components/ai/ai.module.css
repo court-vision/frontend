@@ -1716,6 +1716,112 @@
   color: var(--down);
 }
 
+/* The user's asks (step 2): Dime's purple, on the timeline, in the chat and over a chat with no timeline */
+.tlItem[data-ask] {
+  border-color: color-mix(in srgb, var(--preview) 45%, var(--line));
+}
+.tlItem[data-ask][data-state="cancelled"],
+.tlItem[data-ask][data-state="missed"],
+.tlItem[data-ask][data-state="skipped"],
+.tlItem[data-ask][data-state="failed"] {
+  border-color: var(--line);
+}
+.tlKind[data-ask] {
+  border-color: color-mix(in srgb, var(--preview) 55%, transparent);
+  color: var(--preview);
+}
+.tlRow[data-kind="ask"] .tlWhen::after {
+  border: 1.5px solid var(--preview);
+  background: var(--bg);
+}
+.tlAsked,
+.askWhat {
+  padding-left: 8px;
+  border-left: 2px solid color-mix(in srgb, var(--preview) 55%, transparent);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.tlAskFoot,
+.askFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.askBlock {
+  display: grid;
+  gap: 7px;
+  max-width: 560px;
+  padding: 9px 12px 9px;
+  border: 1px solid color-mix(in srgb, var(--preview) 40%, var(--line));
+  border-radius: calc(8px * var(--round, 1));
+  background: var(--surface);
+}
+.askBlock:not([data-state="pending"]):not([data-state="running"]) {
+  border-color: var(--line);
+}
+.askHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.askIcon {
+  color: var(--preview);
+}
+.askWhen {
+  white-space: nowrap;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--text);
+}
+.scheduled {
+  flex: 0 0 auto;
+  max-height: 30%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.scheduledHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+.scheduledList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.scheduledRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  min-width: 0;
+}
+.scheduledWhat {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+.scheduledRow:not([data-state="pending"]):not([data-state="running"]) .scheduledWhat {
+  color: var(--text-3);
+}
+
 /* Phones and narrow windows: one pane at a time, the header's button between them */
 @media (max-width: 899.98px) {
   .split,
@@ -1778,5 +1884,14 @@
   }
   .tlWhen::after {
     right: -12px;
+  }
+  .scheduledRow {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .scheduledWhat {
+    flex-basis: 100%;
+    order: 3;
+    white-space: normal;
   }
 }

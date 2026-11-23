@@ -12,10 +12,24 @@ import { useViewerZone } from "@/hooks/useViewerZone";
 import { actionLine } from "@/lib/ai-autonomy";
 import { AREA_LABEL, eventsShown, KIND_LABEL } from "@/lib/ai-checkins";
 import { PANE_LABEL, type AiPaneView } from "@/lib/ai-desk";
-import { callResult, checkinTitle, dayLabel, didChip, KIND_LETTER, planNote, shiftDay, SLOT_NOTE, stateLine, timelineRows } from "@/lib/ai-timeline";
+import {
+  askClosedLine,
+  callResult,
+  checkinTitle,
+  dayLabel,
+  didChip,
+  KIND_LETTER,
+  planNote,
+  shiftDay,
+  SLOT_NOTE,
+  stateLine,
+  timelineRows,
+  unsentLine,
+} from "@/lib/ai-timeline";
 import { WINDOW_LABELS, kindLabel } from "@/lib/dime";
 import { localClock, localizeProseClocks } from "@/lib/local-time";
-import type { AiCheckinSlot, AiNote, AiTimelineCall, AiTimelineCheckin, AiVerdict } from "@/types/ai";
+import type { AiAsk, AiCheckinKind, AiCheckinSlot, AiNote, AiTimelineCall, AiTimelineCheckin, AiVerdict } from "@/types/ai";
+import { ASK_SPEND, AskActions, AskStateChip } from "./Asks";
 import { DimeMemory } from "./DimeNotes";
 import { MoveResults } from "./MoveLedger";
 import dk from "@/components/desk/desk.module.css";
@@ -247,6 +261,14 @@ function DayView({
                   </li>
                 );
               }
+              if (row.kind === "ask") {
+                return (
+                  <li key={`ask-${row.ask.ask_id}`} className={s.tlRow} data-kind="ask">
+                    <span className={s.tlWhen}>{when}</span>
+                    <AskItem ask={row.ask} />
+                  </li>
+                );
+              }
               if (row.kind === "upcoming") {
                 return (
                   <li key={`slot-${row.slot.kind}-${row.slot.date}`} className={s.tlRow} data-kind="upcoming">
@@ -379,6 +401,29 @@ function Upcoming({ slot }: { slot: AiCheckinSlot }) {
   );
 }
 
+/** An ask that hasn't run: waiting for its time (with its Cancel), or closed without running and why. */
+function AskItem({ ask }: { ask: AiAsk }) {
+  const closed = askClosedLine(ask);
+  return (
+    <div className={s.tlItem} data-plan="" data-ask="" data-state={ask.state}>
+      <div className={s.tlHeadStatic} data-tl-item tabIndex={-1}>
+        <span className={s.tlKind} data-plan="" data-ask="">
+          {KIND_LETTER.ask}
+        </span>
+        <span className={s.tlTitle}>You asked</span>
+        <span className={dk.spacer} />
+        <AskStateChip state={ask.state} />
+      </div>
+      <span className={s.tlAsked}>{ask.what}</span>
+      <div className={s.tlAskFoot}>
+        <span className={s.tlFaint}>{closed ?? ASK_SPEND}</span>
+        <span className={dk.spacer} />
+        <AskActions ask={ask} />
+      </div>
+    </div>
+  );
+}
+
 function CheckinItem({
   checkin: c,
   day,
@@ -401,10 +446,12 @@ function CheckinItem({
   };
   const head = (
     <>
-      <span className={s.tlKind}>{KIND_LETTER[c.kind]}</span>
+      <span className={s.tlKind} data-ask={c.kind === "ask" ? "" : undefined}>
+        {KIND_LETTER[c.kind]}
+      </span>
       <span className={s.tlTitle}>{title}</span>
       {about ? <span className={dk.sub}>{about}</span> : null}
-      {c.manual ? <span className={dk.sub}>· run by you</span> : null}
+      {c.manual && c.kind !== "ask" ? <span className={dk.sub}>· run by you</span> : null}
       <span className={dk.spacer} />
       {c.cost_usd > 0 ? <span className={dk.sub}>{c.cost_usd < 0.01 ? "<$0.01" : `$${c.cost_usd.toFixed(2)}`}</span> : null}
       <span className={`${dk.chip} ${did.tone === "warn" ? dk.warnChip : dk[did.tone]}`}>
@@ -433,6 +480,7 @@ function CheckinItem({
           {head}
         </div>
       )}
+      {c.ask ? <span className={s.tlAsked}>{c.ask.what}</span> : null}
       {line ? <span className={s.tlFaint}>{line}</span> : null}
       {events.length ? (
         <div className={s.tlNotes}>
@@ -446,7 +494,7 @@ function CheckinItem({
       {c.calls.length ? (
         <div className={s.tlCalls}>
           {c.calls.map((call) => (
-            <Call key={call.decision_id} call={call} conversationId={c.conversation_id ?? null} date={c.date} />
+            <Call key={call.decision_id} call={call} kind={c.kind} conversationId={c.conversation_id ?? null} date={c.date} />
           ))}
         </div>
       ) : null}
@@ -465,7 +513,7 @@ function CheckinItem({
 }
 
 /** One call: what Dime thought and why, what it did about it, how it went, and your agree or disagree. */
-function Call({ call, conversationId, date }: { call: AiTimelineCall; conversationId: number | null; date: string }) {
+function Call({ call, kind, conversationId, date }: { call: AiTimelineCall; kind: AiCheckinKind; conversationId: number | null; date: string }) {
   // The save writes the new verdict into the cached timeline (and the open conversation) at once,
   // so this reads only the call: a later day read, or a rating made in the chat, shows here too
   const verdict = useAiDecisionVerdict(conversationId);
@@ -492,7 +540,7 @@ function Call({ call, conversationId, date }: { call: AiTimelineCall; conversati
             {action.label}: {action.text}
           </span>
         ) : call.call === "change" ? (
-          <span className={s.tlAction}>A review: what Dime would do. Its row isn&apos;t at AI, so nothing was sent.</span>
+          <span className={s.tlAction}>{unsentLine(kind)}</span>
         ) : null}
       </div>
       <div className={s.tlSide}>
