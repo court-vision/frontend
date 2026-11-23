@@ -35,6 +35,7 @@ import { toApiError, userMessage } from "@/lib/api-error";
 import { teamName, teamTag } from "@/lib/account";
 import { useUIStore } from "@/stores/useUIStore";
 import type { AiConversationSummary, AiFeedback, AiVerdict } from "@/types/ai";
+import { ScheduledStrip } from "./Asks";
 import { ChipTray, type ChipActions } from "./Chips";
 import { Composer, type ComposerHandle } from "./Composer";
 import { Thread } from "./Thread";
@@ -481,6 +482,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
         ) : null}
       </header>
       {chatsOpen ? <ChatList conversations={conversations} loading={list.isLoading} current={current} onOpen={(id) => showChat(id)} /> : null}
+      {!hasTimeline && teamId != null ? <ScheduledStrip teamId={teamId} onOpen={(id) => showChat(id)} /> : null}
       <div
         ref={threadEl}
         className={s.thread}
@@ -507,6 +509,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
               onComment={onComment}
               checkin={isCheckin}
               onVerdict={isCheckin ? onVerdict : undefined}
+              onOpen={(id) => showChat(id)}
             />
           )}
         </div>

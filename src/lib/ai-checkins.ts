@@ -22,6 +22,7 @@ export const KIND_LABEL: Record<AiCheckinKind, string> = {
   pre_lock: "Pre-lock",
   night: "Night follow-up",
   event: "Event",
+  ask: "Your ask",
 };
 
 export const STATE_LABEL: Record<AiCheckinState, string> = {
@@ -40,6 +41,10 @@ const REASONS: Record<string, string> = {
   stale: "it stopped partway (a restart)",
   start_failed: "it couldn't start",
   no_events: "the news it was for went to another check-in",
+  // An ask's (backend services/ai/asks.py)
+  user: "you cancelled it",
+  late: "it was still waiting an hour after its time",
+  not_allowed: "Dime no longer runs on this team",
   AI_TIMEOUT: "it took too long",
   AI_INCOMPLETE: "the answer was cut off",
   AI_BUSY: "the model was busy",

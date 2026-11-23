@@ -3,24 +3,42 @@
  * redesign, step 1). A team's fantasy day (ESPN's, turning at 3 AM ET) top to bottom: the
  * check-ins that ran, a Now line on today, the check-ins still to come and the first tip. Each
  * check-in says what Dime thought (its calls), what it did (sent or held back) and what it noted.
+ * The user's asks (step 2) sit at their time: "You asked" while they wait, then the check-in that
+ * ran them.
  */
 import { anyAtAi, pauseLine } from "@/lib/ai-autonomy";
 import { KIND_LABEL, reasonWords, STATE_LABEL } from "@/lib/ai-checkins";
 import { windowOf, windowResult, type Tone } from "@/lib/dime";
-import type { AiAutopilotTeam, AiCheckinKind, AiCheckinSlot, AiNote, AiTimeline, AiTimelineCall, AiTimelineCheckin, AiVerdict, MoveWindowName } from "@/types/ai";
+import type {
+  AiAsk,
+  AiAutopilotTeam,
+  AiCheckinKind,
+  AiCheckinSlot,
+  AiNote,
+  AiTimeline,
+  AiTimelineCall,
+  AiTimelineCheckin,
+  AiVerdict,
+  MoveWindowName,
+} from "@/types/ai";
 
 export type TimelineRow =
   | { kind: "checkin"; at: number; checkin: AiTimelineCheckin }
   | { kind: "now"; at: number }
+  | { kind: "ask"; at: number; ask: AiAsk }
   | { kind: "upcoming"; at: number; slot: AiCheckinSlot }
   | { kind: "tip"; at: number };
 
-const RANK: Record<TimelineRow["kind"], number> = { checkin: 0, now: 1, upcoming: 2, tip: 3 };
+const RANK: Record<TimelineRow["kind"], number> = { checkin: 0, now: 1, ask: 2, upcoming: 3, tip: 4 };
 
 /** The day's rows in the order they happen; the Now line only on the day it is now. */
-export function timelineRows(d: Pick<AiTimeline, "checkins" | "upcoming" | "first_tip" | "starts_at" | "ends_at">, now: number): TimelineRow[] {
+export function timelineRows(
+  d: Pick<AiTimeline, "checkins" | "upcoming" | "first_tip" | "starts_at" | "ends_at"> & { asks?: AiAsk[] },
+  now: number
+): TimelineRow[] {
   const rows: TimelineRow[] = [
     ...d.checkins.map((c) => ({ kind: "checkin" as const, at: Date.parse(c.started_at), checkin: c })),
+    ...(d.asks ?? []).map((ask) => ({ kind: "ask" as const, at: Date.parse(ask.due_at), ask })),
     ...d.upcoming.map((slot) => ({ kind: "upcoming" as const, at: Date.parse(slot.due_at), slot })),
   ];
   if (d.first_tip) rows.push({ kind: "tip", at: Date.parse(d.first_tip) });
@@ -48,7 +66,7 @@ export function dayLabel(day: string, today: string): string {
   return near ? `${near} · ${shortDay(day)}` : shortDay(day);
 }
 
-export const KIND_LETTER: Record<AiCheckinKind, string> = { morning: "M", weekly: "W", pre_lock: "P", night: "N", event: "E" };
+export const KIND_LETTER: Record<AiCheckinKind, string> = { morning: "M", weekly: "W", pre_lock: "P", night: "N", event: "E", ask: "A" };
 
 /** What a scheduled slot does, for its row on the timeline. */
 export const SLOT_NOTE: Record<AiCheckinKind, string> = {
@@ -57,6 +75,7 @@ export const SLOT_NOTE: Record<AiCheckinKind, string> = {
   pre_lock: "The lineup after the fill, before the first tip",
   night: "How yesterday's calls went",
   event: "News about a rostered player",
+  ask: "Something you asked Dime to do",
 };
 
 /** The check-in's title on the timeline: "Night follow-up", with what day it is about when that isn't the day it ran. */
@@ -81,8 +100,53 @@ export function didChip(c: AiTimelineCheckin): { text: string; tone: Tone | "war
   const reviews = c.calls.filter((x) => x.call === "change" && !x.action).length;
   if (sent) return { text: `Sent ${count(sent, "move")}${held ? `, held ${held}` : ""}`, tone: "up" };
   if (held) return { text: `Held back ${held}`, tone: "warn" };
+  // An ask's changes below AI are live chips waiting in its conversation, not reviews
+  if (reviews && c.kind === "ask") return { text: `Left ${reviews} for you`, tone: "pv" };
   if (reviews) return { text: reviews === 1 ? "A review" : `${reviews} reviews`, tone: "flat" };
   return { text: "No changes", tone: "flat" };
+}
+
+/** A change of a check-in that wasn't sent, in words: a review, or in an ask a chip the user sends. */
+export function unsentLine(kind: AiCheckinKind): string {
+  return kind === "ask"
+    ? "Left for you to send: it's a chip in the conversation. Its row isn't at AI, so Dime didn't send it."
+    : "A review: what Dime would do. Its row isn't at AI, so nothing was sent.";
+}
+
+export const ASK_STATE_LABEL: Record<AiAsk["state"], string> = {
+  pending: "Waiting",
+  running: "Dime is on it",
+  done: "Done",
+  failed: "Failed",
+  cancelled: "Cancelled",
+  missed: "Missed",
+  skipped: "Skipped",
+};
+
+/** An ask's state chip: purple while it waits or runs (Dime's own color), quiet once done or cancelled. */
+export function askTone(state: AiAsk["state"]): Tone | "warn" | "pv" {
+  if (state === "pending" || state === "running") return "pv";
+  if (state === "failed") return "down";
+  if (state === "missed" || state === "skipped") return "warn";
+  return "flat";
+}
+
+/** Why an ask closed without running ("Missed: it was still waiting an hour after its time"); null otherwise. */
+export function askClosedLine(a: Pick<AiAsk, "state" | "reason">): string | null {
+  if (a.state !== "cancelled" && a.state !== "missed" && a.state !== "skipped" && a.state !== "failed") return null;
+  if (a.state === "cancelled") return "Cancelled";
+  const why = reasonWords(a.reason);
+  return why ? `${ASK_STATE_LABEL[a.state]}: ${why}` : ASK_STATE_LABEL[a.state];
+}
+
+/** An ask is due within the next few minutes (or just was) or running: what's showing it reads again soon. */
+export function askSoon(asks: readonly Pick<AiAsk, "state" | "due_at">[] | null | undefined, now: number): boolean {
+  return (asks ?? []).some((a) => {
+    if (a.state === "running") return true;
+    if (a.state !== "pending") return false;
+    const at = Date.parse(a.due_at);
+    return at - now < 5 * 60_000 && now - at < 60 * 60_000;
+  });
 }
 
 /** Why a check-in has nothing to show: missed, skipped or failed, with the reason. */

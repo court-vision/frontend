@@ -54,8 +54,13 @@ export type AiPlace = S["AiPlace"];
 /** One call a check-in logged (holds included), for the user to agree or disagree with. */
 export type AiDecisionBlock = S["AiDecisionBlock"];
 export type AiVerdict = NonNullable<AiDecisionBlock["verdict"]>;
-/** What a block part carries: a table, a chart, a chip, a place in the app or a check-in's call. */
-export type AiBlock = AiTable | AiChart | AiProposal | AiPlace | AiDecisionBlock;
+/**
+ * Something the user asked Dime to do at a time (the Dime desk redesign, step 2), as the chat shows it
+ * where Dime saved it: its time, its words, a Cancel while it waits, and its check-in once it ran.
+ */
+export type AiAskBlock = S["AiAskBlock"];
+/** What a block part carries: a table, a chart, a chip, a place in the app, an ask or a check-in's call. */
+export type AiBlock = AiTable | AiChart | AiProposal | AiPlace | AiDecisionBlock | AiAskBlock;
 export type AiPart = S["AiTextPart"] | S["AiBlockPart"];
 export type AiTurnFeedbackResponse = S["AiTurnFeedbackResp"];
 export type AiTurnCommentResponse = S["AiTurnCommentResp"];
@@ -96,6 +101,18 @@ export type AiTimelineResponse = S["AiTimelineResp"];
 export type AiTimelineCheckin = S["AiTimelineCheckin"];
 export type AiTimelineCall = S["AiTimelineCall"];
 export type AiCheckinSlot = S["AiCheckinSlot"];
+
+/**
+ * The user's asks (`/v1/internal/ai/asks`; the Dime desk redesign, step 2): what they asked Dime to do
+ * at a time, saved by Dime in a chat. Each runs at its time as a check-in of kind `ask`, one Dime turn
+ * on the check-ins budget; its state is the ask's own while it waits (or if it never ran), then that
+ * check-in's. A change it makes on an automation at AI is sent; anything else is a chip to send.
+ */
+export type AiAsk = S["AiAskView"];
+export type AiAskState = AiAsk["state"];
+export type AiAsks = S["AiAsksData"];
+export type AiAsksResponse = S["AiAsksResp"];
+export type AiAskResponse = S["AiAskResp"];
 
 /**
  * A team's automations (the Dime autopilot plan's "Automation levels", step 5;

@@ -175,6 +175,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/ai/asks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the user asked Dime to do at a time, on one team
+         * @description The team's asks (saved by Dime's schedule_ask in a chat): the ones still to run, soonest first, and the others due in the last day, latest first. Each runs at its time as a check-in of kind ask, one Dime turn on the check-ins budget; its state is then that check-in's (running, done, failed).
+         */
+        get: operations["list_asks_v1_internal_ai_asks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/ai/asks/{ask_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel an ask that hasn't run */
+        delete: operations["cancel_ask_v1_internal_ai_asks__ask_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/ai/autopilot/{team_id}": {
         parameters: {
             query?: never;
@@ -270,7 +307,7 @@ export interface paths {
          *
          *     - `status` `{text, kind, tool?}`: what the agent is doing (`kind` is `tool` for a lookup, `note` for the agent's own progress note, `step` for the start of each step after the first, when whatever the last status said is done);
          *     - `text` `{delta}`: the answer's prose, as it is written;
-         *     - `block` (an `AiTable`, `AiChart`, `AiProposal`, `AiPlace` or, in a check-in, `AiDecisionBlock`): a table, chart, proposed move, place in the app or logged call the server built from the agent's lookups;
+         *     - `block` (an `AiTable`, `AiChart`, `AiProposal`, `AiPlace`, `AiAskBlock` or, in a check-in, `AiDecisionBlock`): a table, chart, proposed move, place in the app, ask saved for later or logged call the server built from the agent's lookups;
          *     - `error` `{code, message}`: the turn failed (AI_DECLINED, AI_TIMEOUT, AI_INCOMPLETE, AI_BUSY, ...);
          *     - `done` `{turn_id, outcome, cost_usd, model_calls, duration_ms, spend}`: always last.
          *
@@ -484,7 +521,7 @@ export interface paths {
         };
         /**
          * One team's day on the AI desk's timeline
-         * @description A fantasy day of one team (ESPN's day, turning at 3 AM ET; today's without `date`), read-only: the check-ins that ran in it, oldest first, each with its calls, what Dime did about each on its own, how each move it sent went (the move ledger's row for its proposal) and the notes its own turn wrote; the day's scheduled check-ins still to come while the team's check-ins are on; the day's first tip; and the notes set to recheck that day.
+         * @description A fantasy day of one team (ESPN's day, turning at 3 AM ET; today's without `date`), read-only: the check-ins that ran in it, oldest first, each with its calls, what Dime did about each on its own, how each move it sent went (the move ledger's row for its proposal) and the notes its own turn wrote; the day's scheduled check-ins still to come while the team's check-ins are on; the day's first tip; the notes set to recheck that day; and the user's asks due that day that haven't run (one that ran is its check-in, kind ask, with `ask` set).
          */
         get: operations["get_timeline_v1_internal_ai_timeline_get"];
         put?: never;
@@ -3396,6 +3433,151 @@ export interface components {
             seed_protected: number;
         };
         /**
+         * AiAskBlock
+         * @description Something the user asked Dime to do at a time, saved (or cancelled) in this chat: shown with its time,
+         *     a Cancel while it waits, and its check-in's conversation once it ran. Shown as it stands now.
+         */
+        AiAskBlock: {
+            /** Ask Id */
+            ask_id: number;
+            /**
+             * Checkin Id
+             * @description The check-in that ran it
+             */
+            checkin_id: number | null;
+            /**
+             * Conversation Id
+             * @description That check-in's conversation, to open it
+             */
+            conversation_id: number | null;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /**
+             * Id
+             * @description Unique within its turn, e.g. 'a1'
+             */
+            id: string;
+            /**
+             * Reason
+             * @description Why it closed without running: user (cancelled), late (missed), budget or not_allowed (skipped), start_failed
+             */
+            reason: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "running" | "done" | "failed" | "cancelled" | "missed" | "skipped";
+            /** Team Id */
+            team_id: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "ask";
+            /**
+             * What
+             * @description What to do, in the words Dime saved
+             */
+            what: string;
+        };
+        /**
+         * AiAskResp
+         * @description Response for DELETE /v1/internal/ai/asks/{ask_id}.
+         */
+        AiAskResp: {
+            data: components["schemas"]["AiAskView"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiAskView
+         * @description Something the user asked Dime to do at a time (services/ai/asks.py). It runs as a check-in of kind ask
+         *     at `due_at`, one Dime turn on the check-ins budget.
+         */
+        AiAskView: {
+            /** Ask Id */
+            ask_id: number;
+            /**
+             * Asked In
+             * @description The conversation it was asked in
+             */
+            asked_in: number | null;
+            /**
+             * Checkin Id
+             * @description The check-in that ran it
+             */
+            checkin_id: number | null;
+            /**
+             * Conversation Id
+             * @description That check-in's conversation
+             */
+            conversation_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /**
+             * Reason
+             * @description Why it closed without running: user (cancelled), late (missed), budget or not_allowed (skipped), start_failed
+             */
+            reason: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "running" | "done" | "failed" | "cancelled" | "missed" | "skipped";
+            /** Team Id */
+            team_id: number;
+            /**
+             * What
+             * @description What to do, in the words Dime saved
+             */
+            what: string;
+        };
+        /** AiAsksData */
+        AiAsksData: {
+            /**
+             * Recent
+             * @description The others due in the last day, latest first
+             */
+            recent: components["schemas"]["AiAskView"][];
+            /** Team Id */
+            team_id: number;
+            /**
+             * Waiting
+             * @description Asks still to run, soonest first
+             */
+            waiting: components["schemas"]["AiAskView"][];
+        };
+        /**
+         * AiAsksResp
+         * @description Response for GET /v1/internal/ai/asks.
+         */
+        AiAsksResp: {
+            data: components["schemas"]["AiAsksData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
          * AiAutomationRow
          * @description One automation on the team (services/ai/autonomy.py): off, notify (an email), act (Court Vision does
          *     it, no AI) or ai (Dime does it).
@@ -3589,7 +3771,7 @@ export interface components {
         /** AiBlockPart */
         AiBlockPart: {
             /** Block */
-            block: components["schemas"]["AiTable"] | components["schemas"]["AiChart"] | components["schemas"]["AiProposal"] | components["schemas"]["AiPlace"] | components["schemas"]["AiDecisionBlock"];
+            block: components["schemas"]["AiTable"] | components["schemas"]["AiChart"] | components["schemas"]["AiProposal"] | components["schemas"]["AiPlace"] | components["schemas"]["AiDecisionBlock"] | components["schemas"]["AiAskBlock"];
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -3759,7 +3941,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "morning" | "weekly" | "pre_lock" | "night" | "event";
+            kind: "morning" | "weekly" | "pre_lock" | "night" | "event" | "ask";
         };
         /**
          * AiCheckinSummary
@@ -3809,10 +3991,10 @@ export interface components {
             finished_at: string | null;
             /**
              * Kind
-             * @description morning, weekly (a matchup's first morning), pre_lock (before the first tip), night (the next morning's follow-up) or event (news about a rostered player)
+             * @description morning, weekly (a matchup's first morning), pre_lock (before the first tip), night (the next morning's follow-up), event (news about a rostered player) or ask (the user's ask, run at its time)
              * @enum {string}
              */
-            kind: "morning" | "weekly" | "pre_lock" | "night" | "event";
+            kind: "morning" | "weekly" | "pre_lock" | "night" | "event" | "ask";
             /**
              * Manual
              * @description Run from the AI desk rather than on the schedule
@@ -4917,6 +5099,8 @@ export interface components {
         AiTimelineCheckin: {
             /** Agree */
             agree: number;
+            /** @description The ask it ran (kind ask) */
+            ask: components["schemas"]["AiAskView"] | null;
             /**
              * Calls
              * @description In the order it made them
@@ -4963,10 +5147,10 @@ export interface components {
             finished_at: string | null;
             /**
              * Kind
-             * @description morning, weekly (a matchup's first morning), pre_lock (before the first tip), night (the next morning's follow-up) or event (news about a rostered player)
+             * @description morning, weekly (a matchup's first morning), pre_lock (before the first tip), night (the next morning's follow-up), event (news about a rostered player) or ask (the user's ask, run at its time)
              * @enum {string}
              */
-            kind: "morning" | "weekly" | "pre_lock" | "night" | "event";
+            kind: "morning" | "weekly" | "pre_lock" | "night" | "event" | "ask";
             /**
              * Manual
              * @description Run from the AI desk rather than on the schedule
@@ -5005,6 +5189,11 @@ export interface components {
         };
         /** AiTimelineData */
         AiTimelineData: {
+            /**
+             * Asks
+             * @description The user's asks due in the day that haven't run: waiting, or closed without running (cancelled, missed, skipped). One that ran is its check-in, with `ask` set
+             */
+            asks: components["schemas"]["AiAskView"][];
             /**
              * Checkins
              * @description The check-ins that ran in the day, oldest first (by when they ran: the night follow-up about Thursday is on Friday)
@@ -14857,6 +15046,117 @@ export interface operations {
             };
             /** @description The assistant took too long (AI_TIMEOUT) */
             504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_asks_v1_internal_ai_asks_get: {
+        parameters: {
+            query: {
+                team_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiAsksResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description team_id is not one of the caller's teams (TEAM_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancel_ask_v1_internal_ai_asks__ask_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ask_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiAskResp"];
+                };
+            };
+            /** @description The caller is not on the invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such ask for this caller (AI_ASK_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description It ran or closed already (AI_ASK_CLOSED) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

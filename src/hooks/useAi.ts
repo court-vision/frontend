@@ -6,9 +6,10 @@ import { toApiError, userMessage } from "@/lib/api-error";
 import type { GetTokenFn } from "@/lib/http";
 import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
 import { VerdictSaves, verdictOf, withVerdict } from "@/lib/ai-checkins";
-import { timelineVerdictOf, timelineWithVerdict } from "@/lib/ai-timeline";
+import { askSoon, timelineVerdictOf, timelineWithVerdict } from "@/lib/ai-timeline";
 import { notificationKeys } from "@/hooks/useNotificationPreferences";
 import type {
+  AiAsks,
   AiAutopilotChange,
   AiFeatures,
   AiBlock,
@@ -54,6 +55,7 @@ export const aiKeys = {
   timelines: (userId: string | null | undefined) => [...aiKeys.user(userId), "timeline"] as const,
   timeline: (userId: string | null | undefined, teamId: number, day: string | null) =>
     [...aiKeys.timelines(userId), teamId, day ?? "today"] as const,
+  asks: (userId: string | null | undefined, teamId: number) => [...aiKeys.user(userId), "asks", teamId] as const,
   moves: (userId: string | null | undefined, teamId: number, scope: MoveScope) =>
     [...aiKeys.user(userId), "moves", teamId, scope] as const,
 };
@@ -261,10 +263,49 @@ export function useAiTimelineQuery(teamId: number | null, day: string | null, en
     refetchInterval: (query) => {
       const d = query.state.data;
       if (!d || d.date < d.today) return false;
-      return d.checkins.some((c) => c.state === "running") ? 15_000 : 2 * 60_000;
+      return d.checkins.some((c) => c.state === "running") || askSoon(d.asks, Date.now()) ? 15_000 : 2 * 60_000;
     },
     retry: false,
     meta: { toast: false },
+  });
+}
+
+/**
+ * A team's asks (the Dime desk redesign, step 2): the ones still to run and the others due in the last
+ * day. Read while the team has no timeline (its Scheduled strip); polled while one is due or running.
+ */
+export function useAiAsksQuery(teamId: number | null, enabled: boolean) {
+  const { getToken, isSignedIn, userId } = useAuth();
+  return useQuery<AiAsks>({
+    queryKey: aiKeys.asks(userId, teamId ?? 0),
+    queryFn: ({ signal }) => apiClient.getAiAsks(getToken, teamId!, { signal }),
+    enabled: enabled && teamId != null && isSignedIn === true,
+    staleTime: 15_000,
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      return askSoon(d ? [...d.waiting, ...d.recent] : null, Date.now()) ? 15_000 : 2 * 60_000;
+    },
+    retry: false,
+    meta: { toast: false },
+  });
+}
+
+/**
+ * Cancel an ask that hasn't run. Whatever shows it reads again: the team's asks, the timeline, and
+ * the conversations (the chat's ask block reads as the ask stands).
+ */
+export function useCancelAiAsk() {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (askId: number) => apiClient.cancelAiAsk(getToken, askId),
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: [...aiKeys.user(userId), "asks"] }),
+        queryClient.invalidateQueries({ queryKey: aiKeys.timelines(userId) }),
+        queryClient.invalidateQueries({ queryKey: [...aiKeys.user(userId), "conversation"] }),
+      ]);
+    },
   });
 }
 

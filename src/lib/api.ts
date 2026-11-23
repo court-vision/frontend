@@ -59,6 +59,10 @@ import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData
 import type { NewsListData } from "@/types/news";
 import type { BaseApiResponse } from "@/types/auth";
 import type {
+  AiAsk,
+  AiAskResponse,
+  AiAsks,
+  AiAsksResponse,
   AiAutopilotResponse,
   AiAutopilotChange,
   AiAutopilotTeam,
@@ -1403,6 +1407,17 @@ class ApiClient {
     const q = new URLSearchParams({ team_id: String(teamId) });
     if (day) q.set("date", day);
     return unwrap(await fetchJson<AiTimelineResponse>(`${AI_API}/timeline?${q}`, { ...opts, getToken }));
+  }
+
+  /** A team's asks: the ones still to run, and the others due in the last day. */
+  async getAiAsks(getToken: GetTokenFn, teamId: number, opts?: RequestOptions): Promise<AiAsks> {
+    const q = new URLSearchParams({ team_id: String(teamId) });
+    return unwrap(await fetchJson<AiAsksResponse>(`${AI_API}/asks?${q}`, { ...opts, getToken }));
+  }
+
+  /** Cancel an ask that hasn't run; returns it as it now stands. */
+  async cancelAiAsk(getToken: GetTokenFn, askId: number): Promise<AiAsk> {
+    return unwrap(await fetchJson<AiAskResponse>(`${AI_API}/asks/${askId}`, { getToken, method: "DELETE" }));
   }
 
   /** Turn the account's AI features on or off; returns them as they now stand. */
