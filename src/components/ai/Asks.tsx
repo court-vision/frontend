@@ -71,9 +71,15 @@ export function AskActions({ ask, onCancelled, onOpen }: { ask: AskShown; onCanc
  */
 export function AskBlock({ ask, onOpen }: { ask: AskBlockData; onOpen?: (conversationId: number) => void }) {
   const tz = useViewerZone();
-  // Cancelled here: say so at once, before the conversation is read again
+  // The stored block is as the conversation was last read. While it waits or runs, follow the team's
+  // asks (polled, and read again on a cancel) so a chat left open shows it run, and its Open
+  const open = ask.state === "pending" || ask.state === "running";
+  const team = useAiAsksQuery(ask.team_id, open);
+  const fresh = open && team.data ? [...team.data.waiting, ...team.data.recent].find((a) => a.ask_id === ask.ask_id) : undefined;
+  const now: AskShown = fresh ? { ...ask, state: fresh.state, reason: fresh.reason, conversation_id: fresh.conversation_id } : ask;
+  // Cancelled here: say so at once, before either is read again
   const [cancelled, setCancelled] = useState(false);
-  const shown: AskShown = cancelled && ask.state === "pending" ? { ...ask, state: "cancelled", reason: "user" } : ask;
+  const shown: AskShown = cancelled && now.state === "pending" ? { ...now, state: "cancelled", reason: "user" } : now;
   const closed = askClosedLine(shown);
   return (
     <div className={s.askBlock} data-state={shown.state} role="group" aria-label="Your ask">
