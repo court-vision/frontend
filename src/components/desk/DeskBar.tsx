@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { Braces, RotateCw, Sparkles, UserRound } from "lucide-react";
 import { PaletteBar } from "./CommandPalette";
+import { CrustLeaves } from "./FallLeaves";
 import { ACCOUNT, DESKS, DEVELOPER, type DeskId } from "./routes";
 import { ThemePicker } from "./ThemePicker";
+import { themeLeaves } from "./themes";
+import { useDeskTheme } from "./useDeskTheme";
 import { usePalette } from "./usePalette";
 import dk from "./desk.module.css";
 
@@ -31,8 +34,10 @@ interface DeskBarProps {
  */
 export function DeskBar({ desk, demo = false, children, right, onRefresh }: DeskBarProps) {
   const paletteOpen = usePalette((s) => s.open);
+  const leaves = useDeskTheme((s) => themeLeaves(s.theme));
   return (
     <header className={dk.bar}>
+      {leaves && !paletteOpen ? <CrustLeaves /> : null}
       {/* The old UI's wordmark: the full word from md, its initials on phones. */}
       <Link href="/" className={dk.mark} title="Back to Court Vision" aria-label="Court Vision">
         <span className={dk.markCompact} aria-hidden>

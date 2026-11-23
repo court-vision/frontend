@@ -366,7 +366,9 @@
  * stacked-card shadow, linen and wood grain, a crimped pie-crust edge under the
  * bar (--bar-rule as an image), gingham or flannel over today's column, and the
  * turkey's tail feathers as the tab mark (a scoped rule after the theme blocks).
- * --linen and --wood are their textures, as --grain is Blacktop's.
+ * --linen and --wood are their textures, as --grain is Blacktop's. Both have
+ * fall leaves (FallLeaves.tsx, turned on by `leaves` in themes.ts), drawn in
+ * --leaf-1 to --leaf-5.
  */
 .tokens[data-theme="harvest"] {
   --bg: #fbf4e6;
@@ -429,6 +431,11 @@
   --strip-w: 4px;
   --today-edge-l: linear-gradient(90deg, #e3762a 0 2px, transparent 2px);
   --today-edge-r: linear-gradient(270deg, #e3762a 0 2px, transparent 2px);
+  --leaf-1: #a01c48;
+  --leaf-2: #e3762a;
+  --leaf-3: #e0a52e;
+  --leaf-4: #9c5a2a;
+  --leaf-5: #7a8f45;
 }
 
 .tokens[data-theme="hearth"] {
@@ -487,6 +494,11 @@
   --strip-w: 4px;
   --today-edge-l: linear-gradient(90deg, #ff9a52 0 2px, transparent 2px);
   --today-edge-r: linear-gradient(270deg, #ff9a52 0 2px, transparent 2px);
+  --leaf-1: #c4304f;
+  --leaf-2: #f08a3c;
+  --leaf-3: #efb848;
+  --leaf-4: #b06a34;
+  --leaf-5: #8fa452;
   color-scheme: dark;
 }
 
@@ -862,6 +874,80 @@
 
 .badgeWarn:hover {
   background: color-mix(in srgb, var(--warn) 16%, transparent);
+}
+
+/* ---------------------------------------------------------------- fall leaves (FallLeaves.tsx) */
+
+/* A few piles resting on the bar's bottom edge, half over the edge, taking no clicks. */
+.crustLeaves {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -10px;
+  height: 28px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.leafPile {
+  position: absolute;
+  top: 0;
+}
+
+.leafSpot {
+  position: absolute;
+  display: block;
+  line-height: 0;
+}
+
+.leaf {
+  display: block;
+  overflow: visible;
+}
+
+.leafVein {
+  fill: none;
+  stroke: color-mix(in srgb, currentColor 58%, #000000);
+  stroke-width: 0.8;
+  stroke-linecap: round;
+}
+
+/* The fall: each leaf drops through the frame while it sways and turns, once. */
+.leafFall {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.leafDrop {
+  position: absolute;
+  top: 0;
+  display: block;
+  line-height: 0;
+  animation: leafDrop var(--leaf-fall) cubic-bezier(0.35, 0.1, 0.65, 0.9) var(--leaf-wait) both;
+}
+
+.leafSway {
+  display: block;
+  animation: leafSway var(--leaf-sway) ease-in-out var(--leaf-wait) infinite;
+}
+
+@keyframes leafDrop {
+  from { transform: translateY(-40px); }
+  to { transform: translateY(calc(100dvh + 40px)); }
+}
+
+@keyframes leafSway {
+  0%, 100% { transform: translateX(-18px) rotate(-25deg); }
+  50% { transform: translateX(18px) rotate(25deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leafFall {
+    display: none;
+  }
 }
 
 /* ---------------------------------------------------------------- chips */
