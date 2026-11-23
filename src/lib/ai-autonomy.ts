@@ -21,6 +21,7 @@ import type {
   AiActionOutcome,
   AiAutomationName,
   AiAutomationRow,
+  AiAutopilotChange,
   AiAutopilotTeam,
   AiConversation,
   AiDecisionAction,
@@ -45,6 +46,15 @@ export const LEVEL_HELP: Record<AiLevel, string> = {
 /** Every row the server's table has, in its order; the first four can be at AI. */
 export const ROWS: readonly AiAutomationName[] = ["lineup", "daily_actions", "lanes", "late_scratch", "checkins"];
 export const AI_ROWS: readonly AiAutomationName[] = ["lineup", "daily_actions", "lanes", "late_scratch"];
+
+/** The rows whose level below AI the backend saves on the team's notification override. */
+export const OVERRIDE_ROWS: readonly AiAutomationName[] = ["lineup", "daily_actions", "late_scratch"];
+
+/** A change the backend writes to the team's notification override (autopilot sets those rows too), so the
+ * notification queries are read again before anything patches or clears that override. */
+export function writesOverride(change: AiAutopilotChange): boolean {
+  return change.autopilot != null || OVERRIDE_ROWS.some((row) => change.levels?.[row] != null);
+}
 
 export const ROW_LABEL: Record<AiAutomationName, string> = {
   lineup: "Lineup",

@@ -18,6 +18,7 @@ import {
   tableLine,
   tableOf,
   teamLine,
+  writesOverride,
   type TableState,
 } from "../ai-autonomy";
 import type { AiActingPolicy, AiAutomationName, AiAutopilotTeam, AiConversation, AiLevel } from "@/types/ai";
@@ -325,5 +326,21 @@ describe("what became of a move", () => {
     expect(checkinBanner(conversation([{ type: "proposal", state: "review" }, { type: "decision", action: null }]))).toMatch(
       /^A review: nothing in this check-in was sent to ESPN/
     );
+  });
+});
+
+
+describe("writesOverride", () => {
+  test("a level below AI on a row the team's notification override holds is read again, as is autopilot", () => {
+    expect(writesOverride({ levels: { daily_actions: "act" } })).toBe(true);
+    expect(writesOverride({ levels: { lineup: "notify" } })).toBe(true);
+    expect(writesOverride({ levels: { late_scratch: "off" } })).toBe(true);
+    expect(writesOverride({ autopilot: false })).toBe(true);
+  });
+
+  test("check-ins and the lanes row live on the team's autopilot only", () => {
+    expect(writesOverride({ checkins: true })).toBe(false);
+    expect(writesOverride({ levels: { lanes: "ai" } })).toBe(false);
+    expect(writesOverride({})).toBe(false);
   });
 });
