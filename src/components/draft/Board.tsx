@@ -250,17 +250,20 @@ export const BoardTable = memo(function BoardTable({ meta, rows, visible, active
   // How many of the in-season columns step aside so the rest fit. A count, not the width,
   // so dragging the window re-renders the board only when a column comes or goes. Measured
   // before paint, so a narrow board never shows a frame with the columns it has no room for.
+  // Measured again when the sort changes: the column sorted by stays, so which others have
+  // room beside it depends on it.
+  const sortKey = view.sortKey;
   const [yielded, setYielded] = useState(0);
   useLayoutEffect(() => {
     const el = wrap.current;
     if (!el) return;
-    const measure = () => setYielded(yieldsNeeded(every, el.clientWidth, floorOf));
+    const measure = () => setYielded(yieldsNeeded(every, el.clientWidth, floorOf, sortKey));
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [every]);
-  const columns = useMemo(() => columnsThatFit(every, yielded, view.sortKey), [every, yielded, view.sortKey]);
+  }, [every, sortKey]);
+  const columns = useMemo(() => columnsThatFit(every, yielded, sortKey), [every, yielded, sortKey]);
   const template = templateFor(columns);
   // Below the floors' sum the board scrolls sideways rather than squeeze a column.
   const minWidth = columns.reduce((sum, c) => sum + floorOf(c), 0);

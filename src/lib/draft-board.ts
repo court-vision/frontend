@@ -485,18 +485,24 @@ export function columnsFor(meta: DraftBoardMeta | null): BoardColumn[] {
  * go must, and so on. A category board is twenty columns wide before the
  * season adds any, so on a laptop it has no width to spare, and a column the
  * season adds must not be what pushes a category off the screen.
+ *
+ * The column the board is sorted by never steps aside (`columnsThatFit` keeps
+ * it), so its width is not width to be won back: sorted by ESPN's age, a board
+ * with room for only one of the two gives up the move instead.
  */
 export function yieldsNeeded(
   columns: BoardColumn[],
   width: number,
-  floorOf: (column: BoardColumn) => number
+  floorOf: (column: BoardColumn) => number,
+  sortKey: BoardSortKey
 ): number {
-  const levels = [...new Set(columns.flatMap((c) => (c.yields ? [c.yields] : [])))].sort((a, b) => a - b);
+  const gives = (c: BoardColumn) => (c.yields && c.key !== sortKey ? c.yields : 0);
+  const levels = [...new Set(columns.map(gives).filter((level) => level > 0))].sort((a, b) => a - b);
   let need = columns.reduce((sum, c) => sum + floorOf(c), 0);
   let level = 0;
   for (const next of levels) {
     if (need <= width) break;
-    need -= columns.filter((c) => c.yields === next).reduce((sum, c) => sum + floorOf(c), 0);
+    need -= columns.filter((c) => gives(c) === next).reduce((sum, c) => sum + floorOf(c), 0);
     level = next;
   }
   return level;

@@ -25,7 +25,7 @@ import {
   yieldsNeeded,
   type BoardView,
 } from "../draft-board";
-import type { CategoryNeed, DraftBoardMeta, DraftBoardRow, DraftLiveRanks, DraftPlayoffs } from "../../types/draft";
+import type { BoardSortKey, CategoryNeed, DraftBoardMeta, DraftBoardRow, DraftLiveRanks, DraftPlayoffs } from "../../types/draft";
 import { DEFAULT_9CAT } from "../category-format";
 
 function row(overrides: Partial<DraftBoardRow> & { player_id: number }): DraftBoardRow {
@@ -697,12 +697,12 @@ describe("a board read in season", () => {
     // Every column 50px wide but the two the season adds: 20 columns, then 40 and 84.
     const floor = (c: { key: string }) => (c.key === "move_7d" ? 40 : c.key === "espn_rank_since" ? 84 : 50);
     const rest = (every.length - 2) * 50;
-    expect(yieldsNeeded(every, rest + 124, floor)).toBe(0);
-    expect(yieldsNeeded(every, rest + 123, floor)).toBe(1);
-    expect(yieldsNeeded(every, rest + 40, floor)).toBe(1);
-    expect(yieldsNeeded(every, rest + 39, floor)).toBe(2);
+    expect(yieldsNeeded(every, rest + 124, floor, "board_rank")).toBe(0);
+    expect(yieldsNeeded(every, rest + 123, floor, "board_rank")).toBe(1);
+    expect(yieldsNeeded(every, rest + 40, floor, "board_rank")).toBe(1);
+    expect(yieldsNeeded(every, rest + 39, floor, "board_rank")).toBe(2);
     // Narrower still, nothing else can go: the board scrolls sideways as it always has.
-    expect(yieldsNeeded(every, 300, floor)).toBe(2);
+    expect(yieldsNeeded(every, 300, floor, "board_rank")).toBe(2);
 
     expect(columnsThatFit(every, 0, "board_rank")).toBe(every);
     const one = columnsThatFit(every, 1, "board_rank").map((c) => c.key);
@@ -721,9 +721,39 @@ describe("a board read in season", () => {
     expect(columnsThatFit(every, 2, "move_7d").map((c) => c.key)).toContain("move_7d");
   });
 
+  test("the column sorted by is not width to win back, so the other one steps aside for it", () => {
+    const every = columnsFor(meta({ live_ranks: liveRanks() }));
+    const floor = (c: { key: string }) => (c.key === "move_7d" ? 40 : c.key === "espn_rank_since" ? 84 : 50);
+    const rest = (every.length - 2) * 50;
+    const drawn = (width: number, sortKey: BoardSortKey) =>
+      columnsThatFit(every, yieldsNeeded(every, width, floor, sortKey), sortKey);
+    const widthOf = (columns: { key: string }[]) => columns.reduce((sum, c) => sum + floor(c), 0);
+
+    // Room for ESPN's age or the move but not both. Sorted by ESPN's age, the age stays
+    // and the move goes; left in, the two together would push the board off its side.
+    for (const width of [rest + 84, rest + 100, rest + 123]) {
+      const keys = drawn(width, "espn_rank_since").map((c) => c.key);
+      expect(keys).toContain("espn_rank_since");
+      expect(keys).not.toContain("move_7d");
+      expect(widthOf(drawn(width, "espn_rank_since"))).toBeLessThanOrEqual(width);
+      // Sorted by anything else, the same board keeps the move and drops the age.
+      expect(drawn(width, "board_rank").map((c) => c.key)).toContain("move_7d");
+      expect(widthOf(drawn(width, "board_rank"))).toBeLessThanOrEqual(width);
+    }
+    // With room for both, a sort changes nothing.
+    expect(drawn(rest + 124, "espn_rank_since")).toBe(every);
+    // Sorted by the move on a board with room for only the move: the age goes, as before.
+    expect(drawn(rest + 60, "move_7d").map((c) => c.key)).not.toContain("espn_rank_since");
+    expect(widthOf(drawn(rest + 60, "move_7d"))).toBeLessThanOrEqual(rest + 60);
+    // No room even for the one sorted by: it still stays, and only then does the board scroll.
+    const tight = drawn(rest + 39, "espn_rank_since").map((c) => c.key);
+    expect(tight).toContain("espn_rank_since");
+    expect(tight).not.toContain("move_7d");
+  });
+
   test("before opening night no column can step aside, and the board keeps the same columns", () => {
     const preseason = columnsFor(meta());
-    expect(yieldsNeeded(preseason, 300, () => 50)).toBe(0);
+    expect(yieldsNeeded(preseason, 300, () => 50, "board_rank")).toBe(0);
     // The same array back, so no row re-renders.
     expect(columnsThatFit(preseason, 0, "board_rank")).toBe(preseason);
   });
