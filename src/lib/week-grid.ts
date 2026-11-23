@@ -430,6 +430,12 @@ export interface GridInput {
   viewDay: number;
   /** Default "espn". */
   mode?: LineupMode;
+  /**
+   * Days autoslot planned whole (`week-autoslot.ts`): each stands as its board
+   * with its staging, even with nothing staged, instead of taking on an earlier
+   * day's staged moves.
+   */
+  held?: ReadonlySet<number>;
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -458,6 +464,7 @@ export function buildWeekGrid({
   dropping,
   viewDay,
   mode = "espn",
+  held,
 }: GridInput): WeekGrid {
   const { days, todayIndex } = source;
   const asSet = mode === "espn" && board != null;
@@ -508,8 +515,8 @@ export function buildWeekGrid({
   });
   // The lineup as it will stand each day: its own (with its staged moves); a day
   // with no staging of its own that matches the day before inherits that day's
-  // staged moves too (ESPN carries an edit forward); a day not read carries the
-  // day before. Past days are unknown.
+  // staged moves too (ESPN carries an edit forward), unless autoslot holds it;
+  // a day not read carries the day before. Past days are unknown.
   const asSetByDay: Array<Map<number, number> | null> = [];
   // What ESPN holds for each day right now (a day not read: the day before's).
   const rawByDay: Array<Map<number, number> | null> = [];
@@ -525,7 +532,7 @@ export function buildWeekGrid({
       }
       if (db) {
         const raw = boardAssignment(db.board, {});
-        const ownStaging = Object.keys(normalize(db.board, db.staged)).length > 0;
+        const ownStaging = !!held?.has(d.index) || Object.keys(normalize(db.board, db.staged)).length > 0;
         const eff: Map<number, number> =
           !ownStaging && prevRaw && prevEff && sameAssignment(raw, lessDropped(prevRaw, d.index))
             ? lessDropped(prevEff, d.index)
