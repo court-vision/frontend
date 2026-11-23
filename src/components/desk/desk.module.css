@@ -33,7 +33,7 @@
  * the first desk palettes, at 1.2:1 and 1.4:1, lost every edge.
  *
  * Effects are tokens too: --glow lights the accent marks and --bar-bg paints
- * the bar (Noon, Midnight and Blacktop use both).
+ * the bar (Noon, Midnight and Blacktop use both; Harvest and Hearth a texture).
  * The base block sets both to their plain values, so a swatch never inherits
  * the frame's.
  *
@@ -360,10 +360,153 @@
   color-scheme: dark;
 }
 
+/*
+ * Harvest and Hearth, the Thanksgiving pair: the table by day, cranberry and
+ * firelight after dinner. A soft serif (Fraunces), recipe-card corners and a
+ * stacked-card shadow, linen and wood grain, a crimped pie-crust edge under the
+ * bar (--bar-rule as an image), gingham or flannel over today's column, and the
+ * turkey's tail feathers as the tab mark (a scoped rule after the theme blocks).
+ * --linen and --wood are their textures, as --grain is Blacktop's. Both have
+ * fall leaves (FallLeaves.tsx, turned on by `leaves` in themes.ts), drawn in
+ * --leaf-1 to --leaf-5.
+ */
+.tokens[data-theme="harvest"] {
+  --bg: #fbf4e6;
+  --surface: #f3e5cc;
+  --surface-2: #ebd9ba;
+  --raised: #fffaf0;
+  --pill: #f3bd4f;
+  --hover: #f1e2c6;
+  --hover-col: #f7edda;
+  --line: #dcc39c;
+  --line-2: #b0905f;
+  --text: #2b180e;
+  --text-2: #4e3220;
+  --text-3: #6c4e37;
+  --accent: #a01c48;
+  --accent-soft: rgba(160, 28, 72, 0.1);
+  --accent-ink: #ffffff;
+  --up: #276d2f;
+  --down: #b3331a;
+  --live: #276d2f;
+  --warn: #855400;
+  --preview: #6a45c2;
+  --preview-soft: rgba(106, 69, 194, 0.08);
+  --today: #fcecd1;
+  --today-head: #f9e3c0;
+  --shadow: 0 0 0 1px #b0905f, 4px 5px 0 #ead2a6, 4px 5px 0 1px #c9a874, 0 16px 40px rgba(90, 50, 15, 0.16);
+  --overlay: rgba(43, 24, 14, 0.32);
+  --series-1: #a01c48;
+  --series-2: #2a78d6;
+  --series-3: #c98500;
+  --series-4: #6250d6;
+  --linen: repeating-linear-gradient(0deg, rgba(120, 80, 40, 0.028) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(120, 80, 40, 0.028) 0 1px, transparent 1px 3px);
+  --bar-bg: var(--linen), #fffaf0;
+  --bar-rule: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6'%3E%3Cpath d='M0 0h12v1.5a6 4.5 0 0 1-12 0z' fill='%23c98a45'/%3E%3Cpath d='M0 0h12v1a6 3 0 0 1-12 0z' fill='%23e0aa64'/%3E%3C/svg%3E") 0 0 6 0 / 0 0 1 0 / 0 round;
+  --bar-rule-w: 6px;
+  --round: 1.5;
+  --ctl-w: 1.5px;
+  --ctl-line: #8c6a45;
+  --rail-line: #b0905f;
+  --btn-bg: #fffaf0;
+  --btn-shadow: 0 2px 0 #dcc39c;
+  --btn-press: translateY(1px);
+  --primary-bg: #e3762a;
+  --primary-hover: #ea8a45;
+  --primary-ink: #2b180e;
+  --primary-line: #9c4a12;
+  --primary-shadow: 0 2px 0 #9c4a12;
+  --pill-ink: #2b180e;
+  --pill-shadow: 0 0 0 1px #b07f1c, 0 1px 0 1px #b07f1c;
+  --status-bg: var(--linen), var(--surface);
+  --mark-h: 4px;
+  --label-weight: 500;
+  --today-head-image: repeating-linear-gradient(90deg, rgba(160, 28, 72, 0.065) 0 6px, transparent 6px 12px), repeating-linear-gradient(0deg, rgba(160, 28, 72, 0.065) 0 6px, transparent 6px 12px);
+  --desk-sans: var(--face-serif);
+  --tape-bg: var(--linen), #fffaf0;
+  --figure-weight: 500;
+  --slot-bg: #5a3420;
+  --slot-ink: #fbf4e6;
+  --slot-line: #5a3420;
+  --strip-w: 4px;
+  --today-edge-l: linear-gradient(90deg, #e3762a 0 2px, transparent 2px);
+  --today-edge-r: linear-gradient(270deg, #e3762a 0 2px, transparent 2px);
+  --leaf-1: #a01c48;
+  --leaf-2: #e3762a;
+  --leaf-3: #e0a52e;
+  --leaf-4: #9c5a2a;
+  --leaf-5: #7a8f45;
+}
+
+.tokens[data-theme="hearth"] {
+  --bg: #1d1012;
+  --surface: #271518;
+  --surface-2: #321c20;
+  --raised: #2e191d;
+  --pill: #4a2224;
+  --hover: #2c171b;
+  --hover-col: #231215;
+  --line: #47282d;
+  --line-2: #6d434b;
+  --text: #fbeee4;
+  --text-2: #dcc0b6;
+  --text-3: #c0a298;
+  --accent: #ff9a52;
+  --accent-soft: rgba(255, 154, 82, 0.15);
+  --accent-ink: #24120a;
+  --up: #7fd18a;
+  --down: #ff7563;
+  --live: #7fd18a;
+  --warn: #f4c75e;
+  --preview: #d2acff;
+  --preview-soft: rgba(210, 172, 255, 0.1);
+  --today: #2a1613;
+  --today-head: #381c18;
+  --shadow: 0 0 0 1px var(--line-2), 4px 5px 0 #100709, 0 24px 60px rgba(0, 0, 0, 0.6);
+  --overlay: rgba(12, 4, 6, 0.64);
+  --series-1: #e07a3a;
+  --series-2: #3987e5;
+  --series-3: #d55181;
+  --series-4: #9085e9;
+  --wood: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='60'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.28' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.02 0 0 0 0 0 0 0 0 0.5 -0.12'/%3E%3C/filter%3E%3Crect width='600' height='60' filter='url(%23w)'/%3E%3C/svg%3E");
+  --bar-bg: var(--wood), #28161a;
+  --bar-rule: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6'%3E%3Cpath d='M0 0h12v1.5a6 4.5 0 0 1-12 0z' fill='%23a8652f'/%3E%3Cpath d='M0 0h12v1a6 3 0 0 1-12 0z' fill='%23c98a45'/%3E%3C/svg%3E") 0 0 6 0 / 0 0 1 0 / 0 round;
+  --bar-rule-w: 6px;
+  --round: 1.5;
+  --ctl-line: #84535b;
+  --btn-bg: #2e191d;
+  --btn-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+  --btn-press: translateY(1px);
+  --primary-ink: #24120a;
+  --primary-shadow: inset 0 -2px 0 rgba(120, 50, 10, 0.45);
+  --pill-ink: #ffd2a6;
+  --pill-shadow: 0 0 0 1px #b0552c;
+  --status-bg: var(--wood), #28161a;
+  --mark-h: 4px;
+  --label-weight: 500;
+  --today-head-image: repeating-linear-gradient(90deg, rgba(255, 154, 82, 0.08) 0 8px, transparent 8px 16px), repeating-linear-gradient(0deg, rgba(255, 154, 82, 0.08) 0 8px, transparent 8px 16px);
+  --desk-sans: var(--face-serif);
+  --tape-bg: var(--wood), #28161a;
+  --figure-weight: 500;
+  --slot-bg: #f3d9b4;
+  --slot-ink: #24120a;
+  --slot-line: #f3d9b4;
+  --strip-w: 4px;
+  --today-edge-l: linear-gradient(90deg, #ff9a52 0 2px, transparent 2px);
+  --today-edge-r: linear-gradient(270deg, #ff9a52 0 2px, transparent 2px);
+  --leaf-1: #c4304f;
+  --leaf-2: #f08a3c;
+  --leaf-3: #efb848;
+  --leaf-4: #b06a34;
+  --leaf-5: #8fa452;
+  color-scheme: dark;
+}
+
 /* The spectrum on a dark desk: the same six hues, bright. Chalk's edges are hard, so nothing glows there. */
 .tokens[data-theme="ember"],
 .tokens[data-theme="midnight"],
-.tokens[data-theme="blacktop"] {
+.tokens[data-theme="blacktop"],
+.tokens[data-theme="hearth"] {
   --spectrum-1: #ff7ab8;
   --spectrum-2: #ff9f4a;
   --spectrum-3: #ffd95c;
@@ -386,6 +529,17 @@
   --line-2: #5e5e58;
   border-top-color: #121211;
   background: #121211;
+}
+
+/* Harvest and Hearth: Fraunces at its softest, and the turkey's tail as the tab mark. */
+.tokens[data-theme="harvest"],
+.tokens[data-theme="hearth"] {
+  font-variation-settings: "SOFT" 100;
+}
+
+.tokens[data-theme="harvest"] .tab[aria-current="page"]::after,
+.tokens[data-theme="hearth"] .tab[aria-current="page"]::after {
+  background: linear-gradient(90deg, #a01c48 0 25%, #e3762a 25% 50%, #e8b13a 50% 75%, #5f7f3a 75%);
 }
 
 /* A desk's own column: everything between the bar and the status line. */
@@ -720,6 +874,80 @@
 
 .badgeWarn:hover {
   background: color-mix(in srgb, var(--warn) 16%, transparent);
+}
+
+/* ---------------------------------------------------------------- fall leaves (FallLeaves.tsx) */
+
+/* A few piles resting on the bar's bottom edge, half over the edge, taking no clicks. */
+.crustLeaves {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -10px;
+  height: 28px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.leafPile {
+  position: absolute;
+  top: 0;
+}
+
+.leafSpot {
+  position: absolute;
+  display: block;
+  line-height: 0;
+}
+
+.leaf {
+  display: block;
+  overflow: visible;
+}
+
+.leafVein {
+  fill: none;
+  stroke: color-mix(in srgb, currentColor 58%, #000000);
+  stroke-width: 0.8;
+  stroke-linecap: round;
+}
+
+/* The fall: each leaf drops through the frame while it sways and turns, once. */
+.leafFall {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.leafDrop {
+  position: absolute;
+  top: 0;
+  display: block;
+  line-height: 0;
+  animation: leafDrop var(--leaf-fall) cubic-bezier(0.35, 0.1, 0.65, 0.9) var(--leaf-wait) both;
+}
+
+.leafSway {
+  display: block;
+  animation: leafSway var(--leaf-sway) ease-in-out var(--leaf-wait) infinite;
+}
+
+@keyframes leafDrop {
+  from { transform: translateY(-40px); }
+  to { transform: translateY(calc(100dvh + 40px)); }
+}
+
+@keyframes leafSway {
+  0%, 100% { transform: translateX(-18px) rotate(-25deg); }
+  50% { transform: translateX(18px) rotate(25deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leafFall {
+    display: none;
+  }
 }
 
 /* ---------------------------------------------------------------- chips */
@@ -1445,7 +1673,7 @@ button.menuItem:hover:not(:disabled) {
 }
 
 .swatchHead .swatchToday {
-  background: var(--today-head);
+  background: var(--today-head-image, none), var(--today-head);
   box-shadow: inset 0 1.5px 0 var(--accent);
 }
 
