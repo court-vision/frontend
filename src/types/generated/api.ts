@@ -7051,10 +7051,12 @@ export interface components {
             congestion: components["schemas"]["DraftCongestionResp"] | null;
             /** Format */
             format: string;
-            /** @description Set for a draft held after opening night: values blend this season's games with the projection, count only the games left, and injury flags are today's. ADP and ESPN's ranks stay the last preseason snapshot (`market_as_of`). None for a draft before opening night, an imported draft, and a room whose draft started before it. */
+            /** @description Set for a draft held after opening night: values blend this season's games with the projection, count only the games left, and injury flags are today's. ADP stays the last preseason snapshot (`market_as_of`), and so do ESPN's ranks unless that morning's are stored (`live_ranks.espn_as_of`). None for a draft before opening night, an imported draft, and a room whose draft started before it. */
             in_season: components["schemas"]["DraftInSeasonResp"] | null;
             /** League Size */
             league_size: number | null;
+            /** @description In season: the stored daily boards behind every row's `move_1d`, `move_7d` and ESPN rank. None before opening night, and while nothing near enough is stored. */
+            live_ranks: components["schemas"]["DraftLiveRanksResp"] | null;
             /** Market As Of */
             market_as_of: string | null;
             /**
@@ -7248,6 +7250,17 @@ export interface components {
             /** Espn Id */
             espn_id: number | null;
             /**
+             * Espn Rank Since
+             * @description In season: the stored morning ESPN's rank became `market_rank`, so how long ESPN has left it alone. Null when `market_rank` is the preseason snapshot's.
+             */
+            espn_rank_since: string | null;
+            /**
+             * Espn Rank Since First Stored
+             * @description True when ESPN has held the rank since the first morning its ranks were stored: the rank is at least as old as `espn_rank_since`, and may be older.
+             * @default false
+             */
+            espn_rank_since_first_stored: boolean;
+            /**
              * Fit Rank
              * @description Rank by `fit_value` among the players still available. Unlike `cv_rank` this moves with every pick — it is a statement about the roster, not about the player.
              */
@@ -7279,9 +7292,19 @@ export interface components {
             market_delta: number | null;
             /**
              * Market Rank
-             * @description ESPN editorial draft rank from the latest snapshot, taken from the board that matches the league's format — see `meta.market_rank_type`. Falls back to the points board on snapshots written before the category board was captured.
+             * @description ESPN editorial draft rank from the latest snapshot, taken from the board that matches the league's format — see `meta.market_rank_type`. Falls back to the points board on snapshots written before the category board was captured. In a draft held in season with ESPN's ranks stored that morning (`meta.live_ranks.espn_as_of`), it is that morning's rank instead: the one ESPN's own room shows today, null for a player ESPN no longer ranks.
              */
             market_rank: number | null;
+            /**
+             * Move 1D
+             * @description In season: places he gained on Court Vision's stored standard board for this format (`meta.live_ranks.board`) since the previous stored morning (`meta.live_ranks.day`); negative is a fall. Null when he was not ranked then, when no board is near enough, and before opening night. A room with scoring of its own ranks players a little differently: the move is the standard board's.
+             */
+            move_1d: number | null;
+            /**
+             * Move 7D
+             * @description The same since the stored board about a week back (`meta.live_ranks.week`)
+             */
+            move_7d: number | null;
             /** Name */
             name: string;
             /**
@@ -7324,6 +7347,11 @@ export interface components {
              * @description Projected games this season, when a projection exists
              */
             projected_gp: number | null;
+            /**
+             * Rank Reason
+             * @description In season, on the live projection: one line on why he is ranked where he is this morning, from what the projection read about him. An absence and when he is expected back, a note in force, or, for a player who moved at least five places, the minutes he has been playing lately when they moved the same way. Null when none of those applies.
+             */
+            rank_reason: string | null;
             /**
              * Room Rank
              * @description Rank by `room_score` among the players the caller can still draft — the `my_team` board's order. Like `fit_rank` and unlike `cv_rank`, it moves with every pick.
@@ -7733,6 +7761,38 @@ export interface components {
             team_id: number;
             /** Team Name */
             team_name: string;
+        };
+        /**
+         * DraftLiveRanksResp
+         * @description The stored daily boards an in-season board's moves and ESPN ranks were read from.
+         */
+        DraftLiveRanksResp: {
+            /**
+             * As Of
+             * @description The stored board the moves are measured to: this morning's, or the newest within three days. Null when none is that near, and every move is then null.
+             */
+            as_of: string | null;
+            /**
+             * Board
+             * @description Which of Court Vision's two standard boards the rows' moves are measured on: the one for this room's format
+             * @enum {string}
+             */
+            board: "points" | "categories";
+            /**
+             * Day
+             * @description The earlier board `move_1d` is measured from; null when none is near enough
+             */
+            day: string | null;
+            /**
+             * Espn As Of
+             * @description The morning of ESPN's ranks on the rows (`market_rank`, `auction_value`, `espn_rank_since`). Null when none is stored within three days: the rows then carry the preseason snapshot's ranks (`market_as_of`).
+             */
+            espn_as_of: string | null;
+            /**
+             * Week
+             * @description The earlier board `move_7d` is measured from; null when none is near enough
+             */
+            week: string | null;
         };
         /**
          * DraftPickCreate

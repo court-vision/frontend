@@ -2,8 +2,14 @@ import { describe, expect, test } from "bun:test";
 import {
   basisNote,
   columnsFor,
+  columnsThatFit,
   countCapped,
+  espnSinceDetail,
+  espnSinceText,
+  marketNote,
   matchesView,
+  moveDetail,
+  moveSpan,
   naturalDirection,
   needBar,
   needsByUrgency,
@@ -16,9 +22,10 @@ import {
   stepHighlight,
   targetRow,
   visibleRows,
+  yieldsNeeded,
   type BoardView,
 } from "../draft-board";
-import type { CategoryNeed, DraftBoardMeta, DraftBoardRow, DraftPlayoffs } from "../../types/draft";
+import type { CategoryNeed, DraftBoardMeta, DraftBoardRow, DraftLiveRanks, DraftPlayoffs } from "../../types/draft";
 import { DEFAULT_9CAT } from "../category-format";
 
 function row(overrides: Partial<DraftBoardRow> & { player_id: number }): DraftBoardRow {
@@ -47,6 +54,11 @@ function row(overrides: Partial<DraftBoardRow> & { player_id: number }): DraftBo
     playoff_games_by_week: null,
     fpts_avg: 50,
     market_rank: null,
+    espn_rank_since: null,
+    espn_rank_since_first_stored: false,
+    move_1d: null,
+    move_7d: null,
+    rank_reason: null,
     adp: null,
     availability: null,
     fit_value: null,
@@ -120,6 +132,7 @@ function meta(overrides: Partial<DraftBoardMeta> = {}): DraftBoardMeta {
     congestion: null,
     playoffs: null,
     in_season: null,
+    live_ranks: null,
     settings_synced: true,
     unsupported: [],
     ...overrides,
@@ -527,6 +540,200 @@ describe("basisNote", () => {
     expect(basisNote(meta({ rank_basis: "cv", rank_basis_reason: "provider_not_espn" }))?.label)
       .toBe("CV board — not an ESPN league");
     expect(basisNote(null)).toBeNull();
+  });
+});
+
+/** A board read on Nov 23 with a week of stored boards behind it. */
+function liveRanks(overrides: Partial<DraftLiveRanks> = {}): DraftLiveRanks {
+  return {
+    board: "points",
+    as_of: "2026-11-23",
+    day: "2026-11-22",
+    week: "2026-11-16",
+    espn_as_of: "2026-11-23",
+    ...overrides,
+  };
+}
+
+describe("a board read in season", () => {
+  const points = (overrides: Partial<DraftBoardMeta> = {}) =>
+    meta({ value_kind: "fpts", categories: [], ...overrides });
+
+  test("before opening night the board has neither a move nor an ESPN age column", () => {
+    const keys = columnsFor(points()).map((c) => c.key);
+    expect(keys).not.toContain("move_7d");
+    expect(keys).not.toContain("move_1d");
+    expect(keys).not.toContain("espn_rank_since");
+  });
+
+  test("the move follows Court Vision's rank and ESPN's age follows ESPN's", () => {
+    const live = liveRanks();
+    const key = (m: DraftBoardMeta) => columnsFor(m).map((c) => c.key);
+    // ESPN's rank is the gutter: its age keeps the place the rank would have had.
+    expect(key(points({ rank_basis: "espn", live_ranks: live })).slice(2, 7))
+      .toEqual(["value", "cv_rank", "move_7d", "espn_rank_since", "adp"]);
+    // Court Vision's is: the move keeps its place.
+    expect(key(points({ rank_basis: "cv", rank_basis_reason: "caller_chose_cv", live_ranks: live })).slice(2, 7))
+      .toEqual(["value", "move_7d", "market_rank", "espn_rank_since", "adp"]);
+    expect(key(points({ rank_basis: "my_team", rank_basis_reason: "caller_chose_my_team", live_ranks: live })).slice(2, 8))
+      .toEqual(["value", "cv_rank", "move_7d", "market_rank", "espn_rank_since", "adp"]);
+  });
+
+  test("the move column reads a week once a board a week back is stored, and a day until then", () => {
+    expect(moveSpan(liveRanks())).toBe("week");
+    expect(moveSpan(liveRanks({ week: null }))).toBe("day");
+    expect(moveSpan(liveRanks({ week: null, day: null }))).toBeNull();
+    expect(moveSpan(liveRanks({ as_of: null }))).toBeNull();
+    expect(moveSpan(null)).toBeNull();
+
+    const week = columnsFor(points({ live_ranks: liveRanks() })).find((c) => c.key === "move_7d");
+    expect(week?.label).toBe("7D");
+    expect(week?.title).toContain("standard points board since Nov 16");
+    const day = columnsFor(points({ live_ranks: liveRanks({ week: null }) })).find((c) => c.key === "move_1d");
+    expect(day?.label).toBe("1D");
+    expect(day?.title).toContain("since Nov 22, the previous stored morning");
+    // Nothing to measure from yet: no column of dashes.
+    const first = columnsFor(points({ live_ranks: liveRanks({ week: null, day: null }) })).map((c) => c.key);
+    expect(first).not.toContain("move_7d");
+    expect(first).not.toContain("move_1d");
+  });
+
+  test("a category room's move is named as the nine-category board's", () => {
+    const column = columnsFor(meta({ live_ranks: liveRanks({ board: "categories" }) })).find((c) => c.key === "move_7d");
+    expect(column?.title).toContain("standard nine-category board");
+    expect(column?.title).toContain("scoring of its own");
+  });
+
+  test("ESPN's ranks stored without ours still date themselves, and ours without ESPN's still move", () => {
+    const espnOnly = columnsFor(points({ live_ranks: liveRanks({ as_of: null, day: null, week: null }) })).map((c) => c.key);
+    expect(espnOnly).toContain("espn_rank_since");
+    expect(espnOnly).not.toContain("move_7d");
+    const oursOnly = columnsFor(points({ live_ranks: liveRanks({ espn_as_of: null }) })).map((c) => c.key);
+    expect(oursOnly).toContain("move_7d");
+    expect(oursOnly).not.toContain("espn_rank_since");
+  });
+
+  test("ESPN's rank column says which morning it is from", () => {
+    const m = points({ rank_basis: "cv", rank_basis_reason: "caller_chose_cv", live_ranks: liveRanks() });
+    expect(columnsFor(m).find((c) => c.key === "market_rank")?.title).toContain("on Nov 23");
+    const snapshot = points({ rank_basis: "cv", rank_basis_reason: "caller_chose_cv" });
+    expect(columnsFor(snapshot).find((c) => c.key === "market_rank")?.title).toBe("ESPN's published draft rank for this league's format");
+  });
+
+  test("risers sort first, fallers last, and a player with no move after both", () => {
+    const rows = [
+      row({ player_id: 1, move_7d: -4 }),
+      row({ player_id: 2, move_7d: null }),
+      row({ player_id: 3, move_7d: 9 }),
+      row({ player_id: 4, move_7d: 0 }),
+    ];
+    expect(naturalDirection("move_7d")).toBe("desc");
+    const down = visibleRows(rows, { ...VIEW, sortKey: "move_7d", sortDirection: "desc" }).map((r) => r.player_id);
+    expect(down).toEqual([3, 4, 1, 2]);
+    const up = visibleRows(rows, { ...VIEW, sortKey: "move_7d", sortDirection: "asc" }).map((r) => r.player_id);
+    expect(up).toEqual([1, 4, 3, 2]);
+  });
+
+  test("ESPN's newest ranks sort first, the same morning's stay in board order, the undated last", () => {
+    const rows = [
+      row({ player_id: 1, espn_rank_since: "2026-11-12", espn_rank_since_first_stored: true }),
+      row({ player_id: 2, espn_rank_since: "2026-11-23" }),
+      row({ player_id: 3, espn_rank_since: null }),
+      row({ player_id: 4, espn_rank_since: "2026-11-23" }),
+      row({ player_id: 5, espn_rank_since: "2026-11-19" }),
+    ];
+    expect(sortValue(rows[0], "espn_rank_since")).toBe(20261112);
+    expect(sortValue(rows[2], "espn_rank_since")).toBeNull();
+    const newest = visibleRows(rows, { ...VIEW, sortKey: "espn_rank_since", sortDirection: "desc" }).map((r) => r.player_id);
+    expect(newest).toEqual([2, 4, 5, 1, 3]);
+  });
+
+  test("a row from a build without the fields sorts as one with nothing to say", () => {
+    // The demo fixtures, and a backend a deploy behind, send no move at all.
+    const bare = { ...row({ player_id: 1 }), move_7d: undefined, espn_rank_since: undefined } as unknown as DraftBoardRow;
+    expect(sortValue(bare, "move_7d")).toBeNull();
+    expect(sortValue(bare, "espn_rank_since")).toBeNull();
+    expect(espnSinceText(bare)).toBeNull();
+  });
+
+  test("the move's tooltip gives both spans, the days they are from, and whose board", () => {
+    expect(moveDetail({ move_7d: 6, move_1d: -2 }, liveRanks()))
+      .toBe("On Court Vision's standard points board: up 6 since Nov 16, down 2 since Nov 22");
+    expect(moveDetail({ move_7d: 0, move_1d: null }, liveRanks({ board: "categories" })))
+      .toBe("On Court Vision's standard nine-category board: where he was on Nov 16, no rank to compare on Nov 22");
+    expect(moveDetail({ move_7d: null, move_1d: 3 }, liveRanks({ week: null })))
+      .toBe("On Court Vision's standard points board: up 3 since Nov 22");
+    expect(moveDetail({ move_7d: 1, move_1d: 1 }, liveRanks({ as_of: null }))).toBeNull();
+    expect(moveDetail({ move_7d: 1, move_1d: 1 }, null)).toBeNull();
+  });
+
+  test("ESPN's age prints the morning its rank became this, and marks one at least that old", () => {
+    const fresh = row({ player_id: 1, market_rank: 14, espn_rank_since: "2026-11-19" });
+    expect(espnSinceText(fresh)).toBe("Nov 19");
+    expect(espnSinceDetail(fresh)).toBe("ESPN has ranked him 14 since Nov 19");
+    const old = row({ player_id: 2, market_rank: 3, espn_rank_since: "2026-11-12", espn_rank_since_first_stored: true });
+    expect(espnSinceText(old)).toBe("≤ Nov 12");
+    expect(espnSinceDetail(old)).toBe("ESPN has ranked him 3 since at least Nov 12, the first morning its ranks were stored");
+    // ESPN no longer ranks him: nothing to date.
+    expect(espnSinceText(row({ player_id: 3 }))).toBeNull();
+    expect(espnSinceDetail(row({ player_id: 3 }))).toBeNull();
+  });
+
+  test("the bar and the status line date ESPN's ranks by the morning they are from, and ADP by its snapshot", () => {
+    const m = points({ market_rank_type: "standard", market_as_of: "2026-10-31", live_ranks: liveRanks() });
+    expect(basisNote(m)?.label).toBe("ESPN points board · as of 2026-11-23");
+    expect(marketNote(m)).toBe("ESPN ranks as of 2026-11-23 · ADP as of 2026-10-31");
+    // No ESPN board near enough: the rows carry the snapshot's ranks, and say so.
+    const stale = points({ market_rank_type: "standard", market_as_of: "2026-10-31", live_ranks: liveRanks({ espn_as_of: null }) });
+    expect(basisNote(stale)?.label).toBe("ESPN points board · as of 2026-10-31");
+    expect(marketNote(stale)).toBe("ESPN market as of 2026-10-31");
+    expect(marketNote(points({ market_as_of: "2026-09-16" }))).toBe("ESPN market as of 2026-09-16");
+    expect(marketNote(points())).toBeNull();
+    expect(marketNote(null)).toBeNull();
+  });
+
+  test("a board with no width to spare gives up ESPN's age first, then the move, never a category", () => {
+    const every = columnsFor(meta({ live_ranks: liveRanks() }));
+    // Every column 50px wide but the two the season adds: 20 columns, then 40 and 84.
+    const floor = (c: { key: string }) => (c.key === "move_7d" ? 40 : c.key === "espn_rank_since" ? 84 : 50);
+    const rest = (every.length - 2) * 50;
+    expect(yieldsNeeded(every, rest + 124, floor)).toBe(0);
+    expect(yieldsNeeded(every, rest + 123, floor)).toBe(1);
+    expect(yieldsNeeded(every, rest + 40, floor)).toBe(1);
+    expect(yieldsNeeded(every, rest + 39, floor)).toBe(2);
+    // Narrower still, nothing else can go: the board scrolls sideways as it always has.
+    expect(yieldsNeeded(every, 300, floor)).toBe(2);
+
+    expect(columnsThatFit(every, 0, "board_rank")).toBe(every);
+    const one = columnsThatFit(every, 1, "board_rank").map((c) => c.key);
+    expect(one).not.toContain("espn_rank_since");
+    expect(one).toContain("move_7d");
+    expect(one).toHaveLength(every.length - 1);
+    const two = columnsThatFit(every, 2, "board_rank").map((c) => c.key);
+    expect(two).not.toContain("move_7d");
+    expect(two).toHaveLength(every.length - 2);
+    expect(two.filter((k) => k.startsWith("cat:"))).toHaveLength(DEFAULT_9CAT.length);
+  });
+
+  test("a column the board is sorted by stays however narrow the board is", () => {
+    const every = columnsFor(meta({ live_ranks: liveRanks() }));
+    expect(columnsThatFit(every, 2, "espn_rank_since").map((c) => c.key)).toContain("espn_rank_since");
+    expect(columnsThatFit(every, 2, "move_7d").map((c) => c.key)).toContain("move_7d");
+  });
+
+  test("before opening night no column can step aside, and the board keeps the same columns", () => {
+    const preseason = columnsFor(meta());
+    expect(yieldsNeeded(preseason, 300, () => 50)).toBe(0);
+    // The same array back, so no row re-renders.
+    expect(columnsThatFit(preseason, 0, "board_rank")).toBe(preseason);
+  });
+
+  test("a move sort carried into a room before opening night falls back to the big board", () => {
+    const preseason = columnsFor(points());
+    expect(sortableKey("move_7d", preseason)).toBe("board_rank");
+    expect(sortableKey("espn_rank_since", preseason)).toBe("board_rank");
+    // A week of boards arrives: yesterday's one-day sort has no column any more.
+    expect(sortableKey("move_1d", columnsFor(points({ live_ranks: liveRanks() })))).toBe("board_rank");
   });
 });
 
