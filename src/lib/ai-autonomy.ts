@@ -72,8 +72,6 @@ export const NOT_OFFERED: Partial<Record<AiAutomationName, Partial<Record<AiLeve
   checkins: { notify: "Check-ins are Dime's own", act: "Check-ins are Dime's own" },
 };
 
-export const EMAIL_OFF = "Your account's lineup email is off, so no team's lineup runs: turn it on in Notifications";
-
 /** A row's note while the autopilot switch holds it at AI (the server's words). */
 export const AUTOPILOT_NOTE = "Autopilot sets these";
 
@@ -109,14 +107,12 @@ export function belowAi(row: AiAutomationName, prefs: RowPrefs): AiLevel {
 }
 
 /**
- * Each level a team's table offers on a row without CV AI, and why not. `accountEmail` is
- * the account's own lineup email: without it no team's lineup runs, so a team's own
- * Notify and Act can't be picked either.
+ * Each level a team's table offers on a row without CV AI, and why not. Lineup's are the
+ * team's own: they run whatever the account's lineup email says.
  */
-export function accountOptions(row: AiAutomationName, accountEmail = true): AiLevelOption[] {
+export function accountOptions(row: AiAutomationName): AiLevelOption[] {
   return ACCOUNT_LEVELS.map((level) => {
-    let reason = NOT_OFFERED[row]?.[level] ?? null;
-    if (reason == null && row === "lineup" && level !== "off" && !accountEmail) reason = EMAIL_OFF;
+    const reason = NOT_OFFERED[row]?.[level] ?? null;
     return { level, available: reason == null, reason };
   });
 }
@@ -126,8 +122,8 @@ export function accountOptions(row: AiAutomationName, accountEmail = true): AiLe
  * over the account's): the four automations at Off, Notify or Act, no check-ins. With CV AI
  * the server sends the team's whole table instead (GET /ai/checkins).
  */
-export function prefsTable(prefs: RowPrefs, accountEmail = true): AiAutomationRow[] {
-  return AI_ROWS.map((row) => ({ row, label: ROW_LABEL[row], level: belowAi(row, prefs), options: accountOptions(row, accountEmail), note: null }));
+export function prefsTable(prefs: RowPrefs): AiAutomationRow[] {
+  return AI_ROWS.map((row) => ({ row, label: ROW_LABEL[row], level: belowAi(row, prefs), options: accountOptions(row), note: null }));
 }
 
 /** The rows' names in a team's one line. */
@@ -171,7 +167,6 @@ export interface TableState {
   lineupBelowAi: AiLevel;
   /** Late scratches below AI (the team's own level, else the account's); left out, off. */
   lateScratchBelowAi?: AiLevel;
-  lineupEmail: boolean;
   /** The server's kill switches are on (the API's `acting.available`): off, no check-in runs and nothing at AI sends. */
   actingAvailable: boolean;
 }
@@ -195,8 +190,7 @@ export function tableOf(t: TableState): AiAutomationRow[] {
     else if (row === "late_scratch") level = t.lateScratchBelowAi ?? "off";
     else level = row === "lanes" ? "act" : "off";
     const options = LEVELS.map((lv) => {
-      let reason = NOT_OFFERED[row]?.[lv] ?? null;
-      if (reason == null && row === "lineup" && lv !== "off" && !t.lineupEmail) reason = EMAIL_OFF;
+      const reason = NOT_OFFERED[row]?.[lv] ?? null;
       return { level: lv, available: reason == null, reason };
     });
     let note: string | null = null;
@@ -204,7 +198,6 @@ export function tableOf(t: TableState): AiAutomationRow[] {
       if (t.autopilot) note = AUTOPILOT_NOTE;
       if (t.paused) note = "Paused: Dime does nothing here until you resume check-ins";
       else if (!t.actingAvailable) note = SERVER_OFF;
-      if (row === "lineup" && !t.lineupEmail) note = `${note ? `${note}. ` : ""}Auto-lineup doesn't run: your account's lineup email is off`;
     }
     if (row === "checkins" && t.paused && t.pausedBy === "system") note = t.pausedReason ? `Dime paused itself: ${t.pausedReason}` : "Dime paused itself";
     return { row, label: ROW_LABEL[row], level, options, note };

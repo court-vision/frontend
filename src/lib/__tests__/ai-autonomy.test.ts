@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { DEMO_PREFS, DEMO_TEAM_PREFS, demoDime, demoDimeChange, demoDimeTeam, idleDemoDime } from "../account-demo";
 import {
-  EMAIL_OFF,
   SERVER_OFF,
   accountOptions,
   actionLine,
@@ -29,7 +28,6 @@ function state(over: Partial<TableState> = {}): TableState {
     paused: false,
     pausedBy: null,
     lineupBelowAi: "notify",
-    lineupEmail: true,
     actingAvailable: true,
     ...over,
   };
@@ -72,16 +70,14 @@ describe("lineup below AI", () => {
     // Late scratches read their own level; an API that predates it is off
     expect(belowAi("late_scratch", prefs)).toBe("off");
     expect(belowAi("late_scratch", { ...prefs, late_scratch_level: "act" })).toBe("act");
-    expect(accountOptions("late_scratch", false).map((o) => o.available)).toEqual([true, true, true]);
+    expect(accountOptions("late_scratch").map((o) => o.available)).toEqual([true, true, true]);
     expect(accountOptions("lineup").map((o) => o.available)).toEqual([true, true, true]);
     const daily = accountOptions("daily_actions");
     expect(daily.map((o) => o.level)).toEqual(["off", "notify", "act"]);
     expect(daily.map((o) => o.available)).toEqual([true, false, false]);
     expect(daily[1].reason).toMatch(/^Not built yet/);
-    // Without the account's email no team's lineup runs, so a team's own can't be Notify or Act
-    const noEmail = accountOptions("lineup", false);
-    expect(noEmail.map((o) => o.available)).toEqual([true, false, false]);
-    expect(noEmail[2].reason).toBe(EMAIL_OFF);
+    // Lineup's levels are the team's own: none waits for the account's lineup email
+    expect(accountOptions("lineup").every((o) => o.reason == null)).toBe(true);
   });
 });
 
@@ -123,9 +119,7 @@ describe("a team's table", () => {
     const running = tableOf(state({ aiRows: ["lineup", "late_scratch"] }));
     expect(running[0].note).toBeNull();
     expect(running[3].note).toBeNull();
-    const noEmail = tableOf(state({ aiRows: ["lineup"], lineupEmail: false }))[0];
-    expect(noEmail.note).toBe("Auto-lineup doesn't run: your account's lineup email is off");
-    expect(noEmail.options.map((o) => o.available)).toEqual([true, false, false, false]);
+    expect(running[0].options.map((o) => o.available)).toEqual([true, true, true, true]);
   });
 
   test("check-ins' Off reads as Pause while a row is at AI, and a pause offers Resume", () => {
@@ -182,10 +176,10 @@ describe("a team's own table and its line", () => {
     const rows = prefsTable({ ...prefs, auto_lineup_enabled: true, late_scratch_level: "notify" });
     expect(rows.map((r) => [r.row, r.level])).toEqual([["lineup", "act"], ["daily_actions", "off"], ["lanes", "act"], ["late_scratch", "notify"]]);
     expect(rows.every((r) => r.options.map((o) => o.level).join() === "off,notify,act")).toBe(true);
-    // The account's lineup email gates every team's lineup
-    const noEmail = prefsTable({ ...prefs, lineup_alerts_enabled: false }, false);
-    expect(noEmail[0].level).toBe("off");
-    expect(noEmail[0].options.filter((o) => !o.available).map((o) => o.reason)).toEqual([EMAIL_OFF, EMAIL_OFF]);
+    // A team whose lineup email is off can still pick Notify or Act: its own setting runs whatever the account's says
+    const off = prefsTable({ ...prefs, lineup_alerts_enabled: false });
+    expect(off[0].level).toBe("off");
+    expect(off[0].options.every((o) => o.available)).toBe(true);
   });
 
   test("the folded line says what runs, lanes only at AI, and paused only over something at AI", () => {

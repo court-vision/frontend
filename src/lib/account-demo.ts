@@ -302,11 +302,9 @@ export function demoDimeTeam(
       autopilot: d.autopilot,
       paused: !on,
       pausedBy: d.paused_by,
-      lineupBelowAi: prefs.lineup_alerts_enabled
-        ? lineupLevel({ lineup_alerts_enabled: !!pick("lineup_alerts_enabled"), auto_lineup_enabled: !!pick("auto_lineup_enabled") })
-        : "off",
+      // The team's own lineup setting runs whatever the account's email says (data-platform's lineup alerts)
+      lineupBelowAi: lineupLevel({ lineup_alerts_enabled: !!pick("lineup_alerts_enabled"), auto_lineup_enabled: !!pick("auto_lineup_enabled") }),
       lateScratchBelowAi: override?.late_scratch_level ?? prefs.late_scratch_level ?? "off",
-      lineupEmail: prefs.lineup_alerts_enabled,
       actingAvailable: DEMO_ACTING.available,
     }),
   };

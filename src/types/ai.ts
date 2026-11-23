@@ -120,8 +120,7 @@ export type AiAskResponse = S["AiAskResp"];
  * email), act (Court Vision does it, no AI) or ai (Dime does it, and sends its
  * own moves within the policy). Every level says whether it can be picked and
  * why not; `note` says when the row does less than its level (paused, acting
- * off on the server, the lineup email off). The autopilot switch puts every row
- * that offers AI at AI.
+ * off on the server). The autopilot switch puts every row that offers AI at AI.
  */
 export type AiAutomationRow = S["AiAutomationRow"];
 export type AiAutomationName = AiAutomationRow["row"];

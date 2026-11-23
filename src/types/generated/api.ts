@@ -3593,7 +3593,7 @@ export interface components {
             level: "off" | "notify" | "act" | "ai";
             /**
              * Note
-             * @description When the row does less than its level says (paused, acting off on the server, the lineup email off)
+             * @description When the row does less than its level says (paused, acting off on the server)
              */
             note: string | null;
             /**
@@ -4524,7 +4524,7 @@ export interface components {
             level: "off" | "notify" | "act" | "ai";
             /**
              * Reason
-             * @description Why it can't be picked (not built yet, the account's lineup email is off, ...)
+             * @description Why it can't be picked (not built yet, Dime's own, ...)
              */
             reason: string | null;
         };
