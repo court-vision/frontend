@@ -9,12 +9,14 @@
  * every column rather than first (which is where a naive `?? 0` would put him).
  */
 import { polarityGlyph } from "@/lib/category-format";
+import { monthDay } from "@/lib/scout";
 import type {
   Availability,
   BoardSortKey,
   CategoryNeed,
   DraftBoardMeta,
   DraftBoardRow,
+  DraftLiveRanks,
   DraftPlayoffs,
   PositionFilter,
   RankBasis,
@@ -43,6 +45,16 @@ export function naturalDirection(key: BoardSortKey): SortDirection {
  * lose", not "who can I safely ignore".
  */
 const AVAILABILITY_ORDER: Record<Availability, number> = { likely: 0, tossup: 1, gone: 2 };
+
+/**
+ * A calendar day as a number that sorts, 20261119 for "2026-11-19". A number
+ * rather than the string so that the many players ESPN moved on the same
+ * morning tie, and fall back to board order like every other tie.
+ */
+function dayNumber(iso: string | null | undefined): number | null {
+  const n = iso ? Number(iso.slice(0, 10).replaceAll("-", "")) : Number.NaN;
+  return Number.isFinite(n) ? n : null;
+}
 
 /** The category key a `cat:<key>` sort column reads, or null for any other column. */
 export function categorySortKey(key: BoardSortKey): string | null {
@@ -75,6 +87,12 @@ export function sortValue(row: DraftBoardRow, key: BoardSortKey): number | strin
       return row.fit_rank;
     case "market_rank":
       return row.market_rank;
+    case "move_7d":
+      return row.move_7d ?? null;
+    case "move_1d":
+      return row.move_1d ?? null;
+    case "espn_rank_since":
+      return dayNumber(row.espn_rank_since);
     case "adp":
       return row.adp;
     case "value":
@@ -188,6 +206,13 @@ export interface BoardColumn {
   punted?: boolean;
   /** The category this column reads, when it is one. */
   category?: CategoryDef;
+  /**
+   * Set on a column the board shows only while there is room for it
+   * (`columnsThatFit`): what it says is also a tooltip on the rank it is
+   * about, so a narrow board gives it up before it pushes another column off
+   * the screen. The column with the lowest number steps aside first.
+   */
+  yields?: number;
 }
 
 const CV_RANK: BoardColumn = {
@@ -199,13 +224,132 @@ const ESPN_RANK: BoardColumn = {
   title: "ESPN's published draft rank for this league's format",
 };
 
-/** The ranks that are *not* the gutter: the other opinions, beside the name. */
-const OTHER_RANKS: Record<RankBasis, BoardColumn[]> = {
-  espn: [CV_RANK],
-  cv: [ESPN_RANK],
-  // The gutter is this roster's own order, so both pool-wide opinions sit beside it.
-  my_team: [CV_RANK, ESPN_RANK],
-};
+/**
+ * The ranks that are *not* the gutter: the other opinions, beside the name.
+ * `my_team`'s gutter is this roster's own order, so both pool-wide opinions sit
+ * beside it.
+ *
+ * In season each opinion brings what the stored daily boards know about it:
+ * the places he moved on Court Vision's board follow its rank, and the morning
+ * ESPN's rank became what it is follows ESPN's. Where a rank is the gutter its
+ * companion keeps the place the rank would have had.
+ */
+function rankColumns(basis: RankBasis, live: DraftLiveRanks | null): BoardColumn[] {
+  const move = moveColumn(live);
+  const since = espnSinceColumn(live);
+  return [
+    ...(basis === "cv" ? [] : [CV_RANK]),
+    ...(move ? [move] : []),
+    ...(basis === "espn" ? [] : [live?.espn_as_of ? espnRankToday(live.espn_as_of) : ESPN_RANK]),
+    ...(since ? [since] : []),
+  ];
+}
+
+/** ESPN's rank column once the board reads it from that morning's stored ranks. */
+function espnRankToday(asOf: string): BoardColumn {
+  return {
+    ...ESPN_RANK,
+    title: `ESPN's rank for this league's format on ${monthDay(asOf)}: the one its own room shows today`,
+  };
+}
+
+/** "standard points board", "standard nine-category board": which stored board a move is on. */
+function standardBoard(live: DraftLiveRanks): string {
+  return live.board === "categories" ? "standard nine-category board" : "standard points board";
+}
+
+/**
+ * Which span the move column reads: a week when a board about a week back is
+ * stored, a day while only the previous morning's is, and none before either.
+ */
+export function moveSpan(live: DraftLiveRanks | null | undefined): "week" | "day" | null {
+  if (!live?.as_of) return null;
+  if (live.week) return "week";
+  return live.day ? "day" : null;
+}
+
+function moveColumn(live: DraftLiveRanks | null): BoardColumn | null {
+  const span = moveSpan(live);
+  if (!live || !span) return null;
+  const from = monthDay((span === "week" ? live.week : live.day) as string);
+  return {
+    key: span === "week" ? "move_7d" : "move_1d",
+    label: span === "week" ? "7D" : "1D",
+    className: "w-12",
+    align: "right",
+    sortable: true,
+    // The last of the two to go: the same numbers are the tooltip on Court Vision's rank.
+    yields: 2,
+    title:
+      `Places gained on Court Vision's ${standardBoard(live)} since ${from}` +
+      (span === "day" ? ", the previous stored morning (a week of boards is not stored yet)" : "") +
+      ". A league with scoring of its own ranks players a little differently: this is the standard board's move",
+  };
+}
+
+function espnSinceColumn(live: DraftLiveRanks | null): BoardColumn | null {
+  if (!live?.espn_as_of) return null;
+  return {
+    key: "espn_rank_since",
+    label: "ESPN since",
+    className: "w-20",
+    align: "right",
+    sortable: true,
+    // The first to go: the same sentence is the tooltip on ESPN's rank, wherever that is.
+    yields: 1,
+    title:
+      "The morning ESPN's rank for him became what it is today. " +
+      "≤ marks a rank held since the first morning its ranks were stored: at least that old",
+  };
+}
+
+/** "+6" in words, against one earlier board: "up 6 since Nov 16". */
+function placesSince(move: number | null | undefined, day: string): string {
+  const when = monthDay(day);
+  if (move == null) return `no rank to compare on ${when}`;
+  if (move === 0) return `where he was on ${when}`;
+  return `${move > 0 ? "up" : "down"} ${Math.abs(move)} since ${when}`;
+}
+
+/**
+ * The move cell's tooltip: both spans, each against the day it is measured
+ * from, and whose board the places are on. Null when no board is stored to
+ * measure against.
+ */
+export function moveDetail(
+  row: Pick<DraftBoardRow, "move_1d" | "move_7d">,
+  live: DraftLiveRanks | null | undefined
+): string | null {
+  if (!live?.as_of) return null;
+  const parts: string[] = [];
+  if (live.week) parts.push(placesSince(row.move_7d, live.week));
+  if (live.day) parts.push(placesSince(row.move_1d, live.day));
+  if (parts.length === 0) return null;
+  return `On Court Vision's ${standardBoard(live)}: ${parts.join(", ")}`;
+}
+
+/**
+ * The morning ESPN's rank became what it is, as the cell prints it: "Nov 19",
+ * or "≤ Nov 12" when the rank has stood since the first morning its ranks were
+ * stored and so may be older than that.
+ */
+export function espnSinceText(
+  row: Pick<DraftBoardRow, "espn_rank_since" | "espn_rank_since_first_stored">
+): string | null {
+  if (!row.espn_rank_since) return null;
+  return `${row.espn_rank_since_first_stored ? "≤ " : ""}${monthDay(row.espn_rank_since)}`;
+}
+
+/** The same in a sentence, with the rank it is about. */
+export function espnSinceDetail(
+  row: Pick<DraftBoardRow, "market_rank" | "espn_rank_since" | "espn_rank_since_first_stored">
+): string | null {
+  if (!row.espn_rank_since || row.market_rank == null) return null;
+  const day = monthDay(row.espn_rank_since);
+  return row.espn_rank_since_first_stored
+    ? `ESPN has ranked him ${row.market_rank} since at least ${day}, the first morning its ranks were stored`
+    : `ESPN has ranked him ${row.market_rank} since ${day}`;
+}
 
 const GUTTER_TITLE: Record<RankBasis, string> = {
   espn: "ESPN's published rank for this league's format — the board you are drafting off",
@@ -225,15 +369,22 @@ const GUTTER_TITLE: Record<RankBasis, string> = {
  *
  * `PO` — his team's games in the league's fantasy-playoff weeks — is there
  * whenever the league has playoff weeks to count (a roto league has none).
+ *
+ * A board read in season adds two columns from the stored daily boards
+ * (`rankColumns`): the places he moved, and how long ESPN's rank has stood.
  */
-function baseColumns(basis: RankBasis, playoffs: DraftPlayoffs | null): BoardColumn[] {
+function baseColumns(
+  basis: RankBasis,
+  playoffs: DraftPlayoffs | null,
+  live: DraftLiveRanks | null
+): BoardColumn[] {
   const columns: BoardColumn[] = [
     { key: "board_rank", label: "#", className: "w-10", align: "center", sortable: true,
       title: GUTTER_TITLE[basis] },
     { key: "name", label: "Player", className: "flex-[3] min-w-[180px]", align: "left", sortable: true },
     { key: "value", label: "Value", className: "w-16", align: "right", sortable: true,
       title: "Per-game value under this league's scoring" },
-    ...OTHER_RANKS[basis],
+    ...rankColumns(basis, live),
     { key: "adp", label: "ADP", className: "w-14", align: "right", sortable: true,
       title: "Average draft position across real ESPN drafts" },
     { key: "market_delta", label: "Δ", className: "w-12", align: "right", sortable: true,
@@ -308,7 +459,7 @@ const FIT_COLUMN: BoardColumn = {
 };
 
 export function columnsFor(meta: DraftBoardMeta | null): BoardColumn[] {
-  const base = baseColumns(meta?.rank_basis ?? "cv", meta?.playoffs ?? null);
+  const base = baseColumns(meta?.rank_basis ?? "cv", meta?.playoffs ?? null, meta?.live_ranks ?? null);
   if (meta?.value_kind !== "cat_value") return base;
   const punts = new Set(meta.punts ?? []);
   const categories: BoardColumn[] = (meta.categories ?? []).map((def) => ({
@@ -329,6 +480,48 @@ export function columnsFor(meta: DraftBoardMeta | null): BoardColumn[] {
 }
 
 /**
+ * How many of the columns that can step aside (`yields`) have to, for the rest
+ * to fit `width` at their floors: 0 when everything fits, 1 when the first to
+ * go must, and so on. A category board is twenty columns wide before the
+ * season adds any, so on a laptop it has no width to spare, and a column the
+ * season adds must not be what pushes a category off the screen.
+ *
+ * The column the board is sorted by never steps aside (`columnsThatFit` keeps
+ * it), so its width is not width to be won back: sorted by ESPN's age, a board
+ * with room for only one of the two gives up the move instead.
+ */
+export function yieldsNeeded(
+  columns: BoardColumn[],
+  width: number,
+  floorOf: (column: BoardColumn) => number,
+  sortKey: BoardSortKey
+): number {
+  const gives = (c: BoardColumn) => (c.yields && c.key !== sortKey ? c.yields : 0);
+  const levels = [...new Set(columns.map(gives).filter((level) => level > 0))].sort((a, b) => a - b);
+  let need = columns.reduce((sum, c) => sum + floorOf(c), 0);
+  let level = 0;
+  for (const next of levels) {
+    if (need <= width) break;
+    need -= columns.filter((c) => gives(c) === next).reduce((sum, c) => sum + floorOf(c), 0);
+    level = next;
+  }
+  return level;
+}
+
+/**
+ * The columns to draw once `level` of them have stepped aside. One the board
+ * is sorted by stays, so a sort never loses its header.
+ */
+export function columnsThatFit(
+  columns: BoardColumn[],
+  level: number,
+  sortKey: BoardSortKey
+): BoardColumn[] {
+  const kept = columns.filter((c) => !c.yields || c.yields > level || c.key === sortKey);
+  return kept.length === columns.length ? columns : kept;
+}
+
+/**
  * What the board's order is, for the filter bar. The gutter number reads as
  * "the rank" whoever produced it, so the bar says whose, and — when it is not
  * ESPN's in a room that would normally take ESPN's — why not.
@@ -337,7 +530,9 @@ export function basisNote(meta: DraftBoardMeta | null): { label: string; title: 
   if (!meta) return null;
   if (meta.rank_basis === "espn") {
     const board = meta.market_rank_type === "roto" ? "categories" : "points";
-    const asOf = meta.market_as_of ? ` · as of ${meta.market_as_of}` : "";
+    // In season the ranks are that morning's stored ones, not the preseason snapshot's.
+    const day = meta.live_ranks?.espn_as_of ?? meta.market_as_of;
+    const asOf = day ? ` · as of ${day}` : "";
     return {
       label: `ESPN ${board} board${asOf}`,
       title:
@@ -372,6 +567,21 @@ export function basisNote(meta: DraftBoardMeta | null): { label: string; title: 
     default:
       return { label: "CV board", title: "Rows are in Court Vision's order" };
   }
+}
+
+/**
+ * How fresh ESPN's numbers are, for the status bar. Before opening night one
+ * snapshot dates both the ranks and ADP. In season the ranks are that
+ * morning's while ADP stays the last preseason snapshot's, so the line dates
+ * each.
+ */
+export function marketNote(meta: DraftBoardMeta | null): string | null {
+  if (!meta) return null;
+  const ranks = meta.live_ranks?.espn_as_of ?? null;
+  if (ranks) {
+    return `ESPN ranks as of ${ranks}` + (meta.market_as_of ? ` · ADP as of ${meta.market_as_of}` : "");
+  }
+  return meta.market_as_of ? `ESPN market as of ${meta.market_as_of}` : null;
 }
 
 /**
