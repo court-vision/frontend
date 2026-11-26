@@ -1,0 +1,1045 @@
+/*
+ * The Home desk: every team in the account at a glance. A strip of what stands across the teams,
+ * a tall row per team, and the picked team's own page beside them (its sidebar; on a phone, the
+ * page a team opens to). Styled in the desk tokens.
+ */
+
+/* ---- the strip above the rows */
+
+.tape {
+  flex: none;
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  overflow: hidden;
+}
+.tile {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 18px 12px;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tile:first-child {
+  flex: 2.15;
+}
+.tile:last-child {
+  border-right: 0;
+}
+.tileV {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 21px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.15;
+  color: var(--text);
+}
+.tileV small {
+  font-size: 12px;
+  color: var(--text-3);
+  font-weight: 400;
+  margin-left: 7px;
+  letter-spacing: 0;
+}
+.verdict {
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.tileS {
+  font-size: 11.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- the body: the rows, then the picked team's page */
+
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.board {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+.head,
+.row {
+  display: grid;
+  grid-template-columns: 186px minmax(0, 1fr) 184px 232px;
+  column-gap: 18px;
+  padding-left: 17px;
+  padding-right: 16px;
+}
+.head {
+  height: 32px;
+  flex: none;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.row {
+  flex: 1 0 auto;
+  min-height: 122px;
+  max-height: 190px;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+  padding-top: 13px;
+  padding-bottom: 12px;
+  cursor: default;
+  outline: none;
+  text-align: left;
+}
+.row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+}
+.row[data-state="needs_you"]::before {
+  background: var(--down);
+}
+.row[data-state="your_call"]::before {
+  background: var(--accent);
+}
+.row[data-state="cant_read"]::before {
+  background: var(--warn);
+}
+.row:hover {
+  background: var(--hover);
+}
+.row[data-picked="true"] {
+  background: var(--today);
+}
+.row[data-picked="true"]::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+}
+.row:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+.ln {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+/* the row's last line under the week: its end is where the row's doors stand */
+.vs {
+  padding-right: 54px;
+}
+.m {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.m b {
+  color: var(--text-2);
+  font-weight: 500;
+}
+.el {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.name {
+  font-weight: 600;
+  font-size: 14.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.say {
+  font-size: 13.5px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.det {
+  font-size: 12.5px;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.score {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.t1 {
+  color: var(--text);
+}
+.t3 {
+  color: var(--text-3);
+}
+.upText {
+  color: var(--up);
+}
+.downText {
+  color: var(--down);
+}
+.warnText {
+  color: var(--warn);
+}
+.accentText {
+  color: var(--accent);
+}
+.push {
+  margin-left: auto;
+}
+
+/* a team's state */
+.st {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: calc(4px * var(--round, 1));
+  white-space: nowrap;
+  font-weight: 500;
+  line-height: 1.5;
+  flex: none;
+}
+.st[data-state="needs_you"] {
+  background: var(--down);
+  color: var(--bg);
+  font-weight: 600;
+}
+.st[data-state="your_call"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.st[data-state="set"] {
+  color: var(--up);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--up) 35%, transparent);
+}
+.st[data-state="cant_read"] {
+  color: var(--warn);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 40%, transparent);
+}
+.st[data-state="autopilot"] {
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+.st[data-state="covered"] {
+  color: var(--text-2);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+/* a quiet chip on a row's first line */
+.more {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: calc(4px * var(--round, 1));
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+}
+.door {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--accent);
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+.door:hover {
+  text-decoration: underline;
+}
+
+/* tonight's starting seats, one mark each */
+.dots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: block;
+  flex: none;
+  background: var(--line);
+}
+.dots i[data-mark="live"] {
+  background: var(--up);
+}
+.dots i[data-mark="later"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.dots i[data-mark="questionable"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--warn);
+}
+.dots i[data-mark="final"] {
+  background: var(--text-3);
+}
+.dots i[data-mark="out"],
+.dots i[data-mark="empty"] {
+  background: var(--down);
+}
+
+/* the chance to win the week */
+.wb {
+  width: 84px;
+  height: 5px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+  flex: none;
+}
+.wb i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--accent);
+}
+.wb[data-losing="true"] i {
+  background: var(--down);
+}
+.wb::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--bg);
+}
+
+/* the matchup's days */
+.wk {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 3px;
+  width: 100%;
+}
+.wk i {
+  height: 18px;
+  border-radius: 3px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  font-style: normal;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+}
+.wk i[data-tone="up"] {
+  color: var(--up);
+  background: color-mix(in srgb, var(--up) 12%, transparent);
+}
+.wk i[data-tone="down"] {
+  color: var(--down);
+  background: color-mix(in srgb, var(--down) 12%, transparent);
+}
+.wk i[data-tone="hi"] {
+  color: var(--text-2);
+}
+.wk i[data-tone="lo"] {
+  color: var(--warn);
+}
+.wk i[data-kind="today"] {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--text);
+  background: var(--today-head);
+}
+
+/* a row's doors: its Week desk and its Dime, at its end while it is picked or under the pointer */
+.go {
+  position: absolute;
+  right: 7px;
+  bottom: 13px;
+  display: flex;
+  gap: 3px;
+  opacity: 0;
+  pointer-events: none;
+}
+.row:hover .go,
+.row:focus-within .go,
+.row[data-picked="true"] .go {
+  opacity: 1;
+  pointer-events: auto;
+}
+.goBtn {
+  width: 21px;
+  height: 21px;
+  border-radius: calc(5px * var(--round, 1));
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 0;
+}
+.goBtn:hover,
+.goBtn:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+  outline: none;
+}
+.goBtn[data-size="lg"] {
+  width: 34px;
+  height: 30px;
+  border-radius: calc(7px * var(--round, 1));
+}
+
+.addRow {
+  height: 36px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 17px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.addRow a {
+  color: var(--text-2);
+  text-decoration: none;
+}
+.addRow a:hover {
+  color: var(--text);
+}
+.legend {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--text-3);
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ---- the picked team's page */
+
+.side {
+  width: 404px;
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow-y: auto;
+}
+.sideHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  height: 38px;
+  flex: none;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.sideHead b {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.back {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--text-2);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.sideDoors {
+  display: none;
+  gap: 6px;
+  margin-left: auto;
+}
+.sec {
+  padding: 11px 16px 12px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.secHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 9px;
+  white-space: nowrap;
+  min-width: 0;
+}
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.chipOl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: calc(4px * var(--round, 1));
+  border: 1px solid var(--line-2);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* tonight's matchup, seat against seat: yours left, theirs mirrored, as the Week desk's matchup view */
+.dh {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  column-gap: 8px;
+  padding-bottom: 5px;
+}
+.dside {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+/* each side's seats in words, under the two scores */
+.dparts {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 9px;
+  white-space: nowrap;
+}
+.dparts > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dside[data-mirror="true"] {
+  align-items: flex-end;
+  text-align: right;
+}
+.dname {
+  font-size: 11.5px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.dbig {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 19px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.margin {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: calc(4px * var(--round, 1));
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex: none;
+}
+.margin[data-tone="up"] {
+  color: var(--up);
+  background: color-mix(in srgb, var(--up) 13%, transparent);
+}
+.margin[data-tone="down"] {
+  color: var(--down);
+  background: color-mix(in srgb, var(--down) 13%, transparent);
+}
+.margin[data-tone="even"] {
+  color: var(--text-2);
+  background: var(--surface-2);
+}
+.du {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px 42px 46px minmax(0, 1fr);
+  align-items: center;
+  height: 22px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.dn {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.dn[data-mirror="true"] {
+  text-align: right;
+}
+.dn[data-mark="out"] {
+  color: var(--down);
+}
+.dn[data-mark="idle"],
+.dn[data-mark="empty"] {
+  color: var(--text-3);
+}
+.dv {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dv[data-mirror="true"] {
+  text-align: left;
+}
+.dv[data-mark="live"] {
+  color: var(--up);
+}
+.dv[data-mark="final"] {
+  color: var(--text-2);
+}
+.dv[data-mark="out"] {
+  color: var(--down);
+}
+.dv[data-mark="questionable"] {
+  color: var(--warn);
+}
+.dsp {
+  display: flex;
+  justify-content: center;
+}
+.slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 16px;
+  padding: 0 3px;
+  border: 1px solid var(--line-2);
+  border-radius: calc(4px * var(--round, 1));
+  background: var(--surface-2);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  color: var(--text-2);
+  flex: none;
+}
+.dbe {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 24px;
+  border-top: 1px solid var(--line);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.dbe b {
+  color: var(--text-2);
+  font-weight: 500;
+}
+.dbe .accentText {
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* today's moves on the picked team */
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 0 10px;
+  border-top: 1px solid var(--line);
+}
+.item:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+.itemTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  min-width: 0;
+}
+.itemSay {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.itemDet {
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+.quiet {
+  font-size: 12.5px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+/* the hero: signed out, nothing yet, or it couldn't be read */
+.hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+.heroTitle {
+  font-size: 17px;
+  font-weight: 600;
+}
+.heroSub {
+  font-size: 13px;
+  color: var(--text-2);
+  max-width: 440px;
+  line-height: 1.5;
+}
+.heroRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.skelRow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 17px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* the bar while Dime is being asked something: the field stands in the bar, nothing floats */
+.ask {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 8 1 480px;
+  min-width: 300px;
+}
+.askInput {
+  flex: 1;
+  min-width: 140px;
+  height: 30px;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.askInput::placeholder {
+  color: var(--text-3);
+}
+
+/* the status line's hint: what the mark under the pointer opens */
+.hint {
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- phone cards (shown in place of the rows) */
+
+.cards {
+  display: none;
+}
+.verdictCard {
+  padding: 14px 16px 13px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.verdictCard h1 {
+  margin: 6px 0 0;
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.slide {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  border-bottom: 1px solid var(--line);
+  background: var(--accent-soft);
+  touch-action: pan-y;
+}
+.under {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 104px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.under[data-side="week"] {
+  left: 0;
+  padding-left: 18px;
+}
+.under[data-side="dime"] {
+  right: 0;
+  padding-right: 18px;
+  justify-content: flex-end;
+}
+.card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 16px;
+  position: relative;
+  background: var(--bg);
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  will-change: transform;
+}
+.card[data-settling="true"] {
+  transition: transform 180ms ease-out;
+}
+.card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.card[data-state="needs_you"]::before {
+  background: var(--down);
+}
+.card[data-state="your_call"]::before {
+  background: var(--accent);
+}
+.card[data-state="cant_read"]::before {
+  background: var(--warn);
+}
+.r1 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  white-space: nowrap;
+}
+.r1 .name {
+  font-size: 15px;
+  flex: 1;
+  min-width: 0;
+}
+.r1 .score {
+  font-size: 13.5px;
+}
+.r2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  white-space: nowrap;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  min-width: 0;
+}
+.r3 {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.35;
+}
+.tscore {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+  display: none;
+}
+.tbig {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- narrower screens */
+
+@media (max-width: 1399.98px) {
+  .tile {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .tile:first-child {
+    flex: 1.7;
+  }
+  .tileV {
+    font-size: 19px;
+  }
+}
+
+/* Beside the rows the team's page takes 380px; the rows give up Tonight, which that page shows for the picked team. */
+@media (min-width: 1180px) and (max-width: 1399.98px) {
+  .side {
+    width: 380px;
+  }
+  .head,
+  .row {
+    grid-template-columns: 186px minmax(0, 1fr) 232px;
+  }
+  .colTonight,
+  .headTonight {
+    display: none;
+  }
+}
+
+/* The picked team's page takes the screen in the rows' place; a row opens it. */
+@media (max-width: 1179.98px) {
+  .tile:nth-child(5) {
+    display: none;
+  }
+  .side {
+    width: auto;
+    flex: 1;
+    display: none;
+  }
+  .board {
+    border-right: 0;
+  }
+  .body[data-pane="team"] .side {
+    display: flex;
+  }
+  .body[data-pane="team"] .board {
+    display: none;
+  }
+  .row[data-picked="true"]::after {
+    display: none;
+  }
+  .back,
+  .sideDoors {
+    display: inline-flex;
+  }
+  .sideHead {
+    height: 44px;
+  }
+  .sideHead b {
+    font-size: 15px;
+    flex: 1;
+  }
+  .tscore {
+    display: block;
+  }
+  .du {
+    height: 26px;
+    font-size: 13px;
+  }
+  .dbe {
+    height: 30px;
+  }
+}
+
+@media (max-width: 1039.98px) {
+  .tile:nth-child(4) {
+    display: none;
+  }
+  .head,
+  .row {
+    grid-template-columns: 150px minmax(0, 1fr) 232px;
+    column-gap: 14px;
+  }
+  .colTonight,
+  .headTonight {
+    display: none;
+  }
+}
+
+/* Phones: a folded card per team; slide one right for its Week desk, left for Dime. */
+@media (max-width: 719.98px) {
+  .tape,
+  .head,
+  .row,
+  .addRow {
+    display: none;
+  }
+  .cards {
+    display: flex;
+    flex-direction: column;
+  }
+}

@@ -53,6 +53,7 @@ import type { RankingsMeta, RankingsParams, RankingsPlayer, RankingsResult } fro
 import type { TeamHolds, TeamHoldsResponse } from "@/types/team-hold";
 import type { RosterProtections, RosterProtectionsResponse } from "@/types/roster-protection";
 import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actions";
+import type { TeamsOverviewData, TeamsOverviewResponse } from "@/types/team-overview";
 import type { TeamAvailabilityData, TeamAvailabilityResponse } from "@/types/availability";
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
@@ -352,6 +353,16 @@ class ApiClient {
   }
 
   /** Today's recommended moves for an ESPN team, and the board they were computed against. */
+  /**
+   * Every team in the account at a glance (the Home desk): each one's state, the day's
+   * actions behind it, tonight's seats, the matchup and its week. One team that can't be
+   * read never fails the others. The server keeps an answer for 20 seconds.
+   */
+  async getTeamsOverview(getToken: GetTokenFn, opts?: RequestOptions): Promise<TeamsOverviewData> {
+    const env = await fetchJson<TeamsOverviewResponse>(`${TEAMS_API}/overview`, { ...opts, getToken });
+    return unwrap(env);
+  }
+
   async getTeamDailyActions(getToken: GetTokenFn, teamId: number, opts?: RequestOptions): Promise<DailyActionsData> {
     const env = await fetchJson<DailyActionsResponse>(`${TEAMS_API}/${teamId}/actions`, { ...opts, getToken });
     return unwrap(env);

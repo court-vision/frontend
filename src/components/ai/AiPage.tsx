@@ -33,6 +33,7 @@ import { draftKey, loadDraft, saveDraft } from "@/lib/ai-drafts";
 import { pausedLine, showsTimeline } from "@/lib/ai-timeline";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { teamName, teamTag } from "@/lib/account";
+import { useDimeAsk } from "@/stores/useDimeAsk";
 import { useUIStore } from "@/stores/useUIStore";
 import type { AiConversationSummary, AiFeedback, AiVerdict } from "@/types/ai";
 import { ScheduledStrip } from "./Asks";
@@ -321,6 +322,13 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
     },
     [current, create, teamId, showChat, send, userId]
   );
+
+  // A question typed on the Home desk for this team: asked here, in a new conversation
+  useEffect(() => {
+    if (teamId == null || current != null) return;
+    const asked = useDimeAsk.getState().take(teamId);
+    if (asked) void onSend(asked);
+  }, [teamId, current, onSend]);
 
   const onVote = useCallback(
     (turnId: number, value: AiFeedback | null) => {
