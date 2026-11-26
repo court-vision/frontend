@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, forwardRef, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { ArrowDown, ArrowUp, ChevronDown, Search } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
@@ -25,6 +25,7 @@ import {
 import { fmtPlaces } from "@/lib/live-rankings";
 import { healthOf } from "@/lib/week-grid";
 import { useBoardView } from "@/hooks/useBoardView";
+import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
 import { POSITION_FILTERS, type BoardSource, type DraftBoardMeta, type DraftBoardRow } from "@/types/draft";
 import { catValue, num, signed } from "./format";
@@ -41,13 +42,11 @@ const MIN: Record<string, number> = {
   espn_rank_since: 84,
   adp: 52,
   market_delta: 44,
-  availability: 72,
   projected_gp: 40,
   playoff_games: 40,
 };
 const CAT_MIN = 46;
 
-const AVAIL_LABEL = { likely: "likely", tossup: "50/50", gone: "gone" } as const;
 const SOURCE_LABEL: Record<BoardSource, string> = { espn: "ESPN", cv: "CV", my_team: "Mine" };
 const SOURCE_TITLE: Record<BoardSource, string> = {
   espn: "ESPN's published rank for this league's format — the order ESPN's own room shows",
@@ -224,6 +223,19 @@ function templateFor(columns: BoardColumn[]): string {
     .join(" ");
 }
 
+/** Dime's pick for the user's next pick: the row it highlights and the line under it. */
+export interface BoardDimePick {
+  playerId: number;
+  forPick: number;
+  reason: string | null;
+}
+
+/** Where the user's next pick lands: `after` players go before it (the picks before it). */
+export interface BoardPickLine {
+  after: number;
+  pick: number;
+}
+
 interface BoardTableProps extends BoardActions {
   meta: DraftBoardMeta | null;
   rows: DraftBoardRow[];
@@ -233,6 +245,9 @@ interface BoardTableProps extends BoardActions {
   keeperIds: ReadonlySet<number>;
   loading: boolean;
   message: string;
+  dimePick: BoardDimePick | null;
+  /** Null when there is no pick to come (the draft is over, or the seat isn't set). */
+  pickLine: BoardPickLine | null;
 }
 
 /**
@@ -242,7 +257,7 @@ interface BoardTableProps extends BoardActions {
  * a sync frame that re-renders the room stops here. Re-rendering every row of a categories
  * board measured 15 ms on an M3 and 62 ms at 4x CPU throttle; a highlight is now about 1 ms.
  */
-export const BoardTable = memo(function BoardTable({ meta, rows, visible, activeId, onActivate, keeperIds, loading, message, ...actions }: BoardTableProps) {
+export const BoardTable = memo(function BoardTable({ meta, rows, visible, activeId, onActivate, keeperIds, loading, message, dimePick, pickLine, ...actions }: BoardTableProps) {
   const every = useMemo(() => columnsFor(meta), [meta]);
   const view = useBoardView(meta);
   const toggleSort = useDraftRoomStore((st) => st.toggleSort);
@@ -274,6 +289,19 @@ export const BoardTable = memo(function BoardTable({ meta, rows, visible, active
     const el = wrap.current?.querySelector<HTMLElement>(`[data-player="${activeId}"]`);
     el?.scrollIntoView({ block: "nearest" });
   }, [activeId]);
+
+  // Where the user's next pick lands, drawn in the board's own order only (sorted by #, top
+  // first): above the first row shown that the picks before it would not reach if they followed
+  // the board. Capped and filtered-out players count, since other seats can take them. On the
+  // clock everyone left is there for the pick: the line climbs to the top row and slides away.
+  const line = useMemo(() => {
+    if (!pickLine || !visible.length || view.sortKey !== "board_rank" || view.sortDirection !== "asc") return null;
+    if (pickLine.after <= 0) return { anchorId: visible[0].player_id, away: true };
+    const order = [...rows].sort((a, b) => (a.board_rank ?? Infinity) - (b.board_rank ?? Infinity));
+    const index = new Map(order.map((r, i) => [r.player_id, i]));
+    const anchor = visible.find((r) => (index.get(r.player_id) ?? 0) >= pickLine.after);
+    return anchor ? { anchorId: anchor.player_id, away: false } : null;
+  }, [pickLine, rows, visible, view.sortKey, view.sortDirection]);
 
   // Scale for the category heat: the strongest z on the board.
   const zMax = useMemo(() => {
@@ -309,25 +337,132 @@ export const BoardTable = memo(function BoardTable({ meta, rows, visible, active
       ) : visible.length === 0 ? (
         <div className={s.boardEmpty}>{rows.length === 0 ? message || "Nobody left on the board." : "No player matches this view."}</div>
       ) : (
-        visible.map((row) => (
-          <BoardRow
-            key={row.player_id}
-            row={row}
-            meta={meta}
-            columns={columns}
-            template={template}
-            minWidth={minWidth}
-            active={row.player_id === activeId}
-            keeper={keeperIds.has(row.player_id)}
-            zMax={zMax}
-            onActivate={onActivate}
-            {...actions}
-          />
-        ))
+        visible.map((row) => {
+          const dime = dimePick?.playerId === row.player_id;
+          return (
+            <Fragment key={row.player_id}>
+              <BoardRow
+                row={row}
+                meta={meta}
+                columns={columns}
+                template={template}
+                minWidth={minWidth}
+                active={row.player_id === activeId}
+                keeper={keeperIds.has(row.player_id)}
+                dime={dime}
+                zMax={zMax}
+                onActivate={onActivate}
+                {...actions}
+              />
+              {dime ? <DimeBand pick={dimePick} minWidth={minWidth} /> : null}
+            </Fragment>
+          );
+        })
       )}
+      <PickLine
+        wrap={wrap}
+        anchorId={line?.anchorId ?? null}
+        away={line?.away ?? true}
+        pick={pickLine?.pick ?? null}
+        minWidth={minWidth}
+        visible={visible}
+        dimePick={dimePick}
+      />
     </div>
   );
 });
+
+/** Dime's reason, under the row of the player it picked. */
+function DimeBand({ pick, minWidth }: { pick: BoardDimePick; minWidth: number }) {
+  return (
+    <div className={s.dimeBand} style={{ minWidth }}>
+      <span className={s.dimeBandTag}>DIME&apos;S PICK · #{pick.forPick}</span>
+      {pick.reason ? <span className={s.dimeBandText}>{pick.reason}</span> : null}
+    </div>
+  );
+}
+
+/**
+ * The line where the user's next pick lands: thin at the left, thickening into a tab at the
+ * right. One element for the board's life, placed over the boundary above its anchor row, so a
+ * pick going in moves it up a row (a transition on `top`) instead of drawing a new one. Away (on
+ * the clock, another sort, nothing to come) it slides out to the right, on the clock climbing to
+ * the top row as it goes; when a pick is coming again it is placed while hidden, without
+ * travelling, and slides back in.
+ */
+function PickLine({
+  wrap,
+  anchorId,
+  away,
+  pick,
+  minWidth,
+  visible,
+  dimePick,
+}: {
+  wrap: React.RefObject<HTMLDivElement | null>;
+  anchorId: number | null;
+  away: boolean;
+  pick: number | null;
+  minWidth: number;
+  /** Not drawn from: the rows and the band move the anchor, so the line measures again with them. */
+  visible: DraftBoardRow[];
+  dimePick: BoardDimePick | null;
+}) {
+  // `jump`: placed while hidden, so `top` changes without a transition
+  const [line, setLine] = useState<{ top: number; pick: number; shown: boolean; jump: boolean } | null>(null);
+  const self = useRef<HTMLDivElement>(null);
+  const place = useLatestCallback(() => {
+    const el = wrap.current;
+    const anchor = el && anchorId != null ? el.querySelector<HTMLElement>(`[data-player="${anchorId}"]`) : null;
+    const top = el && anchor ? Math.round(anchor.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop) : null;
+    setLine((l) => {
+      let next: typeof l;
+      if (away || top == null || pick == null) {
+        if (!l) return l; // never drawn: nothing to slide away
+        next = { ...l, top: top ?? l.top, shown: false, jump: false };
+      } else if (!l || !l.shown) {
+        next = { top, pick, shown: false, jump: true };
+      } else {
+        next = { top, pick, shown: true, jump: false };
+      }
+      return l && next && l.top === next.top && l.pick === next.pick && l.shown === next.shown && l.jump === next.jump ? l : next;
+    });
+  });
+  useLayoutEffect(() => place(), [anchorId, away, pick, minWidth, visible, dimePick, place]);
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => place());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [wrap, place]);
+  // Placed while hidden: once that place is drawn (the read forces it), slide in.
+  const placed = line?.jump === true;
+  useEffect(() => {
+    if (!placed) return;
+    self.current?.getBoundingClientRect();
+    const frame = requestAnimationFrame(() => setLine((l) => (l?.jump ? { ...l, shown: true, jump: false } : l)));
+    return () => cancelAnimationFrame(frame);
+  }, [placed]);
+  if (!line) return null;
+  return (
+    <div
+      ref={self}
+      className={s.pickLine}
+      style={{ top: line.top, width: `max(100%, ${minWidth}px)`, transition: line.jump ? "none" : undefined }}
+      data-shown={line.shown}
+      aria-hidden
+    >
+      <div className={s.pickLineInner}>
+        <span className={s.pickWedge} />
+        <span className={s.pickTab}>
+          <span>YOUR PICK</span>
+          <strong>#{line.pick}</strong>
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function SkeletonRows({ template, count, minWidth }: { template: string; count: number; minWidth: number }) {
   return (
@@ -353,13 +488,15 @@ interface RowProps extends BoardActions {
   minWidth: number;
   active: boolean;
   keeper: boolean;
+  /** Dime's pick for the user's next pick: highlighted, with its reason under the row. */
+  dime: boolean;
   zMax: number;
   onActivate: (id: number) => void;
 }
 
 // Every prop is a primitive or an object that keeps its identity until its content changes
 // (React Query shares unchanged rows across refetches), so the default shallow compare holds.
-const BoardRow = memo(function BoardRow({ row, meta, columns, template, minWidth, active, keeper, zMax, onActivate, onMark, onEspn, espnDisabled, marking, pendingEspnId }: RowProps) {
+const BoardRow = memo(function BoardRow({ row, meta, columns, template, minWidth, active, keeper, dime, zMax, onActivate, onMark, onEspn, espnDisabled, marking, pendingEspnId }: RowProps) {
   const health = healthOf(row.injury_status ?? "");
   const pending = pendingEspnId != null && row.espn_id === pendingEspnId;
   return (
@@ -370,6 +507,7 @@ const BoardRow = memo(function BoardRow({ row, meta, columns, template, minWidth
       data-active={active}
       data-capped={row.cap_blocked}
       data-pending={pending}
+      data-dime={dime}
       onMouseDown={() => onActivate(row.player_id)}
     >
       {health !== "ok" ? <span className={s.health} data-health={health} /> : null}
@@ -459,19 +597,6 @@ function Cell({ column, row, meta, keeper, zMax }: { column: BoardColumn; row: D
       return td(num(row.adp));
     case "market_delta":
       return td(row.market_delta == null ? "—" : signed(row.market_delta, 0), row.market_delta == null || row.market_delta === 0 ? undefined : row.market_delta > 0 ? s.pos : s.neg);
-    case "availability":
-      return td(
-        row.availability ? (
-          <span className={s.avail} data-avail={row.availability}>
-            <span className={s.availDot} />
-            {AVAIL_LABEL[row.availability]}
-          </span>
-        ) : (
-          "—"
-        ),
-        undefined,
-        row.availability ? "From his ADP against your next pick" : undefined
-      );
     case "projected_gp":
       return td(row.projected_gp ?? row.last_season_gp ?? "—");
     case "playoff_games": {

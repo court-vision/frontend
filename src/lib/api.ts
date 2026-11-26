@@ -1265,14 +1265,7 @@ class ApiClient {
     return unwrap(await fetchJson<DimeDraftRoomResponse>(`${DRAFTS_API}/${sessionId}/dime`, { ...opts, getToken }));
   }
 
-  /** A note whenever the user's pick is near, on or off. */
-  async setDimeDraftNotes(getToken: GetTokenFn, sessionId: number, notes: boolean): Promise<DimeDraftRoom> {
-    return unwrap(
-      await fetchJson<DimeDraftRoomResponse>(`${DRAFTS_API}/${sessionId}/dime`, { getToken, method: "PUT", body: { notes } })
-    );
-  }
-
-  /** Ask for a plan, a note at the coming pick, or a recap. It comes back running (or the pick's note already written). */
+  /** Ask for Dime's pick for the coming pick, or a recap. It comes back running (or the pick Dime already chose). */
   async askDimeDraft(getToken: GetTokenFn, sessionId: number, kind: DimeDraftNoteKind): Promise<DimeDraftNote> {
     return unwrap(
       await fetchJson<DimeDraftNoteResponse>(`${DRAFTS_API}/${sessionId}/dime/notes`, { getToken, method: "POST", body: { kind } })

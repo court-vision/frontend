@@ -1,38 +1,16 @@
 /**
  * Dime in a draft room (the Dime autopilot plan, step 7; backend
  * services/ai/draft.py): what the room's Dime section reads off the notes and
- * the seat, and when the room asks for a note at the user's pick on its own.
+ * the seat, and when the room asks for Dime's pick on its own.
  *
- * Every note is a turn the user started from the room (the plan button, the
- * notes switch, the seat), so nothing here decides for the user: it only says
- * which note is about which pick, and when the switch should ask.
+ * Dime's pick (James, 2026-11-26) is one player for the user's next pick, the
+ * one on the clock included, with one line on why for this roster: the board
+ * highlights him with that line under his row. The room asks for it once the
+ * pick is `lead` picks away, and once more if another seat drafts him first.
+ * Nothing here decides for the user: the user makes the pick.
  */
 import { prose } from "@/lib/ai-prose";
 import type { DimeDraftNote, DimeDraftRoom, DraftSession } from "@/types/draft";
-
-/** One of the three recommendations a pick note was written beside. */
-export interface DimePickTop {
-  player_id: number | null;
-  name: string;
-  position: string | null;
-  score: number | null;
-  availability: string | null;
-  adp: number | null;
-  reason: string | null;
-}
-
-/** The board's numbers the server read for a pick note. */
-export interface DimePickFacts {
-  pick: number | null;
-  picksUntil: number | null;
-  onClock: boolean;
-  /** The pick `gone` is about: the coming pick, or while on the clock the one after it. */
-  goneBefore: number | null;
-  top: DimePickTop[];
-  gone: Array<{ name: string; adp: number | null }>;
-  punts: string[];
-  needs: Array<{ label: string; need: number | null }>;
-}
 
 /** What a recap note read of the user's seat. */
 export interface DimeRecapFacts {
@@ -43,33 +21,23 @@ export interface DimeRecapFacts {
   byDime: number;
 }
 
+/** Dime's pick for one of the user's picks: the player the board highlights, and why. */
+export interface DimePick {
+  noteId: number;
+  forPick: number;
+  playerId: number;
+  name: string;
+  position: string | null;
+  team: string | null;
+  reason: string | null;
+  conversationId: number | null;
+}
+
+/** How many times the server lets Dime pick again for one pick after its player went first (backend RETAKES). */
+export const RETAKES = 1;
+
 const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
 const numOr = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
-const list = (v: unknown): Record<string, unknown>[] =>
-  Array.isArray(v) ? v.filter((x): x is Record<string, unknown> => x != null && typeof x === "object") : [];
-
-/** A pick note's facts, read defensively: the server's dict is untyped on the wire. */
-export function pickFacts(note: Pick<DimeDraftNote, "facts">): DimePickFacts {
-  const f = note.facts ?? {};
-  return {
-    pick: numOr(f.pick),
-    picksUntil: numOr(f.picks_until),
-    onClock: f.on_clock === true,
-    goneBefore: numOr(f.gone_before),
-    top: list(f.top).map((r) => ({
-      player_id: numOr(r.player_id),
-      name: str(r.name) ?? "—",
-      position: str(r.position),
-      score: numOr(r.score),
-      availability: str(r.availability),
-      adp: numOr(r.adp),
-      reason: str(r.reason),
-    })),
-    gone: list(f.gone).map((r) => ({ name: str(r.name) ?? "—", adp: numOr(r.adp) })),
-    punts: Array.isArray(f.punts) ? f.punts.filter((p): p is string => typeof p === "string") : [],
-    needs: list(f.needs).map((n) => ({ label: str(n.label) ?? str(n.category) ?? "—", need: numOr(n.need) })),
-  };
-}
 
 export function recapFacts(note: Pick<DimeDraftNote, "facts">): DimeRecapFacts {
   const f = note.facts ?? {};
@@ -82,12 +50,25 @@ export function recapFacts(note: Pick<DimeDraftNote, "facts">): DimeRecapFacts {
   };
 }
 
-/** The plan the room is drafted to: the newest plan note that set one. */
-export function latestPlan(notes: readonly DimeDraftNote[]): DimeDraftNote | null {
-  return notes.find((n) => n.kind === "plan" && n.state === "done" && n.plan) ?? null;
+/** The player a finished pick note chose, read defensively (the server's dict is untyped on the wire). */
+export function pickOf(note: Pick<DimeDraftNote, "id" | "kind" | "seat" | "state" | "for_pick" | "pick" | "conversation_id">): DimePick | null {
+  if (note.kind !== "pick" || note.seat || note.state !== "done" || note.for_pick == null) return null;
+  const p = note.pick ?? {};
+  const playerId = numOr(p.player_id);
+  if (playerId == null) return null;
+  return {
+    noteId: note.id,
+    forPick: note.for_pick,
+    playerId,
+    name: str(p.name) ?? "—",
+    position: str(p.position),
+    team: str(p.team),
+    reason: str(p.reason),
+    conversationId: note.conversation_id,
+  };
 }
 
-/** The advice note about one of the user's picks (not one Dime made from the seat), failed or not. */
+/** Dime's newest note about one of the user's picks (not one it made from the seat), failed or not. */
 export function noteForPick(notes: readonly DimeDraftNote[], pick: number | null | undefined): DimeDraftNote | null {
   if (pick == null) return null;
   return notes.find((n) => n.kind === "pick" && !n.seat && n.for_pick === pick) ?? null;
@@ -107,28 +88,61 @@ export function seatBusy(room: Pick<DimeDraftRoom, "seat"> | null | undefined): 
   return !!room && room.seat.state !== "off" && room.seat.live;
 }
 
-/**
- * The pick the notes switch should ask about now, or null. It asks once the
- * user's pick is `lead` picks away or nearer, once per pick: a note already
- * there (even a failed one; the user asks again by hand) or one running
- * anywhere in the room holds it, and so does Dime drafting the seat.
- */
-export function pickToAsk(
-  room: DimeDraftRoom | null | undefined,
-  session: Pick<DraftSession, "status" | "my_next_pick" | "picks_until_my_turn"> | null | undefined
-): number | null {
-  if (!room || !session || !room.available || !room.notes_on) return null;
-  if (session.status !== "active" || session.my_next_pick == null || session.picks_until_my_turn == null) return null;
-  if (session.picks_until_my_turn > room.lead) return null;
-  if (room.running != null || seatBusy(room)) return null;
-  if (noteForPick(room.notes, session.my_next_pick)) return null;
-  return session.my_next_pick;
+type PickSession = Pick<DraftSession, "status" | "my_next_pick" | "picks_until_my_turn" | "picks">;
+
+/** The players drafted in the room so far, keepers included. */
+export function draftedIds(session: Pick<DraftSession, "picks">): Set<number> {
+  return new Set(session.picks.map((p) => p.player_id).filter((id): id is number => id != null));
 }
 
 /**
- * What changes the room under the user when it moves: a note finishing (a plan
- * sets punts, a seat pick adds a pick) or the seat changing hands. The room
- * reads its session and board again when this does.
+ * Dime's pick for the user's next pick, while it still stands: chosen, and its
+ * player not drafted since. Null while Dime holds the seat (it makes the pick
+ * itself then) and once the draft is over.
+ */
+export function dimePickFor(room: DimeDraftRoom | null | undefined, session: PickSession | null | undefined, drafted?: ReadonlySet<number>): DimePick | null {
+  if (!room || !session || !room.available || session.status !== "active" || seatBusy(room)) return null;
+  const note = noteForPick(room.notes, session.my_next_pick);
+  const pick = note ? pickOf(note) : null;
+  if (!pick || (drafted ?? draftedIds(session)).has(pick.playerId)) return null;
+  return pick;
+}
+
+/** How many times Dime picked again for `pick` because its player went first. */
+export function retakesFor(notes: readonly DimeDraftNote[], pick: number): number {
+  return notes.filter((n) => n.kind === "pick" && !n.seat && n.for_pick === pick && n.state === "failed" && n.reason === "taken").length;
+}
+
+/**
+ * The pick the room should ask Dime about now, or null. It asks once the
+ * user's pick is `lead` picks away or nearer (the pick on the clock included),
+ * once per pick: a note already there (even a failed one; the user asks again
+ * by hand) or one running anywhere in the room holds it, and so does Dime
+ * drafting the seat. The one exception is the player Dime chose being drafted
+ * by another seat first: then it asks once more (the server retires the old
+ * pick and Dime picks again, `RETAKES` times at most). A pick note from before
+ * Dime chose players (done, with no player) gives way too.
+ */
+export function pickToAsk(room: DimeDraftRoom | null | undefined, session: PickSession | null | undefined, drafted?: ReadonlySet<number>): number | null {
+  if (!room || !session || !room.available) return null;
+  if (session.status !== "active" || session.my_next_pick == null || session.picks_until_my_turn == null) return null;
+  if (session.picks_until_my_turn > room.lead) return null;
+  if (room.running != null || seatBusy(room)) return null;
+  const held = noteForPick(room.notes, session.my_next_pick);
+  if (!held) return session.my_next_pick;
+  const pick = pickOf(held);
+  // A note written before Dime chose players (finished, nobody in it): the server replaces it
+  if (held.state === "done" && !pick) return session.my_next_pick;
+  if (pick && (drafted ?? draftedIds(session)).has(pick.playerId) && retakesFor(room.notes, session.my_next_pick) < RETAKES) {
+    return session.my_next_pick;
+  }
+  return null;
+}
+
+/**
+ * What changes the room under the user when it moves: a note finishing (a seat
+ * pick adds a pick) or the seat changing hands. The room reads its session and
+ * board again when this does.
  */
 export function roomSignature(room: DimeDraftRoom | null | undefined): string {
   if (!room) return "";
@@ -158,15 +172,19 @@ export function seatReason(seat: DimeDraftRoom["seat"]): string | null {
 }
 
 /** What a note is, as its card's head says it. */
-export function noteLabel(note: Pick<DimeDraftNote, "kind" | "for_pick" | "seat">): string {
+export function noteLabel(note: Pick<DimeDraftNote, "kind" | "for_pick" | "seat"> & Partial<Pick<DimeDraftNote, "pick">>): string {
   if (note.kind === "plan") return "Plan";
   if (note.kind === "recap") return "Recap";
-  return note.seat ? `Took pick ${note.for_pick}` : `Pick ${note.for_pick}`;
+  if (note.seat) return `Took pick ${note.for_pick}`;
+  const name = str(note.pick?.name);
+  return name ? `Pick ${note.for_pick} · ${name}` : `Pick ${note.for_pick}`;
 }
 
 const FAILED_REASON: Record<string, string> = {
   stale: "It stopped before it finished",
   no_pick: "Dime didn't make a pick",
+  taken: "He was drafted before your pick, so Dime picked again",
+  superseded: "Written before Dime chose players; replaced by its pick",
   AI_TIMEOUT: "Dime took too long",
 };
 
@@ -176,12 +194,6 @@ export function failedLine(note: Pick<DimeDraftNote, "state" | "reason">): strin
   if (note.reason && FAILED_REASON[note.reason]) return FAILED_REASON[note.reason];
   if (note.reason && /BUDGET|QUOTA/.test(note.reason)) return "The assistant's budget is used up";
   return "It couldn't be written";
-}
-
-/** "punt FT%, TO" / "no punts" for a plan's punts, with the room's labels where they're known. */
-export function puntLine(punts: readonly string[] | null | undefined, labels: Record<string, string> = {}): string {
-  if (!punts || punts.length === 0) return "no punts";
-  return `punt ${punts.map((p) => labels[p] ?? p.toUpperCase()).join(", ")}`;
 }
 
 /** A note's first paragraph (or first bullet) as plain text, cut to `max`: its line on a room's recap. */

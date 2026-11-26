@@ -140,7 +140,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
   const simBlocker = mockBlocker(session);
   const myTurnBlocker = mockMyTurnBlocker(session);
   const completed = session.status === "completed";
-  // Dime in the room: its notes, and the user's seat in a mock while Dime drafts it
+  // Dime in the room: its pick for the user's next pick, and the user's seat in a mock while Dime drafts it
   const dime = useRoomDime(model, session);
   const dimeSeat = dime.drafting ? "Dime has your seat: take it back first" : null;
 
@@ -164,6 +164,18 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
   const players = useMemo(() => myRoster(board?.roster ?? [], session.picks), [board, session.picks]);
   const openSlots = openStartingSlots(fillLineup(meta?.roster_slots ?? {}, players)).reduce((a, o) => a + o.open, 0);
   const atRisk = useMemo(() => countAtRisk(rows), [rows]);
+  // Dime's pick on the board, and the line where the user's next pick lands (one identity
+  // each until they move, for the memoized board)
+  const dimeId = dime.pick?.playerId ?? null;
+  const dimeFor = dime.pick?.forPick ?? null;
+  const dimeReason = dime.pick?.reason ?? null;
+  const boardDimePick = useMemo(
+    () => (dimeId != null && dimeFor != null ? { playerId: dimeId, forPick: dimeFor, reason: dimeReason } : null),
+    [dimeId, dimeFor, dimeReason]
+  );
+  const linePick = !completed && session.status === "active" ? session.my_next_pick : null;
+  const lineAfter = session.picks_until_my_turn;
+  const pickLine = useMemo(() => (linePick != null && lineAfter != null ? { after: lineAfter, pick: linePick } : null), [linePick, lineAfter]);
 
   // ---- the Draft Tap's write path ----
   const writeUi = !!sync && sync.configured && sync.state.connection !== "unconfigured" && sync.state.connection !== "unsupported";
@@ -608,7 +620,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
             <span className={dk.label}>At risk</span>
             <span className={s.tickValue}>
               {atRisk}
-              <span className={s.tickSub}>{upcoming[0] != null ? `gone before #${upcoming[0] === session.next_overall_pick ? upcoming[1] ?? upcoming[0] : upcoming[0]}` : "likely gone"}</span>
+              <span className={s.tickSub}>{upcoming[0] != null ? `gone before #${upcoming[0]}` : "likely gone"}</span>
             </span>
           </button>
         ) : null}
@@ -697,6 +709,8 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
               espnDisabled={espnDisabled}
               marking={model.picking || completed || dime.drafting}
               pendingEspnId={sync?.state.pending?.playerId ?? null}
+              dimePick={boardDimePick}
+              pickLine={pickLine}
             />
           )}
         </div>
@@ -722,15 +736,9 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
             espnDisabled={espnDisabled}
             marking={model.picking || completed || dime.drafting}
             loading={model.boardLoading}
+            dimeId={boardDimePick?.playerId ?? null}
           />
-          <DimeRail
-            dime={dime}
-            session={session}
-            board={board}
-            onFocus={focusPlayer}
-            onRestorePunts={completed ? null : (punts) => model.update({ punts }).then(() => toast.success("Punts put back")).catch(() => undefined)}
-            updating={model.updating}
-          />
+          <DimeRail dime={dime} session={session} onFocus={focusPlayer} />
           <Needs board={board} onPunt={completed ? null : togglePunt} saving={model.updating} />
           <Roster
             session={session}

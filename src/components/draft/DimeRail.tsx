@@ -7,27 +7,27 @@ import { toast } from "sonner";
 import dk from "@/components/desk/desk.module.css";
 import { ACCOUNT_DESK, AI_DESK } from "@/components/desk/routes";
 import { aiMessage } from "@/hooks/useAi";
-import { useAskDimeDraft, useDimeDraftQuery, useSetDimeDraftNotes, useSetDimeDraftSeat } from "@/hooks/useDimeDraft";
+import { useAskDimeDraft, useDimeDraftQuery, useSetDimeDraftSeat } from "@/hooks/useDimeDraft";
 import { draftKeys } from "@/hooks/useDrafts";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { toApiError } from "@/lib/api-error";
 import { prose } from "@/lib/ai-prose";
 import {
+  dimePickFor,
+  draftedIds,
   failedLine,
-  latestPlan,
   noteForPick,
-  noteLabel,
-  pickFacts,
+  pickOf,
   pickToAsk,
-  puntLine,
   recapFacts,
   roomSignature,
   seatBusy,
   seatPicks,
   seatReason,
+  type DimePick,
 } from "@/lib/draft-dime";
-import type { DimeDraftNote, DimeDraftNoteKind, DimeDraftRoom, DraftBoardResult, DraftSession } from "@/types/draft";
-import { shortName, signed } from "./format";
+import type { DimeDraftNote, DimeDraftNoteKind, DimeDraftRoom, DraftSession } from "@/types/draft";
+import { shortName } from "./format";
 import type { RoomModel } from "./model";
 import s from "./draft.module.css";
 
@@ -35,8 +35,8 @@ const AUTOMATION_SETTINGS = `${ACCOUNT_DESK}?v=automation`;
 
 // ---------------------------------------------------------------------------
 // The room's side of Dime: the view, the writes, and the two things the room
-// does on its own (asking for a pick note while the switch is on, and reading
-// the draft again when a note or the seat changed it)
+// does on its own (asking for Dime's pick as the user's pick comes up, and
+// reading the draft again when the seat changed it)
 // ---------------------------------------------------------------------------
 
 export interface RoomDime {
@@ -45,10 +45,10 @@ export interface RoomDime {
   switchedOff: boolean;
   /** Dime holds the user's seat and its loop is running: the room's own pick controls stand down. */
   drafting: boolean;
+  /** Dime's pick for the user's next pick while it stands: the board highlights him. */
+  pick: DimePick | null;
   ask: (kind: DimeDraftNoteKind) => void;
   asking: boolean;
-  setNotes: (on: boolean) => void;
-  settingNotes: boolean;
   setSeat: (on: boolean) => void;
   settingSeat: boolean;
 }
@@ -56,12 +56,11 @@ export interface RoomDime {
 export function useRoomDime(model: RoomModel, session: DraftSession): RoomDime {
   const query = useDimeDraftQuery(session.id, !model.demo);
   const askM = useAskDimeDraft(session.id);
-  const notesM = useSetDimeDraftNotes(session.id);
   const seatM = useSetDimeDraftSeat(session.id);
   const room = query.data?.available ? query.data : null;
   const queryClient = useQueryClient();
 
-  // A finished plan sets punts and a seat pick adds a pick: everything that reads the draft reads it
+  // A seat pick adds a pick: everything that reads the draft reads it
   // again, as after the room's own writes (the session, every board view, the recap, the lobby)
   const signature = roomSignature(room);
   const seen = useRef<string | null>(null);
@@ -96,29 +95,29 @@ export function useRoomDime(model: RoomModel, session: DraftSession): RoomDime {
     });
   });
 
-  // The switch: once per pick, when the user's pick is `lead` picks away or nearer
+  // Dime's pick: once per pick, when the user's pick is `lead` picks away or nearer, and once
+  // more if another seat drafts the player it chose first (a retake is its own key)
+  const drafted = useMemo(() => draftedIds(session), [session]);
   const asked = useRef(new Set<string>());
-  const due = pickToAsk(room, session);
+  const due = pickToAsk(room, session, drafted);
+  // The note it replaces, for a retake: "-" when there is none yet
+  const held = due != null ? (noteForPick(room?.notes ?? [], due)?.id ?? "-") : null;
   useEffect(() => {
     if (due == null || askM.isPending) return;
-    const key = `${session.id}:${due}`;
+    const key = `${session.id}:${due}:${held}`;
     if (asked.current.has(key)) return;
     asked.current.add(key);
     ask("pick", true);
-  }, [due, session.id, askM.isPending, ask]);
+  }, [due, held, session.id, askM.isPending, ask]);
+  const pick = useMemo(() => dimePickFor(room, session, drafted), [room, session, drafted]);
 
   return {
     room,
     switchedOff: query.data?.switched_off === true,
     drafting: seatBusy(room),
+    pick,
     ask: (kind) => ask(kind),
     asking: askM.isPending,
-    setNotes: (on) =>
-      notesM.mutate(on, {
-        onSuccess: () => toast.success(on ? "Dime writes a note as each of your picks comes up" : "Notes at your picks off"),
-        onError: (err) => toast.error(aiMessage(err, "Couldn't change that")),
-      }),
-    settingNotes: notesM.isPending,
     setSeat: (on) =>
       seatM.mutate(on, {
         onSuccess: () => toast.success(on ? "Dime has your seat: it drafts to the end" : "Dime hands your seat back after this pick"),
@@ -135,26 +134,17 @@ export function useRoomDime(model: RoomModel, session: DraftSession): RoomDime {
 interface DimeRailProps {
   dime: RoomDime;
   session: DraftSession;
-  board: DraftBoardResult | null;
   onFocus: (playerId: number) => void;
-  /** Put the room's punts back to what they were before a plan set them. */
-  onRestorePunts: ((punts: string[]) => void) | null;
-  updating: boolean;
 }
 
-export function DimeRail({ dime, session, board, onFocus, onRestorePunts, updating }: DimeRailProps) {
+export function DimeRail({ dime, session, onFocus }: DimeRailProps) {
   const room = dime.room;
-  const labels = useMemo(
-    () => Object.fromEntries((board?.meta?.category_need ?? []).map((n) => [n.key, n.label])),
-    [board?.meta?.category_need]
-  );
+  const drafted = useMemo(() => draftedIds(session), [session]);
   if (!room) return dime.switchedOff ? <SwitchedOff /> : null;
 
   const completed = session.status === "completed";
   const writing = room.running != null || dime.asking;
-  const planNote = room.notes.find((n) => n.kind === "plan") ?? null;
-  const plan = latestPlan(room.notes);
-  const pickNote = completed ? null : noteForPick(room.notes, session.my_next_pick);
+  const pickNote = completed || dime.drafting ? null : noteForPick(room.notes, session.my_next_pick);
   const recapNote = room.notes.find((n) => n.kind === "recap") ?? null;
   const took = seatPicks(room.notes);
   const mock = session.kind === "mock";
@@ -165,65 +155,10 @@ export function DimeRail({ dime, session, board, onFocus, onRestorePunts, updati
     <section className={s.section} aria-label="Dime">
       <div className={s.sectionHead}>
         <span className={dk.label}>Dime</span>
-        <span className={dk.sub}>{dime.drafting ? "has your seat" : writing ? "writing…" : ""}</span>
-        {!completed ? (
-          <span className={s.right}>
-            <span className={dk.sub}>Notes at my picks</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={room.notes_on}
-              aria-label="A note from Dime as each of your picks comes up"
-              title={`A note from Dime whenever your pick is ${room.lead} picks away or nearer. Each note is an AI desk turn.`}
-              className={s.switch}
-              disabled={dime.settingNotes}
-              onClick={() => dime.setNotes(!room.notes_on)}
-            />
-          </span>
-        ) : null}
+        <span className={dk.sub}>{dime.drafting ? "has your seat" : pickNote?.state === "running" ? "choosing…" : writing ? "writing…" : ""}</span>
       </div>
 
       <div className={`${s.sectionBody} ${s.dime}`}>
-        {/* ---- the plan ---- */}
-        {planNote?.state === "running" ? (
-          <Writing what="a plan" />
-        ) : plan ? (
-          <div className={s.dimeBlock}>
-            <div className={s.dimeHead}>
-              <span className={s.tag}>PLAN</span>
-              <span className={dk.sub}>{puntLine(plan.punts, labels)}</span>
-              <span className={s.right}>
-                {onRestorePunts && plan.punts_before && !samePunts(plan.punts_before, plan.punts) && samePunts(session.punts, plan.punts) ? (
-                  <button
-                    type="button"
-                    className={`${dk.btn} ${dk.btnSmall}`}
-                    disabled={updating}
-                    title={`Put the room's punts back to ${puntLine(plan.punts_before, labels)}`}
-                    onClick={() => onRestorePunts(plan.punts_before ?? [])}
-                  >
-                    Undo punts
-                  </button>
-                ) : null}
-                <NoteLink note={plan} />
-              </span>
-            </div>
-            <p className={s.dimePlan}>{plan.plan}</p>
-            {!completed ? (
-              <button type="button" className={`${dk.btn} ${dk.btnSmall}`} disabled={writing || dime.drafting} onClick={() => dime.ask("plan")}>
-                Plan again
-              </button>
-            ) : null}
-          </div>
-        ) : !completed ? (
-          <div className={s.dimeBlock}>
-            {planNote?.state === "failed" ? <span className={s.dimeFailed}>{failedLine(planNote)}</span> : null}
-            <span className={dk.sub}>Dime reads the room and sets the plan it drafts to{session.scoring_format === "categories" ? ", punts included" : ""}.</span>
-            <button type="button" className={`${dk.btn} ${dk.btnSmall} ${dk.btnPrimary}`} disabled={writing || dime.drafting} onClick={() => dime.ask("plan")}>
-              Plan my draft
-            </button>
-          </div>
-        ) : null}
-
         {/* ---- the seat (a mock following nothing) ---- */}
         {mock && !completed ? (
           <div className={s.dimeBlock}>
@@ -258,20 +193,19 @@ export function DimeRail({ dime, session, board, onFocus, onRestorePunts, updati
           </div>
         ) : null}
 
-        {/* ---- the coming pick ---- */}
-        {!completed && !dime.drafting ? (
-          pickNote?.state === "running" ? (
-            <Writing what={`a note for pick ${pickNote.for_pick}`} />
-          ) : pickNote?.state === "done" ? (
-            <PickNote note={pickNote} onFocus={onFocus} />
-          ) : session.my_next_pick != null ? (
-            <div className={s.dimeBlock}>
-              {pickNote?.state === "failed" ? <span className={s.dimeFailed}>{failedLine(pickNote)}</span> : null}
-              <button type="button" className={`${dk.btn} ${dk.btnSmall}`} disabled={writing} onClick={() => dime.ask("pick")}>
-                {pickNote ? "Ask again" : `Note for pick ${session.my_next_pick}`}
-              </button>
-            </div>
-          ) : null
+        {/* ---- Dime's pick for the coming pick (the board highlights him) ---- */}
+        {!completed && !dime.drafting && session.my_next_pick != null ? (
+          <PickLine
+            note={pickNote}
+            pick={dime.pick}
+            nextPick={session.my_next_pick}
+            lead={room.lead}
+            picksAway={session.picks_until_my_turn}
+            drafted={drafted}
+            writing={writing}
+            onAsk={() => dime.ask("pick")}
+            onFocus={onFocus}
+          />
         ) : null}
 
         {/* ---- what Dime took from the seat ---- */}
@@ -287,7 +221,7 @@ export function DimeRail({ dime, session, board, onFocus, onRestorePunts, updati
         {/* ---- the recap ---- */}
         {completed ? (
           recapNote?.state === "running" ? (
-            <Writing what="the recap" />
+            <Writing line="Dime is writing the recap…" />
           ) : recapNote?.state === "done" ? (
             <RecapNote note={recapNote} />
           ) : (
@@ -305,10 +239,67 @@ export function DimeRail({ dime, session, board, onFocus, onRestorePunts, updati
   );
 }
 
-function samePunts(a: readonly string[] | null | undefined, b: readonly string[] | null | undefined): boolean {
-  const x = [...(a ?? [])].sort();
-  const y = [...(b ?? [])].sort();
-  return x.length === y.length && x.every((v, i) => v === y[i]);
+/**
+ * Dime's pick in the rail: one line, since the board carries the highlight and the reason.
+ * Before the pick is near it says when Dime picks, with a button to ask now.
+ */
+function PickLine({
+  note,
+  pick,
+  nextPick,
+  lead,
+  picksAway,
+  drafted,
+  writing,
+  onAsk,
+  onFocus,
+}: {
+  note: DimeDraftNote | null;
+  pick: DimePick | null;
+  nextPick: number;
+  lead: number;
+  picksAway: number | null;
+  drafted: ReadonlySet<number>;
+  writing: boolean;
+  onAsk: () => void;
+  onFocus: (playerId: number) => void;
+}) {
+  if (note?.state === "running") return <Writing line={`Dime is choosing your pick for #${nextPick}…`} />;
+  if (pick) {
+    return (
+      <div className={s.dimeBlock}>
+        <div className={s.dimeHead}>
+          <span className={`${s.tag} ${s.tagAccent}`}>PICK #{pick.forPick}</span>
+          <button type="button" className={s.dimeShow} onClick={() => onFocus(pick.playerId)} title="Show him on the board">
+            {pick.name}
+            {pick.position ? ` · ${pick.position}` : ""}
+          </button>
+          <span className={s.right}>
+            <NoteLink conversationId={pick.conversationId} />
+          </span>
+        </div>
+      </div>
+    );
+  }
+  const chosen = note ? pickOf(note) : null;
+  if (chosen && drafted.has(chosen.playerId)) {
+    return (
+      <div className={s.dimeBlock}>
+        <span className={dk.sub}>{chosen.name}, Dime&apos;s pick for #{nextPick}, was drafted first. The board&apos;s calls still stand.</span>
+      </div>
+    );
+  }
+  return (
+    <div className={s.dimeBlock}>
+      {note?.state === "failed" ? <span className={s.dimeFailed}>{failedLine(note)}</span> : null}
+      {!note && picksAway != null && picksAway > lead ? (
+        <span className={dk.sub}>Dime picks for you when #{nextPick} is {lead} picks away.</span>
+      ) : null}
+      <button type="button" className={`${dk.btn} ${dk.btnSmall}`} disabled={writing} onClick={onAsk} title="Dime chooses one player for this pick, with a line on why. It is an AI desk turn.">
+        {note ? "Ask Dime again" : `Dime's pick for #${nextPick} now`}
+      </button>
+    </div>
+  );
 }
 
 /** Dime in draft rooms is off for the account: one line saying where it comes back on. */
@@ -332,19 +323,19 @@ function SwitchedOff() {
   );
 }
 
-function Writing({ what }: { what: string }) {
+function Writing({ line }: { line: string }) {
   return (
     <div className={s.dimeBlock} aria-busy>
-      <span className={dk.sub}>Dime is writing {what}…</span>
+      <span className={dk.sub}>{line}</span>
       <span className={dk.skel} style={{ display: "block" }} />
     </div>
   );
 }
 
-function NoteLink({ note }: { note: DimeDraftNote }) {
-  if (note.conversation_id == null) return null;
+function NoteLink({ conversationId }: { conversationId: number | null }) {
+  if (conversationId == null) return null;
   return (
-    <Link href={`${AI_DESK}?c=${note.conversation_id}`} className={dk.link} title="Open the note's conversation in the AI desk, to ask a follow-up">
+    <Link href={`${AI_DESK}?c=${conversationId}`} className={dk.link} title="Open Dime's conversation in the AI desk, to ask a follow-up">
       Follow up
     </Link>
   );
@@ -365,39 +356,6 @@ function Prose({ text }: { text: string | null }) {
           </ul>
         )
       )}
-    </div>
-  );
-}
-
-function PickNote({ note, onFocus }: { note: DimeDraftNote; onFocus: (playerId: number) => void }) {
-  const f = pickFacts(note);
-  return (
-    <div className={s.dimeBlock}>
-      <div className={s.dimeHead}>
-        <span className={s.tag}>{noteLabel(note).toUpperCase()}</span>
-        <span className={dk.sub}>{f.onClock ? "on the clock" : f.picksUntil != null ? `${f.picksUntil} pick${f.picksUntil === 1 ? "" : "s"} away when written` : ""}</span>
-        <span className={s.right}>
-          <NoteLink note={note} />
-        </span>
-      </div>
-      {f.top.length > 0 ? (
-        <div className={s.dimeFacts}>
-          {f.top.map((t, i) => (
-            <button key={`${t.player_id}-${i}`} type="button" className={s.dimeFact} onClick={() => t.player_id != null && onFocus(t.player_id)} title={t.reason ?? undefined}>
-              <span>{i + 1}</span>
-              <span>{shortName(t.name)}</span>
-              <span>{t.position ?? "—"}</span>
-              <span>{signed(t.score, 0)}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <Prose text={note.text} />
-      {f.gone.length > 0 ? (
-        <span className={dk.sub}>
-          Likely gone before #{f.goneBefore ?? "?"}: {f.gone.map((g) => shortName(g.name)).join(", ")}
-        </span>
-      ) : null}
     </div>
   );
 }
@@ -430,7 +388,7 @@ function RecapNote({ note }: { note: DimeDraftNote }) {
             .join(" · ")}
         </span>
         <span className={s.right}>
-          <NoteLink note={note} />
+          <NoteLink conversationId={note.conversation_id} />
         </span>
       </div>
       <Prose text={note.text} />

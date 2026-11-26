@@ -548,36 +548,6 @@
   color: var(--accent);
 }
 
-.avail {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10.5px;
-}
-
-.availDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--line-2);
-}
-
-.avail[data-avail="likely"] .availDot {
-  background: var(--up);
-}
-
-.avail[data-avail="tossup"] .availDot {
-  background: var(--warn);
-}
-
-.avail[data-avail="gone"] .availDot {
-  background: var(--down);
-}
-
-.avail[data-avail="gone"] {
-  color: var(--down);
-}
-
 .pos {
   color: var(--up);
 }
@@ -997,11 +967,6 @@
   gap: 8px;
 }
 
-.dimePlan {
-  margin: 0;
-  color: var(--text);
-}
-
 .dimeFailed {
   color: var(--down);
 }
@@ -1035,12 +1000,6 @@
 .dimeText strong {
   color: var(--text);
   font-weight: 600;
-}
-
-.dimeFacts {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
 }
 
 .dimeFact {
@@ -1081,49 +1040,6 @@
   flex-direction: column;
   width: 100%;
   gap: 2px;
-}
-
-.switch {
-  position: relative;
-  flex-shrink: 0;
-  width: 30px;
-  height: 18px;
-  border-radius: calc(9px * var(--round, 1));
-  border: 0;
-  background: var(--line-2);
-  cursor: pointer;
-  transition: background 120ms ease-out;
-}
-
-.switch::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  transition: transform 120ms ease-out;
-}
-
-.switch[aria-checked="true"] {
-  background: var(--accent);
-}
-
-.switch[aria-checked="true"]::after {
-  transform: translateX(12px);
-}
-
-.switch:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.switch:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 
 /* ---------------------------------------------------------------- sync pill */
@@ -1687,5 +1603,148 @@
   .clockDot,
   .cell[data-fresh="true"] {
     animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------- Dime's pick on the board */
+
+/* The row Dime picked for the user's next pick, and its reason under it, read as one block:
+   an accent tint, an accent bar down the left, and an accent rule round the pair. */
+.boardRow[data-dime="true"]:not([data-active="true"]):not(:hover) {
+  --row-bg: color-mix(in srgb, var(--accent) 9%, var(--bg));
+}
+
+.boardRow[data-dime="true"] {
+  border-bottom-color: transparent;
+  box-shadow:
+    inset 3px 0 0 var(--accent),
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+.dimeBand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 0 16px 10px 52px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg));
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: inset 3px 0 0 var(--accent);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.dimeBandTag {
+  flex: none;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.dimeBandText {
+  min-width: 0;
+}
+
+.callDime {
+  margin-left: 6px;
+}
+
+.dimeShow {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.dimeShow:hover {
+  color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- the pick line */
+
+/* Where the user's next pick lands. The outer box sits on the boundary between two rows and
+   clips, so the line sliding out to the right never widens the board's scroll; it moves a row
+   at a time with `top` (placed while hidden it jumps instead, then slides in: Board.tsx). */
+.pickLine {
+  position: absolute;
+  left: 0;
+  height: 20px;
+  margin-top: -10px;
+  overflow: hidden;
+  z-index: 2;
+  pointer-events: none;
+  transition: top 280ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.pickLineInner {
+  position: absolute;
+  inset: 0;
+  transform: translateX(0);
+  opacity: 1;
+  transition:
+    transform 420ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    opacity 420ms ease-out;
+}
+
+.pickLine[data-shown="false"] .pickLineInner {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.pickWedge {
+  position: absolute;
+  left: 0;
+  right: 139px;
+  top: 5px;
+  height: 10px;
+  background: var(--accent);
+  clip-path: polygon(0 calc(50% - 0.5px), 100% calc(50% - 3px), 100% calc(50% + 3px), 0 calc(50% + 0.5px));
+}
+
+.pickTab {
+  position: absolute;
+  right: 0;
+  top: 1px;
+  height: 18px;
+  width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 10px;
+  white-space: nowrap;
+  background: var(--accent);
+  color: var(--bg);
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%);
+}
+
+.pickTab strong {
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No sliding: the line fades out and in, and moves a row without travelling. */
+  .pickLine {
+    transition: none;
+  }
+
+  .pickLineInner {
+    transition: opacity 160ms linear;
+  }
+
+  .pickLine[data-shown="false"] .pickLineInner {
+    transform: none;
   }
 }

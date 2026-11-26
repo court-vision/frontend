@@ -389,8 +389,6 @@ function baseColumns(
       title: "Average draft position across real ESPN drafts" },
     { key: "market_delta", label: "Δ", className: "w-12", align: "right", sortable: true,
       title: "ESPN rank − CV rank; positive means CV likes him more than ESPN does" },
-    { key: "availability", label: "Avail", className: "w-16", align: "center", sortable: true,
-      title: "Whether he lasts until your next pick, from ADP against that pick" },
     { key: "projected_gp", label: "GP", className: "w-12", align: "right", sortable: true,
       title: "Projected games this season" },
   ];
