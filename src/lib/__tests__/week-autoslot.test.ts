@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { sendLineupDays } from "@/components/week/lineup-send";
 import { diff, normalize, type Staged } from "../lineup-editor";
-import { heldMoves, lineupsBeforeSend, planDays, unstageHeld, wholeLineup, type CarryInput } from "../week-autoslot";
+import { fillOpenSpots, heldMoves, lineupsBeforeSend, planDays, unstageHeld, wholeLineup, type CarryInput } from "../week-autoslot";
 import type { LineupPlayer, LineupState } from "@/types/lineup-editor";
 import { MOCK_LINEUP_STATE } from "../../__fixtures__/lineupState";
 
@@ -201,5 +201,106 @@ describe("sending a planned week", () => {
     for (let day = 0; day < DAYS; day++) {
       expect(slotsOf(espn.read(day))).toEqual(wholeLineup(boards[day], planned.stagedByDay[day]));
     }
+  });
+});
+
+describe("fillOpenSpots", () => {
+  const PG = 0;
+  interface Spec {
+    slot: number;
+    eligible: number[];
+    idle?: boolean;
+    out?: boolean;
+    avg?: number;
+    locked?: boolean;
+  }
+  /** A board with the given active spots (plus bench and one IR), and who sits where. */
+  function board(spots: Record<number, number>, players: Record<number, Spec>): LineupState {
+    const template = MOCK_LINEUP_STATE.players[0];
+    const counts = { ...spots, [BE]: 6, [IR]: 1 };
+    return {
+      ...MOCK_LINEUP_STATE,
+      slot_counts: counts,
+      slots: Object.entries(counts).map(([id, count]) => ({ slot_id: Number(id), slot: `S${id}`, count })),
+      players: Object.entries(players).map(([id, p]) => ({
+        ...template,
+        player_id: Number(id),
+        name: `#${id}`,
+        lineup_slot_id: p.slot,
+        eligible_slot_ids: [...p.eligible, BE],
+        avg_points: p.avg ?? 10,
+        injury_status: p.out ? "OUT" : null,
+        injured: !!p.out,
+        locked: !!p.locked,
+        lineup_locked: false,
+        game_started: false,
+      })),
+    } as LineupState;
+  }
+  const idleOf = (players: Record<number, Spec>) => (p: LineupPlayer) => players[p.player_id]?.idle ?? true;
+  const after = (b: LineupState, staged: Staged) => Object.fromEntries(b.players.map((p) => [p.player_id, staged[p.player_id] ?? p.lineup_slot_id]));
+
+  test("open spots take bench players who don't play, the healthy before the out", () => {
+    const players: Record<number, Spec> = {
+      10: { slot: PG, eligible: [PG, G, UT], idle: false },
+      11: { slot: BE, eligible: [G, UT], avg: 20 },
+      12: { slot: BE, eligible: [G, UT], avg: 40, out: true },
+      13: { slot: BE, eligible: [G, UT], avg: 30 },
+      14: { slot: BE, eligible: [G, UT], idle: false },
+      15: { slot: IR, eligible: [G, UT, IR], out: true },
+      16: { slot: BE, eligible: [G, UT], locked: true },
+    };
+    const b = board({ [PG]: 1, [G]: 1, [UT]: 1 }, players);
+    const out = after(b, fillOpenSpots(b, {}, idleOf(players)));
+    expect(out[10]).toBe(PG);
+    expect([out[11], out[13]].sort((a, b) => a - b)).toEqual([G, UT]);
+    // One spot short: the out player with the higher average waits; so do one who'd score, IR and a locked player.
+    expect(out[12]).toBe(BE);
+    expect(out[14]).toBe(BE);
+    expect(out[15]).toBe(IR);
+    expect(out[16]).toBe(BE);
+  });
+
+  test("the out fill a spot nobody healthy can", () => {
+    const players: Record<number, Spec> = {
+      20: { slot: BE, eligible: [G, UT] },
+      21: { slot: BE, eligible: [G, UT], out: true },
+    };
+    const b = board({ [G]: 1, [UT]: 1 }, players);
+    const out = after(b, fillOpenSpots(b, {}, idleOf(players)));
+    expect([out[20], out[21]].sort((a, b) => a - b)).toEqual([G, UT]);
+  });
+
+  test("a starter shifts to make room, and stays in the lineup", () => {
+    const players: Record<number, Spec> = {
+      30: { slot: UT, eligible: [PG, UT] },
+      31: { slot: BE, eligible: [UT] },
+    };
+    const b = board({ [PG]: 1, [UT]: 1 }, players);
+    expect(after(b, fillOpenSpots(b, {}, idleOf(players)))).toEqual({ 30: PG, 31: UT });
+  });
+
+  test("starters who needn't move stay where they sit", () => {
+    const players: Record<number, Spec> = {
+      40: { slot: UT, eligible: [G, UT] },
+      41: { slot: G, eligible: [G, UT] },
+      42: { slot: BE, eligible: [PG] },
+    };
+    const b = board({ [PG]: 1, [G]: 1, [UT]: 1 }, players);
+    expect(fillOpenSpots(b, {}, idleOf(players))).toEqual({ 42: PG });
+  });
+
+  test("fills on top of the staging, and leaves it alone with no spot open", () => {
+    const players: Record<number, Spec> = {
+      50: { slot: G, eligible: [G, UT] },
+      51: { slot: UT, eligible: [G, UT] },
+      52: { slot: BE, eligible: [G, UT] },
+    };
+    const b = board({ [G]: 1, [UT]: 1 }, players);
+    const full: Staged = {};
+    expect(fillOpenSpots(b, full, idleOf(players))).toBe(full);
+    // Staging 51 to the bench opens UT; 52 takes it, and 51 (staged out on purpose) is a filler like any other.
+    const staged = fillOpenSpots(b, { 51: BE }, idleOf({ ...players, 51: { ...players[51], idle: false } }));
+    expect(after(b, staged)).toEqual({ 50: G, 51: BE, 52: UT });
   });
 });
