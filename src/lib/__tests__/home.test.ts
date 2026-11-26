@@ -27,13 +27,13 @@ import type { OverviewDay, OverviewItem, TeamOverview, TeamsOverviewData } from 
 
 const MIN = 60_000;
 const team = (id: number): TeamOverview => HOME_DEMO.teams.find((t) => t.team_id === id)!;
-const YOYO = team(25); // needs you: a starter is out, with a deadline, and one idea more
-const FINEST = team(21); // your call, a categories league
-const GOBLINS = team(23); // set
-const DIME = team(30); // autopilot
+const NEEDS_YOU = team(25); // needs you: a starter is out, with a deadline, and one idea more
+const YOUR_CALL = team(21); // your call, a categories league
+const ALL_SET = team(23); // set
+const AUTOPILOT = team(30); // autopilot
 
 const item = (standing: OverviewItem["standing"], title: string, deadline: string | null = null, coveredBy: OverviewItem["covered_by"] = null): OverviewItem =>
-  ({ ...YOYO.items[0], standing, covered_by: coveredBy, deadline_at: deadline, action: { ...YOYO.items[0].action, id: title, title, detail: `${title} detail` } }) as OverviewItem;
+  ({ ...NEEDS_YOU.items[0], standing, covered_by: coveredBy, deadline_at: deadline, action: { ...NEEDS_YOU.items[0].action, id: title, title, detail: `${title} detail` } }) as OverviewItem;
 
 describe("untilText", () => {
   test("counts down in minutes, then hours and minutes", () => {
@@ -49,12 +49,12 @@ describe("untilText", () => {
 
 describe("what a row leads with", () => {
   test("the move that needs the user comes before an idea, whatever the order", () => {
-    const t = { ...YOYO, items: [item("covered", "covered", null, "auto_lineup"), item("your_call", "idea"), item("needs_you", "needed")] };
+    const t = { ...NEEDS_YOU, items: [item("covered", "covered", null, "auto_lineup"), item("your_call", "idea"), item("needs_you", "needed")] };
     expect(leadItem(t)?.action.title).toBe("needed");
     expect(moreItems(t)).toBe(1);
   });
   test("a covered move leads only when nothing is open, and counts no more", () => {
-    const t = { ...GOBLINS, items: [item("covered", "Start Mara for Irving", null, "late_scratch")] };
+    const t = { ...ALL_SET, items: [item("covered", "Start Mara for Irving", null, "late_scratch")] };
     const head = rowHead(t);
     expect(head.say).toBe("Start Mara for Irving");
     expect(head.detail).toBe("The late-scratch swap is set to make this move.");
@@ -62,19 +62,19 @@ describe("what a row leads with", () => {
     expect(moreItems(t)).toBe(0);
   });
   test("the lead move carries its copy and its deadline", () => {
-    const head = rowHead(YOYO);
-    expect(head.say).toBe(YOYO.items[0].action.title);
-    expect(head.deadlineAt).toBe(Date.parse(YOYO.items[0].deadline_at!));
-    expect(moreItems(YOYO)).toBe(YOYO.items.filter((i) => i.standing !== "covered").length - 1);
+    const head = rowHead(NEEDS_YOU);
+    expect(head.say).toBe(NEEDS_YOU.items[0].action.title);
+    expect(head.deadlineAt).toBe(Date.parse(NEEDS_YOU.items[0].deadline_at!));
+    expect(moreItems(NEEDS_YOU)).toBe(NEEDS_YOU.items.filter((i) => i.standing !== "covered").length - 1);
   });
   test("a team with nothing to do says how its lineup stands", () => {
-    expect(rowHead(GOBLINS).say).toBe("Lineup is set. 10 of 10 starters play tonight.");
-    expect(rowHead(DIME).say).toStartWith("Dime is driving. Lineup is set.");
-    const idle = { ...GOBLINS, tonight: { ...GOBLINS.tonight!, counts: { idle: 10 } } };
+    expect(rowHead(ALL_SET).say).toBe("Lineup is set. 10 of 10 starters play tonight.");
+    expect(rowHead(AUTOPILOT).say).toStartWith("Dime is driving. Lineup is set.");
+    const idle = { ...ALL_SET, tonight: { ...ALL_SET.tonight!, counts: { idle: 10 } } };
     expect(rowHead(idle).say).toBe("No games tonight.");
   });
   test("a team that can't be read says why and what to do", () => {
-    const t = { ...GOBLINS, state: "cant_read", error: { code: "PROVIDER_AUTH_EXPIRED", message: "ESPN would not let us in." }, items: [], tonight: null } as TeamOverview;
+    const t = { ...ALL_SET, state: "cant_read", error: { code: "PROVIDER_AUTH_EXPIRED", message: "ESPN would not let us in." }, items: [], tonight: null } as TeamOverview;
     const head = rowHead(t);
     expect(head.say).toBe("ESPN would not let us in.");
     expect(head.detail).toContain("reconnect it in Account");
@@ -111,10 +111,10 @@ describe("the week strip", () => {
     expect([close.text, close.tone]).toEqual(["5v6", null]);
   });
   test("a categories league has no day margins: every day shows games", () => {
-    expect(weekCells(FINEST.week).every((c) => /^\d+v\d+$/.test(c.text))).toBe(true);
+    expect(weekCells(YOUR_CALL.week).every((c) => /^\d+v\d+$/.test(c.text))).toBe(true);
   });
   test("today is found, and an empty week is empty", () => {
-    expect(todayOf(YOYO.week)?.kind).toBe("today");
+    expect(todayOf(NEEDS_YOU.week)?.kind).toBe("today");
     expect(todayOf([])).toBeNull();
     expect(weekCells(null)).toEqual([]);
   });
@@ -138,7 +138,7 @@ describe("the strip above the rows", () => {
     expect(tapeOf(HOME_DEMO, HOME_DEMO_NOW + 24 * 60 * MIN).nextLockAt).toBeNull();
   });
   test("a lock that has passed since the read does not mean every game has tipped", () => {
-    const tonight = YOYO.tonight!;
+    const tonight = NEEDS_YOU.tonight!;
     const lock = Date.parse(tonight.next_lock_at!);
     const later = tonight.seats.filter((s) => (s.mark === "later" || s.mark === "questionable") && s.game_time_et !== tonight.next_lock_et);
     // The demo's team has starters tipping after its next lock
@@ -146,11 +146,30 @@ describe("the strip above the rows", () => {
     expect(tipsAfterLock(tonight, lock - MIN)).toBe(false);
     expect(tipsAfterLock(tonight, lock + MIN)).toBe(true);
     expect(tapeOf(HOME_DEMO, HOME_DEMO_NOW).lockPending).toBe(false);
-    expect(tapeOf({ ...HOME_DEMO, teams: [YOYO] }, lock + MIN)).toMatchObject({ nextLockAt: null, lockPending: true });
+    expect(tapeOf({ ...HOME_DEMO, teams: [NEEDS_YOU] }, lock + MIN)).toMatchObject({ nextLockAt: null, lockPending: true });
     // With every starter left tipping at that lock, all of them have tipped once it passes
     const atOnce = { ...tonight, seats: tonight.seats.filter((s) => !later.includes(s)) };
     expect(tipsAfterLock(atOnce, lock + MIN)).toBe(false);
     expect(tipsAfterLock(null, lock)).toBe(false);
+  });
+  test("a starter whose game has no tip time yet is still to tip", () => {
+    const tonight = NEEDS_YOU.tonight!;
+    const lock = Date.parse(tonight.next_lock_at!);
+    const toCome = (s: (typeof tonight.seats)[number]) => s.mark === "later" || s.mark === "questionable";
+    // One starter's game has no start time: the server marks him to come and sets no lock for him
+    const first = tonight.seats.find((s) => toCome(s) && s.game_time_et === tonight.next_lock_et)!;
+    const untimed = { ...first, game_time_et: null };
+    const atLock = tonight.seats.filter((s) => !toCome(s) || s.game_time_et === tonight.next_lock_et);
+    const withUntimed = { ...tonight, seats: atLock.map((s) => (s === first ? untimed : s)) };
+    expect(tipsAfterLock({ ...tonight, seats: atLock }, lock + MIN)).toBe(false);
+    expect(tipsAfterLock(withUntimed, lock - MIN)).toBe(false);
+    expect(tipsAfterLock(withUntimed, lock + MIN)).toBe(true);
+    // He is the only one left to come, so the read has no lock at all
+    const noLock = { ...tonight, next_lock_at: null, next_lock_et: null, seats: tonight.seats.map((s) => (s === first ? untimed : toCome(s) ? { ...s, mark: "final" as const } : s)) };
+    expect(tipsAfterLock(noLock, lock)).toBe(true);
+    expect(tapeOf({ ...HOME_DEMO, teams: [{ ...NEEDS_YOU, tonight: noLock }] }, lock)).toMatchObject({ nextLockAt: null, lockPending: true });
+    // No lock and nobody to come: every game has tipped
+    expect(tipsAfterLock({ ...noLock, seats: noLock.seats.filter((s) => s !== untimed) }, lock)).toBe(false);
   });
   test("seats add up across the teams", () => {
     const total = HOME_DEMO.teams.reduce((a, t) => a + seatsTotal(t.tonight?.counts), 0);
@@ -185,31 +204,34 @@ describe("when the overview is read again", () => {
 
 describe("tonight's matchup, seat against seat", () => {
   const live = demoLiveMatchup(25)!;
-  const duel = duelOf(YOYO, live, HOME_DEMO_SLATE)!;
+  const duel = duelOf(NEEDS_YOU, live, HOME_DEMO_SLATE)!;
   test("pairs each of your seats with theirs in the same slot, in the board's order", () => {
-    expect(duel.rows.map((r) => r.slot)).toEqual(YOYO.tonight!.seats.map((s) => s.slot));
+    expect(duel.rows.map((r) => r.slot)).toEqual(NEEDS_YOU.tonight!.seats.map((s) => s.slot));
     expect(duel.rows.every((r) => r.you != null)).toBe(true);
-    const paired = duel.rows.filter((r) => r.opp).map((r) => r.opp!.name);
-    expect(new Set(paired).size).toBe(paired.length);
+    // Their starter by row: the repeated slot (UT) takes them in the order their roster lists them
+    expect(duel.rows.map((r) => r.opp?.name ?? null)).toEqual([
+      "Cade Cunningham", "Devin Booker", "Franz Wagner", "Evan Mobley", "Alperen Sengun",
+      "Jalen Brunson", "Jalen Johnson", "Deni Avdija", "Cam Thomas", "Brandon Miller",
+    ]);
   });
   test("sums each side and counts the bench that still plays", () => {
-    expect(duel.you.points).toBe(YOYO.tonight!.points!);
+    expect(duel.you.points).toBe(NEEDS_YOU.tonight!.points!);
     const theirs = duel.rows.reduce((a, r) => a + (r.opp?.points ?? 0), 0);
     expect(duel.opp?.points).toBe(theirs);
-    expect(todayOf(YOYO.week)?.opponent_points).toBe(theirs);
+    expect(todayOf(NEEDS_YOU.week)?.opponent_points).toBe(theirs);
     expect(benchPlaying(duel.bench.you).length).toBeLessThanOrEqual(duel.bench.you.length);
   });
   test("an out starter of yours stays out; one of theirs with no game is idle", () => {
     expect(duel.rows.some((r) => r.you?.mark === "out")).toBe(true);
     const noGame = { ...live.opponent_team.roster[0], team: "XXX", live: null };
-    const d = duelOf(YOYO, { ...live, opponent_team: { ...live.opponent_team, roster: [noGame, ...live.opponent_team.roster.slice(1)] } }, HOME_DEMO_SLATE)!;
+    const d = duelOf(NEEDS_YOU, { ...live, opponent_team: { ...live.opponent_team, roster: [noGame, ...live.opponent_team.roster.slice(1)] } }, HOME_DEMO_SLATE)!;
     expect(d.rows.find((r) => r.opp?.name === noGame.name)?.opp?.mark).toBe("idle");
   });
   test("one of theirs with no line in a game that is on or over is not still to come", () => {
     const p = live.opponent_team.roster.find((r) => r.live == null && HOME_DEMO_SLATE.games.some((g) => g.status === "scheduled" && (g.home_team === r.team || g.away_team === r.team)))!;
     const markOn = (status: string) => {
       const slate = { ...HOME_DEMO_SLATE, games: HOME_DEMO_SLATE.games.map((g) => (g.home_team === p.team || g.away_team === p.team ? { ...g, status } : g)) };
-      const cells = duelOf(YOYO, live, slate)!;
+      const cells = duelOf(NEEDS_YOU, live, slate)!;
       return [...cells.rows.map((r) => r.opp), ...cells.bench.opp].find((c) => c?.name === p.name)!;
     };
     expect(markOn("scheduled")).toMatchObject({ mark: "later", points: null });
@@ -219,7 +241,7 @@ describe("tonight's matchup, seat against seat", () => {
   });
   test("box scores read for another NBA date are not tonight's", () => {
     // From the 3 AM ET rollover until the post-game run, the live read is still last night's
-    const stale = duelOf(YOYO, { ...live, game_date: "2026-11-18" }, HOME_DEMO_SLATE)!;
+    const stale = duelOf(NEEDS_YOU, { ...live, game_date: "2026-11-18" }, HOME_DEMO_SLATE)!;
     expect(duel.opp!.points).toBeGreaterThan(0);
     expect(stale.opp!.points).toBe(0);
     // Their lineup still stands, slot for slot
@@ -227,19 +249,19 @@ describe("tonight's matchup, seat against seat", () => {
     expect(stale.rows.every((r) => r.opp == null || r.opp.points == null)).toBe(true);
   });
   test("without the opponent's roster the rows carry your side alone", () => {
-    const alone = duelOf(YOYO, null, HOME_DEMO_SLATE)!;
+    const alone = duelOf(NEEDS_YOU, null, HOME_DEMO_SLATE)!;
     expect(alone.opp).toBeNull();
     expect(alone.rows.every((r) => r.opp == null)).toBe(true);
-    expect(alone.rows.length).toBe(YOYO.tonight!.seats.length);
+    expect(alone.rows.length).toBe(NEEDS_YOU.tonight!.seats.length);
   });
   test("a starter of theirs in a slot yours has no seat for is still shown and counted", () => {
     const extra = { ...live, opponent_team: { ...live.opponent_team, roster: [...live.opponent_team.roster, { ...live.opponent_team.roster[0], player_id: 9999, name: "Extra Guard", lineup_slot: "PG" }] } };
-    const d = duelOf(YOYO, extra, HOME_DEMO_SLATE)!;
-    expect(d.rows.length).toBe(YOYO.tonight!.seats.length + 1);
+    const d = duelOf(NEEDS_YOU, extra, HOME_DEMO_SLATE)!;
+    expect(d.rows.length).toBe(NEEDS_YOU.tonight!.seats.length + 1);
     expect(d.rows.at(-1)).toMatchObject({ slot: "PG", you: null });
   });
   test("a team whose tonight could not be read has no matchup to show", () => {
-    expect(duelOf({ ...YOYO, tonight: null }, live, HOME_DEMO_SLATE)).toBeNull();
+    expect(duelOf({ ...NEEDS_YOU, tonight: null }, live, HOME_DEMO_SLATE)).toBeNull();
   });
 });
 

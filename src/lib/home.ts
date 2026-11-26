@@ -188,12 +188,18 @@ export function todayOf(week: readonly OverviewDay[] | null | undefined): Overvi
 }
 
 /**
- * The read's next lock has passed and starters still tip at a later time: until the next read
- * the lock after it is not known, and "every game has tipped" would be wrong.
+ * Starters are still to tip and the read holds no lock ahead for them: its next lock has passed and
+ * they tip at another time, or their game has no tip time yet (a seat like that sets no lock at
+ * all). Until the next read the lock is not known, and "every game has tipped" would be wrong.
  */
 export function tipsAfterLock(tonight: TeamOverview["tonight"], now: number): boolean {
-  if (!tonight?.next_lock_at || Date.parse(tonight.next_lock_at) > now) return false;
-  return tonight.seats.some((s) => (s.mark === "later" || s.mark === "questionable") && s.game_time_et != null && s.game_time_et !== tonight.next_lock_et);
+  if (!tonight) return false;
+  const lock = tonight.next_lock_at ? Date.parse(tonight.next_lock_at) : null;
+  if (lock != null && lock > now) return false;
+  const toCome = tonight.seats.filter((s) => s.mark === "later" || s.mark === "questionable");
+  // With no lock in the read, a starter still to come can only be one whose tip time is not set
+  if (lock == null) return toCome.length > 0;
+  return toCome.some((s) => s.game_time_et !== tonight.next_lock_et);
 }
 
 // ---- the strip above the rows

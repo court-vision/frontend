@@ -322,9 +322,22 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
           id = (await create.mutateAsync(teamId)).id;
         } catch (err) {
           const kept = mounted.current ? giveBack(null) : keep();
-          // With nowhere to put it back, the notice carries the words so they are not lost
+          // With nowhere to put it back, the notice carries the words so they are not lost: the start
+          // of a long one to read, and all of it to copy
           const words = message.length > 280 ? `${message.slice(0, 280)}…` : message;
-          toast.error(aiMessage(err, "Couldn't start a conversation"), kept ? undefined : { description: `Not asked: ${words}` });
+          toast.error(
+            aiMessage(err, "Couldn't start a conversation"),
+            kept
+              ? undefined
+              : {
+                  description: `Not asked: ${words}`,
+                  duration: 30_000,
+                  action: {
+                    label: "Copy it",
+                    onClick: () => void navigator.clipboard?.writeText(message).then(() => toast.success("Copied"), () => {}),
+                  },
+                }
+          );
           return;
         }
         // The desk was left while the conversation was being made: this page is another desk's now, so
