@@ -444,6 +444,18 @@ describe("each day's own ESPN lineup", () => {
     const wedHart = lineups.seats[2].find((s) => s?.player.name === "Josh Hart");
     expect(wedHart?.staged).toBe(true);
   });
+
+  test("a day autoslot holds keeps its own lineup, with nothing staged on it", () => {
+    const hart = board.players.find((p) => p.name === "Josh Hart")!.player_id;
+    const kessler = board.players.find((p) => p.name === "Walker Kessler")!.player_id;
+    const staged = { [kessler]: 11, [hart]: 12 };
+    const dayBoards = [null, { board, staged }, { board: wednesday, staged: {} }, { board: thursday, staged: {} }];
+    const { lineups } = buildWeekGrid({ source, board, staged, dayBoards, incoming: null, viewDay: today, held: new Set([2]) });
+    const benchOn = (d: number) =>
+      lineups.slots.map((s, i) => (s.group === "bench" ? name(lineups.seats[d][i]) : null)).filter(Boolean);
+    expect(benchOn(1)).toContain("Josh Hart");
+    expect(benchOn(2)).not.toContain("Josh Hart");
+  });
 });
 
 describe("a move ESPN made for a later day (after a first tip, or a scheduled pickup already made)", () => {

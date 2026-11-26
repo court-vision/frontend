@@ -43,6 +43,12 @@ export type BoardSource = NonNullable<DraftBoardMeta["rank_basis_requested"]>;
 /** The league's fantasy-playoff weeks, and how much Court Vision's value weighs them. */
 export type DraftPlayoffs = NonNullable<DraftBoardMeta["playoffs"]>;
 
+/**
+ * In season: the stored daily boards a row's moves and ESPN rank are read
+ * from, with the days they compare. Absent before opening night.
+ */
+export type DraftLiveRanks = NonNullable<DraftBoardMeta["live_ranks"]>;
+
 /** Where the caller's roster stands in one category, and what fit does about it. */
 export type CategoryNeed = S["CategoryNeedResp"];
 /** Whether a player is likely to survive to the caller's next pick. */
@@ -129,8 +135,9 @@ export type RankBasis = NonNullable<DraftBoardMeta["rank_basis"]>;
  * `cat:<key>` sorts by one of the league's own categories, so the set is only
  * known once `meta.categories` arrives — hence the template literal rather
  * than an enumeration. `fit_rank` and the category keys exist only in a
- * category league; `columnsFor` is what decides, and `sortableKey` sends a
- * persisted key that this league has no column for back to `board_rank`.
+ * category league, and the move and ESPN-age columns only on a board read in
+ * season; `columnsFor` is what decides, and `sortableKey` sends a persisted
+ * key that this board has no column for back to `board_rank`.
  */
 export type BoardSortKey =
   | "board_rank"
@@ -139,6 +146,9 @@ export type BoardSortKey =
   | "value"
   | "fit_rank"
   | "market_rank"
+  | "move_7d"
+  | "move_1d"
+  | "espn_rank_since"
   | "adp"
   | "market_delta"
   | "availability"

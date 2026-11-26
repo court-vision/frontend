@@ -11,7 +11,7 @@ import { DeskDialog } from "@/components/desk/DeskDialog";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import dk from "@/components/desk/desk.module.css";
 import { toApiError, userMessage } from "@/lib/api-error";
-import { countAtRisk, stepHighlight, targetRow } from "@/lib/draft-board";
+import { countAtRisk, marketNote, stepHighlight, targetRow } from "@/lib/draft-board";
 import { mockAdvanceToast, mockBlocker, mockMyTurnBlocker, needsSeatConfirm } from "@/lib/draft-mock";
 import { fillLineup, keeperStatuses, lastPick, myRoster, openStartingSlots, samePlayer } from "@/lib/draft-roster";
 import { buildTape, myUpcoming } from "@/lib/draft-tape";
@@ -747,7 +747,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
 
       <DeskStatus keys={statusKeys}>
         {model.demo ? <span>Demo · sample pool from the dev database · nothing leaves your browser</span> : null}
-        {!model.demo && meta?.market_as_of ? <span>ESPN market as of {meta.market_as_of}</span> : null}
+        {!model.demo && marketNote(meta) ? <span>{marketNote(meta)}</span> : null}
       </DeskStatus>
 
       <SeatDialog session={session} open={seatOpen} onOpenChange={setSeatOpen} onSave={saveSeat} saving={model.updating} />

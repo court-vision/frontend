@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, memo, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { ArrowDown, ArrowUp, ChevronDown, Search } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
@@ -11,12 +11,18 @@ import dk from "@/components/desk/desk.module.css";
 import {
   basisNote,
   columnsFor,
+  columnsThatFit,
   countCapped,
+  espnSinceDetail,
+  espnSinceText,
+  moveDetail,
   playoffDetail,
   playoffTone,
   playoffWeightLabel,
+  yieldsNeeded,
   type BoardColumn,
 } from "@/lib/draft-board";
+import { fmtPlaces } from "@/lib/live-rankings";
 import { healthOf } from "@/lib/week-grid";
 import { useBoardView } from "@/hooks/useBoardView";
 import { useDraftRoomStore } from "@/stores/useDraftRoomStore";
@@ -30,6 +36,9 @@ const MIN: Record<string, number> = {
   fit_rank: 46,
   cv_rank: 46,
   market_rank: 50,
+  move_7d: 40,
+  move_1d: 40,
+  espn_rank_since: 84,
   adp: 52,
   market_delta: 44,
   availability: 72,
@@ -234,13 +243,30 @@ interface BoardTableProps extends BoardActions {
  * board measured 15 ms on an M3 and 62 ms at 4x CPU throttle; a highlight is now about 1 ms.
  */
 export const BoardTable = memo(function BoardTable({ meta, rows, visible, activeId, onActivate, keeperIds, loading, message, ...actions }: BoardTableProps) {
-  const columns = useMemo(() => columnsFor(meta), [meta]);
+  const every = useMemo(() => columnsFor(meta), [meta]);
   const view = useBoardView(meta);
   const toggleSort = useDraftRoomStore((st) => st.toggleSort);
+  const wrap = useRef<HTMLDivElement>(null);
+  // How many of the in-season columns step aside so the rest fit. A count, not the width,
+  // so dragging the window re-renders the board only when a column comes or goes. Measured
+  // before paint, so a narrow board never shows a frame with the columns it has no room for.
+  // Measured again when the sort changes: the column sorted by stays, so which others have
+  // room beside it depends on it.
+  const sortKey = view.sortKey;
+  const [yielded, setYielded] = useState(0);
+  useLayoutEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const measure = () => setYielded(yieldsNeeded(every, el.clientWidth, floorOf, sortKey));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [every, sortKey]);
+  const columns = useMemo(() => columnsThatFit(every, yielded, sortKey), [every, yielded, sortKey]);
   const template = templateFor(columns);
   // Below the floors' sum the board scrolls sideways rather than squeeze a column.
   const minWidth = columns.reduce((sum, c) => sum + floorOf(c), 0);
-  const wrap = useRef<HTMLDivElement>(null);
 
   // Keep the active row in view as the keyboard moves it.
   useEffect(() => {
@@ -387,7 +413,12 @@ function Cell({ column, row, meta, keeper, zMax }: { column: BoardColumn; row: D
   }
   switch (column.key) {
     case "board_rank":
-      return td(row.board_rank ?? "—", s.rank);
+      // In season the gutter's own rank says what the stored boards know about it.
+      return td(
+        row.board_rank ?? "—",
+        s.rank,
+        (meta?.rank_basis === "espn" ? espnSinceDetail(row) : meta?.rank_basis === "cv" ? moveDetail(row, meta.live_ranks) : null) ?? undefined
+      );
     case "name":
       return (
         <span className={s.player}>
@@ -403,6 +434,7 @@ function Cell({ column, row, meta, keeper, zMax }: { column: BoardColumn; row: D
               ) : null}
               {row.value_source === "market" ? <span className={s.tag} title="No projection or stat line values him yet — a rookie, usually">NO STATS</span> : null}
               {row.value_season ? <span className={s.tag} title={`Valued on ${row.value_season}, his last full season`}>{row.value_season}</span> : null}
+              {row.rank_reason ? <span className={s.reason} title={row.rank_reason}>{row.rank_reason}</span> : null}
             </span>
           </span>
         </span>
@@ -412,9 +444,17 @@ function Cell({ column, row, meta, keeper, zMax }: { column: BoardColumn; row: D
     case "fit_rank":
       return td(row.fit_rank ?? "—", undefined, row.fit_value != null ? `Fit value ${num(row.fit_value)}` : undefined);
     case "cv_rank":
-      return td(row.cv_rank ?? "—");
+      return td(row.cv_rank ?? "—", undefined, moveDetail(row, meta?.live_ranks) ?? undefined);
     case "market_rank":
-      return td(row.market_rank ?? "—");
+      return td(row.market_rank ?? "—", undefined, espnSinceDetail(row) ?? undefined);
+    case "move_7d":
+    case "move_1d": {
+      const move = column.key === "move_7d" ? row.move_7d : row.move_1d;
+      return td(fmtPlaces(move), !move ? undefined : move > 0 ? s.pos : s.neg, moveDetail(row, meta?.live_ranks) ?? undefined);
+    }
+    case "espn_rank_since":
+      // A rank ESPN set this morning is the news in the column: it reads brighter than one that has stood.
+      return td(espnSinceText(row) ?? "—", row.espn_rank_since != null && row.espn_rank_since === meta?.live_ranks?.espn_as_of ? s.strong : undefined, espnSinceDetail(row) ?? undefined);
     case "adp":
       return td(num(row.adp));
     case "market_delta":

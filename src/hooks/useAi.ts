@@ -7,6 +7,7 @@ import type { GetTokenFn } from "@/lib/http";
 import { streamTurn, type AiTurnDone } from "@/lib/ai-stream";
 import { VerdictSaves, verdictOf, withVerdict } from "@/lib/ai-checkins";
 import { askSoon, timelineVerdictOf, timelineWithVerdict } from "@/lib/ai-timeline";
+import { writesOverride } from "@/lib/ai-autonomy";
 import { notificationKeys } from "@/hooks/useNotificationPreferences";
 import type {
   AiAsks,
@@ -212,8 +213,8 @@ export function useRunAiCheckin() {
 
 /**
  * A team's check-ins, its autopilot switch or some automations' levels. The team comes back with its
- * table; a lineup level writes the team's notification override, and autopilot turns the features on,
- * so those are read again.
+ * table; a lineup, daily actions or late-scratch level writes the team's notification override, and
+ * autopilot turns the features on, so those are read again.
  */
 export function useSetAiAutopilot() {
   const { getToken, userId } = useAuth();
@@ -227,8 +228,8 @@ export function useSetAiAutopilot() {
       queryClient.setQueryData<AiCheckins>(aiKeys.checkins(userId), (d) =>
         d ? { ...d, teams: d.teams.map((t) => (t.team_id === team.team_id ? team : t)) } : d
       );
-      // Below AI, the lineup and late-scratch rows are written to the team's notification override.
-      if (change.autopilot != null || change.levels?.lineup != null || change.levels?.late_scratch != null) {
+      // Below AI, the lineup, daily actions and late-scratch rows are written to the team's notification override.
+      if (writesOverride(change)) {
         void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
       }
       if (change.autopilot) void queryClient.invalidateQueries({ queryKey: aiKeys.checkins(userId) });

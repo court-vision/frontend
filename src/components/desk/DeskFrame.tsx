@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { AlertTriangle, CheckCircle2, Info, Loader2, XCircle } from "lucide-react";
+import { LeafFall } from "./FallLeaves";
+import { themeLeaves } from "./themes";
 import { useDeskScheme, useDeskTheme } from "./useDeskTheme";
 import dk from "./desk.module.css";
 
@@ -27,6 +29,8 @@ export function DeskFrame({ className, children }: { className?: string; childre
   return (
     <div ref={setEl} className={`${dk.root} ${dk.tokens} ${className ?? ""}`} data-theme={theme}>
       <PortalContext.Provider value={el}>{children}</PortalContext.Provider>
+      {/* Keyed by theme, so switching to a theme with leaves plays its fall again. */}
+      {themeLeaves(theme) ? <LeafFall key={theme} /> : null}
       <Toaster
         theme={scheme}
         position="bottom-right"

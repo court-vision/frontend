@@ -358,6 +358,7 @@ const PREFS: NotificationPreference = {
   alert_minutes_before: 90,
   auto_lineup_enabled: false,
   late_scratch_level: "off",
+  daily_actions_level: "off",
   email: null,
 };
 
@@ -404,6 +405,7 @@ describe("settings: notifications, and AI and automation", () => {
       lineup_alerts_enabled: PREFS.lineup_alerts_enabled,
       auto_lineup_enabled: true,
       late_scratch_level: "off",
+      daily_actions_level: "off",
     });
     const n = ownPatch({ ...PREFS, alert_minutes_before: 30 }, NOTIFICATION_FIELDS);
     expect(n.alert_minutes_before).toBe(30);
@@ -412,7 +414,12 @@ describe("settings: notifications, and AI and automation", () => {
 
   test("handing a sheet back clears its fields, or the whole override when nothing else is the team's", () => {
     const both = own({ auto_lineup_enabled: true, alert_minutes_before: 30 });
-    expect(clearPatch(both, AUTOMATION_FIELDS)).toEqual({ lineup_alerts_enabled: null, auto_lineup_enabled: null, late_scratch_level: null });
+    expect(clearPatch(both, AUTOMATION_FIELDS)).toEqual({
+      lineup_alerts_enabled: null,
+      auto_lineup_enabled: null,
+      late_scratch_level: null,
+      daily_actions_level: null,
+    });
     const cleared = clearPatch(both, NOTIFICATION_FIELDS);
     expect(cleared?.lineup_alerts_enabled).toBeNull();
     expect(cleared?.email).toBeNull();

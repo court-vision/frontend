@@ -23,7 +23,7 @@ import {
   validateStaged,
   type Staged,
 } from "@/lib/lineup-editor";
-import type { LineupPlayer, LineupState, MoveError } from "@/types/lineup-editor";
+import type { LineupPlanData, LineupPlayer, LineupState, MoveError } from "@/types/lineup-editor";
 import type { StreamerPlayer } from "@/types/streamer";
 import { writeBlockedCopy } from "@/types/lineup-editor";
 import {
@@ -43,6 +43,7 @@ import {
   type WeekSource,
 } from "@/lib/week-grid";
 import { sourceFromStreamer } from "@/lib/week-source";
+import { fillOpenSpots, heldMoves, lineupsBeforeSend, planDays, unstageHeld, wholeLineup } from "@/lib/week-autoslot";
 import { pickupTiming, pickupViews } from "@/lib/pickups";
 import { eventLine, laneCells, laneReason, laneRoomRefusal, laneStretches, passedDates, projectedSource } from "@/lib/lanes";
 import type { LaneNotify, LanePlayer } from "@/types/stream-lane";
@@ -88,6 +89,7 @@ import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { useViewerZone } from "@/hooks/useViewerZone";
 
 const NO_STAGING: Staged = {};
+const NO_DAYS: ReadonlySet<number> = new Set();
 const MAX_REPLACE_OPTIONS = 80;
 /** The tray column an add / drop made now sits in when today is not on the board. */
 const NOW_DAY = -1;
@@ -178,6 +180,19 @@ export function WeekTerminal({
 
   // ---- staging: moves per day, kept only while they still differ from that day's lineup ----
   const [stagedByDay, setStagedByDay] = useState<Record<number, Staged>>({});
+  // Days autoslot planned whole (`week-autoslot.ts`): each keeps its plan, whatever an earlier
+  // day's edit carries into it, and its staging holds every player's slot.
+  const [heldPick, setHeld] = useState<ReadonlySet<number>>(NO_DAYS);
+  const played = useCallback((day: number) => !source || source.days[day]?.kind === "past", [source]);
+  const held = useMemo(() => {
+    const live = [...heldPick].filter((d) => !!boards[d] && !played(d));
+    return live.length === heldPick.size ? heldPick : new Set(live);
+  }, [heldPick, boards, played]);
+  // What ESPN will hold for each day when the send reaches it, once the days before it are written.
+  const beforeSend = useMemo(
+    () => (held.size ? lineupsBeforeSend({ boards, stagedByDay, held, played, leaves }) : null),
+    [held, boards, stagedByDay, played, leaves]
+  );
   const staging = useMemo(
     () => boards.map((b, i) => (b ? normalize(b, stagedByDay[i] ?? NO_STAGING) : NO_STAGING)),
     [boards, stagedByDay]
@@ -329,8 +344,8 @@ export function WeekTerminal({
   // the grid on screen, not every option's gain.
   const build = useCallback(
     (src: WeekSource, over: Partial<GridInput> = {}) =>
-      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, dropping: leaves, viewDay, mode, ...over }),
-    [board, staged, dayBoards, leaves, viewDay, mode]
+      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, dropping: leaves, viewDay, mode, held, ...over }),
+    [board, staged, dayBoards, leaves, viewDay, mode, held]
   );
   const gridNoPreview = useMemo(() => (source ? build(source) : null), [source, build]);
   const grid = useMemo(
@@ -341,7 +356,7 @@ export function WeekTerminal({
   const gridUnstaged = useMemo(
     () =>
       source && anyStaging
-        ? build(source, { board: rawBoard, staged: NO_STAGING, dayBoards: unstagedBoards, dropping: [] })
+        ? build(source, { board: rawBoard, staged: NO_STAGING, dayBoards: unstagedBoards, dropping: [], held: NO_DAYS })
         : gridNoPreview,
     [source, anyStaging, build, rawBoard, unstagedBoards, gridNoPreview]
   );
@@ -442,8 +457,8 @@ export function WeekTerminal({
   // hovering a row never re-ranks the list.
   const gainBuild = useCallback(
     (src: WeekSource, over: Partial<GridInput> = {}) =>
-      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, dropping: leaves, viewDay: todayIndex ?? 0, mode, ...over }),
-    [board, staged, dayBoards, leaves, todayIndex, mode]
+      buildWeekGrid({ source: src, board, staged, dayBoards, incoming: null, dropping: leaves, viewDay: todayIndex ?? 0, mode, held, ...over }),
+    [board, staged, dayBoards, leaves, todayIndex, mode, held]
   );
   const marketBase = useMemo(() => (source && marketOpen ? gainBuild(source) : null), [source, marketOpen, gainBuild]);
   const evaluate = useCallback(
@@ -503,9 +518,14 @@ export function WeekTerminal({
   const editableOn = useCallback((day: number) => !!grid?.lineups.editable[day], [grid]);
 
   // ---- staging operations ----
-  const setDay = useCallback((day: number, next: Staged) => {
-    setStagedByDay((prev) => ({ ...prev, [day]: next }));
-  }, []);
+  // A held day keeps its whole lineup: a move staged on it changes the plan.
+  const setDay = useCallback(
+    (day: number, next: Staged) => {
+      const b = boards[day];
+      setStagedByDay((prev) => ({ ...prev, [day]: held.has(day) && b ? wholeLineup(b, next) : next }));
+    },
+    [boards, held]
+  );
   const stageMovesOn = useCallback(
     (day: number, moves: ReadonlyArray<{ player_id: number; to_slot_id: number }>) => {
       const b = boards[day];
@@ -521,16 +541,17 @@ export function WeekTerminal({
     [boards, staging, setDay]
   );
 
-  // Pending moves per day, in day order, and what's wrong with them before ESPN is asked.
+  // Pending moves per day, in day order, and what's wrong with them before ESPN is asked. A held
+  // day's are made on the lineup carried into it, so it can have moves with nothing staged.
   const pending: PendingDay[] = useMemo(
     () =>
       boards.flatMap((b, day) => {
         if (!b) return [];
-        const moves = diff(b, staging[day]);
+        const moves = held.has(day) ? heldMoves(b, beforeSend?.[day], staging[day]) : diff(b, staging[day]);
         if (moves.length === 0) return [];
         return [{ day, label: dayLabel(day), moves, problems: validateStaged(b, staging[day]) }];
       }),
-    [boards, staging, dayLabel]
+    [boards, staging, dayLabel, held, beforeSend]
   );
   const moveCount = pending.reduce((n, p) => n + p.moves.length, 0);
   const blockedBoard = pending.map((p) => boards[p.day]).find((b) => b && !b.can_write) ?? null;
@@ -681,14 +702,15 @@ export function WeekTerminal({
   const menuRow = menu ? rowByKey(menu.rowKey) : null;
   const menuPlayer = menuRow?.player ?? null;
 
-  /** The projected week if `day` had `next` staged instead. */
+  /** The projected week if `day` had `next` staged instead (`unhold`: and autoslot didn't hold it). */
   const weekWith = useCallback(
-    (day: number, next: Staged) => {
+    (day: number, next: Staged, unhold = false) => {
       if (!source || !boards[day]) return 0;
       const over = dayBoards.map((db, i) => (i === day ? { board: boards[day]!, staged: next } : db));
-      return build(source, { dayBoards: over, staged: day === todayDay ? next : staged }).projected.you;
+      const heldX = unhold && held.has(day) ? new Set([...held].filter((d) => d !== day)) : held;
+      return build(source, { dayBoards: over, staged: day === todayDay ? next : staged, held: heldX }).projected.you;
     },
-    [source, boards, dayBoards, build, todayDay, staged]
+    [source, boards, dayBoards, build, todayDay, staged, held]
   );
 
   // Move targets for the player in the menu on its day, each with its effect on the week.
@@ -822,30 +844,86 @@ export function WeekTerminal({
     };
   }, [view, grid, planMove, stageMovesOn]);
 
-  // ---- autoslot ----
-  const [autoslotting, setAutoslotting] = useState(false);
+  // ---- autoslot: one day, or every day left in the week ----
+  const [autoslotting, setAutoslotting] = useState<"day" | "week" | null>(null);
   const autoslotDay = view === "players" ? viewDay : focusDay ?? defaultFocus;
-  const autoslot = useCallback(async () => {
-    const day = autoslotDay;
-    const b = boards[day];
-    if (!b || !source || !editableOn(day)) return;
-    let next: Staged;
-    if (day === todayDay) {
-      // Today: the server's fill-only plan, which knows locks and ESPN's rules.
-      setAutoslotting(true);
-      const plan = await lineup.planToday();
-      setAutoslotting(false);
-      if (!plan) return;
-      next = planToStaged(b, plan);
-    } else {
-      next = bestDayStaging(b, source, day);
+  // The week's autoslot fills every day still to play whose lineup ESPN has answered for.
+  const autoslotWeekDays = useMemo(
+    () => (source ? source.days.filter((d) => d.kind !== "past" && !!boards[d.index]).map((d) => d.index) : []),
+    [source, boards]
+  );
+  /**
+   * Stage the plan for `days` on the staging as it stands once today's plan is
+   * back (a move staged meanwhile counts), changing only those days: anything
+   * staged or discarded on another day in the meantime stays as it is.
+   */
+  const stagePlan = useLatestCallback((days: number[], which: "day" | "week", todayPlan: LineupPlanData | null) => {
+    if (!source) return;
+    const result = planDays({ boards, stagedByDay, held, played, leaves }, days, (day, b) =>
+      day === todayDay ? (todayPlan ? fillOpenSpots(b, planToStaged(b, todayPlan), idleToday) : null) : bestDayStaging(b, source, day)
+    );
+    if (result.changed.length === 0) {
+      toast("Nothing to change", {
+        description:
+          which === "day"
+            ? `${dayLabel(days[0])}'s lineup already starts everyone who plays.`
+            : "Every day left this week already starts everyone who plays.",
+      });
     }
-    if (diff(b, next).length === 0) {
-      toast("Nothing to change", { description: `${dayLabel(day)}'s lineup already starts everyone who plays.` });
-      return;
-    }
-    setDay(day, next);
-  }, [autoslotDay, boards, source, editableOn, todayDay, lineup, dayLabel, setDay]);
+    setStagedByDay((prev) => {
+      const out = { ...prev };
+      for (const d of days) {
+        if (result.stagedByDay[d]) out[d] = result.stagedByDay[d];
+        else delete out[d];
+      }
+      return out;
+    });
+    setHeld((prev) => {
+      const next = new Set(prev);
+      for (const d of days) {
+        if (result.held.has(d)) next.add(d);
+        else next.delete(d);
+      }
+      return next;
+    });
+    // The best view shows no day's staging: the lineups as they'll be set do.
+    if (which === "week" && mode === "best") setMode("espn");
+  });
+  /**
+   * Plan `days` and stage each one's best lineup, in day order, each on the
+   * lineup the days before it carry in (`planDays`), and hold them. Today's is
+   * the server's fill-only plan, which knows locks and ESPN's rules; a later
+   * day's is the best lineup for its games. Either way the spots left open take
+   * bench players who don't play that day (`fillOpenSpots`). IR is never touched.
+   */
+  const autoslotDays = useCallback(
+    async (days: number[], which: "day" | "week") => {
+      if (!source || days.length === 0) return;
+      let todayPlan: LineupPlanData | null = null;
+      if (todayDay != null && days.includes(todayDay) && boards[todayDay]) {
+        setAutoslotting(which);
+        todayPlan = await lineup.planToday();
+        setAutoslotting(null);
+        // A day on its own stops there; the week goes on with the days after it.
+        if (!todayPlan && which === "day") return;
+      }
+      stagePlan(days, which, todayPlan);
+    },
+    [source, todayDay, boards, lineup, stagePlan]
+  );
+  const autoslot = useCallback(() => {
+    if (editableOn(autoslotDay)) void autoslotDays([autoslotDay], "day");
+  }, [editableOn, autoslotDay, autoslotDays]);
+  const canAutoslotWeek = autoslotWeekDays.length > 0 && !lineup.loading;
+  const autoslotWeek = useCallback(() => {
+    if (canAutoslotWeek) void autoslotDays(autoslotWeekDays, "week");
+  }, [canAutoslotWeek, autoslotWeekDays, autoslotDays]);
+  const autoslotWeekLabel = useMemo(() => {
+    const first = autoslotWeekDays[0];
+    const last = autoslotWeekDays[autoslotWeekDays.length - 1];
+    if (first == null || !source) return "";
+    return first === last ? source.days[first].dow : `${source.days[first].dow} to ${source.days[last].dow}`;
+  }, [autoslotWeekDays, source]);
 
   // ---- add / drop, now or scheduled ----
   const swapOut = pinned && pinned.replaces !== NO_DROP ? roster.find((p) => p.id === pinned.replaces) ?? null : null;
@@ -1053,6 +1131,19 @@ export function WeekTerminal({
 
   // ---- the tray: everything staged, by day, confirmed and sent from there ----
   const [sendingDay, setSendingDay] = useState<number | null>(null);
+  // A held day is done once ESPN has its lineup and no day before it waits to be sent.
+  const firstPendingDay = pending[0]?.day ?? Infinity;
+  useEffect(() => {
+    if (sendingDay != null || held.size === 0) return;
+    const done = [...held].filter((d) => d < firstPendingDay && Object.keys(staging[d] ?? NO_STAGING).length === 0);
+    if (done.length === 0) return;
+    setHeld((prev) => new Set([...prev].filter((d) => !done.includes(d))));
+    setStagedByDay((prev) => {
+      const out = { ...prev };
+      for (const d of done) delete out[d];
+      return out;
+    });
+  }, [sendingDay, held, firstPendingDay, staging]);
   const [trayHeight, setTrayHeight] = useState(0);
   const [dayErrors, setDayErrors] = useState<Record<number, string>>({});
   // The column drops made now sit in: today's, or one of their own when today isn't on the board.
@@ -1063,6 +1154,7 @@ export function WeekTerminal({
       delete out[day];
       return out;
     });
+    setHeld((prev) => (prev.has(day) ? new Set([...prev].filter((d) => d !== day)) : prev));
   }, []);
   /**
    * Write the chosen days' lineups, earliest first; stop at the first one ESPN refuses
@@ -1082,27 +1174,37 @@ export function WeekTerminal({
       }
       // Each write is pinned to the lineup ESPN holds: read again, or as read before any drop.
       const boardOf = (day: number) => fresh.get(day) ?? rawBoards[day];
-      const held = waiting.length
+      const onHold = waiting.length
         ? order.filter((p) => {
             const b = boardOf(p.day);
             return !!b && validateStaged(b, normalize(b, snapshot[p.day] ?? NO_STAGING)).length > 0;
           })
         : [];
-      if (held.length) {
+      if (onHold.length) {
         const who = waiting.map((id) => shortName(nameOf(id)));
         const note = who.length === 1 ? `Waits on ${who[0]}'s drop` : `Waits on the drops of ${who.join(" and ")}`;
-        setDayErrors((prev) => ({ ...prev, ...Object.fromEntries(held.map((p) => [p.day, note])) }));
+        setDayErrors((prev) => ({ ...prev, ...Object.fromEntries(onHold.map((p) => [p.day, note])) }));
       }
-      const go = order.filter((p) => !held.includes(p));
+      const go = order.filter((p) => !onHold.includes(p));
       if (go.length === 0) return;
+      const wrote = new Set<number>();
       const { done, failed } = await sendLineupDays(go, {
         board: boardOf,
         moves: (day, b) => diff(b, normalize(b, snapshot[day] ?? NO_STAGING)),
-        apply: lineup.apply,
+        apply: async (day, b, moves) => {
+          const sent = await lineup.apply(day, b, moves);
+          wrote.add(day);
+          return sent;
+        },
         refresh: lineup.refresh,
         settle: lineup.settle,
         onSending: setSendingDay,
-        onDone: dropDay,
+        // A held day ESPN already had as planned keeps its plan: a day before it still to be sent
+        // would carry over it. It lets go once nothing before it waits (the effect above).
+        onDone: (day) => {
+          if (held.has(day) && !wrote.has(day)) return;
+          dropDay(day);
+        },
       });
       const sent = done.map((p) => p.label);
       if (failed) {
@@ -1116,7 +1218,7 @@ export function WeekTerminal({
       if (data.demo) toast.success(`Lineup updated (demo): ${sent.join(", ")}`);
       else toast.success(`Lineup updated on ESPN for ${sent.join(", ")}`);
     },
-    [pending, stagedByDay, rawBoards, lineup, data.demo, dropDay, nameOf]
+    [pending, stagedByDay, rawBoards, lineup, data.demo, dropDay, nameOf, held]
   );
   /**
    * Send the confirmed days. Today's drops go first, one ESPN call each, then the
@@ -1214,7 +1316,7 @@ export function WeekTerminal({
         drops: [],
         swap: null,
         // What this day's own moves add: the week with them, less the week without.
-        delta: gridNoPreview ? gridNoPreview.projected.you - weekWith(p.day, NO_STAGING) : 0,
+        delta: gridNoPreview ? gridNoPreview.projected.you - weekWith(p.day, NO_STAGING, true) : 0,
         problems: p.problems.map((e) => e.message),
         error: dayErrors[p.day] ?? null,
       });
@@ -1359,7 +1461,10 @@ export function WeekTerminal({
       // Keys that work the same in both views.
       switch (e.key) {
         case "a":
-          void autoslot();
+          autoslot();
+          return;
+        case "A":
+          autoslotWeek();
           return;
         case "l":
           toggleMode();
@@ -1557,7 +1662,7 @@ export function WeekTerminal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, toggleTheme, toggleMode, toggleView, toggleMarket, streamable, toggleDrop, toggleProtect, toggleStats, stats, laneFor, tapeBox, data.actions]);
+  }, [grid, menu, confirm, cursor, viewable, viewableList, viewDay, view, focusDay, defaultFocus, root, openMove, openReplace, autoslot, autoslotWeek, toggleTheme, toggleMode, toggleView, toggleMarket, streamable, toggleDrop, toggleProtect, toggleStats, stats, laneFor, tapeBox, data.actions]);
 
   // ---- render ----
   const liveMine = grid && todayIndex != null ? grid.rows.filter((r) => r.player && r.cells[todayIndex]?.state === "live").length : 0;
@@ -1691,11 +1796,14 @@ export function WeekTerminal({
           }
           canAutoslot={editableOn(autoslotDay)}
           autoslotLabel={dayLabel(autoslotDay)}
+          canAutoslotWeek={canAutoslotWeek}
+          autoslotWeekLabel={autoslotWeekLabel}
+          onAutoslotWeek={autoslotWeek}
           mode={mode}
           onMode={toggleMode}
           bestGain={bestGain}
           autoslotting={autoslotting}
-          onAutoslot={() => void autoslot()}
+          onAutoslot={autoslot}
           heat={heat}
           onHeat={() => setHeat((h) => !h)}
           note={toolbarNote}
@@ -1771,7 +1879,10 @@ export function WeekTerminal({
             sendingDay={sendingDay}
             onUnstage={(day, playerId) => {
               const b = boards[day];
-              if (b) setDay(day, unstagePure(b, staging[day], playerId));
+              if (!b) return;
+              // A held day's moves start from the lineup carried into it: one taken back leaves him there.
+              if (held.has(day)) setStagedByDay((prev) => ({ ...prev, [day]: unstageHeld(b, beforeSend?.[day], staging[day], playerId) }));
+              else setDay(day, unstagePure(b, staging[day], playerId));
             }}
             onUndrop={undrop}
             onDiscardDay={(day) => {
@@ -1788,6 +1899,7 @@ export function WeekTerminal({
             }}
             onDiscardAll={() => {
               setStagedByDay({});
+              setHeld(NO_DAYS);
               setPinned(null);
               setDrops([]);
               setDropErrors({});
@@ -2007,11 +2119,17 @@ function canSit(player: LineupPlayer, slot: number): boolean {
   return slot !== IR_SLOT_ID || isInjured(player);
 }
 
+/** Today's fill may start a bench player who can't score today: no game, or out. */
+function idleToday(p: LineupPlayer): boolean {
+  return !p.has_game_today || isOutStatus(p.injury_status);
+}
+
 /**
  * The best lineup for a later day, as staging on that day's ESPN lineup:
  * everyone healthy with a game seated to maximize projected points; players
- * who don't play keep a spot that's still free, else go to the bench (ESPN's
- * bench is unbounded, so a spot may stay empty); IR untouched.
+ * who don't play keep a spot that's still free, and the spots still open go
+ * to bench players who don't play either (`fillOpenSpots`), so the day shows
+ * no OPEN spot while the bench has someone for it; IR untouched.
  */
 function bestDayStaging(board: LineupState, source: WeekSource, day: number): Staged {
   const everyone = weekRoster(source);
@@ -2039,7 +2157,8 @@ function bestDayStaging(board: LineupState, source: WeekSource, day: number): St
     target[p.player_id] = slot;
     used.set(slot, (used.get(slot) ?? 0) + 1);
   }
-  return normalize(board, target);
+  const plays = new Set(playing.map((p) => p.player_id));
+  return fillOpenSpots(board, normalize(board, target), (p) => !plays.has(p.player_id));
 }
 
 /** A previewed add: made now, or scheduled for `from` (the roster stands until then). */

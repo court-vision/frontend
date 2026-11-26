@@ -207,7 +207,13 @@ interface ToolbarProps {
   canAutoslot: boolean;
   /** The day autoslot acts on, e.g. "Thu 11/12". */
   autoslotLabel: string;
-  autoslotting: boolean;
+  /** Every day left in the week, at once. */
+  canAutoslotWeek: boolean;
+  /** The days the week's autoslot fills, e.g. "Mon to Sun". */
+  autoslotWeekLabel: string;
+  onAutoslotWeek: () => void;
+  /** Which autoslot is waiting on today's plan. */
+  autoslotting: "day" | "week" | null;
   onAutoslot: () => void;
   heat: boolean;
   onHeat: () => void;
@@ -229,6 +235,9 @@ export function Toolbar({
   rail,
   canAutoslot,
   autoslotLabel,
+  canAutoslotWeek,
+  autoslotWeekLabel,
+  onAutoslotWeek,
   autoslotting,
   onAutoslot,
   heat,
@@ -319,9 +328,19 @@ export function Toolbar({
           <span className={dk.divider} />
         </>
       ) : null}
-      <button type="button" className={dk.btn} onClick={onAutoslot} disabled={!canAutoslot || autoslotting} title="Fill that day's lineup: the best lineup for its games (A)">
-        {autoslotting ? "Planning…" : `Autoslot ${autoslotLabel}`}
+      <button type="button" className={dk.btn} onClick={onAutoslot} disabled={!canAutoslot || autoslotting != null} title="Fill that day's lineup: the best lineup for its games (A)">
+        {autoslotting === "day" ? "Planning…" : `Autoslot ${autoslotLabel}`}
         <span className={dk.kbd}>A</span>
+      </button>
+      <button
+        type="button"
+        className={dk.btn}
+        onClick={onAutoslotWeek}
+        disabled={!canAutoslotWeek || autoslotting != null}
+        title={`Fill every day left this week${autoslotWeekLabel ? `, ${autoslotWeekLabel}` : ""}: the best lineup for each day's games, staged in the tray (Shift+A)`}
+      >
+        {autoslotting === "week" ? "Planning…" : "Autoslot week"}
+        <span className={dk.kbd}>⇧A</span>
       </button>
       {view !== "matchup" ? (
         <button type="button" className={`${dk.btn} ${heat ? dk.toggleOn : ""}`} onClick={onHeat} aria-pressed={heat} title="Shade cells by points (H)">
@@ -353,6 +372,7 @@ const WEEK_KEYS: Array<[string, string]> = [
   ["K", "protect"],
   ["I", "stats"],
   ["A", "autoslot"],
+  ["⇧A", "autoslot week"],
   ["L", "as set / best"],
   ["V", "view"],
   ["[ ]", "day"],

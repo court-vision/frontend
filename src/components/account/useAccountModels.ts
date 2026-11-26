@@ -375,6 +375,7 @@ function upsertTeamPrefs(list: NotificationTeamPreference[], teamId: number, pat
     alert_minutes_before: null,
     auto_lineup_enabled: null,
     late_scratch_level: null,
+    daily_actions_level: null,
     email: null,
   };
   const found = list.some((p) => p.team_id === teamId);
@@ -449,7 +450,7 @@ export function useDemoAddTeam(): AddTeamModel {
       selectedTeamId: team.team_id,
       connections: s.connections.map((c) => (c.id === connectionId ? { ...c, teams: [...c.teams, row] } : c)),
       accountTeams: connectionId === 1 ? trackOnAccount(s.accountTeams, body.league_id, body.team_name, team.team_id) : s.accountTeams,
-      teamPrefs: [...s.teamPrefs, { team_id: team.team_id, has_override: false, lineup_alerts_enabled: null, alert_benched_starters: null, alert_active_non_playing: null, alert_injured_active: null, alert_minutes_before: null, auto_lineup_enabled: null, email: null }],
+      teamPrefs: [...s.teamPrefs, { team_id: team.team_id, has_override: false, lineup_alerts_enabled: null, alert_benched_starters: null, alert_active_non_playing: null, alert_injured_active: null, alert_minutes_before: null, auto_lineup_enabled: null, late_scratch_level: null, daily_actions_level: null, email: null }],
     });
     toast.success(`${body.team_name} added (demo)`);
     return { teamId: team.team_id, alreadyExists: false, team };
@@ -594,7 +595,7 @@ export function useDemoAccount(): AccountModel {
       set((s) => ({
         teamPrefs: s.teamPrefs.map((p) =>
           p.team_id === teamId
-            ? { team_id: teamId, has_override: false, lineup_alerts_enabled: null, alert_benched_starters: null, alert_active_non_playing: null, alert_injured_active: null, alert_minutes_before: null, auto_lineup_enabled: null, email: null }
+            ? { team_id: teamId, has_override: false, lineup_alerts_enabled: null, alert_benched_starters: null, alert_active_non_playing: null, alert_injured_active: null, alert_minutes_before: null, auto_lineup_enabled: null, late_scratch_level: null, daily_actions_level: null, email: null }
             : p
         ),
       }));
@@ -610,8 +611,9 @@ export function useDemoAccount(): AccountModel {
       const override = st.teamPrefs.find((p) => p.team_id === teamId);
       const team = demoDimeTeam(d, st.prefs, override);
       const current = { lineup_alerts_enabled: override?.lineup_alerts_enabled ?? null, auto_lineup_enabled: override?.auto_lineup_enabled ?? null };
-      const { dime, lineup, lateScratch } = demoDimeChange(d, team, current, change);
-      const patch = lineup || lateScratch ? { ...lineup, ...(lateScratch ? { late_scratch_level: lateScratch } : {}) } : null;
+      const { dime, lineup, lateScratch, dailyActions } = demoDimeChange(d, team, current, change);
+      const levels = { ...(lateScratch ? { late_scratch_level: lateScratch } : {}), ...(dailyActions ? { daily_actions_level: dailyActions } : {}) };
+      const patch = lineup || lateScratch || dailyActions ? { ...lineup, ...levels } : null;
       set((s) => ({
         dime: s.dime.some((x) => x.team_id === teamId) ? s.dime.map((x) => (x.team_id === teamId ? dime : x)) : [...s.dime, dime],
         teamPrefs: patch ? upsertTeamPrefs(s.teamPrefs, teamId, patch) : s.teamPrefs,

@@ -483,10 +483,23 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
   font-family: var(--desk-mono), ui-monospace, monospace;
   font-size: 10px;
   color: var(--text-3);
   white-space: nowrap;
+}
+
+/* In season: one line on why he is ranked where he is. It is the only part of
+   the line that gives way when the column is narrow; the whole of it is its title. */
+.reason {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--desk-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 10.5px;
+  color: var(--text-2);
 }
 
 /* Status strips, as on the week desk: green active, yellow day to day, red out. */
