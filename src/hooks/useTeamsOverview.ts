@@ -6,8 +6,11 @@ import { overviewPollMs } from "@/lib/home";
 import type { TeamsOverviewData } from "@/types/team-overview";
 
 export const overviewKeys = {
-  /** Under the teams family, so adding or removing a team reads it again. */
-  mine: (userId: string | null | undefined) => [...teamsKeys.all, "overview", userId ?? null] as const,
+  /**
+   * Under the team list's own key, which is what adding, removing, moving or re-syncing a team
+   * invalidates (`teamsKeys.lists()`), so each of those reads the overview again.
+   */
+  mine: (userId: string | null | undefined) => [...teamsKeys.lists(), "overview", userId ?? null] as const,
 };
 
 /**

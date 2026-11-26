@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { QueryClient } from "@tanstack/react-query";
+import { teamsKeys } from "@/hooks/useTeams";
+import { overviewKeys } from "@/hooks/useTeamsOverview";
 import { insetOf } from "../desk-zoom";
 import {
   benchPlaying,
@@ -235,5 +238,20 @@ describe("the box a desk grows out of", () => {
   });
   test("never reaches outside the viewport", () => {
     expect(insetOf({ top: -20, left: 0, right: 1600, bottom: 950 }, 1512, 900)).toBe("inset(0px 0px 0px 0px round 6px)");
+  });
+});
+
+describe("the overview's place among the queries", () => {
+  test("whatever reads the team list again (a team added, removed or re-synced) reads the overview again", async () => {
+    const client = new QueryClient();
+    client.setQueryData(overviewKeys.mine("user_1"), HOME_DEMO);
+    client.setQueryData(teamsKeys.detail(25), { team_id: 25 });
+    await client.invalidateQueries({ queryKey: teamsKeys.lists() });
+    expect(client.getQueryState(overviewKeys.mine("user_1"))?.isInvalidated).toBe(true);
+    expect(client.getQueryState(teamsKeys.detail(25))?.isInvalidated).toBe(false);
+    client.clear();
+  });
+  test("one account's overview is never another's", () => {
+    expect(overviewKeys.mine("user_1")).not.toEqual(overviewKeys.mine("user_2"));
   });
 });
