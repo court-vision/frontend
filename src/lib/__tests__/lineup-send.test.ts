@@ -523,10 +523,22 @@ describe("the reads a few seconds after a send", () => {
   const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const real = { ...catchUpDelays };
   afterEach(() => Object.assign(catchUpDelays, real));
+  // The re-reads run on their own timers from the end of the send, so a test waits for the reads it
+  // expects rather than for a fixed time, and the gaps between the timers are wide enough for a slow
+  // runner: the first re-read lands well after the send's own reads settle, the second well after the first.
+  const DELAYS = { after: [50], unconfirmed: [50, 200] };
+  /** Wait until `done()` holds (or give up after a while and let the assertion say what's missing), then settle. */
+  const until = async (done: () => boolean, ms = 2_000) => {
+    const end = Date.now() + ms;
+    while (!done() && Date.now() < end) await wait(5);
+    await idle();
+  };
+  /** Today's board alone: "GET lineup" without a scoring period. */
+  const todayReads = (espn: Espn) => count(espn, "GET lineup") - count(espn, "GET lineup ");
 
   /** ESPN's copy behind the write: the write's own read-back shows the old lineup, a read a moment later the new. */
   test("an unconfirmed today write: today's board is read again a few seconds on, so the move shows without a reload", async () => {
-    Object.assign(catchUpDelays, { after: [10], unconfirmed: [10, 30] });
+    Object.assign(catchUpDelays, DELAYS);
     const espn = fakeEspn();
     espn.unverified.add(TODAY);
     await desk(espn);
@@ -536,29 +548,26 @@ describe("the reads a few seconds after a send", () => {
     expect(failed).toBeNull();
     // The write came back with the lineup from before it, and nothing read today's board again yet.
     expect(cached(0)!.roster_version).not.toBe(espn.boardOn(TODAY).roster_version);
-    expect(count(espn, "GET lineup") - count(espn, "GET lineup ")).toBe(0);
+    expect(todayReads(espn)).toBe(0);
 
-    await wait(20);
-    await idle();
+    await until(() => todayReads(espn) >= 1);
     expectDeskMatchesEspn(espn);
-    expect(count(espn, "GET lineup") - count(espn, "GET lineup ")).toBe(1);
+    expect(todayReads(espn)).toBe(1);
 
-    await wait(30);
-    await idle();
-    expect(count(espn, "GET lineup") - count(espn, "GET lineup ")).toBe(2);   // and once more, later
+    await until(() => todayReads(espn) >= 2);
+    expect(todayReads(espn)).toBe(2);   // and once more, later
     expect(catchUpPending(TEAM)).toBe(false);
   });
 
   test("a confirmed write: the later days and the matchup go once more, and its own board is left as it came back", async () => {
-    Object.assign(catchUpDelays, { after: [10], unconfirmed: [10, 30] });
+    Object.assign(catchUpDelays, DELAYS);
     const espn = fakeEspn();
     await desk(espn);
     await send(espn, { 0: SWAP_A });
     await idle();
     espn.reset();
 
-    await wait(20);
-    await idle();
+    await until(() => espn.log.length >= 9);
     expect(espn.log.filter((r) => r.startsWith("GET lineup ")).sort()).toEqual(
       [21, 22, 23, 24, 25, 26].map((p) => `GET lineup ${p}`)
     );
@@ -566,27 +575,27 @@ describe("the reads a few seconds after a send", () => {
     expect(["GET actions", "GET live", "GET week"].map((r) => count(espn, r))).toEqual([1, 1, 1]);
     expect(espn.log).toHaveLength(9);
 
-    await wait(30);
+    await wait(DELAYS.unconfirmed[1]);   // past where an unconfirmed write's second read would land
     await idle();
     expect(espn.log).toHaveLength(9);   // once, when the write was confirmed
+    expect(catchUpPending(TEAM)).toBe(false);
   });
 
   test("a confirmed later day isn't read again either, the days after it are", async () => {
-    Object.assign(catchUpDelays, { after: [10], unconfirmed: [10, 30] });
+    Object.assign(catchUpDelays, DELAYS);
     const espn = fakeEspn();
     await desk(espn);
     await send(espn, { 3: SWAP_A });
     await idle();
     espn.reset();
 
-    await wait(20);
-    await idle();
+    await until(() => !catchUpPending(TEAM));
     expect(espn.log.filter((r) => r.startsWith("GET lineup ")).sort()).toEqual(["GET lineup 24", "GET lineup 25", "GET lineup 26"]);
     expect(espn.log).not.toContain("GET lineup");
   });
 
   test("a confirmed lineup write after an unconfirmed add / drop keeps the add / drop's read of today's board", async () => {
-    Object.assign(catchUpDelays, { after: [10], unconfirmed: [10, 30] });
+    Object.assign(catchUpDelays, DELAYS);
     const espn = fakeEspn();
     await desk(espn);
     // useRosterTransactionMutation's ask after an add / drop that came back unconfirmed.
@@ -595,11 +604,9 @@ describe("the reads a few seconds after a send", () => {
     await idle();
     espn.reset();
 
-    await wait(20);
-    await idle();
+    await until(() => todayReads(espn) >= 1);
     expect(espn.log).toContain("GET lineup");
-    await wait(30);
-    await idle();
+    await until(() => !catchUpPending(TEAM));
     expect(espn.log.filter((r) => r === "GET lineup")).toHaveLength(2);
   });
 });
