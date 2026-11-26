@@ -9421,7 +9421,7 @@
                 "type": "null"
               }
             ],
-            "description": "Why it failed: an error code, no_pick (the turn chose or made no pick), stale, undone (the seat's pick was undone), taken (Dime's pick was drafted by another seat first, and Dime picked again)",
+            "description": "Why it failed: an error code, no_pick (the turn chose or made no pick), stale, undone (the seat's pick was undone), taken (Dime's pick was drafted by another seat first, and Dime picked again), superseded (a note from before Dime chose players, replaced by Dime's pick)",
             "title": "Reason"
           },
           "seat": {
@@ -34203,7 +34203,7 @@
     },
     "/v1/internal/drafts/{session_id}/dime/notes": {
       "post": {
-        "description": "Starts the note and returns it `running`; it is written after the response (poll the GET, or open its conversation). `plan` sets the plan the draft is played to: its concessions become the room's punts, and in a real draft on a team the plan is saved to the team's notes (the Draft lab no longer asks for one). `pick` is Dime's pick for the user's next pick, the one on the clock included, read off the room's board: one player and one line on why (`pick`). One per pick, so asking again returns the one already chosen, unless another seat drafted that player first: then Dime picks again, once. `recap` reads the room's recap and, in a real draft, saves what the season starts from and league-mates' habits to Dime's notes.",
+        "description": "Starts the note and returns it `running`; it is written after the response (poll the GET, or open its conversation). `plan` sets the plan the draft is played to: its concessions become the room's punts, and in a real draft on a team the plan is saved to the team's notes (the Draft lab no longer asks for one). `pick` is Dime's pick for the user's next pick, the one on the clock included, read off the room's board: one player and one line on why (`pick`). One per pick, so asking again returns the one already chosen, unless another seat drafted that player first (then Dime picks again, once) or the note was written before Dime chose players (then Dime chooses now). `recap` reads the room's recap and, in a real draft, saves what the season starts from and league-mates' habits to Dime's notes.",
         "operationId": "ask_dime_v1_internal_drafts__session_id__dime_notes_post",
         "parameters": [
           {

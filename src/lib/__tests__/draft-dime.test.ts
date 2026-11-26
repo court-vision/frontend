@@ -91,6 +91,9 @@ describe("asking for Dime's pick", () => {
   test("asks once per pick: a note there, even a failed one, holds it", () => {
     expect(pickToAsk(room({ notes: [chose()] }), session())).toBeNull();
     expect(pickToAsk(room({ notes: [note({ for_pick: 10, state: "failed" })] }), session())).toBeNull();
+    expect(pickToAsk(room({ notes: [chose({ state: "running", pick: null })] }), session())).toBeNull();
+    // ...except a finished note from before Dime chose players, which the server replaces
+    expect(pickToAsk(room({ notes: [note({ for_pick: 10 })] }), session())).toBe(10);
     // The note about the last pick doesn't
     expect(pickToAsk(room({ notes: [note({ for_pick: 3 })] }), session())).toBe(10);
   });

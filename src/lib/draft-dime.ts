@@ -120,7 +120,8 @@ export function retakesFor(notes: readonly DimeDraftNote[], pick: number): numbe
  * by hand) or one running anywhere in the room holds it, and so does Dime
  * drafting the seat. The one exception is the player Dime chose being drafted
  * by another seat first: then it asks once more (the server retires the old
- * pick and Dime picks again, `RETAKES` times at most).
+ * pick and Dime picks again, `RETAKES` times at most). A pick note from before
+ * Dime chose players (done, with no player) gives way too.
  */
 export function pickToAsk(room: DimeDraftRoom | null | undefined, session: PickSession | null | undefined, drafted?: ReadonlySet<number>): number | null {
   if (!room || !session || !room.available) return null;
@@ -130,6 +131,8 @@ export function pickToAsk(room: DimeDraftRoom | null | undefined, session: PickS
   const held = noteForPick(room.notes, session.my_next_pick);
   if (!held) return session.my_next_pick;
   const pick = pickOf(held);
+  // A note written before Dime chose players (finished, nobody in it): the server replaces it
+  if (held.state === "done" && !pick) return session.my_next_pick;
   if (pick && (drafted ?? draftedIds(session)).has(pick.playerId) && retakesFor(room.notes, session.my_next_pick) < RETAKES) {
     return session.my_next_pick;
   }
@@ -181,6 +184,7 @@ const FAILED_REASON: Record<string, string> = {
   stale: "It stopped before it finished",
   no_pick: "Dime didn't make a pick",
   taken: "He was drafted before your pick, so Dime picked again",
+  superseded: "Written before Dime chose players; replaced by its pick",
   AI_TIMEOUT: "Dime took too long",
 };
 
