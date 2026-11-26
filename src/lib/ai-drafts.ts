@@ -1,6 +1,6 @@
 /**
  * Unsent messages in the AI desk, one per conversation (and one for a new
- * conversation), kept in this browser so leaving the desk and coming back
+ * conversation; a draft room's chat keeps one per room), kept in this browser so leaving the desk and coming back
  * finds the message where it was. A convenience only: storage can be blocked
  * or cleared, and then the draft is simply gone.
  */
@@ -12,6 +12,15 @@ const MAX_DRAFTS = 40;
 export function draftKey(userId: string | null | undefined, conversationId: number | null): string | null {
   if (!userId) return null;
   return `${PREFIX}${userId}.${conversationId ?? "new"}`;
+}
+
+/**
+ * A draft room's Dime chat: one box per room, kept under the room rather than the chat, so
+ * what was typed before the room's chat exists (an Ask Dime question) survives its starting.
+ */
+export function roomDraftKey(userId: string | null | undefined, sessionId: number): string | null {
+  if (!userId) return null;
+  return `${PREFIX}${userId}.room-${sessionId}`;
 }
 
 export function loadDraft(key: string | null): string {

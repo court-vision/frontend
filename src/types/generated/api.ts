@@ -913,8 +913,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Dime in a draft room: its notes, the notes switch and the mock seat
-         * @description What Dime has written in the room, newest first (its pick for each of the user's picks, with the player in `pick`; a recap; older rooms' plans; each with the board's numbers the server read for it in `facts`), whether a note is being written now, how near the user's pick is when the room asks for Dime's pick (`lead`), and whether Dime holds the user's seat in a mock. Never refuses for a switched-off server or a user off the AI desk's list: `available` says whether the room shows Dime at all, and `switched_off` that the account turned Dime in draft rooms off (Account, AI and automation).
+         * Dime in a draft room: its notes, its chat and the mock seat
+         * @description What Dime has written in the room, newest first (its pick for each of the user's picks, with the player in `pick`; a recap; older rooms' plans; each with the board's numbers the server read for it in `facts`), whether a note is being written now, how near the user's pick is when the room asks for Dime's pick (`lead`), the room's Dime chat (`chat_id`, once started), and whether Dime holds the user's seat in a mock. Never refuses for a switched-off server or a user off the AI desk's list: `available` says whether the room shows Dime at all, and `switched_off` that the account turned Dime in draft rooms off (Account, AI and automation).
          */
         get: operations["get_dime_v1_internal_drafts__session_id__dime_get"];
         /**
@@ -923,6 +923,26 @@ export interface paths {
          */
         put: operations["set_dime_v1_internal_drafts__session_id__dime_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/drafts/{session_id}/dime/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The room's Dime chat: open it, starting it if the room has none
+         * @description One conversation per room (kind `room`): the AI desk's agent and tools, with the room's state (the user's next pick, their picks, the punts, Dime's pick on the board, the seat) given on every message. Returns the conversation with its turns; send messages to `/ai/conversations/{id}/turns`, each a turn on the AI desk's budget, as a chat there is. The AI desk does not list it among the chats. `fresh` starts a new one in its place (a full chat starts over).
+         */
+        post: operations["open_chat_v1_internal_drafts__session_id__dime_chat_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4168,11 +4188,11 @@ export interface components {
             id: number;
             /**
              * Kind
-             * @description chat (the user's), a check-in's conversation, or one of Dime's notes in a draft room
+             * @description chat (the user's), a check-in's conversation, one of Dime's notes in a draft room, or a draft room's Dime chat (room)
              * @default chat
              * @enum {string}
              */
-            kind: "chat" | "checkin" | "draft";
+            kind: "chat" | "checkin" | "draft" | "room";
             /** Team Id */
             team_id: number | null;
             /**
@@ -4222,11 +4242,11 @@ export interface components {
             id: number;
             /**
              * Kind
-             * @description chat (the user's), a check-in's conversation, or one of Dime's notes in a draft room
+             * @description chat (the user's), a check-in's conversation, one of Dime's notes in a draft room, or a draft room's Dime chat (room)
              * @default chat
              * @enum {string}
              */
-            kind: "chat" | "checkin" | "draft";
+            kind: "chat" | "checkin" | "draft" | "room";
             /** Team Id */
             team_id: number | null;
             /**
@@ -6871,6 +6891,15 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** DimeDraftChatReq */
+        DimeDraftChatReq: {
+            /**
+             * Fresh
+             * @description Start a new chat in place of the room's current one (a full chat starts over; the old one is kept)
+             * @default false
+             */
+            fresh?: boolean;
+        };
         /** DimeDraftDesk */
         DimeDraftDesk: {
             /**
@@ -7057,6 +7086,11 @@ export interface components {
              * @description Dime can hold the user's seat here (a mock following nothing)
              */
             can_seat: boolean | null;
+            /**
+             * Chat Id
+             * @description The room's Dime chat (a conversation of kind room), once the user has started one: GET /ai/conversations/{id} reads it and its turns go to /ai/conversations/{id}/turns
+             */
+            chat_id: number | null;
             /**
              * Enabled
              * @description AI_ENABLED on the server
@@ -17222,6 +17256,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DimeDraftRoomResp"];
+                };
+            };
+            /** @description The caller is not on the AI desk's invite list (AI_INVITE_ONLY) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such room, or it is not the caller's (DRAFT_SESSION_NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The account's Dime in draft rooms switch is off (AI_DRAFT_SWITCHED_OFF) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Turned off (AI_DISABLED) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    open_chat_v1_internal_drafts__session_id__dime_chat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DimeDraftChatReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiConversationResp"];
                 };
             };
             /** @description The caller is not on the AI desk's invite list (AI_INVITE_ONLY) */

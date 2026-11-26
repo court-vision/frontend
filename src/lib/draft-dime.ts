@@ -8,6 +8,10 @@
  * highlights him with that line under his row. The room asks for it once the
  * pick is `lead` picks away, and once more if another seat drafts him first.
  * Nothing here decides for the user: the user makes the pick.
+ *
+ * The room's chat (step 2) is one AI desk conversation per room. Ask Dime on a
+ * board row, and Ask why on Dime's pick, put a question in its box and send
+ * nothing: each message the user sends is a turn on the AI desk's budget.
  */
 import { prose } from "@/lib/ai-prose";
 import type { DimeDraftNote, DimeDraftRoom, DraftSession } from "@/types/draft";
@@ -204,4 +208,28 @@ export function notePreview(text: string | null | undefined, max = 240): string 
   const line = (first.kind === "p" ? first.spans : (first.items[0] ?? [])).map((sp) => sp.text).join("").trim();
   if (!line) return null;
   return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line;
+}
+
+type ChatSession = Pick<DraftSession, "status" | "my_next_pick" | "scoring_format">;
+
+/** The question Ask Dime puts in the room's chat box about one player on the board. */
+export function askAbout(name: string, session: Pick<DraftSession, "status" | "my_next_pick">): string {
+  if (session.status !== "completed" && session.my_next_pick != null) return `How does ${name} fit my team at pick #${session.my_next_pick}?`;
+  return `How does ${name} fit my team?`;
+}
+
+/** The question Ask why puts in the box about Dime's own pick. */
+export function askWhy(pick: Pick<DimePick, "name" | "forPick">): string {
+  return `Why ${pick.name} for pick #${pick.forPick}?`;
+}
+
+/** What an empty chat offers to start with: each fills the box (nothing is sent until the user sends it). */
+export function chatStarters(session: ChatSession): string[] {
+  if (session.status === "completed") return ["How did my draft go?", "Which of my picks should I worry about?"];
+  const next = session.my_next_pick;
+  return [
+    "Plan the rest of my draft",
+    next != null ? `Who is likely still there at #${next}?` : "Who are the best players left?",
+    session.scoring_format === "categories" ? "Should I punt a category yet?" : "Which positions should I fill next?",
+  ];
 }

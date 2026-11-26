@@ -61,6 +61,8 @@ export interface BoardActions {
   espnDisabled: string | null;
   marking: boolean;
   pendingEspnId: number | null;
+  /** Present only while the room shows Dime: puts a question about the player in its chat box (it sends nothing). */
+  onAsk?: (row: DraftBoardRow) => void;
 }
 
 interface ToolbarProps {
@@ -496,7 +498,7 @@ interface RowProps extends BoardActions {
 
 // Every prop is a primitive or an object that keeps its identity until its content changes
 // (React Query shares unchanged rows across refetches), so the default shallow compare holds.
-const BoardRow = memo(function BoardRow({ row, meta, columns, template, minWidth, active, keeper, dime, zMax, onActivate, onMark, onEspn, espnDisabled, marking, pendingEspnId }: RowProps) {
+const BoardRow = memo(function BoardRow({ row, meta, columns, template, minWidth, active, keeper, dime, zMax, onActivate, onMark, onEspn, espnDisabled, marking, pendingEspnId, onAsk }: RowProps) {
   const health = healthOf(row.injury_status ?? "");
   const pending = pendingEspnId != null && row.espn_id === pendingEspnId;
   return (
@@ -515,6 +517,11 @@ const BoardRow = memo(function BoardRow({ row, meta, columns, template, minWidth
         <Cell key={c.key} column={c} row={row} meta={meta} keeper={keeper} zMax={zMax} />
       ))}
       <span className={s.actions}>
+        {onAsk ? (
+          <button type="button" className={`${s.act} ${s.actAsk}`} onClick={() => onAsk(row)} title="Ask Dime about him: puts a question in Dime's box, to send or change (A)">
+            Ask Dime
+          </button>
+        ) : null}
         <button type="button" className={`${s.act} ${s.actMine}`} disabled={marking || row.cap_blocked} onClick={() => onMark(row, true)} title={row.cap_blocked ? "Would break your position cap" : "Drafted by you (⇧⏎ or M)"}>
           Mine
         </button>

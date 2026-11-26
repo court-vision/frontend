@@ -271,6 +271,8 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
   const isCheckin = conversation?.kind === "checkin";
   // A note Dime wrote in a draft room (a plan, a pick, a recap), opened from its recap to follow up
   const isDraft = conversation?.kind === "draft";
+  // A draft room's Dime chat, opened from the room ("Open on the AI desk") to stage what it proposed
+  const isRoom = conversation?.kind === "room";
   const turns = useMemo(() => conversation?.history ?? [], [conversation]);
   const liveHere = live && live.conversationId === current ? live : null;
   const stored = liveHere?.done?.turn_id != null && turns.some((t) => t.id === liveHere.done!.turn_id);
@@ -406,10 +408,10 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
     );
   } else if (isCheckin && conversation) {
     banner = <span className={dk.sub}>{checkinBanner(conversation)}</span>;
-  } else if (isDraft) {
+  } else if (isDraft || isRoom) {
     banner = (
       <>
-        <span className={dk.sub}>A note Dime wrote in a draft room.</span>
+        <span className={dk.sub}>{isRoom ? "Dime's chat in a draft room." : "A note Dime wrote in a draft room."}</span>
         <Link href={DRAFT_DESK} className={dk.link}>
           Draft desk
         </Link>
@@ -536,7 +538,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
               ? "Ask about your team, a player, or the free-agent pool"
               : isCheckin
                 ? "Ask Dime about this check-in"
-                : isDraft
+                : isDraft || isRoom
                   ? "Ask Dime about this draft"
                   : "Ask a follow-up"
         }

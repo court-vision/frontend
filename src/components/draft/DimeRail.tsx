@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
+import type { ComposerHandle } from "@/components/ai/Composer";
 import dk from "@/components/desk/desk.module.css";
 import { ACCOUNT_DESK, AI_DESK } from "@/components/desk/routes";
 import { aiMessage } from "@/hooks/useAi";
@@ -13,6 +14,7 @@ import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { toApiError } from "@/lib/api-error";
 import { prose } from "@/lib/ai-prose";
 import {
+  askWhy,
   dimePickFor,
   draftedIds,
   failedLine,
@@ -27,6 +29,7 @@ import {
   type DimePick,
 } from "@/lib/draft-dime";
 import type { DimeDraftNote, DimeDraftNoteKind, DimeDraftRoom, DraftSession } from "@/types/draft";
+import { DimeChat } from "./DimeChat";
 import { shortName } from "./format";
 import type { RoomModel } from "./model";
 import s from "./draft.module.css";
@@ -135,9 +138,13 @@ interface DimeRailProps {
   dime: RoomDime;
   session: DraftSession;
   onFocus: (playerId: number) => void;
+  /** The chat's box: the board's Ask Dime puts its question there. */
+  box?: React.Ref<ComposerHandle>;
+  /** Put a question in the chat's box (Ask why on Dime's pick). */
+  onAsk: (question: string) => void;
 }
 
-export function DimeRail({ dime, session, onFocus }: DimeRailProps) {
+export function DimeRail({ dime, session, onFocus, box, onAsk }: DimeRailProps) {
   const room = dime.room;
   const drafted = useMemo(() => draftedIds(session), [session]);
   if (!room) return dime.switchedOff ? <SwitchedOff /> : null;
@@ -204,6 +211,7 @@ export function DimeRail({ dime, session, onFocus }: DimeRailProps) {
             drafted={drafted}
             writing={writing}
             onAsk={() => dime.ask("pick")}
+            onAskWhy={(p) => onAsk(askWhy(p))}
             onFocus={onFocus}
           />
         ) : null}
@@ -235,13 +243,17 @@ export function DimeRail({ dime, session, onFocus }: DimeRailProps) {
           )
         ) : null}
       </div>
+
+      {/* ---- the room's chat ---- */}
+      <DimeChat key={session.id} ref={box} session={session} chatId={room.chat_id ?? null} />
     </section>
   );
 }
 
 /**
- * Dime's pick in the rail: one line, since the board carries the highlight and the reason.
- * Before the pick is near it says when Dime picks, with a button to ask now.
+ * Dime's pick in the rail: one line, since the board carries the highlight and the reason, and
+ * Ask why to take it up in the chat. Before the pick is near it says when Dime picks, with a
+ * button to ask now.
  */
 function PickLine({
   note,
@@ -252,6 +264,7 @@ function PickLine({
   drafted,
   writing,
   onAsk,
+  onAskWhy,
   onFocus,
 }: {
   note: DimeDraftNote | null;
@@ -262,6 +275,7 @@ function PickLine({
   drafted: ReadonlySet<number>;
   writing: boolean;
   onAsk: () => void;
+  onAskWhy: (pick: DimePick) => void;
   onFocus: (playerId: number) => void;
 }) {
   if (note?.state === "running") return <Writing line={`Dime is choosing your pick for #${nextPick}…`} />;
@@ -275,7 +289,9 @@ function PickLine({
             {pick.position ? ` · ${pick.position}` : ""}
           </button>
           <span className={s.right}>
-            <NoteLink conversationId={pick.conversationId} />
+            <button type="button" className={s.dimeAskWhy} onClick={() => onAskWhy(pick)} title="Puts the question in Dime's chat, to send or change">
+              Ask why
+            </button>
           </span>
         </div>
       </div>
