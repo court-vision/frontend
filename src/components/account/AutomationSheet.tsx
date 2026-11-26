@@ -1,12 +1,11 @@
 "use client";
 
-import type { AccountFocus } from "@/lib/account";
 import type { AccountModel } from "./model";
 import { TeamAutomations } from "./TeamAutomations";
 import s from "./account.module.css";
 
 /** AI and automation: what Court Vision and Dime do on each of your teams by themselves, team by team. */
-export function AutomationSheet({ model, team, onOpen }: { model: AccountModel; team?: number; onOpen: (focus: AccountFocus) => void }) {
+export function AutomationSheet({ model, team }: { model: AccountModel; team?: number }) {
   const dime = model.useDime();
   const ai = !!dime.data;
   return (
@@ -22,7 +21,7 @@ export function AutomationSheet({ model, team, onOpen }: { model: AccountModel; 
         </div>
       </header>
 
-      <TeamAutomations model={model} expand={team} onOpen={onOpen} />
+      <TeamAutomations model={model} expand={team} />
     </div>
   );
 }

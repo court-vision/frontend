@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, ChevronRight, MessagesSquare } from "lucide-react";
+import { ChevronRight, MessagesSquare } from "lucide-react";
 import { toast } from "sonner";
 import { aiMessage } from "@/hooks/useAi";
 import { AI_DESK, DRAFT_DESK } from "@/components/desk/routes";
@@ -19,7 +19,7 @@ import {
   prefsTable,
   tableLine,
 } from "@/lib/ai-autonomy";
-import { effectivePrefs, teamLine, teamName, type AccountFocus } from "@/lib/account";
+import { effectivePrefs, teamLine, teamName } from "@/lib/account";
 import type { AiActing, AiAutomationRow, AiAutopilotChange, AiAutopilotTeam, AiFeatures, AiLevel } from "@/types/ai";
 import type { DailyActionsLevel, LateScratchLevel, NotificationPreference } from "@/types/notifications";
 import type { TeamResponseData } from "@/types/team";
@@ -45,12 +45,10 @@ const ENGAGE_MS = 1400;
 export function TeamAutomations({
   model,
   expand,
-  onOpen,
 }: {
   model: AccountModel;
   /** The team to open (the link that led here named it); else the only team, or the one selected. */
   expand?: number;
-  onOpen: (focus: AccountFocus) => void;
 }) {
   const prefs = model.usePrefs();
   const teamPrefs = model.useTeamPrefs();
@@ -79,7 +77,6 @@ export function TeamAutomations({
   const pilots = dime.data?.teams ?? [];
   const acting = dime.data?.acting ?? null;
   const features = dime.data?.features ?? null;
-  const accountEmail = base ? base.lineup_alerts_enabled : true;
   // A card shows a team's real levels only once all three reads are in: the account's values, the team's own,
   // and whether Dime runs it. Until then, or if one fails, no card is editable.
   const loading = prefs.loading || teamPrefs.loading || dime.loading;
@@ -114,7 +111,6 @@ export function TeamAutomations({
                 model={model}
                 team={team}
                 prefs={effectivePrefs(base, overrides.find((p) => p.team_id === team.team_id))}
-                accountEmail={accountEmail}
                 pilot={pilots.find((p) => p.team_id === team.team_id) ?? null}
                 acting={acting}
                 open={open.has(team.team_id)}
@@ -123,16 +119,6 @@ export function TeamAutomations({
             ))}
           </div>
         )}
-        {ready && !accountEmail ? (
-          <div className={s.row2} style={{ paddingTop: 12 }}>
-            <span className={s.fieldHint}>
-              Your account&apos;s lineup email is off, so no team&apos;s lineup runs: Lineup can&apos;t be Notify, Act or AI anywhere until it is back on.
-            </span>
-            <button type="button" className={`${dk.btn} ${dk.btnSmall}`} onClick={() => onOpen({ kind: "alerts" })}>
-              <Bell size={12} /> Open notifications
-            </button>
-          </div>
-        ) : null}
       </Block>
       {features ? <Features features={features} demo={model.demo} onSet={model.setFeatures} /> : null}
     </>
@@ -166,7 +152,6 @@ function TeamAutomation({
   model,
   team,
   prefs,
-  accountEmail,
   pilot,
   acting,
   open,
@@ -176,7 +161,6 @@ function TeamAutomation({
   team: TeamResponseData;
   /** The preferences in force on the team: its own over the account's. */
   prefs: NotificationPreference;
-  accountEmail: boolean;
   /** The team as Dime reads it, on an account with CV AI; null without. */
   pilot: AiAutopilotTeam | null;
   acting: AiActing | null;
@@ -200,7 +184,7 @@ function TeamAutomation({
     return () => window.clearTimeout(done);
   }, [engage]);
 
-  const rows: AiAutomationRow[] = pilot ? pilot.rows : prefsTable(prefs, accountEmail);
+  const rows: AiAutomationRow[] = pilot ? pilot.rows : prefsTable(prefs);
 
   const run = (write: Promise<unknown>, done?: string) => {
     setPending(true);

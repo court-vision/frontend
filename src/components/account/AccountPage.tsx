@@ -273,7 +273,7 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
             ? {
                 prefs: inForce,
                 notifyCustom: hasOwn(override, NOTIFICATION_FIELDS),
-                automation: tableLine(pilot ? pilot.rows : prefsTable(inForce, prefs.data.lineup_alerts_enabled), pilot?.autopilot),
+                automation: tableLine(pilot ? pilot.rows : prefsTable(inForce), pilot?.autopilot),
                 autopilot: autopilotLive(pilot, dime.data?.acting ?? null),
               }
             : null
@@ -298,7 +298,7 @@ function AccountDesk({ model, initial }: { model: AccountModel; initial: Account
   } else if (focus.kind === "alerts") {
     body = <NotificationsSheet model={model} onOpen={open} />;
   } else if (focus.kind === "automation") {
-    body = <AutomationSheet model={model} team={focus.team} onOpen={open} />;
+    body = <AutomationSheet model={model} team={focus.team} />;
   } else if (focus.kind === "account") {
     body = <AccountSheet model={model} />;
   } else if (loading) {
