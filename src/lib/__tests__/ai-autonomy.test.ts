@@ -18,6 +18,7 @@ import {
   tableLine,
   tableOf,
   teamLine,
+  writesOverride,
   type TableState,
 } from "../ai-autonomy";
 import type { AiActingPolicy, AiAutomationName, AiAutopilotTeam, AiConversation, AiLevel } from "@/types/ai";
@@ -68,7 +69,9 @@ describe("lineup below AI", () => {
     const prefs = { lineup_alerts_enabled: true, auto_lineup_enabled: false };
     expect(belowAi("lineup", prefs)).toBe("notify");
     expect(belowAi("lanes", prefs)).toBe("act");
+    // Daily actions read their own level too; an API that predates it is off
     expect(belowAi("daily_actions", prefs)).toBe("off");
+    expect(belowAi("daily_actions", { ...prefs, daily_actions_level: "act" })).toBe("act");
     // Late scratches read their own level; an API that predates it is off
     expect(belowAi("late_scratch", prefs)).toBe("off");
     expect(belowAi("late_scratch", { ...prefs, late_scratch_level: "act" })).toBe("act");
@@ -76,8 +79,10 @@ describe("lineup below AI", () => {
     expect(accountOptions("lineup").map((o) => o.available)).toEqual([true, true, true]);
     const daily = accountOptions("daily_actions");
     expect(daily.map((o) => o.level)).toEqual(["off", "notify", "act"]);
-    expect(daily.map((o) => o.available)).toEqual([true, false, false]);
+    // Act is built (the IR moves and open spots, never a drop); Notify, the morning email, isn't yet
+    expect(daily.map((o) => o.available)).toEqual([true, false, true]);
     expect(daily[1].reason).toMatch(/^Not built yet/);
+    expect(daily[2].reason).toBeNull();
     // Without the account's email no team's lineup runs, so a team's own can't be Notify or Act
     const noEmail = accountOptions("lineup", false);
     expect(noEmail.map((o) => o.available)).toEqual([true, false, false]);
@@ -190,6 +195,7 @@ describe("a team's own table and its line", () => {
 
   test("the folded line says what runs, lanes only at AI, and paused only over something at AI", () => {
     expect(tableLine(prefsTable(prefs))).toBe("lineup notify");
+    expect(tableLine(prefsTable({ ...prefs, daily_actions_level: "act" }))).toBe("lineup notify · daily actions act");
     expect(tableLine(prefsTable({ ...prefs, lineup_alerts_enabled: false }))).toBe("nothing runs by itself");
     const rows = tableOf(state({ aiRows: ["daily_actions", "lanes"], lineupBelowAi: "act", lateScratchBelowAi: "notify" }));
     expect(tableLine(rows)).toBe("lineup act · daily actions AI · lanes AI · late scratches notify");
@@ -240,6 +246,21 @@ describe("the demo's Dime", () => {
     expect([ai.lateScratch, ai.dime.ai_rows]).toEqual([null, ["daily_actions", "late_scratch"]]);
     const own = demoDimeTeam(d, DEMO_PREFS, { ...DEMO_TEAM_PREFS[0], has_override: true, late_scratch_level: "notify" }, NOW);
     expect(own.rows.find((r) => r.row === "late_scratch")?.level).toBe("notify");
+  });
+
+  test("daily actions below AI write the team's level; at AI they write none", () => {
+    const [, second] = demoDime(NOW);
+    const idle = idleDemoDime(3, NOW);
+    const act = demoDimeChange(idle, read(idle), override, { levels: { daily_actions: "act" } }, NOW);
+    expect([act.dailyActions, act.lateScratch, act.lineup, act.dime.ai_rows]).toEqual(["act", null, null, []]);
+    // Leaving AI for Act on a team at AI drops the row from Dime's and writes Act
+    const [d] = demoDime(NOW);
+    const down = demoDimeChange(d, read(d), override, { levels: { daily_actions: "act" } }, NOW);
+    expect([down.dailyActions, down.dime.ai_rows]).toEqual(["act", []]);
+    const ai = demoDimeChange(second, read(second), override, { levels: { daily_actions: "ai" } }, NOW);
+    expect(ai.dailyActions).toBeNull();
+    const own = demoDimeTeam(idle, DEMO_PREFS, { ...DEMO_TEAM_PREFS[2], has_override: true, daily_actions_level: "act" }, NOW);
+    expect(own.rows.find((r) => r.row === "daily_actions")?.level).toBe("act");
   });
 
   test("pausing check-ins leaves the switch on; a level the row can't do is refused", () => {
@@ -305,5 +326,21 @@ describe("what became of a move", () => {
     expect(checkinBanner(conversation([{ type: "proposal", state: "review" }, { type: "decision", action: null }]))).toMatch(
       /^A review: nothing in this check-in was sent to ESPN/
     );
+  });
+});
+
+
+describe("writesOverride", () => {
+  test("a level below AI on a row the team's notification override holds is read again, as is autopilot", () => {
+    expect(writesOverride({ levels: { daily_actions: "act" } })).toBe(true);
+    expect(writesOverride({ levels: { lineup: "notify" } })).toBe(true);
+    expect(writesOverride({ levels: { late_scratch: "off" } })).toBe(true);
+    expect(writesOverride({ autopilot: false })).toBe(true);
+  });
+
+  test("check-ins and the lanes row live on the team's autopilot only", () => {
+    expect(writesOverride({ checkins: true })).toBe(false);
+    expect(writesOverride({ levels: { lanes: "ai" } })).toBe(false);
+    expect(writesOverride({})).toBe(false);
   });
 });

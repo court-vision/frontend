@@ -7805,6 +7805,49 @@
         "title": "DailyActionTransaction",
         "type": "object"
       },
+      "DailyActionsAdd": {
+        "description": "A free agent the pass picked up for an open roster spot.",
+        "properties": {
+          "audit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Id"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "player": {
+            "$ref": "#/components/schemas/DailyActionPlayer"
+          },
+          "verified": {
+            "default": false,
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "player",
+          "detail",
+          "verified",
+          "audit_id"
+        ],
+        "title": "DailyActionsAdd",
+        "type": "object"
+      },
       "DailyActionsData": {
         "properties": {
           "actions": {
@@ -7977,6 +8020,183 @@
           "timestamp"
         ],
         "title": "DailyActionsResp",
+        "type": "object"
+      },
+      "DailyActionsRunData": {
+        "properties": {
+          "adds": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DailyActionsAdd"
+            },
+            "title": "Adds",
+            "type": "array"
+          },
+          "first_game_time_et": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Game Time Et"
+          },
+          "held": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held"
+          },
+          "ir_moves": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineupMoveResult"
+            },
+            "title": "Ir Moves",
+            "type": "array"
+          },
+          "nba_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Date"
+          },
+          "open_spots": {
+            "default": 0,
+            "title": "Open Spots",
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": [
+              "applied",
+              "noop",
+              "skipped",
+              "rejected",
+              "failed"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "team_name": {
+            "default": "",
+            "title": "Team Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome",
+          "reason",
+          "ir_moves",
+          "adds",
+          "held",
+          "open_spots",
+          "nba_date",
+          "first_game_time_et",
+          "team_name"
+        ],
+        "title": "DailyActionsRunData",
+        "type": "object"
+      },
+      "DailyActionsRunReq": {
+        "description": "One team's pass, from data-platform's daily_actions pipeline (once a day before the first tip).",
+        "properties": {
+          "nba_date": {
+            "format": "date",
+            "title": "Nba Date",
+            "type": "string"
+          },
+          "team_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "user_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "team_id",
+          "user_id",
+          "nba_date"
+        ],
+        "title": "DailyActionsRunReq",
+        "type": "object"
+      },
+      "DailyActionsRunResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DailyActionsRunData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "DailyActionsRunResp",
         "type": "object"
       },
       "DailyBoardPlace": {
@@ -20732,6 +20952,21 @@
             "title": "Auto Lineup Enabled",
             "type": "boolean"
           },
+          "daily_actions_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "act"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Actions Level"
+          },
           "email": {
             "anyOf": [
               {
@@ -20798,6 +21033,15 @@
             "title": "Auto Lineup Enabled",
             "type": "boolean"
           },
+          "daily_actions_level": {
+            "default": "off",
+            "enum": [
+              "off",
+              "act"
+            ],
+            "title": "Daily Actions Level",
+            "type": "string"
+          },
           "email": {
             "anyOf": [
               {
@@ -20833,6 +21077,7 @@
           "alert_minutes_before",
           "auto_lineup_enabled",
           "late_scratch_level",
+          "daily_actions_level",
           "email"
         ],
         "title": "NotificationPreferenceResp",
@@ -21008,6 +21253,21 @@
             ],
             "title": "Auto Lineup Enabled"
           },
+          "daily_actions_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "act"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Actions Level"
+          },
           "email": {
             "anyOf": [
               {
@@ -21108,6 +21368,21 @@
             ],
             "title": "Auto Lineup Enabled"
           },
+          "daily_actions_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "act"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Actions Level"
+          },
           "email": {
             "anyOf": [
               {
@@ -21165,6 +21440,7 @@
           "alert_minutes_before",
           "auto_lineup_enabled",
           "late_scratch_level",
+          "daily_actions_level",
           "email"
         ],
         "title": "NotificationTeamPreferenceResp",
@@ -34558,6 +34834,53 @@
           }
         ],
         "summary": "Run Checkins",
+        "tags": [
+          "internal jobs"
+        ]
+      }
+    },
+    "/v1/internal/jobs/daily-actions/run": {
+      "post": {
+        "description": "Make one team's daily actions at Act: the Week desk's IR moves and a free agent for each\nopen roster spot, never a drop.\n\nCalled by data-platform's daily_actions pipeline once a day per team at Act, before the\nfirst tip. The outcome is reported in `data.outcome`, never raised: applied (with the IR\nmoves and pickups made, and `held` when something was left), noop, skipped (why), rejected\nor failed (nothing went).",
+        "operationId": "run_daily_actions_v1_internal_jobs_daily_actions_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DailyActionsRunReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyActionsRunResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Run Daily Actions",
         "tags": [
           "internal jobs"
         ]

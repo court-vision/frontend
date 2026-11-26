@@ -80,10 +80,11 @@ export type PrefField = keyof NotificationPreference;
  * preference (the account's, and a team's own over it). Notifications has both
  * the account's settings and a team's own; AI and automation is set per team
  * only, so it writes only a team's own fields (since backend migration 0049 the
- * account's auto-lineup and Late scratches stay off, where a new team starts).
+ * account's auto-lineup, Late scratches and Daily actions stay off, where a new team starts).
  * One field is on both: the tip-off email is Lineup's Notify, so a team's Lineup
  * level (Off, Notify, Act) writes it with auto-lineup, and a team without its
- * own email follows the account's. Late scratches' level is its own field.
+ * own email follows the account's. Late scratches' and Daily actions' levels are
+ * their own fields.
  */
 export const NOTIFICATION_FIELDS = [
   "lineup_alerts_enabled",
@@ -94,7 +95,12 @@ export const NOTIFICATION_FIELDS = [
   "alert_injured_active",
 ] as const satisfies readonly PrefField[];
 
-export const AUTOMATION_FIELDS = ["lineup_alerts_enabled", "auto_lineup_enabled", "late_scratch_level"] as const satisfies readonly PrefField[];
+export const AUTOMATION_FIELDS = [
+  "lineup_alerts_enabled",
+  "auto_lineup_enabled",
+  "late_scratch_level",
+  "daily_actions_level",
+] as const satisfies readonly PrefField[];
 
 export type PrefFields = readonly PrefField[];
 
