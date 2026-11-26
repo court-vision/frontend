@@ -1,7 +1,9 @@
 /**
  * The Home desk's demo: a made-up account with five teams on one Thursday night, two games
  * under way. One team needs a swap before a tip, one has an IR move to take or leave, two are
- * set and Dime drives the last. Nothing here is real and nothing is sent anywhere.
+ * set and Dime drives the last. Nothing here is real and nothing is sent anywhere: the page
+ * opens signed out, so team, league and opponent names are invented too (the first team carries
+ * the Week demo's names).
  */
 import type { DailyAction } from "@/types/daily-actions";
 import type { GamesOnDateData } from "@/types/games";
@@ -201,14 +203,14 @@ const IRVING: P = ["Kyrie Irving", "DAL", 0, "OUT"];
 const CLINGAN: P = ["Donovan Clingan", "POR"];
 const HARRIS: P = ["Tobias Harris", "DET", 0, "OUT"];
 
-const YOYO: Side = {
+const BEASTS: Side = {
   starters: [
     ["Daniel Jenkins", "DET", 11.5], ["Anthony Black", "ORL", 14], ["Jayson Tatum", "BOS", 16], ["Cameron Boozer", "UTA"], ["Aday Mara", "DEN"],
     IRVING, ["Andrew Wiggins", "MIA"], ["Tyrese Maxey", "PHI"], ["Donovan Mitchell", "CLE"], ["Josh Giddey", "CHI"],
   ],
   bench: [CLINGAN, ["Fred VanVleet", "NYK"], ["Keyonte George", "GSW"]],
 };
-const MONSTROUS: Side = {
+const SPLASH: Side = {
   starters: [
     ["Cade Cunningham", "DET", 12.5], ["Devin Booker", "PHX"], ["Franz Wagner", "ORL", 9], ["Evan Mobley", "CLE"], ["Alperen Sengun", "HOU", 16.5],
     ["Jalen Brunson", "NYK"], ["Jalen Johnson", "ATL", 0], ["Deni Avdija", "POR"], ["Cam Thomas", "BKN"], ["Brandon Miller", "CHA"],
@@ -229,7 +231,7 @@ const POOL: P[] = [
 const pick = (from: number[]): Array<P | null> => from.map((i) => (i < 0 ? null : POOL[i]));
 
 const SIDES: Record<number, { mine: Side; theirs: Side }> = {
-  25: { mine: YOYO, theirs: MONSTROUS },
+  25: { mine: BEASTS, theirs: SPLASH },
   21: { mine: { starters: pick([0, 1, 16, 18, 4, 6, 7, 30, 31, 34]), bench: [POOL[26], POOL[33], HARRIS] }, theirs: { starters: pick([2, 3, 15, 19, 20, 8, 9, 32, 33, 30]), bench: [POOL[10], POOL[27]] } },
   23: { mine: { starters: pick([17, 3, 15, 5, 20, 8, 39, 11, 12, 13]), bench: [POOL[22], POOL[31]] }, theirs: { starters: pick([0, 36, 16, 7, 21, 9, 25, 28, 14, 34]), bench: [POOL[29], POOL[32]] } },
   24: { mine: { starters: pick([2, 1, 16, 35, 4, 6, 26, 10, 24, 29]), bench: [POOL[23], POOL[30]] }, theirs: { starters: pick([18, 19, 5, 27, 22, 31, 32, 33, 34, 30]), bench: [POOL[12]] } },
@@ -300,7 +302,7 @@ function team(s: Spec): TeamOverview {
 
 const TEAMS: TeamOverview[] = [
   team({
-    id: 25, name: "yoyo mama", league: "ESPN · points · 10 teams", state: "needs_you", opp: "Matthew's Monstrous Team",
+    id: 25, name: "Paint Beasts", league: "The Sunday Run · 10 teams", state: "needs_you", opp: "Splash Dept.",
     score: [596.5, 641], proj: [1339, 1328], win: 0.54, season: [4, 0, 1, 10, 0.81],
     week: weekOf([[214, 230], [188, 186], [153, 187]], [41.5, 38], [[5, 8], [9, 6], [8, 5]]),
     items: [
@@ -310,28 +312,28 @@ const TEAMS: TeamOverview[] = [
     next: { kind: "lane", at: at("03:02", "2026-11-20"), label: "Stream lane keeps Wiggins through Friday" },
   }),
   team({
-    id: 21, name: "James's Finest Team", league: "Test H2H Cat Public League", state: "your_call", opp: "1# Team",
+    id: 21, name: "Nine Lives", league: "Office Cats League", state: "your_call", opp: "Board Men",
     score: [3, 5], proj: [4, 5], win: null, season: [2, 2, 5, 8, null], categories: [3, 5, 0],
     week: weekOf([[4, 4], [3, 5], [3, 5]], [3, 5], [[4, 6], [7, 7], [6, 4]], true),
     items: [item("your_call", action("ir_in", "ir-harris", "Harris is out and IR has an open seat.", "T. Harris moves to IR, which frees a roster spot", HARRIS, "BE", null))],
     next: { kind: "auto_lineup", at: at("18:15", "2026-11-20"), label: "Auto-lineup sets the lineup" },
   }),
   team({
-    id: 23, name: "Lvl. 3 Goblins", league: "Dream Shakers · 8 teams", state: "set", opp: "Harper's Dunk Dynasty",
+    id: 23, name: "Glass Cleaners", league: "Rec Center Run · 8 teams", state: "set", opp: "Dunk Dynasty",
     score: [612.5, 588], proj: [1285, 1189], win: 0.78, season: [2, 2, 4, 8, 0.99],
     week: weekOf([[190, 202], [221, 195], [162, 158]], [39, 34], [[7, 6], [8, 8], [9, 7]]),
     items: [],
     next: { kind: "lane", at: at("03:02", "2026-11-21"), label: "Lane switch: Lopez for Kessler" },
   }),
   team({
-    id: 24, name: "Minomjep", league: "gloap league · 4 teams", state: "set", opp: "Doopybutt",
+    id: 24, name: "Bank Shots", league: "Family League · 4 teams", state: "set", opp: "Uncle Drop Step",
     score: [668, 471.5], proj: [1279, 1033], win: 0.99, season: [4, 0, 1, 4, 1],
     week: weekOf([[225, 171], [198, 146], [193, 124]], [52.5, 32], [[6, 5], [9, 7], [7, 6]]),
     items: [],
     next: { kind: "auto_lineup", at: at("18:15", "2026-11-20"), label: "Auto-lineup sets the lineup" },
   }),
   team({
-    id: 30, name: "Dime's Delectable Team", league: "Golden State Beginner H2H", state: "autopilot", opp: "Only cash",
+    id: 30, name: "Set and Forget", league: "Beginner H2H · 10 teams", state: "autopilot", opp: "Net Profits",
     score: [655, 512.5], proj: [1362, 1023], win: 0.98, season: [3, 1, 2, 10, 0.96],
     week: weekOf([[201, 163], [220, 188], [192, 128]], [42, 33], [[6, 7], [8, 6], [8, 8]]),
     items: [],
