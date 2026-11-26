@@ -4,6 +4,7 @@
  * server decides each team's state and writes each move's copy; this file only arranges them.
  * Pure: no React, no fetching, and the clock is always passed in.
  */
+import { gameState, type GameState } from "@/lib/scout";
 import type { AiCheckin } from "@/types/ai";
 import type { GamesOnDateData } from "@/types/games";
 import type { LiveMatchupData, LiveMatchupPlayer } from "@/types/matchup";
@@ -186,6 +187,15 @@ export function todayOf(week: readonly OverviewDay[] | null | undefined): Overvi
   return (week ?? []).find((d) => d.kind === "today") ?? null;
 }
 
+/**
+ * The read's next lock has passed and starters still tip at a later time: until the next read
+ * the lock after it is not known, and "every game has tipped" would be wrong.
+ */
+export function tipsAfterLock(tonight: TeamOverview["tonight"], now: number): boolean {
+  if (!tonight?.next_lock_at || Date.parse(tonight.next_lock_at) > now) return false;
+  return tonight.seats.some((s) => (s.mark === "later" || s.mark === "questionable") && s.game_time_et != null && s.game_time_et !== tonight.next_lock_et);
+}
+
 // ---- the strip above the rows
 
 export interface Tape {
@@ -199,6 +209,8 @@ export interface Tape {
   nextLockAt: number | null;
   /** Starters that tip at that lock, across the teams. */
   lockSeats: number;
+  /** A team's lock has passed since the read, and starters of its still tip later: the next lock is not known yet. */
+  lockPending: boolean;
   seats: { total: number; playing: number; live: number; toCome: number; final: number };
   ahead: number;
   behind: number;
@@ -213,7 +225,7 @@ export interface Tape {
 export function tapeOf(data: TeamsOverviewData, now: number): Tape {
   const t: Tape = {
     needs: 0, calls: 0, quiet: 0, cantRead: 0, deadlineAt: data.next_deadline_at ? Date.parse(data.next_deadline_at) : null,
-    nextLockAt: null, lockSeats: 0, seats: { total: 0, playing: 0, live: 0, toCome: 0, final: 0 },
+    nextLockAt: null, lockSeats: 0, lockPending: false, seats: { total: 0, playing: 0, live: 0, toCome: 0, final: 0 },
     ahead: 0, behind: 0, level: 0, wins: 0, losses: 0, ties: 0, firsts: 0, leagues: 0,
   };
   for (const team of data.teams) {
@@ -231,6 +243,7 @@ export function tapeOf(data: TeamsOverviewData, now: number): Tape {
     }
     const lock = team.tonight?.next_lock_at ? Date.parse(team.tonight.next_lock_at) : null;
     if (lock != null && lock > now && (t.nextLockAt == null || lock < t.nextLockAt)) t.nextLockAt = lock;
+    if (tipsAfterLock(team.tonight, now)) t.lockPending = true;
     if (team.matchup) {
       const d = team.matchup.your_score - team.matchup.opponent_score;
       if (d > 0) t.ahead += 1;
@@ -309,12 +322,19 @@ export interface Duel {
 const BENCH = new Set(["BE", "BN", "BENCH"]);
 const IR = new Set(["IR", "IL", "IR+", "IL+"]);
 
-/** NBA team → tonight's tip (ET) and whether the game is over, from the day's slate. */
-export function tipsOf(slate: GamesOnDateData | null | undefined): Map<string, string | null> {
-  const tips = new Map<string, string | null>();
+export interface Tip {
+  /** Tonight's tip, ET. */
+  tipEt: string | null;
+  state: GameState;
+}
+
+/** NBA team → tonight's tip (ET) and where its game stands, from the day's slate. */
+export function tipsOf(slate: GamesOnDateData | null | undefined): Map<string, Tip> {
+  const tips = new Map<string, Tip>();
   for (const g of slate?.games ?? []) {
-    tips.set(g.home_team, g.start_time_et ?? null);
-    tips.set(g.away_team, g.start_time_et ?? null);
+    const tip: Tip = { tipEt: g.start_time_et ?? null, state: gameState(g.status) };
+    tips.set(g.home_team, tip);
+    tips.set(g.away_team, tip);
   }
   return tips;
 }
@@ -324,13 +344,17 @@ function youCell(seat: OverviewSeat): DuelCell | null {
   return { name: seat.name ?? "—", mark: seat.mark, points: seat.points ?? null, tipEt: seat.game_time_et ?? null };
 }
 
-function oppCell(p: LiveMatchupPlayer, tips: Map<string, string | null>): DuelCell {
+/** `line`: his box-score line for this NBA date, null when he has none (or the read is another day's). */
+function oppCell(p: LiveMatchupPlayer, line: LiveMatchupPlayer["live"], tips: Map<string, Tip>): DuelCell {
   const out = /^(out|o)$/i.test(p.injury_status ?? "") || (p.injured && /out/i.test(p.injury_status ?? ""));
-  const status = p.live?.game_status ?? 0;
-  if (p.live && status >= 2) return { name: p.name, mark: status >= 3 ? "final" : "live", points: p.live.live_fpts, tipEt: null };
-  if (!tips.has(p.team)) return { name: p.name, mark: "idle", points: null, tipEt: null };
+  const status = line?.game_status ?? 0;
+  if (line && status >= 2) return { name: p.name, mark: status >= 3 ? "final" : "live", points: line.live_fpts, tipEt: null };
+  const tip = tips.get(p.team);
+  if (!tip) return { name: p.name, mark: "idle", points: null, tipEt: null };
   if (out) return { name: p.name, mark: "out", points: null, tipEt: null };
-  return { name: p.name, mark: "later", points: null, tipEt: tips.get(p.team) ?? null };
+  // No line of his own in a game that is on or over (he has not played in it): not one still to come
+  if (tip.state !== "scheduled") return { name: p.name, mark: tip.state, points: null, tipEt: null };
+  return { name: p.name, mark: "later", points: null, tipEt: tip.tipEt };
 }
 
 function sumSide(cells: Array<DuelCell | null>): DuelSideSum {
@@ -353,6 +377,10 @@ export function duelOf(team: TeamOverview, live: LiveMatchupData | null | undefi
   const tonight = team.tonight;
   if (!tonight) return null;
   const tips = tipsOf(slate);
+  // The read's box scores are one NBA date's (`game_date`): from the 3 AM ET rollover until the
+  // post-game run that is still last night. The roster holds; last night's lines are not tonight's
+  const linesToday = !live?.game_date || live.game_date === team.nba_date;
+  const cell = (p: LiveMatchupPlayer) => oppCell(p, linesToday ? p.live : null, tips);
   const theirs = live ? [...live.opponent_team.roster] : [];
   const used = new Set<number>();
   const take = (slot: string): LiveMatchupPlayer | null => {
@@ -363,17 +391,17 @@ export function duelOf(team: TeamOverview, live: LiveMatchupData | null | undefi
   };
   const rows: DuelRow[] = tonight.seats.map((seat, i) => {
     const o = take(seat.slot);
-    return { key: `${seat.slot_id}-${i}`, slot: seat.slot, you: youCell(seat), opp: o ? oppCell(o, tips) : null };
+    return { key: `${seat.slot_id}-${i}`, slot: seat.slot, you: youCell(seat), opp: o ? cell(o) : null };
   });
   // Starters of theirs in a slot yours has no seat left for: still counted, still shown
   theirs.forEach((p, k) => {
     if (used.has(k) || BENCH.has(p.lineup_slot.toUpperCase()) || IR.has(p.lineup_slot.toUpperCase())) return;
     used.add(k);
-    rows.push({ key: `opp-${p.player_id}`, slot: p.lineup_slot, you: null, opp: oppCell(p, tips) });
+    rows.push({ key: `opp-${p.player_id}`, slot: p.lineup_slot, you: null, opp: cell(p) });
   });
   const you = sumSide(rows.map((r) => r.you));
   if (tonight.points != null) you.points = tonight.points;
-  const benchOpp = theirs.filter((p) => BENCH.has(p.lineup_slot.toUpperCase())).map((p) => oppCell(p, tips));
+  const benchOpp = theirs.filter((p) => BENCH.has(p.lineup_slot.toUpperCase())).map(cell);
   const benchYou = tonight.bench.map(youCell).filter((c): c is DuelCell => c != null && c.mark !== "empty");
   return { rows, you, opp: live ? sumSide(rows.map((r) => r.opp)) : null, bench: { you: benchYou, opp: benchOpp } };
 }
@@ -410,7 +438,8 @@ export function latestCheckins(checkins: readonly AiCheckin[] | null | undefined
     if (c.state !== "done") continue;
     const at = c.finished_at ?? c.started_at;
     const have = out.get(c.team_id);
-    if (!have || at > have.at) out.set(c.team_id, { title: c.title, conversationId: c.conversation_id ?? null, at });
+    // As instants: "22:00:00Z" sorts after "22:00:00.500Z" as text
+    if (!have || Date.parse(at) > Date.parse(have.at)) out.set(c.team_id, { title: c.title, conversationId: c.conversation_id ?? null, at });
   }
   return out;
 }

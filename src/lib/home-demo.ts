@@ -199,6 +199,7 @@ const item = (standing: OverviewItem["standing"], a: DailyAction, deadline: stri
 
 const IRVING: P = ["Kyrie Irving", "DAL", 0, "OUT"];
 const CLINGAN: P = ["Donovan Clingan", "POR"];
+const HARRIS: P = ["Tobias Harris", "DET", 0, "OUT"];
 
 const YOYO: Side = {
   starters: [
@@ -229,7 +230,7 @@ const pick = (from: number[]): Array<P | null> => from.map((i) => (i < 0 ? null 
 
 const SIDES: Record<number, { mine: Side; theirs: Side }> = {
   25: { mine: YOYO, theirs: MONSTROUS },
-  21: { mine: { starters: pick([0, 1, 16, 18, 4, 6, 7, 30, 31, 34]), bench: [POOL[26], POOL[33]] }, theirs: { starters: pick([2, 3, 15, 19, 20, 8, 9, 32, 33, 30]), bench: [POOL[10], POOL[27]] } },
+  21: { mine: { starters: pick([0, 1, 16, 18, 4, 6, 7, 30, 31, 34]), bench: [POOL[26], POOL[33], HARRIS] }, theirs: { starters: pick([2, 3, 15, 19, 20, 8, 9, 32, 33, 30]), bench: [POOL[10], POOL[27]] } },
   23: { mine: { starters: pick([17, 3, 15, 5, 20, 8, 39, 11, 12, 13]), bench: [POOL[22], POOL[31]] }, theirs: { starters: pick([0, 36, 16, 7, 21, 9, 25, 28, 14, 34]), bench: [POOL[29], POOL[32]] } },
   24: { mine: { starters: pick([2, 1, 16, 35, 4, 6, 26, 10, 24, 29]), bench: [POOL[23], POOL[30]] }, theirs: { starters: pick([18, 19, 5, 27, 22, 31, 32, 33, 34, 30]), bench: [POOL[12]] } },
   30: { mine: { starters: pick([17, 36, 15, 38, 20, 9, 25, 28, 31, 33]), bench: [POOL[37], POOL[21]] }, theirs: { starters: pick([0, 3, 1, 7, 4, 6, 8, 30, 32, 34]), bench: [POOL[13], POOL[24]] } },
@@ -312,7 +313,7 @@ const TEAMS: TeamOverview[] = [
     id: 21, name: "James's Finest Team", league: "Test H2H Cat Public League", state: "your_call", opp: "1# Team",
     score: [3, 5], proj: [4, 5], win: null, season: [2, 2, 5, 8, null], categories: [3, 5, 0],
     week: weekOf([[4, 4], [3, 5], [3, 5]], [3, 5], [[4, 6], [7, 7], [6, 4]], true),
-    items: [item("your_call", action("ir_in", "ir-harris", "Harris is out and IR has an open seat.", "T. Harris moves to IR, which frees a roster spot", ["Tobias Harris", "DET", 0, "OUT"], "BE", null))],
+    items: [item("your_call", action("ir_in", "ir-harris", "Harris is out and IR has an open seat.", "T. Harris moves to IR, which frees a roster spot", HARRIS, "BE", null))],
     next: { kind: "auto_lineup", at: at("18:15", "2026-11-20"), label: "Auto-lineup sets the lineup" },
   }),
   team({

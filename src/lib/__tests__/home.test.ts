@@ -16,6 +16,7 @@ import {
   seatsPlaying,
   seatsTotal,
   tapeOf,
+  tipsAfterLock,
   todayOf,
   untilText,
   weekCells,
@@ -136,6 +137,21 @@ describe("the strip above the rows", () => {
     // Once every lock has passed there is none
     expect(tapeOf(HOME_DEMO, HOME_DEMO_NOW + 24 * 60 * MIN).nextLockAt).toBeNull();
   });
+  test("a lock that has passed since the read does not mean every game has tipped", () => {
+    const tonight = YOYO.tonight!;
+    const lock = Date.parse(tonight.next_lock_at!);
+    const later = tonight.seats.filter((s) => (s.mark === "later" || s.mark === "questionable") && s.game_time_et !== tonight.next_lock_et);
+    // The demo's team has starters tipping after its next lock
+    expect(later.length).toBeGreaterThan(0);
+    expect(tipsAfterLock(tonight, lock - MIN)).toBe(false);
+    expect(tipsAfterLock(tonight, lock + MIN)).toBe(true);
+    expect(tapeOf(HOME_DEMO, HOME_DEMO_NOW).lockPending).toBe(false);
+    expect(tapeOf({ ...HOME_DEMO, teams: [YOYO] }, lock + MIN)).toMatchObject({ nextLockAt: null, lockPending: true });
+    // With every starter left tipping at that lock, all of them have tipped once it passes
+    const atOnce = { ...tonight, seats: tonight.seats.filter((s) => !later.includes(s)) };
+    expect(tipsAfterLock(atOnce, lock + MIN)).toBe(false);
+    expect(tipsAfterLock(null, lock)).toBe(false);
+  });
   test("seats add up across the teams", () => {
     const total = HOME_DEMO.teams.reduce((a, t) => a + seatsTotal(t.tonight?.counts), 0);
     expect(tape.seats.total).toBe(total);
@@ -189,6 +205,27 @@ describe("tonight's matchup, seat against seat", () => {
     const d = duelOf(YOYO, { ...live, opponent_team: { ...live.opponent_team, roster: [noGame, ...live.opponent_team.roster.slice(1)] } }, HOME_DEMO_SLATE)!;
     expect(d.rows.find((r) => r.opp?.name === noGame.name)?.opp?.mark).toBe("idle");
   });
+  test("one of theirs with no line in a game that is on or over is not still to come", () => {
+    const p = live.opponent_team.roster.find((r) => r.live == null && HOME_DEMO_SLATE.games.some((g) => g.status === "scheduled" && (g.home_team === r.team || g.away_team === r.team)))!;
+    const markOn = (status: string) => {
+      const slate = { ...HOME_DEMO_SLATE, games: HOME_DEMO_SLATE.games.map((g) => (g.home_team === p.team || g.away_team === p.team ? { ...g, status } : g)) };
+      const cells = duelOf(YOYO, live, slate)!;
+      return [...cells.rows.map((r) => r.opp), ...cells.bench.opp].find((c) => c?.name === p.name)!;
+    };
+    expect(markOn("scheduled")).toMatchObject({ mark: "later", points: null });
+    expect(markOn("scheduled").tipEt).not.toBeNull();
+    expect(markOn("in_progress")).toEqual({ name: p.name, mark: "live", points: null, tipEt: null });
+    expect(markOn("final")).toEqual({ name: p.name, mark: "final", points: null, tipEt: null });
+  });
+  test("box scores read for another NBA date are not tonight's", () => {
+    // From the 3 AM ET rollover until the post-game run, the live read is still last night's
+    const stale = duelOf(YOYO, { ...live, game_date: "2026-11-18" }, HOME_DEMO_SLATE)!;
+    expect(duel.opp!.points).toBeGreaterThan(0);
+    expect(stale.opp!.points).toBe(0);
+    // Their lineup still stands, slot for slot
+    expect(stale.rows.map((r) => r.opp?.name)).toEqual(duel.rows.map((r) => r.opp?.name));
+    expect(stale.rows.every((r) => r.opp == null || r.opp.points == null)).toBe(true);
+  });
   test("without the opponent's roster the rows carry your side alone", () => {
     const alone = duelOf(YOYO, null, HOME_DEMO_SLATE)!;
     expect(alone.opp).toBeNull();
@@ -229,6 +266,12 @@ describe("Dime's last check-in on each team", () => {
     expect(lasts.get(1)).toEqual({ title: "evening", conversationId: 12, at: "2026-11-19T22:02:00Z" });
     expect(lasts.has(2)).toBe(false);
     expect(latestCheckins(null).size).toBe(0);
+  });
+  test("orders them as instants, whatever precision each was written in", () => {
+    const whole = checkin(1, "done", "2026-11-19T22:00:00Z", "2026-11-19T22:00:00Z", "on the second", 21);
+    const fraction = checkin(1, "done", "2026-11-19T22:00:00Z", "2026-11-19T22:00:00.500Z", "half a second later", 22);
+    expect(latestCheckins([whole, fraction]).get(1)?.conversationId).toBe(22);
+    expect(latestCheckins([fraction, whole]).get(1)?.conversationId).toBe(22);
   });
 });
 

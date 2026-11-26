@@ -211,6 +211,14 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
   useEffect(() => {
     locRef.current = loc;
   }, [loc]);
+  // Whether the desk is still on screen, for work that finishes after the user has left it
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   // Each history entry keeps the pane a phone showed with it, so Back and Forward bring it back
   const narrowRef = useRef(narrow);
   useEffect(() => {
@@ -292,23 +300,37 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
   const onSend = useCallback(
     async (message: string) => {
       const origin = current;
-      // A message that didn't go goes back: into the composer while the chat still shows `shown`,
-      // else kept as the draft of the chat it was typed in. Never over newer text, or another chat's
-      const giveBack = (shown: number | null) => {
-        if (locRef.current.conversation === shown) {
-          if (!loadDraft(draftKey(userId, shown)).trim()) composer.current?.fill(message);
-          return;
-        }
+      // Kept as the draft of the chat it was typed in, unless that chat has newer text
+      const keep = (): boolean => {
         const key = draftKey(userId, origin);
-        if (!loadDraft(key).trim()) saveDraft(key, message);
+        if (!key || loadDraft(key).trim()) return false;
+        saveDraft(key, message);
+        return true;
+      };
+      // A message that didn't go goes back: into the composer while the chat still shows `shown`,
+      // else kept as the draft of the chat it was typed in. Never over newer text, or another chat's.
+      // False when newer text was in the way and the message could not be kept
+      const giveBack = (shown: number | null): boolean => {
+        if (locRef.current.conversation !== shown) return keep();
+        if (loadDraft(draftKey(userId, shown)).trim()) return false;
+        composer.current?.fill(message);
+        return true;
       };
       let id = current;
       if (id == null) {
         try {
           id = (await create.mutateAsync(teamId)).id;
         } catch (err) {
-          toast.error(aiMessage(err, "Couldn't start a conversation"));
-          giveBack(null);
+          const kept = mounted.current ? giveBack(null) : keep();
+          // With nowhere to put it back, the notice carries the words so they are not lost
+          const words = message.length > 280 ? `${message.slice(0, 280)}…` : message;
+          toast.error(aiMessage(err, "Couldn't start a conversation"), kept ? undefined : { description: `Not asked: ${words}` });
+          return;
+        }
+        // The desk was left while the conversation was being made: this page is another desk's now, so
+        // its address is not written and no turn starts with nobody reading. The message waits as a draft
+        if (!mounted.current) {
+          keep();
           return;
         }
         // Into the chat only while it still shows the new conversation: one opened meanwhile (a

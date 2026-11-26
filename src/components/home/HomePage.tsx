@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
@@ -32,9 +32,23 @@ const KEYS: Array<[string, string]> = [
   ["N", "next that needs you"],
   ["T", "theme"],
 ];
+/** Where the team's page takes the rows' place, Space opens it (beside the rows it is always there). */
+const KEYS_NARROW: Array<[string, string]> = [KEYS[0], ["Space", "its page"], ...KEYS.slice(1)];
 
 /** Below this the picked team's page takes the screen in the rows' place (home.module.css). */
 const NARROW = "(max-width: 1179.98px)";
+
+function useNarrow(): boolean {
+  return useSyncExternalStore(
+    (changed) => {
+      const mq = window.matchMedia(NARROW);
+      mq.addEventListener("change", changed);
+      return () => mq.removeEventListener("change", changed);
+    },
+    () => window.matchMedia(NARROW).matches,
+    () => false
+  );
+}
 
 const NO_TEAMS: TeamOverview[] = [];
 
@@ -167,13 +181,17 @@ function HomeDesk({ model }: { model: HomeModel }) {
   const router = useRouter();
   const tz = useViewerZone();
   const toggleTheme = useDeskTheme((st) => st.toggle);
+  const narrow = useNarrow();
   const [pane, setPane] = useState<"board" | "team">("board");
   const [hint, setHint] = useState<string | null>(null);
-  const [asking, setAsking] = useState(false);
+  // The team the open ask line is about: the one picked when it opened, whichever is picked since
+  const [askFor, setAskFor] = useState<number | null>(null);
   const [question, setQuestion] = useState("");
+  const askInput = useRef<HTMLInputElement>(null);
   const { demo, data, now, pick, picked } = model;
   const teams = data?.teams ?? NO_TEAMS;
   const team = teams.find((t) => t.team_id === picked) ?? null;
+  const askTeam = askFor != null ? (teams.find((t) => t.team_id === askFor) ?? null) : null;
   const { duel, loading: duelLoading } = model.useDuel(team);
 
   // ---- the doors: a team's Week desk and its Dime. The team picked here is the team every desk is on
@@ -196,10 +214,24 @@ function HomeDesk({ model }: { model: HomeModel }) {
   // ---- the team's page where it takes the screen: opening it is a step Back undoes
 
   useEffect(() => {
-    const onPop = () => setPane(window.history.state?.homePane === "team" ? "team" : "board");
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    const sync = () => setPane(window.history.state?.homePane === "team" ? "team" : "board");
+    // On arrival too: Back from another desk lands on the entry the team's page was opened in
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
   }, []);
+
+  // Where the page takes the rows' place, focus goes with it, and comes back to the row after
+  const paneWas = useRef(pane);
+  useEffect(() => {
+    const was = paneWas.current;
+    paneWas.current = pane;
+    if (was === pane || !window.matchMedia(NARROW).matches) return;
+    if (pane === "team") document.getElementById("home-team-page")?.focus({ preventScroll: true });
+    else if (picked != null) rowEl(picked)?.focus({ preventScroll: true });
+    // Only when the pane turns: a pick made beside the open page moves no focus
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pane]);
 
   const back = useCallback(() => {
     if (window.history.state?.homePane === "team") window.history.back();
@@ -224,31 +256,41 @@ function HomeDesk({ model }: { model: HomeModel }) {
   // ---- the ask line: a question for Dime about the picked team, typed in the bar
 
   const closeAsk = useCallback(() => {
-    setAsking(false);
+    setAskFor(null);
     setQuestion("");
   }, []);
 
   const ask = useCallback(() => {
+    // A line already open keeps its team and its words: the key only goes back to it
+    if (askTeam) {
+      askInput.current?.focus();
+      return;
+    }
     if (!team) return;
     // Without Dime on the account there is nothing to ask: its desk says why
-    if (model.dime) setAsking(true);
-    else doors.dime(team, rowEl(team.team_id), null);
-  }, [team, model.dime, doors]);
+    if (model.dime) {
+      setQuestion("");
+      setAskFor(team.team_id);
+    } else doors.dime(team, rowEl(team.team_id), null);
+  }, [askTeam, team, model.dime, doors]);
 
   const onAsk = (e: React.FormEvent) => {
     e.preventDefault();
     const text = question.trim();
-    if (!text || !team) return;
+    if (!text || !askTeam) return;
     // The demo sends nothing anywhere
-    if (!demo) useDimeAsk.getState().put(team.team_id, text);
+    if (!demo) useDimeAsk.getState().put(askTeam.team_id, text);
     closeAsk();
-    doors.dime(team, rowEl(team.team_id), null);
+    doors.dime(askTeam, rowEl(askTeam.team_id), null);
   };
 
   // ---- keys
 
-  const latest = useRef({ teams, picked, pane, ask, back, doors });
-  latest.current = { teams, picked, pane, ask, back, doors };
+  const latest = useRef({ teams, picked, pane, ask, back, doors, onPick });
+  // After the commit, not in the render: a render React drops must not leave its values here
+  useLayoutEffect(() => {
+    latest.current = { teams, picked, pane, ask, back, doors, onPick };
+  });
   useEffect(() => {
     const typing = (t: EventTarget | null) => {
       const el = t as HTMLElement | null;
@@ -273,6 +315,13 @@ function HomeDesk({ model }: { model: HomeModel }) {
       } else if (e.key === "ArrowUp" || e.key === "k") {
         e.preventDefault();
         move(i - 1);
+      } else if (e.key === " ") {
+        // The click's own key: where the team's page takes the rows' place, it opens it
+        if (control(e.target)) return;
+        const t = L.teams[i];
+        if (!t) return;
+        e.preventDefault();
+        L.onPick(t, true);
       } else if (e.key === "Enter" || e.key === "ArrowRight") {
         if (e.key === "Enter" && control(e.target)) return;
         const t = L.teams[i];
@@ -369,12 +418,13 @@ function HomeDesk({ model }: { model: HomeModel }) {
   return (
     <div className={dk.desk}>
       <DeskBar desk="home" demo={demo} onRefresh={demo || model.status !== "ready" ? undefined : model.refetch}>
-        {asking && team ? (
+        {askTeam ? (
           <form className={s.ask} onSubmit={onAsk}>
             <span className={dk.sub} style={{ whiteSpace: "nowrap" }}>
-              Ask <span className={dk.spectrumText}>Dime</span> about {team.team_name}
+              Ask <span className={dk.spectrumText}>Dime</span> about {askTeam.team_name}
             </span>
             <input
+              ref={askInput}
               className={s.askInput}
               autoFocus
               value={question}
@@ -389,7 +439,7 @@ function HomeDesk({ model }: { model: HomeModel }) {
                 if (!question.trim()) closeAsk();
               }}
               placeholder="Who should I start tonight?"
-              aria-label={`Ask Dime about ${team.team_name}`}
+              aria-label={`Ask Dime about ${askTeam.team_name}`}
               maxLength={2000}
             />
             <span className={dk.sub} style={{ whiteSpace: "nowrap" }}>
@@ -406,7 +456,7 @@ function HomeDesk({ model }: { model: HomeModel }) {
 
       {body}
 
-      <DeskStatus keys={KEYS}>
+      <DeskStatus keys={narrow ? KEYS_NARROW : KEYS}>
         <span className={hint ? s.hint : undefined}>{report}</span>
       </DeskStatus>
     </div>

@@ -172,7 +172,7 @@ function ItemRow({ item, date, now, tz }: { item: OverviewItem; date: string | n
           {item.standing !== "covered" && deadline != null ? (
             <>
               <b>before {localClock(deadline, { tz })}</b>
-              {until ? ` · ${until}` : ""}
+              {` · ${until ?? "passed"}`}
             </>
           ) : null}
           {item.standing === "your_call" && deadline == null ? "any time today" : null}
@@ -211,7 +211,7 @@ export function TeamSide({ team, duel, duelLoading, last, now, tz, doors, onBack
     : [];
   const self = () => document.getElementById("home-team-page");
   return (
-    <aside id="home-team-page" className={s.side} aria-label={team.team_name}>
+    <aside id="home-team-page" className={s.side} aria-label={team.team_name} tabIndex={-1}>
       <div className={s.sideHead}>
         <button type="button" className={s.back} onClick={onBack} aria-label="Back to every team">
           <ChevronLeft size={14} /> Home
@@ -226,7 +226,9 @@ export function TeamSide({ team, duel, duelLoading, last, now, tz, doors, onBack
       {m ? (
         <div className={s.tscore}>
           <div className={s.tbig}>
-            {cats ? `${m.categories?.wins ?? 0} – ${m.categories?.losses ?? 0}` : `${pts(m.your_score)} – ${pts(m.opponent_score)}`}
+            {cats
+              ? `${m.categories?.wins ?? 0} – ${m.categories?.losses ?? 0}${m.categories?.ties ? ` – ${m.categories.ties}` : ""}`
+              : `${pts(m.your_score)} – ${pts(m.opponent_score)}`}
             {!cats ? (
               <span className={s.margin} data-tone={Math.abs(margin) < 0.05 ? "even" : margin > 0 ? "up" : "down"}>
                 {signed(margin)}

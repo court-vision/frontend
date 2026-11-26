@@ -16,6 +16,7 @@ import {
   seatsPlaying,
   seatsTotal,
   tapeOf,
+  tipsAfterLock,
   todayOf,
   untilText,
   weekCells,
@@ -62,9 +63,10 @@ function rowSay(team: TeamOverview, last: LastCheckin | undefined, now: number, 
   }
   if (team.state === "cant_read") return { say, detail, when: null, whenText: "", open: false };
   if (open) {
-    const until = head.deadlineAt != null ? untilText(head.deadlineAt - now) : null;
-    if (head.deadlineAt != null && until) {
+    if (head.deadlineAt != null) {
       const before = `before ${localClock(head.deadlineAt, { tz })}`;
+      // A cutoff that has gone by since the read stays named, as passed, until the next read
+      const until = untilText(head.deadlineAt - now) ?? "passed";
       return {
         say,
         detail,
@@ -195,9 +197,11 @@ function TapeStrip({ data, tape, now, tz }: { data: TeamsOverviewData; tape: Tap
             ? tape.lockSeats
               ? `${tape.lockSeats} of your starters ${tape.lockSeats === 1 ? "tips" : "tip"} then`
               : "none of your starters tip then"
-            : tape.seats.playing
-              ? "every game of yours has tipped"
-              : "no games tonight"
+            : tape.lockPending
+              ? "more of your starters tip later"
+              : tape.seats.playing
+                ? "every game of yours has tipped"
+                : "no games tonight"
         }
       />
       <Tile label="Tonight" value={`${tape.seats.playing} of ${tape.seats.total}`} small="starters" sub={tonight.join(" · ") || "no games tonight"} />
@@ -388,6 +392,8 @@ function TeamRow({ team, demo, picked, last, now, tz, doors, onPick }: RowProps)
                   <>
                     next lock <b>{localClock(lock, { tz })}</b>
                   </>
+                ) : tipsAfterLock(tonight, now) ? (
+                  "more starters tip later"
                 ) : seatsPlaying(tonight.counts) ? (
                   "every game has tipped"
                 ) : (
@@ -464,13 +470,15 @@ function TeamCard({ team, last, now, tz, doors, onPick }: Omit<RowProps, "picked
   const [dx, setDx] = useState(0);
   const [settling, setSettling] = useState(false);
 
-  const end = (commit: boolean) => {
+  /** Ends the slide of the pointer that began it, measured where that pointer let go. */
+  const end = (e: React.PointerEvent, commit: boolean) => {
     const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
     drag.current = null;
-    if (!d?.sliding) return;
+    if (!d.sliding) return;
     slid.current = true;
     setSettling(true);
-    const reach = dx;
+    const reach = Math.max(-SLIDE_MAX, Math.min(SLIDE_MAX, e.clientX - d.x));
     setDx(0);
     if (!commit) return;
     if (reach >= SLIDE_OPEN) doors.week(team, card.current);
@@ -495,6 +503,8 @@ function TeamCard({ team, last, now, tz, doors, onPick }: Omit<RowProps, "picked
         aria-label={`${team.team_name}: ${STATE_WORD[team.state]}. ${row.say} Opens the team. Slide right for its Week desk, left for Dime.`}
         onPointerDown={(e) => {
           if (e.pointerType === "mouse" && e.button !== 0) return;
+          // A second finger does not take over a slide under way
+          if (drag.current?.sliding) return;
           drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, sliding: false };
           slid.current = false;
           setSettling(false);
@@ -511,8 +521,8 @@ function TeamCard({ team, last, now, tz, doors, onPick }: Omit<RowProps, "picked
           }
           setDx(Math.max(-SLIDE_MAX, Math.min(SLIDE_MAX, mx)));
         }}
-        onPointerUp={() => end(true)}
-        onPointerCancel={() => end(false)}
+        onPointerUp={(e) => end(e, true)}
+        onPointerCancel={(e) => end(e, false)}
         onTransitionEnd={() => setSettling(false)}
         onClick={(e) => {
           // The click that ends a slide is the slide's, not a tap
@@ -629,6 +639,9 @@ export function Board({ data, picked, lasts, now, tz, demo, doors, onPick }: Boa
         <div className={s.quiet} style={{ padding: "12px 16px" }}>
           Tap a team for its page. Slide it right for its Week desk, left for Dime.
         </div>
+        <Link href={addHref} className={s.cardAdd}>
+          <span className={dk.mono}>+</span> Add a team
+        </Link>
       </div>
     </section>
   );
