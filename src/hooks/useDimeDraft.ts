@@ -11,10 +11,10 @@ export const dimeDraftKey = (userId: string | null | undefined, sessionId: numbe
   [...draftKeys.all, "dime", userId ?? "signed-out", sessionId] as const;
 
 /**
- * Dime in a draft room: its notes and switches. A note is written in a few
- * seconds and the seat drafts a pick at a time, so the view is read every 2.5
- * seconds while either runs and left alone otherwise (the room asks when the
- * draft moves). The GET never refuses for a server or user without Dime, so a
+ * Dime in a draft room: its notes (its pick for each of the user's picks, a
+ * recap) and the mock seat. A note is written in a few seconds and the seat
+ * drafts a pick at a time, so the view is read every 2.5 seconds while either
+ * runs and left alone otherwise (the room asks when the draft moves). The GET never refuses for a server or user without Dime, so a
  * failure here is a real one and stays quiet: the room just shows no Dime.
  */
 export function useDimeDraftQuery(sessionId: number | null, enabled: boolean) {
@@ -44,7 +44,7 @@ function useDimeWrite<TVars, TResult>(sessionId: number, fn: (vars: TVars) => Pr
   });
 }
 
-/** Ask Dime for a plan, a note at the coming pick, or a recap. */
+/** Ask Dime for its pick for the coming pick, or a recap (a plan too, though the room no longer asks for one). */
 export function useAskDimeDraft(sessionId: number) {
   const { getToken } = useAuth();
   return useDimeWrite<DimeDraftNoteKind, DimeDraftNote>(
@@ -56,11 +56,6 @@ export function useAskDimeDraft(sessionId: number) {
       notes: [note, ...d.notes.filter((n) => n.id !== note.id)],
     })
   );
-}
-
-export function useSetDimeDraftNotes(sessionId: number) {
-  const { getToken } = useAuth();
-  return useDimeWrite<boolean, DimeDraftRoom>(sessionId, (on) => apiClient.setDimeDraftNotes(getToken, sessionId, on), (_, room) => room);
 }
 
 export function useSetDimeDraftSeat(sessionId: number) {

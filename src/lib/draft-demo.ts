@@ -345,8 +345,10 @@ function recommendation(s: Scored, meta: DraftBoardMeta, room: DemoRoom): DraftR
 }
 
 /** Where the market expects a player to go against the pick the caller waits for. */
-function availability(row: DraftBoardRow, horizon: number | null, size: number): DraftBoardRow["availability"] {
+function availability(row: DraftBoardRow, horizon: number | null, size: number, onClock: boolean): DraftBoardRow["availability"] {
   if (row.adp == null || horizon == null) return null;
+  // On the clock everyone left is there for the pick being made
+  if (onClock) return "likely";
   const margin = row.adp - horizon;
   if (margin < -size * 0.2) return "gone";
   if (margin < size * 0.35) return "tossup";
@@ -367,10 +369,10 @@ export function demoBoard(room: DemoRoom, fixture: DemoFixture, source: BoardSou
   const fitRank = new Map(byFit.map((s, i) => [s.row.player_id, i + 1]));
   const fitValue = new Map(scored.map((s) => [s.row.player_id, s.row.value != null && s.sv > 0 ? s.row.value * (1 + s.fit / s.sv) : null]));
 
-  // The pick the caller waits for: the next turn, or the one after when on the clock.
+  // The pick the caller waits for: the next turn, the one on the clock included (the backend's
+  // `_availability_horizon`, 2026-11-26).
   const next = myNextPick(room);
-  const following = next != null ? nextAfter(room, next) : null;
-  const horizon = next != null && next === front(room) ? following : next;
+  const onClock = next != null && next === front(room);
 
   const rows = remaining.map((row) => ({
     ...row,
@@ -379,7 +381,7 @@ export function demoBoard(room: DemoRoom, fixture: DemoFixture, source: BoardSou
     room_score: round(scored.find((s) => s.row.player_id === row.player_id)?.score ?? 0),
     fit_rank: cats ? fitRank.get(row.player_id) ?? null : null,
     fit_value: cats ? (fitValue.get(row.player_id) != null ? round(fitValue.get(row.player_id)!, 2) : null) : null,
-    availability: availability(row, horizon, room.size),
+    availability: availability(row, next, room.size, onClock),
   }));
   const roster: DraftRosterEntry[] = room.picks
     .filter((p) => p.byMe)
@@ -410,13 +412,6 @@ export function demoBoard(room: DemoRoom, fixture: DemoFixture, source: BoardSou
     meta,
     message: "",
   };
-}
-
-function nextAfter(room: DemoRoom, overall: number): number | null {
-  if (room.mySlot == null) return null;
-  const used = new Set(room.picks.map((p) => p.overall));
-  for (let n = overall + 1; n <= total(room); n++) if (!used.has(n) && seatOf(room, n) === room.mySlot) return n;
-  return null;
 }
 
 // ---------------------------------------------------------------------------

@@ -32,6 +32,8 @@ interface CallsProps {
   espnDisabled: string | null;
   marking: boolean;
   loading: boolean;
+  /** Dime's pick for the coming pick, tagged where it is among the calls. */
+  dimeId: number | null;
 }
 
 const TERM_COLOR: Record<string, string> = {
@@ -39,7 +41,7 @@ const TERM_COLOR: Record<string, string> = {
   category_fit: "var(--preview)",
 };
 
-export function Calls({ recommendations, onTheClock, nextPick, activeId, onFocus, onTake, onEspn, espnDisabled, marking, loading }: CallsProps) {
+export function Calls({ recommendations, onTheClock, nextPick, activeId, onFocus, onTake, onEspn, espnDisabled, marking, loading, dimeId }: CallsProps) {
   const max = Math.max(1, ...recommendations.map((r) => Math.max(r.score, r.vorp)));
   return (
     <section className={s.section} aria-label="Calls">
@@ -81,7 +83,14 @@ export function Calls({ recommendations, onTheClock, nextPick, activeId, onFocus
               <span className={s.callRank}>{i + 1}</span>
               <Headshot nbaId={rec.player_id} name={rec.name} size={32} />
               <span style={{ minWidth: 0 }}>
-                <div className={s.callName}>{top ? rec.name : shortName(rec.name)}</div>
+                <div className={s.callName}>
+                  {top ? rec.name : shortName(rec.name)}
+                  {rec.player_id === dimeId ? (
+                    <span className={`${s.tag} ${s.tagAccent} ${s.callDime}`} title="Dime's pick for this pick">
+                      DIME
+                    </span>
+                  ) : null}
+                </div>
                 <div className={s.callMeta}>
                   {rec.primary_position ?? "—"} · ESPN {rec.market_rank != null ? `#${rec.market_rank}` : "unranked"} · CV {rec.cv_rank != null ? `#${rec.cv_rank}` : "—"}
                 </div>

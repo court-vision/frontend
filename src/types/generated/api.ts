@@ -914,7 +914,7 @@ export interface paths {
         };
         /**
          * Dime in a draft room: its notes, the notes switch and the mock seat
-         * @description What Dime has written in the room, newest first (a plan, a note at each of the user's picks, a recap; each with the board's numbers the server read for it in `facts`), whether a note is being written now, the switch for a note whenever the user's pick is `lead` picks away or nearer, and whether Dime holds the user's seat in a mock. Never refuses for a switched-off server or a user off the AI desk's list: `available` says whether the room shows Dime at all, and `switched_off` that the account turned Dime in draft rooms off (Account, AI and automation).
+         * @description What Dime has written in the room, newest first (its pick for each of the user's picks, with the player in `pick`; a recap; older rooms' plans; each with the board's numbers the server read for it in `facts`), whether a note is being written now, how near the user's pick is when the room asks for Dime's pick (`lead`), and whether Dime holds the user's seat in a mock. Never refuses for a switched-off server or a user off the AI desk's list: `available` says whether the room shows Dime at all, and `switched_off` that the account turned Dime in draft rooms off (Account, AI and automation).
          */
         get: operations["get_dime_v1_internal_drafts__session_id__dime_get"];
         /**
@@ -940,7 +940,7 @@ export interface paths {
         put?: never;
         /**
          * Ask Dime for a note in the room: a plan, a note at the user's pick, or a recap
-         * @description Starts the note and returns it `running`; it is written after the response (poll the GET, or open its conversation). `plan` sets the plan the draft is played to: its concessions become the room's punts, and in a real draft on a team the plan is saved to the team's notes. `pick` is about the user's coming pick, read off the room's board; one per pick, so asking again returns the one already written. `recap` reads the room's recap and, in a real draft, saves what the season starts from and league-mates' habits to Dime's notes.
+         * @description Starts the note and returns it `running`; it is written after the response (poll the GET, or open its conversation). `plan` sets the plan the draft is played to: its concessions become the room's punts, and in a real draft on a team the plan is saved to the team's notes (the Draft lab no longer asks for one). `pick` is Dime's pick for the user's next pick, the one on the clock included, read off the room's board: one player and one line on why (`pick`). One per pick, so asking again returns the one already chosen, unless another seat drafted that player first: then Dime picks again, once. `recap` reads the room's recap and, in a real draft, saves what the season starts from and league-mates' habits to Dime's notes.
          */
         post: operations["ask_dime_v1_internal_drafts__session_id__dime_notes_post"];
         delete?: never;
@@ -6979,6 +6979,13 @@ export interface components {
              */
             kind: "plan" | "pick" | "recap";
             /**
+             * Pick
+             * @description Dime's pick (a pick note that is not the seat's): the player it would take at for_pick, which the board highlights (player_id, name, position, team, reason: one line on why for this roster)
+             */
+            pick: {
+                [key: string]: unknown;
+            } | null;
+            /**
              * Plan
              * @description A plan note: the plan it set
              */
@@ -6995,7 +7002,7 @@ export interface components {
             punts_before: string[] | null;
             /**
              * Reason
-             * @description Why it failed
+             * @description Why it failed: an error code, no_pick (the turn chose or made no pick), stale, undone (the seat's pick was undone), taken (Dime's pick was drafted by another seat first, and Dime picked again)
              */
             reason: string | null;
             /**
@@ -7057,7 +7064,7 @@ export interface components {
             enabled: boolean;
             /**
              * Lead
-             * @description The room asks for a pick note once the user's pick is this many picks away
+             * @description The room asks for Dime's pick once the user's pick is this many picks away, the pick on the clock included
              */
             lead: number;
             /**
@@ -7067,7 +7074,7 @@ export interface components {
             notes: components["schemas"]["DimeDraftNote"][];
             /**
              * Notes On
-             * @description A note when each of the user's picks is near
+             * @description The old notes switch, kept on the room; the Draft lab no longer reads it (Dime's pick comes whenever Dime in draft rooms is on)
              */
             notes_on: boolean;
             /**
