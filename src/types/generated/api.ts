@@ -1121,6 +1121,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/jobs/ai/bill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ai Bill
+         * @description The bill check, for the data platform's AI spend page: what Anthropic bills the
+         *     organization, last month and this one by UTC day and by API key, beside the ledger.
+         *     Read with ANTHROPIC_ADMIN_KEY and kept 5 minutes; `state` says why when it couldn't be
+         *     read (no key, a refused key). No model call: it spends nothing.
+         */
+        get: operations["ai_bill_v1_internal_jobs_ai_bill_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/jobs/ai/caps": {
         parameters: {
             query?: never;
@@ -2274,6 +2297,28 @@ export interface paths {
          *     projections as the team's benchmark, and playoff odds (ESPN points leagues).
          */
         get: operations["get_team_league_projections_v1_internal_teams__team_id__league_projections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/league/streaming-line": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Team Streaming Line
+         * @description Each of the team's players against the streaming line: what the last stream lane worth
+         *     running adds to the lineup with the league's adds, matchup by matchup over a window of up
+         *     to four matchups (ESPN points leagues).
+         */
+        get: operations["get_team_streaming_line_v1_internal_teams__team_id__league_streaming_line_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3933,6 +3978,134 @@ export interface components {
             rows: components["schemas"]["AiAutomationRow"][];
             /** Team Id */
             team_id: number;
+        };
+        /** AiBill */
+        AiBill: {
+            /**
+             * Days
+             * @description Every UTC day of both months to today
+             */
+            days: components["schemas"]["AiBillDay"][];
+            /**
+             * Keys
+             * @description This month, largest first
+             */
+            keys: components["schemas"]["AiBillKey"][];
+            /**
+             * Message
+             * @description Why the check couldn't run, in Anthropic's words when it said
+             */
+            message: string | null;
+            /**
+             * Months
+             * @description Last month, then this month
+             */
+            months: components["schemas"]["AiBillMonth"][];
+            /**
+             * Read At
+             * Format: date-time
+             * @description When Anthropic was read (answers are kept a few minutes)
+             */
+            read_at: string;
+            /**
+             * Refreshed At
+             * @description Anthropic's data_refreshed_at: its numbers are complete up to here, short after it
+             */
+            refreshed_at: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ok" | "no_key" | "refused" | "unavailable" | "unreachable";
+        };
+        /** AiBillDay */
+        AiBillDay: {
+            /** Billed Micros */
+            billed_micros: number;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Ledger Micros */
+            ledger_micros: number;
+            /**
+             * Open Micros
+             * @default 0
+             */
+            open_micros: number;
+            /** Ours Micros */
+            ours_micros: number | null;
+        };
+        /**
+         * AiBillKey
+         * @description An API key Anthropic billed this month, as its key list names it.
+         */
+        AiBillKey: {
+            /**
+             * Api Key Id
+             * @description Null: usage made without a key (the Console)
+             */
+            api_key_id: string | null;
+            /** Billed Micros */
+            billed_micros: number;
+            /**
+             * Hint
+             * @description Anthropic's partial hint, like sk-ant-api03-R2D...igAA
+             */
+            hint: string | null;
+            /** Name */
+            name: string | null;
+            /**
+             * Ours
+             * @description The key this app sends its model calls with
+             * @default false
+             */
+            ours: boolean;
+        };
+        /**
+         * AiBillMonth
+         * @description One calendar month (UTC): what Anthropic bills against what the ledger priced.
+         */
+        AiBillMonth: {
+            /**
+             * Billed Micros
+             * @description Anthropic's cost for the whole organization, before credits
+             */
+            billed_micros: number;
+            /**
+             * Ledger Micros
+             * @description The ledger's settled spend
+             */
+            ledger_micros: number;
+            /**
+             * Month
+             * Format: date
+             * @description Its first day
+             */
+            month: string;
+            /**
+             * Open Micros
+             * @description The ledger's reservations still open (turns running)
+             * @default 0
+             */
+            open_micros: number;
+            /**
+             * Ours Micros
+             * @description Of it, on this app's API key; null: the key wasn't found
+             */
+            ours_micros: number | null;
+        };
+        /** AiBillResp */
+        AiBillResp: {
+            data: components["schemas"]["AiBill"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /** AiBlockPart */
         AiBlockPart: {
@@ -10239,6 +10412,61 @@ export interface components {
             timestamp: string | null;
         };
         /**
+         * LineLane
+         * @description The kth lane: the player who holds it now, the team's total with k lanes, and what the
+         *     kth lane gains over k - 1.
+         */
+        LineLane: {
+            /** Adds */
+            adds: number;
+            /** Gain */
+            gain: number;
+            /** Holder */
+            holder: string;
+            /** Holder Espn Id */
+            holder_espn_id: number;
+            /** Lane */
+            lane: number;
+            /** Total */
+            total: number;
+        };
+        /** LinePlayerValue */
+        LinePlayerValue: {
+            /** By Matchup */
+            by_matchup: number[];
+            /** Espn Id */
+            espn_id: number;
+            /** Injury Status */
+            injury_status: string | null;
+            /** Name */
+            name: string;
+            /** Nba Team */
+            nba_team: string | null;
+            /**
+             * On Ir
+             * @default false
+             */
+            on_ir: boolean;
+            /** Player Id */
+            player_id: number | null;
+            /**
+             * Positions
+             * @default []
+             */
+            positions: string[];
+            /**
+             * Protected
+             * @default false
+             */
+            protected: boolean;
+            /** Slot */
+            slot: string | null;
+            /** Under Line */
+            under_line: boolean | null;
+            /** Worth */
+            worth: number;
+        };
+        /**
          * LineupCheckResp
          * @description Lineup check result for a team.
          */
@@ -11481,6 +11709,39 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /** MatchupStreamingLine */
+        MatchupStreamingLine: {
+            /** Adds */
+            adds: number | null;
+            /** Base */
+            base: number;
+            /** Days */
+            days: number;
+            /** End */
+            end: string | null;
+            /** Lanes */
+            lanes: components["schemas"]["LineLane"][];
+            /** Line */
+            line: number | null;
+            /** Line Low */
+            line_low: number | null;
+            /** Matchup */
+            matchup: number;
+            /**
+             * Playoffs
+             * @default false
+             */
+            playoffs: boolean;
+            /**
+             * Proven
+             * @default true
+             */
+            proven: boolean;
+            /** Start */
+            start: string | null;
+            /** Worth Running */
+            worth_running: number;
         };
         /**
          * MatchupTeamResp
@@ -15104,6 +15365,49 @@ export interface components {
          */
         StreamerResp: {
             data: components["schemas"]["StreamerData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** StreamingLineData */
+        StreamingLineData: {
+            /** Current Matchup */
+            current_matchup: number;
+            /** First Matchup */
+            first_matchup: number;
+            /** Free Agents Read */
+            free_agents_read: number | null;
+            /** Key */
+            key: ("this_week" | "next_4" | "to_playoffs" | "playoffs" | "rest_of_season") | null;
+            /** Last Matchup */
+            last_matchup: number;
+            /** League Name */
+            league_name: string | null;
+            /** Line */
+            line: number | null;
+            /** Line Low */
+            line_low: number | null;
+            /** Matchups */
+            matchups: components["schemas"]["MatchupStreamingLine"][];
+            /**
+             * Notes
+             * @default []
+             */
+            notes: string[];
+            /** Players */
+            players: components["schemas"]["LinePlayerValue"][];
+            /** Projection As Of */
+            projection_as_of: string | null;
+            /** Today */
+            today: string;
+        };
+        /** StreamingLineResp */
+        StreamingLineResp: {
+            data: components["schemas"]["StreamingLineData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -18867,6 +19171,26 @@ export interface operations {
             };
         };
     };
+    ai_bill_v1_internal_jobs_ai_bill_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiBillResp"];
+                };
+            };
+        };
+    };
     ai_cap_v1_internal_jobs_ai_caps_put: {
         parameters: {
             query?: never;
@@ -20575,6 +20899,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeagueProjectionResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_team_streaming_line_v1_internal_teams__team_id__league_streaming_line_get: {
+        parameters: {
+            query?: {
+                /** @description A preset window; this_week when no matchups are given */
+                window?: ("this_week" | "next_4" | "to_playoffs" | "playoffs" | "rest_of_season") | null;
+                /** @description The window's first matchup (wins over the preset) */
+                first_matchup?: number | null;
+                /** @description The window's last matchup */
+                last_matchup?: number | null;
+            };
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreamingLineResp"];
                 };
             };
             /** @description Validation Error */
