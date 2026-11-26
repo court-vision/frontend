@@ -793,7 +793,8 @@
                   "weekly",
                   "pre_lock",
                   "night",
-                  "event"
+                  "event",
+                  "ask"
                 ],
                 "type": "string"
               },
@@ -1294,6 +1295,208 @@
           "lane_id"
         ],
         "title": "AiCancelPickupAction",
+        "type": "object"
+      },
+      "AiCapData": {
+        "properties": {
+          "cap_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "In force; null: no cap of the user's own on this line",
+            "title": "Cap Micros"
+          },
+          "cap_set": {
+            "default": false,
+            "description": "A row from the dashboard sets it",
+            "title": "Cap Set",
+            "type": "boolean"
+          },
+          "default_cap_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What applies with no row; null: none",
+            "title": "Default Cap Micros"
+          },
+          "line": {
+            "enum": [
+              "desk",
+              "autopilot",
+              "analyst",
+              "app"
+            ],
+            "title": "Line",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "cap_micros",
+          "default_cap_micros",
+          "cap_set",
+          "updated_at",
+          "updated_by",
+          "line",
+          "user_id"
+        ],
+        "title": "AiCapData",
+        "type": "object"
+      },
+      "AiCapReq": {
+        "description": "Set a line's monthly cap (no `user_id`), the whole app's (`line` app), or one\nuser's on a line; `monthly_usd` null deletes the row, so the environment's number\napplies again.",
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "line": {
+            "enum": [
+              "desk",
+              "autopilot",
+              "analyst",
+              "app"
+            ],
+            "title": "Line",
+            "type": "string"
+          },
+          "monthly_usd": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Usd"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "line"
+        ],
+        "title": "AiCapReq",
+        "type": "object"
+      },
+      "AiCapResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiCapData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiCapResp",
         "type": "object"
       },
       "AiChart": {
@@ -4148,6 +4351,462 @@
         "title": "AiSettingsResp",
         "type": "object"
       },
+      "AiSpendApp": {
+        "description": "The whole app's month so far against its cap: every line together.",
+        "properties": {
+          "cap_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "In force; null: no cap of the user's own on this line",
+            "title": "Cap Micros"
+          },
+          "cap_set": {
+            "default": false,
+            "description": "A row from the dashboard sets it",
+            "title": "Cap Set",
+            "type": "boolean"
+          },
+          "default_cap_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What applies with no row; null: none",
+            "title": "Default Cap Micros"
+          },
+          "open_micros": {
+            "description": "This month on every line, reservations not settled",
+            "title": "Open Micros",
+            "type": "integer"
+          },
+          "spent_micros": {
+            "description": "This month on every line, settled",
+            "title": "Spent Micros",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "required": [
+          "cap_micros",
+          "default_cap_micros",
+          "cap_set",
+          "updated_at",
+          "updated_by",
+          "spent_micros",
+          "open_micros"
+        ],
+        "title": "AiSpendApp",
+        "type": "object"
+      },
+      "AiSpendLine": {
+        "description": "One line's month so far.",
+        "properties": {
+          "cap_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "In force; null: no cap of the user's own on this line",
+            "title": "Cap Micros"
+          },
+          "cap_set": {
+            "default": false,
+            "description": "A row from the dashboard sets it",
+            "title": "Cap Set",
+            "type": "boolean"
+          },
+          "default_cap_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What applies with no row; null: none",
+            "title": "Default Cap Micros"
+          },
+          "line": {
+            "enum": [
+              "desk",
+              "autopilot",
+              "analyst"
+            ],
+            "title": "Line",
+            "type": "string"
+          },
+          "open_micros": {
+            "description": "This month, reservations not settled: running now, or died mid-call (counted at their ceiling)",
+            "title": "Open Micros",
+            "type": "integer"
+          },
+          "spent_micros": {
+            "description": "This month, settled turns and reads",
+            "title": "Spent Micros",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "required": [
+          "cap_micros",
+          "default_cap_micros",
+          "cap_set",
+          "updated_at",
+          "updated_by",
+          "line",
+          "spent_micros",
+          "open_micros"
+        ],
+        "title": "AiSpendLine",
+        "type": "object"
+      },
+      "AiSpendReport": {
+        "properties": {
+          "app": {
+            "$ref": "#/components/schemas/AiSpendApp",
+            "description": "The cap on the whole app, over every line"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/AiSpendLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "month_start": {
+            "format": "date",
+            "title": "Month Start",
+            "type": "string"
+          },
+          "read_max_micros": {
+            "description": "What one analyst read reserves before it starts",
+            "title": "Read Max Micros",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AiSpendRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "since": {
+            "description": "First UTC day of the window",
+            "format": "date",
+            "title": "Since",
+            "type": "string"
+          },
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/AiSpendTeam"
+            },
+            "title": "Teams",
+            "type": "array"
+          },
+          "turn_max_micros": {
+            "description": "What one desk turn or check-in reserves before it starts",
+            "title": "Turn Max Micros",
+            "type": "integer"
+          },
+          "usage": {
+            "items": {
+              "$ref": "#/components/schemas/AiUsageRow"
+            },
+            "title": "Usage",
+            "type": "array"
+          },
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/AiSpendUser"
+            },
+            "title": "Users",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "month_start",
+          "since",
+          "days",
+          "turn_max_micros",
+          "read_max_micros",
+          "lines",
+          "app",
+          "rows",
+          "usage",
+          "users",
+          "teams"
+        ],
+        "title": "AiSpendReport",
+        "type": "object"
+      },
+      "AiSpendResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiSpendReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiSpendResp",
+        "type": "object"
+      },
+      "AiSpendRow": {
+        "description": "The ledger over the window, summed per UTC day, line, feature, user and team.",
+        "properties": {
+          "cost_micros": {
+            "description": "Settled and open together, as the caps count it",
+            "title": "Cost Micros",
+            "type": "integer"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A check-in's kind: morning, weekly, pre_lock, night, event",
+            "title": "Detail"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          },
+          "feature": {
+            "enum": [
+              "chat",
+              "draft",
+              "checkin_reply",
+              "checkin",
+              "analyst",
+              "unlinked"
+            ],
+            "title": "Feature",
+            "type": "string"
+          },
+          "line": {
+            "enum": [
+              "desk",
+              "autopilot",
+              "analyst"
+            ],
+            "title": "Line",
+            "type": "string"
+          },
+          "open_micros": {
+            "title": "Open Micros",
+            "type": "integer"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "day",
+          "line",
+          "feature",
+          "detail",
+          "user_id",
+          "team_id",
+          "cost_micros",
+          "open_micros",
+          "entries"
+        ],
+        "title": "AiSpendRow",
+        "type": "object"
+      },
+      "AiSpendTeam": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "team_id",
+          "user_id",
+          "name"
+        ],
+        "title": "AiSpendTeam",
+        "type": "object"
+      },
+      "AiSpendUser": {
+        "description": "A user on the AI desk's allowlist, or with spend or a cap: their month on each line.",
+        "properties": {
+          "allowed": {
+            "description": "On AI_AGENT_USER_IDS",
+            "title": "Allowed",
+            "type": "boolean"
+          },
+          "autopilot": {
+            "$ref": "#/components/schemas/AiUserLine"
+          },
+          "desk": {
+            "$ref": "#/components/schemas/AiUserLine"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "allowed",
+          "desk",
+          "autopilot"
+        ],
+        "title": "AiSpendUser",
+        "type": "object"
+      },
       "AiSteerAction": {
         "description": "A steer chip: applied with `POST /teams/{team_id}/holds` and its proposal_id.",
         "properties": {
@@ -5187,6 +5846,147 @@
           "timestamp"
         ],
         "title": "AiUsageResp",
+        "type": "object"
+      },
+      "AiUsageRow": {
+        "description": "What each call's own record says it used, per UTC day, feature and model: the AI\ndesk's turns and the analyst's reads. Spend whose record is gone (a deleted chat) or\nnever written (an open reservation) is in the ledger only.",
+        "properties": {
+          "cache_creation_input_tokens": {
+            "title": "Cache Creation Input Tokens",
+            "type": "integer"
+          },
+          "cache_read_input_tokens": {
+            "title": "Cache Read Input Tokens",
+            "type": "integer"
+          },
+          "cost_micros": {
+            "title": "Cost Micros",
+            "type": "integer"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "feature": {
+            "enum": [
+              "chat",
+              "draft",
+              "checkin_reply",
+              "checkin",
+              "analyst",
+              "unlinked"
+            ],
+            "title": "Feature",
+            "type": "string"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "model_calls": {
+            "title": "Model Calls",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "records": {
+            "description": "Turns, or analyst reads",
+            "title": "Records",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "feature",
+          "model",
+          "records",
+          "model_calls",
+          "input_tokens",
+          "output_tokens",
+          "cache_read_input_tokens",
+          "cache_creation_input_tokens",
+          "cost_micros"
+        ],
+        "title": "AiUsageRow",
+        "type": "object"
+      },
+      "AiUserLine": {
+        "properties": {
+          "cap_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "In force; null: no cap of the user's own on this line",
+            "title": "Cap Micros"
+          },
+          "cap_set": {
+            "default": false,
+            "description": "A row from the dashboard sets it",
+            "title": "Cap Set",
+            "type": "boolean"
+          },
+          "default_cap_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What applies with no row; null: none",
+            "title": "Default Cap Micros"
+          },
+          "spent_micros": {
+            "description": "This month, settled and open",
+            "title": "Spent Micros",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "required": [
+          "cap_micros",
+          "default_cap_micros",
+          "cap_set",
+          "updated_at",
+          "updated_by",
+          "spent_micros"
+        ],
+        "title": "AiUserLine",
         "type": "object"
       },
       "AnalystItem": {
@@ -6470,6 +7270,117 @@
         "title": "AskResp",
         "type": "object"
       },
+      "AskRunData": {
+        "properties": {
+          "closed": {
+            "title": "Closed",
+            "type": "integer"
+          },
+          "off": {
+            "title": "Off",
+            "type": "boolean"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "integer"
+          },
+          "started": {
+            "items": {
+              "$ref": "#/components/schemas/AskStarted"
+            },
+            "title": "Started",
+            "type": "array"
+          },
+          "waiting": {
+            "title": "Waiting",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "off",
+          "started",
+          "waiting",
+          "closed",
+          "stale"
+        ],
+        "title": "AskRunData",
+        "type": "object"
+      },
+      "AskRunResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AskRunData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AskRunResp",
+        "type": "object"
+      },
+      "AskStarted": {
+        "properties": {
+          "ask_id": {
+            "title": "Ask Id",
+            "type": "integer"
+          },
+          "checkin_id": {
+            "title": "Checkin Id",
+            "type": "integer"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ask_id",
+          "team_id",
+          "checkin_id"
+        ],
+        "title": "AskStarted",
+        "type": "object"
+      },
       "AvgStats": {
         "properties": {
           "avg_assists": {
@@ -6633,6 +7544,117 @@
           "timestamp"
         ],
         "title": "BaseResponse",
+        "type": "object"
+      },
+      "Benchmark": {
+        "description": "One measure across the league, and where your team stands in it (rank 1 = best).",
+        "properties": {
+          "best": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "teams": {
+            "default": 0,
+            "title": "Teams",
+            "type": "integer"
+          },
+          "worst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worst"
+          },
+          "you": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "You"
+          }
+        },
+        "required": [
+          "you",
+          "rank",
+          "median",
+          "low",
+          "high",
+          "line",
+          "best",
+          "worst",
+          "teams"
+        ],
+        "title": "Benchmark",
         "type": "object"
       },
       "BreakoutBeneficiary": {
@@ -14901,6 +15923,22 @@
         "title": "LaneProjectionDay",
         "type": "object"
       },
+      "LeagueBenchmarks": {
+        "properties": {
+          "playoffs": {
+            "$ref": "#/components/schemas/Benchmark"
+          },
+          "regular_season": {
+            "$ref": "#/components/schemas/Benchmark"
+          }
+        },
+        "required": [
+          "regular_season",
+          "playoffs"
+        ],
+        "title": "LeagueBenchmarks",
+        "type": "object"
+      },
       "LeagueDetail": {
         "properties": {
           "categories": {
@@ -15497,6 +16535,215 @@
         "title": "LeagueInfoWrite",
         "type": "object"
       },
+      "LeagueProjectionData": {
+        "properties": {
+          "benchmarks": {
+            "$ref": "#/components/schemas/LeagueBenchmarks"
+          },
+          "current_matchup": {
+            "title": "Current Matchup",
+            "type": "integer"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "in_playoffs": {
+            "title": "In Playoffs",
+            "type": "boolean"
+          },
+          "incomplete_weeks": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Incomplete Weeks",
+            "type": "array"
+          },
+          "league_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Name"
+          },
+          "lineup_slots": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Lineup Slots",
+            "type": "object"
+          },
+          "matchups": {
+            "items": {
+              "$ref": "#/components/schemas/MatchupBenchmark"
+            },
+            "title": "Matchups",
+            "type": "array"
+          },
+          "notes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "playoff_matchups": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Playoff Matchups",
+            "type": "array"
+          },
+          "playoff_teams": {
+            "title": "Playoff Teams",
+            "type": "integer"
+          },
+          "playoff_weeks": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Playoff Weeks",
+            "type": "array"
+          },
+          "projection_as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection As Of"
+          },
+          "regular_season_matchups": {
+            "title": "Regular Season Matchups",
+            "type": "integer"
+          },
+          "seed_tiebreaker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed Tiebreaker"
+          },
+          "simulations": {
+            "title": "Simulations",
+            "type": "integer"
+          },
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/TeamProjection"
+            },
+            "title": "Teams",
+            "type": "array"
+          },
+          "teams_count": {
+            "title": "Teams Count",
+            "type": "integer"
+          },
+          "today": {
+            "title": "Today",
+            "type": "string"
+          },
+          "typical_week": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Week"
+          }
+        },
+        "required": [
+          "league_name",
+          "format",
+          "today",
+          "projection_as_of",
+          "teams_count",
+          "playoff_teams",
+          "seed_tiebreaker",
+          "lineup_slots",
+          "current_matchup",
+          "regular_season_matchups",
+          "playoff_matchups",
+          "playoff_weeks",
+          "incomplete_weeks",
+          "typical_week",
+          "simulations",
+          "in_playoffs",
+          "benchmarks",
+          "teams",
+          "matchups",
+          "notes"
+        ],
+        "title": "LeagueProjectionData",
+        "type": "object"
+      },
+      "LeagueProjectionResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LeagueProjectionData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "LeagueProjectionResp",
+        "type": "object"
+      },
       "LeagueSummary": {
         "description": "Provider-detected league settings (scoring format), embedded in team responses.",
         "properties": {
@@ -15665,6 +16912,173 @@
           "timestamp"
         ],
         "title": "LeagueSyncResp",
+        "type": "object"
+      },
+      "LeagueValuesData": {
+        "properties": {
+          "current_matchup": {
+            "title": "Current Matchup",
+            "type": "integer"
+          },
+          "final_matchup": {
+            "title": "Final Matchup",
+            "type": "integer"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "free_agents_read": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Agents Read"
+          },
+          "league_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Name"
+          },
+          "notes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/PlayerWindowValue"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "projection_as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection As Of"
+          },
+          "ranked_players": {
+            "title": "Ranked Players",
+            "type": "integer"
+          },
+          "regular_season_matchups": {
+            "title": "Regular Season Matchups",
+            "type": "integer"
+          },
+          "season_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season End"
+          },
+          "tiers": {
+            "items": {
+              "$ref": "#/components/schemas/TierBenchmark"
+            },
+            "title": "Tiers",
+            "type": "array"
+          },
+          "today": {
+            "title": "Today",
+            "type": "string"
+          },
+          "window": {
+            "$ref": "#/components/schemas/ValueWindow"
+          }
+        },
+        "required": [
+          "league_name",
+          "format",
+          "today",
+          "projection_as_of",
+          "current_matchup",
+          "regular_season_matchups",
+          "final_matchup",
+          "season_end",
+          "window",
+          "players",
+          "free_agents_read",
+          "ranked_players",
+          "tiers",
+          "notes"
+        ],
+        "title": "LeagueValuesData",
+        "type": "object"
+      },
+      "LeagueValuesResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LeagueValuesData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "LeagueValuesResp",
         "type": "object"
       },
       "LedgerLeagueResult": {
@@ -19060,6 +20474,231 @@
         "title": "MarketMeasurements",
         "type": "object"
       },
+      "MatchupBenchmark": {
+        "description": "One matchup across the league: scores when final, ESPN's settled score (through\nyesterday) plus the days left when current, projections when to come.",
+        "properties": {
+          "best": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "matchup": {
+            "title": "Matchup",
+            "type": "integer"
+          },
+          "median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median"
+          },
+          "opponent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opponent"
+          },
+          "opponent_league_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opponent League Team Id"
+          },
+          "opponent_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opponent Score"
+          },
+          "playoffs": {
+            "default": false,
+            "title": "Playoffs",
+            "type": "boolean"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "schedule_incomplete": {
+            "default": false,
+            "title": "Schedule Incomplete",
+            "type": "boolean"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "teams": {
+            "default": 0,
+            "title": "Teams",
+            "type": "integer"
+          },
+          "weeks": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Weeks",
+            "type": "array"
+          },
+          "win_chance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Win Chance"
+          },
+          "worst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worst"
+          },
+          "you": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "You"
+          }
+        },
+        "required": [
+          "you",
+          "rank",
+          "median",
+          "low",
+          "high",
+          "line",
+          "best",
+          "worst",
+          "teams",
+          "matchup",
+          "weeks",
+          "start",
+          "end",
+          "status",
+          "playoffs",
+          "schedule_incomplete",
+          "opponent",
+          "opponent_league_team_id",
+          "opponent_score",
+          "win_chance",
+          "result"
+        ],
+        "title": "MatchupBenchmark",
+        "type": "object"
+      },
       "MatchupData": {
         "description": "Complete matchup data structure",
         "properties": {
@@ -21642,6 +23281,651 @@
         "title": "OptimizedDay",
         "type": "object"
       },
+      "OverviewAutomation": {
+        "properties": {
+          "autopilot": {
+            "default": false,
+            "title": "Autopilot",
+            "type": "boolean"
+          },
+          "daily_actions": {
+            "default": "off",
+            "enum": [
+              "off",
+              "notify",
+              "act",
+              "ai"
+            ],
+            "title": "Daily Actions",
+            "type": "string"
+          },
+          "dime": {
+            "default": false,
+            "title": "Dime",
+            "type": "boolean"
+          },
+          "lanes": {
+            "default": "off",
+            "enum": [
+              "off",
+              "notify",
+              "act",
+              "ai"
+            ],
+            "title": "Lanes",
+            "type": "string"
+          },
+          "late_scratch": {
+            "default": "off",
+            "enum": [
+              "off",
+              "notify",
+              "act",
+              "ai"
+            ],
+            "title": "Late Scratch",
+            "type": "string"
+          },
+          "lineup": {
+            "default": "off",
+            "enum": [
+              "off",
+              "notify",
+              "act",
+              "ai"
+            ],
+            "title": "Lineup",
+            "type": "string"
+          }
+        },
+        "required": [
+          "autopilot",
+          "dime",
+          "lineup",
+          "daily_actions",
+          "lanes",
+          "late_scratch"
+        ],
+        "title": "OverviewAutomation",
+        "type": "object"
+      },
+      "OverviewCategories": {
+        "properties": {
+          "losses": {
+            "title": "Losses",
+            "type": "integer"
+          },
+          "ties": {
+            "title": "Ties",
+            "type": "integer"
+          },
+          "wins": {
+            "title": "Wins",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "wins",
+          "losses",
+          "ties"
+        ],
+        "title": "OverviewCategories",
+        "type": "object"
+      },
+      "OverviewDay": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "estimated": {
+            "default": false,
+            "title": "Estimated",
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "past",
+              "today",
+              "future"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "opponent_games": {
+            "default": 0,
+            "title": "Opponent Games",
+            "type": "integer"
+          },
+          "opponent_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opponent Points"
+          },
+          "your_games": {
+            "default": 0,
+            "title": "Your Games",
+            "type": "integer"
+          },
+          "your_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Your Points"
+          }
+        },
+        "required": [
+          "date",
+          "kind",
+          "your_points",
+          "opponent_points",
+          "your_games",
+          "opponent_games",
+          "estimated"
+        ],
+        "title": "OverviewDay",
+        "type": "object"
+      },
+      "OverviewError": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "OverviewError",
+        "type": "object"
+      },
+      "OverviewItem": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/DailyAction"
+          },
+          "covered_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "auto_lineup",
+                  "late_scratch",
+                  "daily_actions",
+                  "dime"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Covered By"
+          },
+          "deadline_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline At"
+          },
+          "deadline_et": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline Et"
+          },
+          "standing": {
+            "enum": [
+              "needs_you",
+              "your_call",
+              "covered"
+            ],
+            "title": "Standing",
+            "type": "string"
+          }
+        },
+        "required": [
+          "standing",
+          "covered_by",
+          "deadline_et",
+          "deadline_at",
+          "action"
+        ],
+        "title": "OverviewItem",
+        "type": "object"
+      },
+      "OverviewMatchup": {
+        "properties": {
+          "categories": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverviewCategories"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "matchup_period": {
+            "title": "Matchup Period",
+            "type": "integer"
+          },
+          "opponent_name": {
+            "title": "Opponent Name",
+            "type": "string"
+          },
+          "opponent_projected": {
+            "title": "Opponent Projected",
+            "type": "number"
+          },
+          "opponent_score": {
+            "title": "Opponent Score",
+            "type": "number"
+          },
+          "scoring_format": {
+            "default": "points",
+            "enum": [
+              "points",
+              "categories"
+            ],
+            "title": "Scoring Format",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "win_chance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Win Chance"
+          },
+          "your_projected": {
+            "title": "Your Projected",
+            "type": "number"
+          },
+          "your_score": {
+            "title": "Your Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "matchup_period",
+          "start",
+          "end",
+          "opponent_name",
+          "your_score",
+          "opponent_score",
+          "your_projected",
+          "opponent_projected",
+          "scoring_format",
+          "categories",
+          "win_chance"
+        ],
+        "title": "OverviewMatchup",
+        "type": "object"
+      },
+      "OverviewNext": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "auto_lineup",
+              "pickup",
+              "lane",
+              "checkin"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "at",
+          "label"
+        ],
+        "title": "OverviewNext",
+        "type": "object"
+      },
+      "OverviewSeason": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "losses": {
+            "title": "Losses",
+            "type": "integer"
+          },
+          "playoff_odds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Odds"
+          },
+          "playoff_teams": {
+            "title": "Playoff Teams",
+            "type": "integer"
+          },
+          "standing": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Standing"
+          },
+          "teams": {
+            "title": "Teams",
+            "type": "integer"
+          },
+          "ties": {
+            "title": "Ties",
+            "type": "integer"
+          },
+          "wins": {
+            "title": "Wins",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "wins",
+          "losses",
+          "ties",
+          "standing",
+          "teams",
+          "playoff_teams",
+          "playoff_odds",
+          "as_of"
+        ],
+        "title": "OverviewSeason",
+        "type": "object"
+      },
+      "OverviewSeat": {
+        "properties": {
+          "game_time_et": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Game Time Et"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injury Status"
+          },
+          "mark": {
+            "enum": [
+              "live",
+              "later",
+              "final",
+              "questionable",
+              "out",
+              "idle",
+              "empty"
+            ],
+            "title": "Mark",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "nba_player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Player Id"
+          },
+          "opponent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opponent"
+          },
+          "player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Id"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points"
+          },
+          "slot": {
+            "title": "Slot",
+            "type": "string"
+          },
+          "slot_id": {
+            "title": "Slot Id",
+            "type": "integer"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          }
+        },
+        "required": [
+          "slot_id",
+          "slot",
+          "mark",
+          "player_id",
+          "nba_player_id",
+          "name",
+          "team",
+          "injury_status",
+          "opponent",
+          "game_time_et",
+          "points"
+        ],
+        "title": "OverviewSeat",
+        "type": "object"
+      },
+      "OverviewTonight": {
+        "properties": {
+          "bench": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/OverviewSeat"
+            },
+            "title": "Bench",
+            "type": "array"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "propertyNames": {
+              "enum": [
+                "live",
+                "later",
+                "final",
+                "questionable",
+                "out",
+                "idle",
+                "empty"
+              ]
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "first_tip_et": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Tip Et"
+          },
+          "ir": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/OverviewSeat"
+            },
+            "title": "Ir",
+            "type": "array"
+          },
+          "next_lock_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Lock At"
+          },
+          "next_lock_et": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Lock Et"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points"
+          },
+          "seats": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/OverviewSeat"
+            },
+            "title": "Seats",
+            "type": "array"
+          }
+        },
+        "required": [
+          "first_tip_et",
+          "next_lock_et",
+          "next_lock_at",
+          "seats",
+          "bench",
+          "ir",
+          "counts",
+          "points"
+        ],
+        "title": "OverviewTonight",
+        "type": "object"
+      },
       "OwnershipTrend": {
         "description": "Ownership trend data.",
         "properties": {
@@ -23954,6 +26238,189 @@
           "timestamp"
         ],
         "title": "PlayerTrendsResp",
+        "type": "object"
+      },
+      "PlayerWindowValue": {
+        "description": "One player priced over the window and the rest of the season. Points are the\nleague's; ranks are among every player priced (rank 1 = most).",
+        "properties": {
+          "availability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Availability"
+          },
+          "espn_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espn Id"
+          },
+          "games": {
+            "title": "Games",
+            "type": "number"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injury Status"
+          },
+          "league_team_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Team Id"
+          },
+          "mine": {
+            "default": false,
+            "title": "Mine",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nba_team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Team"
+          },
+          "per_game": {
+            "title": "Per Game",
+            "type": "number"
+          },
+          "player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Id"
+          },
+          "positions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Positions",
+            "type": "array"
+          },
+          "projected": {
+            "default": true,
+            "title": "Projected",
+            "type": "boolean"
+          },
+          "season_games": {
+            "title": "Season Games",
+            "type": "number"
+          },
+          "season_rank": {
+            "title": "Season Rank",
+            "type": "integer"
+          },
+          "season_value": {
+            "title": "Season Value",
+            "type": "number"
+          },
+          "slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot"
+          },
+          "started": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started"
+          },
+          "team_games": {
+            "title": "Team Games",
+            "type": "integer"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          },
+          "window_rank": {
+            "title": "Window Rank",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "player_id",
+          "espn_id",
+          "nba_team",
+          "positions",
+          "league_team_id",
+          "team_name",
+          "mine",
+          "slot",
+          "availability",
+          "injury_status",
+          "per_game",
+          "team_games",
+          "games",
+          "value",
+          "started",
+          "window_rank",
+          "season_games",
+          "season_value",
+          "season_rank",
+          "projected"
+        ],
+        "title": "PlayerWindowValue",
         "type": "object"
       },
       "PlayersListData": {
@@ -29874,6 +32341,430 @@
         "title": "TeamInsightsResp",
         "type": "object"
       },
+      "TeamOverview": {
+        "properties": {
+          "automation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverviewAutomation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_write": {
+            "default": false,
+            "title": "Can Write",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverviewError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "items": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/OverviewItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "league_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Name"
+          },
+          "matchup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverviewMatchup"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "missing": {
+            "default": [],
+            "items": {
+              "enum": [
+                "automation",
+                "matchup",
+                "week",
+                "next"
+              ],
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "nba_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Date"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverviewNext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider": {
+            "$ref": "#/components/schemas/FantasyProvider"
+          },
+          "roster_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roster Version"
+          },
+          "scoring_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "points",
+                  "categories"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Format"
+          },
+          "scoring_period_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Period Id"
+          },
+          "season": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverviewSeason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "season_state": {
+            "default": "unavailable",
+            "enum": [
+              "ready",
+              "pending",
+              "unavailable"
+            ],
+            "title": "Season State",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "needs_you",
+              "your_call",
+              "set",
+              "autopilot",
+              "cant_read"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          },
+          "tonight": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverviewTonight"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "week": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/OverviewDay"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": [],
+            "title": "Week"
+          },
+          "write_blocked_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "provider_not_supported",
+                  "provider_read_only",
+                  "no_credentials",
+                  "writes_disabled",
+                  "no_scoring_period",
+                  "not_team_owner",
+                  "team_id_unresolved"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Write Blocked Reason"
+          }
+        },
+        "required": [
+          "team_id",
+          "team_name",
+          "league_name",
+          "provider",
+          "scoring_format",
+          "state",
+          "error",
+          "items",
+          "automation",
+          "tonight",
+          "matchup",
+          "week",
+          "season",
+          "season_state",
+          "next",
+          "nba_date",
+          "roster_version",
+          "scoring_period_id",
+          "can_write",
+          "write_blocked_reason",
+          "missing"
+        ],
+        "title": "TeamOverview",
+        "type": "object"
+      },
+      "TeamProjection": {
+        "properties": {
+          "league_team_id": {
+            "title": "League Team Id",
+            "type": "integer"
+          },
+          "losses": {
+            "title": "Losses",
+            "type": "integer"
+          },
+          "mine": {
+            "title": "Mine",
+            "type": "boolean"
+          },
+          "players_projected": {
+            "default": 0,
+            "title": "Players Projected",
+            "type": "integer"
+          },
+          "players_unprojected": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Players Unprojected",
+            "type": "array"
+          },
+          "playoff_odds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Odds"
+          },
+          "playoff_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Rank"
+          },
+          "playoff_week": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Week"
+          },
+          "points_against": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points Against"
+          },
+          "points_for": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points For"
+          },
+          "projected_wins": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projected Wins"
+          },
+          "regular_season_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Season Rank"
+          },
+          "regular_season_week": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Season Week"
+          },
+          "seed_odds": {
+            "default": [],
+            "items": {
+              "type": "number"
+            },
+            "title": "Seed Odds",
+            "type": "array"
+          },
+          "standing": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Standing"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          },
+          "ties": {
+            "title": "Ties",
+            "type": "integer"
+          },
+          "title_odds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Odds"
+          },
+          "wins": {
+            "title": "Wins",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "league_team_id",
+          "team_name",
+          "mine",
+          "standing",
+          "wins",
+          "losses",
+          "ties",
+          "points_for",
+          "points_against",
+          "regular_season_week",
+          "regular_season_rank",
+          "playoff_week",
+          "playoff_rank",
+          "projected_wins",
+          "playoff_odds",
+          "title_odds",
+          "seed_odds",
+          "players_projected",
+          "players_unprojected"
+        ],
+        "title": "TeamProjection",
+        "type": "object"
+      },
       "TeamRemoveResp": {
         "description": "Remove team response",
         "properties": {
@@ -30128,6 +33019,112 @@
         "title": "TeamUpdateResp",
         "type": "object"
       },
+      "TeamsOverviewData": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "propertyNames": {
+              "enum": [
+                "needs_you",
+                "your_call",
+                "set",
+                "autopilot",
+                "cant_read"
+              ]
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "next_deadline_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Deadline At"
+          },
+          "teams": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TeamOverview"
+            },
+            "title": "Teams",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "counts",
+          "next_deadline_at",
+          "teams"
+        ],
+        "title": "TeamsOverviewData",
+        "type": "object"
+      },
+      "TeamsOverviewResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TeamsOverviewData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "TeamsOverviewResp",
+        "type": "object"
+      },
       "TerminalTarget": {
         "description": "Open the terminal in a mode, focused on a subject.",
         "properties": {
@@ -30215,6 +33212,98 @@
           "window"
         ],
         "title": "TerminalTarget",
+        "type": "object"
+      },
+      "TierBenchmark": {
+        "description": "The league's Nth-best players: each roster's Nth-best window value, and yours among them.",
+        "properties": {
+          "average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average"
+          },
+          "best": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best"
+          },
+          "median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "teams": {
+            "default": 0,
+            "title": "Teams",
+            "type": "integer"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "integer"
+          },
+          "worst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worst"
+          },
+          "you": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "You"
+          }
+        },
+        "required": [
+          "tier",
+          "you",
+          "rank",
+          "average",
+          "median",
+          "best",
+          "worst",
+          "teams"
+        ],
+        "title": "TierBenchmark",
         "type": "object"
       },
       "TopPerformer": {
@@ -30685,6 +33774,101 @@
           "line"
         ],
         "title": "ValuationPlayer",
+        "type": "object"
+      },
+      "ValueWindow": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "first_matchup": {
+            "title": "First Matchup",
+            "type": "integer"
+          },
+          "incomplete_weeks": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Incomplete Weeks",
+            "type": "array"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "this_week",
+                  "next_4",
+                  "to_playoffs",
+                  "playoffs",
+                  "rest_of_season"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "last_matchup": {
+            "title": "Last Matchup",
+            "type": "integer"
+          },
+          "playoffs": {
+            "default": false,
+            "title": "Playoffs",
+            "type": "boolean"
+          },
+          "schedule_incomplete": {
+            "default": false,
+            "title": "Schedule Incomplete",
+            "type": "boolean"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "weeks": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Weeks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "first_matchup",
+          "last_matchup",
+          "weeks",
+          "start",
+          "end",
+          "days",
+          "playoffs",
+          "schedule_incomplete",
+          "incomplete_weeks"
+        ],
+        "title": "ValueWindow",
         "type": "object"
       },
       "Verdict": {
@@ -34691,6 +37875,106 @@
         ]
       }
     },
+    "/v1/internal/jobs/ai/caps": {
+      "put": {
+        "description": "Set a line's monthly cap, the whole app's (`line` app), or one user's cap on the\ndesk or autopilot line, from the next reservation on. `monthly_usd` null clears it:\nthe environment's number applies again (and a user's desk cap is an equal part of\nthe desk's).",
+        "operationId": "ai_cap_v1_internal_jobs_ai_caps_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiCapReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiCapResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ai Cap",
+        "tags": [
+          "internal jobs"
+        ]
+      }
+    },
+    "/v1/internal/jobs/ai/spend": {
+      "get": {
+        "description": "What AI has spent, for the data platform's AI spend page: this month against\neach line's cap (the desk, Dime's check-ins, the analyst) and against the whole\napp's, the ledger over the window split by day, feature, user and team, what each call's record says it used\n(model and tokens), and every user with spend or a cap, with their caps.",
+        "operationId": "ai_spend_v1_internal_jobs_ai_spend_get",
+        "parameters": [
+          {
+            "description": "How many UTC days back, today included",
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "description": "How many UTC days back, today included",
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiSpendResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ai Spend",
+        "tags": [
+          "internal jobs"
+        ]
+      }
+    },
     "/v1/internal/jobs/analyst/read": {
       "post": {
         "description": "One read of one player by the live rankings' analyst (the Live rankings plan, step 4).\n\nCalled by data-platform's analyst pipeline for each player its morning\nscreen picks, with what the live projection assumes about him and the stored\nitems about him. The answer is a proposal in the projection's own inputs (a\nreturn date, minutes, a share of the offense, an end, the items it rests\non), or that nothing should be written. Nothing is written here: the data\nplatform checks the proposal against its stored items and bounds and owns\nthe tables. `data.outcome` carries every business result (`read`, `declined`,\n`malformed`, `budget`, `off`); only a provider failure is an error, and the\npipeline reads the player again on its next run.",
@@ -34760,6 +38044,33 @@
           }
         ],
         "summary": "Analyst Spend",
+        "tags": [
+          "internal jobs"
+        ]
+      }
+    },
+    "/v1/internal/jobs/asks/run": {
+      "post": {
+        "description": "The asks that fell due: start each one's check-in (services/ai/asks.py).\n\nCalled by data-platform's dime_asks pipeline every minute (its route gates on\nwhether any ask is due, so an idle minute never reaches here). An ask is saved\nto the minute, so it starts at its minute. One per team a call: a team with a\ncheck-in running keeps its ask waiting for the next call, and one an hour past\nits time is missed. Check-ins left running by a dead process are failed first.\nThe check-ins run on here after the response, so this answers in a second or two.",
+        "operationId": "run_asks_v1_internal_jobs_asks_run_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskRunResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Run Asks",
         "tags": [
           "internal jobs"
         ]
@@ -36600,6 +39911,33 @@
         ]
       }
     },
+    "/v1/internal/teams/overview": {
+      "get": {
+        "description": "Every team of the account at a glance: each one's state (needs you, your call, set,\nautopilot, can't read) with the day's actions behind it, tonight's lineup, the matchup and\nits week, the season line, and what is scheduled next. One team that can't be read never\nfails the others. Never writes.",
+        "operationId": "get_teams_overview_v1_internal_teams_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamsOverviewResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Teams Overview",
+        "tags": [
+          "team management"
+        ]
+      }
+    },
     "/v1/internal/teams/remove": {
       "delete": {
         "operationId": "remove_team_v1_internal_teams_remove_delete",
@@ -37131,6 +40469,54 @@
         ]
       }
     },
+    "/v1/internal/teams/{team_id}/league/projections": {
+      "get": {
+        "description": "Every roster in the team's league projected under the league's scoring, the league's\nprojections as the team's benchmark, and playoff odds (ESPN points leagues).",
+        "operationId": "get_team_league_projections_v1_internal_teams__team_id__league_projections_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeagueProjectionResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Team League Projections",
+        "tags": [
+          "team management"
+        ]
+      }
+    },
     "/v1/internal/teams/{team_id}/league/sync": {
       "post": {
         "description": "Re-fetch the league's scoring settings from the provider and store them.\n\nDeliberately not wrapped in `respond`: an ERROR envelope *with data* here is a\nsoft warning (\"provider settings unavailable; using default points scoring\")\nthat the client renders, so it stays a 200.",
@@ -37174,6 +40560,131 @@
           }
         ],
         "summary": "Sync Team League",
+        "tags": [
+          "team management"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/league/values": {
+      "get": {
+        "description": "Every rostered player in the team's league and its best free agents priced over a\nwindow of matchups under the league's scoring: expected games and points, what each\nadds to his roster's lineup, ranks for the window and the rest of the season, and each\nroster's tiers against the league's (ESPN points leagues).",
+        "operationId": "get_team_league_values_v1_internal_teams__team_id__league_values_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "A preset window; this_week when no matchups are given",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "this_week",
+                    "next_4",
+                    "to_playoffs",
+                    "playoffs",
+                    "rest_of_season"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A preset window; this_week when no matchups are given",
+              "title": "Window"
+            }
+          },
+          {
+            "description": "The window's first matchup (wins over the preset)",
+            "in": "query",
+            "name": "first_matchup",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The window's first matchup (wins over the preset)",
+              "title": "First Matchup"
+            }
+          },
+          {
+            "description": "The window's last matchup",
+            "in": "query",
+            "name": "last_matchup",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The window's last matchup",
+              "title": "Last Matchup"
+            }
+          },
+          {
+            "description": "Free agents to return",
+            "in": "query",
+            "name": "free_agents",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Free agents to return",
+              "maximum": 150,
+              "minimum": 0,
+              "title": "Free Agents",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeagueValuesResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Team League Values",
         "tags": [
           "team management"
         ]
