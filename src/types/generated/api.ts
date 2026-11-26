@@ -1121,6 +1121,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/jobs/ai/caps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Ai Cap
+         * @description Set a line's monthly cap, the whole app's (`line` app), or one user's cap on the
+         *     desk or autopilot line, from the next reservation on. `monthly_usd` null clears it:
+         *     the environment's number applies again (and a user's desk cap is an equal part of
+         *     the desk's).
+         */
+        put: operations["ai_cap_v1_internal_jobs_ai_caps_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/jobs/ai/spend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ai Spend
+         * @description What AI has spent, for the data platform's AI spend page: this month against
+         *     each line's cap (the desk, Dime's check-ins, the analyst) and against the whole
+         *     app's, the ledger over the window split by day, feature, user and team, what each call's record says it used
+         *     (model and tokens), and every user with spend or a cap, with their caps.
+         */
+        get: operations["ai_spend_v1_internal_jobs_ai_spend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/jobs/analyst/read": {
         parameters: {
             query?: never;
@@ -1166,6 +1212,33 @@ export interface paths {
         get: operations["analyst_spend_v1_internal_jobs_analyst_spend_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/jobs/asks/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Asks
+         * @description The asks that fell due: start each one's check-in (services/ai/asks.py).
+         *
+         *     Called by data-platform's dime_asks pipeline every minute (its route gates on
+         *     whether any ask is due, so an idle minute never reaches here). An ask is saved
+         *     to the minute, so it starts at its minute. One per team a call: a team with a
+         *     check-in running keeps its ask waiting for the next call, and one an hour past
+         *     its time is missed. Check-ins left running by a dead process are failed first.
+         *     The check-ins run on here after the response, so this answers in a second or two.
+         */
+        post: operations["run_asks_v1_internal_jobs_asks_run_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1985,6 +2058,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/teams/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Teams Overview
+         * @description Every team of the account at a glance: each one's state (needs you, your call, set,
+         *     autopilot, can't read) with the day's actions behind it, tonight's lineup, the matchup and
+         *     its week, the season line, and what is scheduled next. One team that can't be read never
+         *     fails the others. Never writes.
+         */
+        get: operations["get_teams_overview_v1_internal_teams_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/teams/remove": {
         parameters: {
             query?: never;
@@ -2165,6 +2261,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/teams/{team_id}/league/projections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Team League Projections
+         * @description Every roster in the team's league projected under the league's scoring, the league's
+         *     projections as the team's benchmark, and playoff odds (ESPN points leagues).
+         */
+        get: operations["get_team_league_projections_v1_internal_teams__team_id__league_projections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/internal/teams/{team_id}/league/sync": {
         parameters: {
             query?: never;
@@ -2183,6 +2300,29 @@ export interface paths {
          *     that the client renders, so it stays a 200.
          */
         post: operations["sync_team_league_v1_internal_teams__team_id__league_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/internal/teams/{team_id}/league/values": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Team League Values
+         * @description Every rostered player in the team's league and its best free agents priced over a
+         *     window of matchups under the league's scoring: expected games and points, what each
+         *     adds to his roster's lineup, ranks for the window and the rest of the season, and each
+         *     roster's tiers against the league's (ESPN points leagues).
+         */
+        get: operations["get_team_league_values_v1_internal_teams__team_id__league_values_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3651,7 +3791,7 @@ export interface components {
             /** Checkin Id */
             checkin_id: number | null;
             /** Checkin Kind */
-            checkin_kind: ("morning" | "weekly" | "pre_lock" | "night" | "event") | null;
+            checkin_kind: ("morning" | "weekly" | "pre_lock" | "night" | "event" | "ask") | null;
             /**
              * Conversation Id
              * @description The check-in's conversation, to open it
@@ -3823,6 +3963,66 @@ export interface components {
             lane_id: number | null;
             /** Pickup Id */
             pickup_id: number;
+        };
+        /** AiCapData */
+        AiCapData: {
+            /**
+             * Cap Micros
+             * @description In force; null: no cap of the user's own on this line
+             */
+            cap_micros: number | null;
+            /**
+             * Cap Set
+             * @description A row from the dashboard sets it
+             * @default false
+             */
+            cap_set: boolean;
+            /**
+             * Default Cap Micros
+             * @description What applies with no row; null: none
+             */
+            default_cap_micros: number | null;
+            /**
+             * Line
+             * @enum {string}
+             */
+            line: "desk" | "autopilot" | "analyst" | "app";
+            /** Updated At */
+            updated_at: string | null;
+            /** Updated By */
+            updated_by: string | null;
+            /** User Id */
+            user_id: number | null;
+        };
+        /**
+         * AiCapReq
+         * @description Set a line's monthly cap (no `user_id`), the whole app's (`line` app), or one
+         *     user's on a line; `monthly_usd` null deletes the row, so the environment's number
+         *     applies again.
+         */
+        AiCapReq: {
+            /** Author */
+            author?: string | null;
+            /**
+             * Line
+             * @enum {string}
+             */
+            line: "desk" | "autopilot" | "analyst" | "app";
+            /** Monthly Usd */
+            monthly_usd?: number | string | null;
+            /** User Id */
+            user_id?: number | null;
+        };
+        /** AiCapResp */
+        AiCapResp: {
+            data: components["schemas"]["AiCapData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
         };
         /**
          * AiChart
@@ -5007,6 +5207,202 @@ export interface components {
             timestamp: string | null;
         };
         /**
+         * AiSpendApp
+         * @description The whole app's month so far against its cap: every line together.
+         */
+        AiSpendApp: {
+            /**
+             * Cap Micros
+             * @description In force; null: no cap of the user's own on this line
+             */
+            cap_micros: number | null;
+            /**
+             * Cap Set
+             * @description A row from the dashboard sets it
+             * @default false
+             */
+            cap_set: boolean;
+            /**
+             * Default Cap Micros
+             * @description What applies with no row; null: none
+             */
+            default_cap_micros: number | null;
+            /**
+             * Open Micros
+             * @description This month on every line, reservations not settled
+             */
+            open_micros: number;
+            /**
+             * Spent Micros
+             * @description This month on every line, settled
+             */
+            spent_micros: number;
+            /** Updated At */
+            updated_at: string | null;
+            /** Updated By */
+            updated_by: string | null;
+        };
+        /**
+         * AiSpendLine
+         * @description One line's month so far.
+         */
+        AiSpendLine: {
+            /**
+             * Cap Micros
+             * @description In force; null: no cap of the user's own on this line
+             */
+            cap_micros: number | null;
+            /**
+             * Cap Set
+             * @description A row from the dashboard sets it
+             * @default false
+             */
+            cap_set: boolean;
+            /**
+             * Default Cap Micros
+             * @description What applies with no row; null: none
+             */
+            default_cap_micros: number | null;
+            /**
+             * Line
+             * @enum {string}
+             */
+            line: "desk" | "autopilot" | "analyst";
+            /**
+             * Open Micros
+             * @description This month, reservations not settled: running now, or died mid-call (counted at their ceiling)
+             */
+            open_micros: number;
+            /**
+             * Spent Micros
+             * @description This month, settled turns and reads
+             */
+            spent_micros: number;
+            /** Updated At */
+            updated_at: string | null;
+            /** Updated By */
+            updated_by: string | null;
+        };
+        /** AiSpendReport */
+        AiSpendReport: {
+            /** @description The cap on the whole app, over every line */
+            app: components["schemas"]["AiSpendApp"];
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Days */
+            days: number;
+            /** Lines */
+            lines: components["schemas"]["AiSpendLine"][];
+            /**
+             * Month Start
+             * Format: date
+             */
+            month_start: string;
+            /**
+             * Read Max Micros
+             * @description What one analyst read reserves before it starts
+             */
+            read_max_micros: number;
+            /** Rows */
+            rows: components["schemas"]["AiSpendRow"][];
+            /**
+             * Since
+             * Format: date
+             * @description First UTC day of the window
+             */
+            since: string;
+            /** Teams */
+            teams: components["schemas"]["AiSpendTeam"][];
+            /**
+             * Turn Max Micros
+             * @description What one desk turn or check-in reserves before it starts
+             */
+            turn_max_micros: number;
+            /** Usage */
+            usage: components["schemas"]["AiUsageRow"][];
+            /** Users */
+            users: components["schemas"]["AiSpendUser"][];
+        };
+        /** AiSpendResp */
+        AiSpendResp: {
+            data: components["schemas"]["AiSpendReport"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /**
+         * AiSpendRow
+         * @description The ledger over the window, summed per UTC day, line, feature, user and team.
+         */
+        AiSpendRow: {
+            /**
+             * Cost Micros
+             * @description Settled and open together, as the caps count it
+             */
+            cost_micros: number;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /**
+             * Detail
+             * @description A check-in's kind: morning, weekly, pre_lock, night, event
+             */
+            detail: string | null;
+            /** Entries */
+            entries: number;
+            /**
+             * Feature
+             * @enum {string}
+             */
+            feature: "chat" | "draft" | "checkin_reply" | "checkin" | "analyst" | "unlinked";
+            /**
+             * Line
+             * @enum {string}
+             */
+            line: "desk" | "autopilot" | "analyst";
+            /** Open Micros */
+            open_micros: number;
+            /** Team Id */
+            team_id: number | null;
+            /** User Id */
+            user_id: number | null;
+        };
+        /** AiSpendTeam */
+        AiSpendTeam: {
+            /** Name */
+            name: string;
+            /** Team Id */
+            team_id: number;
+            /** User Id */
+            user_id: number;
+        };
+        /**
+         * AiSpendUser
+         * @description A user on the AI desk's allowlist, or with spend or a cap: their month on each line.
+         */
+        AiSpendUser: {
+            /**
+             * Allowed
+             * @description On AI_AGENT_USER_IDS
+             */
+            allowed: boolean;
+            autopilot: components["schemas"]["AiUserLine"];
+            desk: components["schemas"]["AiUserLine"];
+            /** Email */
+            email: string;
+            /** User Id */
+            user_id: number;
+        };
+        /**
          * AiSteerAction
          * @description A steer chip: applied with `POST /teams/{team_id}/holds` and its proposal_id.
          */
@@ -5461,6 +5857,71 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /**
+         * AiUsageRow
+         * @description What each call's own record says it used, per UTC day, feature and model: the AI
+         *     desk's turns and the analyst's reads. Spend whose record is gone (a deleted chat) or
+         *     never written (an open reservation) is in the ledger only.
+         */
+        AiUsageRow: {
+            /** Cache Creation Input Tokens */
+            cache_creation_input_tokens: number;
+            /** Cache Read Input Tokens */
+            cache_read_input_tokens: number;
+            /** Cost Micros */
+            cost_micros: number;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /**
+             * Feature
+             * @enum {string}
+             */
+            feature: "chat" | "draft" | "checkin_reply" | "checkin" | "analyst" | "unlinked";
+            /** Input Tokens */
+            input_tokens: number;
+            /** Model */
+            model: string;
+            /** Model Calls */
+            model_calls: number;
+            /** Output Tokens */
+            output_tokens: number;
+            /**
+             * Records
+             * @description Turns, or analyst reads
+             */
+            records: number;
+        };
+        /** AiUserLine */
+        AiUserLine: {
+            /**
+             * Cap Micros
+             * @description In force; null: no cap of the user's own on this line
+             */
+            cap_micros: number | null;
+            /**
+             * Cap Set
+             * @description A row from the dashboard sets it
+             * @default false
+             */
+            cap_set: boolean;
+            /**
+             * Default Cap Micros
+             * @description What applies with no row; null: none
+             */
+            default_cap_micros: number | null;
+            /**
+             * Spent Micros
+             * @description This month, settled and open
+             */
+            spent_micros: number;
+            /** Updated At */
+            updated_at: string | null;
+            /** Updated By */
+            updated_by: string | null;
         };
         /**
          * AnalystItem
@@ -5934,6 +6395,39 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** AskRunData */
+        AskRunData: {
+            /** Closed */
+            closed: number;
+            /** Off */
+            off: boolean;
+            /** Stale */
+            stale: number;
+            /** Started */
+            started: components["schemas"]["AskStarted"][];
+            /** Waiting */
+            waiting: number;
+        };
+        /** AskRunResp */
+        AskRunResp: {
+            data: components["schemas"]["AskRunData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** AskStarted */
+        AskStarted: {
+            /** Ask Id */
+            ask_id: number;
+            /** Checkin Id */
+            checkin_id: number;
+            /** Team Id */
+            team_id: number;
+        };
         /** AvgStats */
         AvgStats: {
             /** Avg Assists */
@@ -5994,6 +6488,33 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /**
+         * Benchmark
+         * @description One measure across the league, and where your team stands in it (rank 1 = best).
+         */
+        Benchmark: {
+            /** Best */
+            best: number | null;
+            /** High */
+            high: number | null;
+            /** Line */
+            line: number | null;
+            /** Low */
+            low: number | null;
+            /** Median */
+            median: number | null;
+            /** Rank */
+            rank: number | null;
+            /**
+             * Teams
+             * @default 0
+             */
+            teams: number;
+            /** Worst */
+            worst: number | null;
+            /** You */
+            you: number | null;
         };
         /**
          * BreakoutBeneficiary
@@ -9254,6 +9775,11 @@ export interface components {
             /** Value */
             value: number;
         };
+        /** LeagueBenchmarks */
+        LeagueBenchmarks: {
+            playoffs: components["schemas"]["Benchmark"];
+            regular_season: components["schemas"]["Benchmark"];
+        };
         /** LeagueDetail */
         LeagueDetail: {
             /**
@@ -9501,6 +10027,64 @@ export interface components {
              */
             year: number;
         };
+        /** LeagueProjectionData */
+        LeagueProjectionData: {
+            benchmarks: components["schemas"]["LeagueBenchmarks"];
+            /** Current Matchup */
+            current_matchup: number;
+            /** Format */
+            format: string;
+            /** In Playoffs */
+            in_playoffs: boolean;
+            /** Incomplete Weeks */
+            incomplete_weeks: number[];
+            /** League Name */
+            league_name: string | null;
+            /** Lineup Slots */
+            lineup_slots: {
+                [key: string]: number;
+            };
+            /** Matchups */
+            matchups: components["schemas"]["MatchupBenchmark"][];
+            /**
+             * Notes
+             * @default []
+             */
+            notes: string[];
+            /** Playoff Matchups */
+            playoff_matchups: number[];
+            /** Playoff Teams */
+            playoff_teams: number;
+            /** Playoff Weeks */
+            playoff_weeks: number[];
+            /** Projection As Of */
+            projection_as_of: string | null;
+            /** Regular Season Matchups */
+            regular_season_matchups: number;
+            /** Seed Tiebreaker */
+            seed_tiebreaker: string | null;
+            /** Simulations */
+            simulations: number;
+            /** Teams */
+            teams: components["schemas"]["TeamProjection"][];
+            /** Teams Count */
+            teams_count: number;
+            /** Today */
+            today: string;
+            /** Typical Week */
+            typical_week: number | null;
+        };
+        /** LeagueProjectionResp */
+        LeagueProjectionResp: {
+            data: components["schemas"]["LeagueProjectionData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /**
          * LeagueSummary
          * @description Provider-detected league settings (scoring format), embedded in team responses.
@@ -9547,6 +10131,50 @@ export interface components {
         /** LeagueSyncResp */
         LeagueSyncResp: {
             data: components["schemas"]["LeagueSummary"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
+        /** LeagueValuesData */
+        LeagueValuesData: {
+            /** Current Matchup */
+            current_matchup: number;
+            /** Final Matchup */
+            final_matchup: number;
+            /** Format */
+            format: string;
+            /** Free Agents Read */
+            free_agents_read: number | null;
+            /** League Name */
+            league_name: string | null;
+            /**
+             * Notes
+             * @default []
+             */
+            notes: string[];
+            /** Players */
+            players: components["schemas"]["PlayerWindowValue"][];
+            /** Projection As Of */
+            projection_as_of: string | null;
+            /** Ranked Players */
+            ranked_players: number;
+            /** Regular Season Matchups */
+            regular_season_matchups: number;
+            /** Season End */
+            season_end: string | null;
+            /** Tiers */
+            tiers: components["schemas"]["TierBenchmark"][];
+            /** Today */
+            today: string;
+            window: components["schemas"]["ValueWindow"];
+        };
+        /** LeagueValuesResp */
+        LeagueValuesResp: {
+            data: components["schemas"]["LeagueValuesData"] | null;
             /** Error Code */
             error_code: string | null;
             /** Message */
@@ -10665,6 +11293,64 @@ export interface components {
             overall_rank: number | null;
         };
         /**
+         * MatchupBenchmark
+         * @description One matchup across the league: scores when final, ESPN's settled score (through
+         *     yesterday) plus the days left when current, projections when to come.
+         */
+        MatchupBenchmark: {
+            /** Best */
+            best: number | null;
+            /** End */
+            end: string | null;
+            /** High */
+            high: number | null;
+            /** Line */
+            line: number | null;
+            /** Low */
+            low: number | null;
+            /** Matchup */
+            matchup: number;
+            /** Median */
+            median: number | null;
+            /** Opponent */
+            opponent: string | null;
+            /** Opponent League Team Id */
+            opponent_league_team_id: number | null;
+            /** Opponent Score */
+            opponent_score: number | null;
+            /**
+             * Playoffs
+             * @default false
+             */
+            playoffs: boolean;
+            /** Rank */
+            rank: number | null;
+            /** Result */
+            result: string | null;
+            /**
+             * Schedule Incomplete
+             * @default false
+             */
+            schedule_incomplete: boolean;
+            /** Start */
+            start: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Teams
+             * @default 0
+             */
+            teams: number;
+            /** Weeks */
+            weeks: number[];
+            /** Win Chance */
+            win_chance: number | null;
+            /** Worst */
+            worst: number | null;
+            /** You */
+            you: number | null;
+        };
+        /**
          * MatchupData
          * @description Complete matchup data structure
          */
@@ -11512,6 +12198,229 @@ export interface components {
              */
             projected_fpts: number;
         };
+        /** OverviewAutomation */
+        OverviewAutomation: {
+            /**
+             * Autopilot
+             * @default false
+             */
+            autopilot: boolean;
+            /**
+             * Daily Actions
+             * @default off
+             * @enum {string}
+             */
+            daily_actions: "off" | "notify" | "act" | "ai";
+            /**
+             * Dime
+             * @default false
+             */
+            dime: boolean;
+            /**
+             * Lanes
+             * @default off
+             * @enum {string}
+             */
+            lanes: "off" | "notify" | "act" | "ai";
+            /**
+             * Late Scratch
+             * @default off
+             * @enum {string}
+             */
+            late_scratch: "off" | "notify" | "act" | "ai";
+            /**
+             * Lineup
+             * @default off
+             * @enum {string}
+             */
+            lineup: "off" | "notify" | "act" | "ai";
+        };
+        /** OverviewCategories */
+        OverviewCategories: {
+            /** Losses */
+            losses: number;
+            /** Ties */
+            ties: number;
+            /** Wins */
+            wins: number;
+        };
+        /** OverviewDay */
+        OverviewDay: {
+            /** Date */
+            date: string;
+            /**
+             * Estimated
+             * @default false
+             */
+            estimated: boolean;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "past" | "today" | "future";
+            /**
+             * Opponent Games
+             * @default 0
+             */
+            opponent_games: number;
+            /** Opponent Points */
+            opponent_points: number | null;
+            /**
+             * Your Games
+             * @default 0
+             */
+            your_games: number;
+            /** Your Points */
+            your_points: number | null;
+        };
+        /** OverviewError */
+        OverviewError: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** OverviewItem */
+        OverviewItem: {
+            action: components["schemas"]["DailyAction"];
+            /** Covered By */
+            covered_by: ("auto_lineup" | "late_scratch" | "daily_actions" | "dime") | null;
+            /** Deadline At */
+            deadline_at: string | null;
+            /** Deadline Et */
+            deadline_et: string | null;
+            /**
+             * Standing
+             * @enum {string}
+             */
+            standing: "needs_you" | "your_call" | "covered";
+        };
+        /** OverviewMatchup */
+        OverviewMatchup: {
+            categories: components["schemas"]["OverviewCategories"] | null;
+            /** End */
+            end: string;
+            /** Matchup Period */
+            matchup_period: number;
+            /** Opponent Name */
+            opponent_name: string;
+            /** Opponent Projected */
+            opponent_projected: number;
+            /** Opponent Score */
+            opponent_score: number;
+            /**
+             * Scoring Format
+             * @default points
+             * @enum {string}
+             */
+            scoring_format: "points" | "categories";
+            /** Start */
+            start: string;
+            /** Win Chance */
+            win_chance: number | null;
+            /** Your Projected */
+            your_projected: number;
+            /** Your Score */
+            your_score: number;
+        };
+        /** OverviewNext */
+        OverviewNext: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "auto_lineup" | "pickup" | "lane" | "checkin";
+            /** Label */
+            label: string;
+        };
+        /** OverviewSeason */
+        OverviewSeason: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Losses */
+            losses: number;
+            /** Playoff Odds */
+            playoff_odds: number | null;
+            /** Playoff Teams */
+            playoff_teams: number;
+            /** Standing */
+            standing: number | null;
+            /** Teams */
+            teams: number;
+            /** Ties */
+            ties: number;
+            /** Wins */
+            wins: number;
+        };
+        /** OverviewSeat */
+        OverviewSeat: {
+            /** Game Time Et */
+            game_time_et: string | null;
+            /** Injury Status */
+            injury_status: string | null;
+            /**
+             * Mark
+             * @enum {string}
+             */
+            mark: "live" | "later" | "final" | "questionable" | "out" | "idle" | "empty";
+            /** Name */
+            name: string | null;
+            /** Nba Player Id */
+            nba_player_id: number | null;
+            /** Opponent */
+            opponent: string | null;
+            /** Player Id */
+            player_id: number | null;
+            /** Points */
+            points: number | null;
+            /** Slot */
+            slot: string;
+            /** Slot Id */
+            slot_id: number;
+            /** Team */
+            team: string | null;
+        };
+        /** OverviewTonight */
+        OverviewTonight: {
+            /**
+             * Bench
+             * @default []
+             */
+            bench: components["schemas"]["OverviewSeat"][];
+            /**
+             * Counts
+             * @default {}
+             */
+            counts: {
+                [key: string]: number;
+            };
+            /** First Tip Et */
+            first_tip_et: string | null;
+            /**
+             * Ir
+             * @default []
+             */
+            ir: components["schemas"]["OverviewSeat"][];
+            /** Next Lock At */
+            next_lock_at: string | null;
+            /** Next Lock Et */
+            next_lock_et: string | null;
+            /** Points */
+            points: number | null;
+            /**
+             * Seats
+             * @default []
+             */
+            seats: components["schemas"]["OverviewSeat"][];
+        };
         /**
          * OwnershipTrend
          * @description Ownership trend data.
@@ -12334,6 +13243,64 @@ export interface components {
             status: components["schemas"]["ApiStatus"];
             /** Timestamp */
             timestamp: string | null;
+        };
+        /**
+         * PlayerWindowValue
+         * @description One player priced over the window and the rest of the season. Points are the
+         *     league's; ranks are among every player priced (rank 1 = most).
+         */
+        PlayerWindowValue: {
+            /** Availability */
+            availability: string | null;
+            /** Espn Id */
+            espn_id: number | null;
+            /** Games */
+            games: number;
+            /** Injury Status */
+            injury_status: string | null;
+            /** League Team Id */
+            league_team_id: number | null;
+            /**
+             * Mine
+             * @default false
+             */
+            mine: boolean;
+            /** Name */
+            name: string;
+            /** Nba Team */
+            nba_team: string | null;
+            /** Per Game */
+            per_game: number;
+            /** Player Id */
+            player_id: number | null;
+            /**
+             * Positions
+             * @default []
+             */
+            positions: string[];
+            /**
+             * Projected
+             * @default true
+             */
+            projected: boolean;
+            /** Season Games */
+            season_games: number;
+            /** Season Rank */
+            season_rank: number;
+            /** Season Value */
+            season_value: number;
+            /** Slot */
+            slot: string | null;
+            /** Started */
+            started: number | null;
+            /** Team Games */
+            team_games: number;
+            /** Team Name */
+            team_name: string | null;
+            /** Value */
+            value: number;
+            /** Window Rank */
+            window_rank: number;
         };
         /**
          * PlayersListData
@@ -14347,6 +15314,113 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** TeamOverview */
+        TeamOverview: {
+            automation: components["schemas"]["OverviewAutomation"] | null;
+            /**
+             * Can Write
+             * @default false
+             */
+            can_write: boolean;
+            error: components["schemas"]["OverviewError"] | null;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["OverviewItem"][];
+            /** League Name */
+            league_name: string | null;
+            matchup: components["schemas"]["OverviewMatchup"] | null;
+            /**
+             * Missing
+             * @default []
+             */
+            missing: ("automation" | "matchup" | "week" | "next")[];
+            /** Nba Date */
+            nba_date: string | null;
+            next: components["schemas"]["OverviewNext"] | null;
+            provider: components["schemas"]["FantasyProvider"];
+            /** Roster Version */
+            roster_version: string | null;
+            /** Scoring Format */
+            scoring_format: ("points" | "categories") | null;
+            /** Scoring Period Id */
+            scoring_period_id: number | null;
+            season: components["schemas"]["OverviewSeason"] | null;
+            /**
+             * Season State
+             * @default unavailable
+             * @enum {string}
+             */
+            season_state: "ready" | "pending" | "unavailable";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "needs_you" | "your_call" | "set" | "autopilot" | "cant_read";
+            /** Team Id */
+            team_id: number;
+            /** Team Name */
+            team_name: string;
+            tonight: components["schemas"]["OverviewTonight"] | null;
+            /**
+             * Week
+             * @default []
+             */
+            week: components["schemas"]["OverviewDay"][] | null;
+            /** Write Blocked Reason */
+            write_blocked_reason: ("provider_not_supported" | "provider_read_only" | "no_credentials" | "writes_disabled" | "no_scoring_period" | "not_team_owner" | "team_id_unresolved") | null;
+        };
+        /** TeamProjection */
+        TeamProjection: {
+            /** League Team Id */
+            league_team_id: number;
+            /** Losses */
+            losses: number;
+            /** Mine */
+            mine: boolean;
+            /**
+             * Players Projected
+             * @default 0
+             */
+            players_projected: number;
+            /**
+             * Players Unprojected
+             * @default []
+             */
+            players_unprojected: string[];
+            /** Playoff Odds */
+            playoff_odds: number | null;
+            /** Playoff Rank */
+            playoff_rank: number | null;
+            /** Playoff Week */
+            playoff_week: number | null;
+            /** Points Against */
+            points_against: number | null;
+            /** Points For */
+            points_for: number | null;
+            /** Projected Wins */
+            projected_wins: number | null;
+            /** Regular Season Rank */
+            regular_season_rank: number | null;
+            /** Regular Season Week */
+            regular_season_week: number | null;
+            /**
+             * Seed Odds
+             * @default []
+             */
+            seed_odds: number[];
+            /** Standing */
+            standing: number | null;
+            /** Team Name */
+            team_name: string;
+            /** Ties */
+            ties: number;
+            /** Title Odds */
+            title_odds: number | null;
+            /** Wins */
+            wins: number;
+        };
         /**
          * TeamRemoveResp
          * @description Remove team response
@@ -14441,6 +15515,39 @@ export interface components {
             /** Timestamp */
             timestamp: string | null;
         };
+        /** TeamsOverviewData */
+        TeamsOverviewData: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Counts
+             * @default {}
+             */
+            counts: {
+                [key: string]: number;
+            };
+            /** Next Deadline At */
+            next_deadline_at: string | null;
+            /**
+             * Teams
+             * @default []
+             */
+            teams: components["schemas"]["TeamOverview"][];
+        };
+        /** TeamsOverviewResp */
+        TeamsOverviewResp: {
+            data: components["schemas"]["TeamsOverviewData"] | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Message */
+            message: string;
+            status: components["schemas"]["ApiStatus"];
+            /** Timestamp */
+            timestamp: string | null;
+        };
         /**
          * TerminalTarget
          * @description Open the terminal in a mode, focused on a subject.
@@ -14481,6 +15588,31 @@ export interface components {
              * @description `season` or `lN`
              */
             window: string | null;
+        };
+        /**
+         * TierBenchmark
+         * @description The league's Nth-best players: each roster's Nth-best window value, and yours among them.
+         */
+        TierBenchmark: {
+            /** Average */
+            average: number | null;
+            /** Best */
+            best: number | null;
+            /** Median */
+            median: number | null;
+            /** Rank */
+            rank: number | null;
+            /**
+             * Teams
+             * @default 0
+             */
+            teams: number;
+            /** Tier */
+            tier: number;
+            /** Worst */
+            worst: number | null;
+            /** You */
+            you: number | null;
         };
         /**
          * TopPerformer
@@ -14682,6 +15814,38 @@ export interface components {
              * @description Current NBA team tricode, for his schedule around the fantasy playoffs
              */
             team?: string | null;
+        };
+        /** ValueWindow */
+        ValueWindow: {
+            /** Days */
+            days: number;
+            /** End */
+            end: string | null;
+            /** First Matchup */
+            first_matchup: number;
+            /**
+             * Incomplete Weeks
+             * @default []
+             */
+            incomplete_weeks: number[];
+            /** Key */
+            key: ("this_week" | "next_4" | "to_playoffs" | "playoffs" | "rest_of_season") | null;
+            /** Last Matchup */
+            last_matchup: number;
+            /**
+             * Playoffs
+             * @default false
+             */
+            playoffs: boolean;
+            /**
+             * Schedule Incomplete
+             * @default false
+             */
+            schedule_incomplete: boolean;
+            /** Start */
+            start: string | null;
+            /** Weeks */
+            weeks: number[];
         };
         /** Verdict */
         Verdict: {
@@ -17703,6 +18867,71 @@ export interface operations {
             };
         };
     };
+    ai_cap_v1_internal_jobs_ai_caps_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiCapReq"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiCapResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ai_spend_v1_internal_jobs_ai_spend_get: {
+        parameters: {
+            query?: {
+                /** @description How many UTC days back, today included */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSpendResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     analyst_read_v1_internal_jobs_analyst_read_post: {
         parameters: {
             query?: never;
@@ -17752,6 +18981,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnalystSpendResp"];
+                };
+            };
+        };
+    };
+    run_asks_v1_internal_jobs_asks_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskRunResp"];
                 };
             };
         };
@@ -18964,6 +20213,26 @@ export interface operations {
             };
         };
     };
+    get_teams_overview_v1_internal_teams_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamsOverviewResp"];
+                };
+            };
+        };
+    };
     remove_team_v1_internal_teams_remove_delete: {
         parameters: {
             query: {
@@ -19288,6 +20557,37 @@ export interface operations {
             };
         };
     };
+    get_team_league_projections_v1_internal_teams__team_id__league_projections_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeagueProjectionResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     sync_team_league_v1_internal_teams__team_id__league_sync_post: {
         parameters: {
             query?: never;
@@ -19306,6 +20606,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeagueSyncResp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_team_league_values_v1_internal_teams__team_id__league_values_get: {
+        parameters: {
+            query?: {
+                /** @description A preset window; this_week when no matchups are given */
+                window?: ("this_week" | "next_4" | "to_playoffs" | "playoffs" | "rest_of_season") | null;
+                /** @description The window's first matchup (wins over the preset) */
+                first_matchup?: number | null;
+                /** @description The window's last matchup */
+                last_matchup?: number | null;
+                /** @description Free agents to return */
+                free_agents?: number;
+            };
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeagueValuesResp"];
                 };
             };
             /** @description Validation Error */

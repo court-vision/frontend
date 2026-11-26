@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: ["/", "/scout", "/developer", "/sign-in", "/sign-up", "/privacy"],
-        disallow: ["/week", "/draft", "/account"],
+        disallow: ["/home", "/week", "/draft", "/account"],
       },
     ],
     sitemap: "https://www.courtvision.dev/sitemap.xml",

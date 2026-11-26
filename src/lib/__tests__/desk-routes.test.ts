@@ -10,6 +10,7 @@ function opensSignedOut(url: string): boolean {
 describe("isDeskDemo", () => {
   test("a desk's own demo opens signed out", () => {
     for (const url of [
+      "/home?demo",
       "/week?demo",
       "/week?view=players&demo",
       "/draft?demo",
@@ -62,6 +63,8 @@ describe("isDeskDemo", () => {
 describe("isDeskPath", () => {
   test("the desks and everything under them", () => {
     for (const path of [
+      "/home",
+      "/home/",
       "/week",
       "/week/",
       "/draft",
@@ -81,7 +84,7 @@ describe("isDeskPath", () => {
   });
 
   test("never a route that only starts with a desk's name", () => {
-    for (const path of ["/", "/weekly", "/weekend", "/drafts", "/drafting", "/rankings", "/scouting", null, undefined, "/developers", "/devices", "/accounts", "/sign-in"]) {
+    for (const path of ["/", "/homepage", "/weekly", "/weekend", "/drafts", "/drafting", "/rankings", "/scouting", null, undefined, "/developers", "/devices", "/accounts", "/sign-in"]) {
       expect(isDeskPath(path)).toBe(false);
     }
   });

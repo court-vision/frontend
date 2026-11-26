@@ -1,5 +1,6 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { CommandPalette } from "@/components/desk/CommandPalette";
+import { ZoomArrival } from "@/components/desk/ZoomArrival";
 import { ACCOUNT_DESK, WEEK_DESK } from "@/components/desk/routes";
 
 /**
@@ -18,6 +19,8 @@ export default function DeskLayout({ children }: { children: React.ReactNode }) 
       {children}
       {/* ⌘K on every desk and on the way in. It reads Clerk (your teams, sign out), so it sits here rather than in the frame. */}
       <CommandPalette />
+      {/* A Home row opening into a desk: the desk grows out of the row. */}
+      <ZoomArrival />
     </ClerkProvider>
   );
 }
