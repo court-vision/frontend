@@ -58,6 +58,7 @@ function player(
     avg_points: 30,
     value_kind: "fpts",
     value_source: null,
+    live_season: null,
     ...overrides,
   };
 }

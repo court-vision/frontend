@@ -13,9 +13,11 @@ import {
   matchesFilters,
   oneDayTarget,
   openSpots,
+  rankingDrops,
   rosterRoom,
   stripFor,
 } from "../market";
+import { dropPrice, faValue, nightly } from "../live-prices";
 
 const source = demoSource();
 const board = demoBoard();
@@ -84,11 +86,39 @@ describe("gains", () => {
 });
 
 describe("roster", () => {
-  test("drop candidates are the lowest projected, never IR", () => {
+  test("drop candidates are the cheapest to lose the rest of the season, never IR", () => {
     const ids = dropCandidates(source, board, 3);
+    const costs = ids.map((id) => dropPrice(source.mine.find((p) => p.id === id)!));
+    expect(costs).toEqual([...costs].sort((a, b) => a - b));
+    expect(Math.max(...costs)).toBeLessThanOrEqual(Math.min(...source.mine.filter((p) => !ids.includes(p.id)).map(dropPrice)));
+  });
+
+  test("a slow fortnight does not make a player the drop: his rest of the season does", () => {
+    const byName = (id: number) => source.mine.find((p) => p.id === id)!.name;
+    const murray = source.mine.find((p) => p.name === "Keegan Murray")!;
+    // His recent average is the roster's lowest; over the rest of the season Kessler is worth less.
+    expect(murray.avg).toBe(Math.min(...source.mine.map((p) => p.avg)));
+    expect(dropCandidates(source, board, 2).map(byName)).toEqual(["Walker Kessler", "Keegan Murray"]);
+  });
+
+  test("with no rest-of-season price the lowest projected go first, as before", () => {
+    const unpriced = { ...source, mine: source.mine.map((p) => ({ ...p, season: null })) };
+    const ids = dropCandidates(unpriced, board, 3);
     const avgs = ids.map((id) => source.mine.find((p) => p.id === id)!.avg);
     expect(avgs).toEqual([...avgs].sort((a, b) => a - b));
-    expect(Math.max(...avgs)).toBeLessThanOrEqual(Math.min(...source.mine.filter((p) => !ids.includes(p.id)).map((p) => p.avg)));
+    expect(source.mine.find((p) => p.id === ids[0])!.name).toBe("Keegan Murray");
+    // A roster priced in part: the unpriced player is weighed at his average beside the others' prices.
+    const mixed = { ...source, mine: source.mine.map((p) => (p.name === "Walker Kessler" ? { ...p, season: null } : p)) };
+    expect(dropPrice(mixed.mine.find((p) => p.name === "Walker Kessler")!)).toBe(28);
+  });
+
+  test("a row assumes one drop when the roster is priced, and tries them all when it is not", () => {
+    expect(rankingDrops([7, 8, 9], 0, false)).toEqual([7, 8, 9]);
+    expect(rankingDrops([7, 8, 9], 1, false)).toEqual([7, 8, 9, NO_DROP]);
+    // Priced: the cheapest to lose, whatever the week says; with room, nobody is given up.
+    expect(rankingDrops([7, 8, 9], 0, true)).toEqual([7]);
+    expect(rankingDrops([7, 8, 9], 2, true)).toEqual([NO_DROP]);
+    expect(rankingDrops([], 0, true)).toEqual([]);
   });
 
   test("a protected player is never offered as a drop", () => {
@@ -110,6 +140,67 @@ describe("roster", () => {
     expect(open[0]).toBe(0);
     expect(open[DEMO_TODAY]).toBeGreaterThan(0);
     expect(open.every((n) => n >= 0 && n <= 10)).toBe(true);
+  });
+});
+
+describe("a free agent's price", () => {
+  const camara = fa("Toumani Camara");
+
+  test("each game is worth that night's own price, and his per-game figure is their average", () => {
+    const priced = { ...camara, live_values: camara.game_days.map((_, i) => (i === 0 ? 8 : 30)) };
+    const p = sourceFromStreamer(priced, source.days);
+    expect(camara.game_days.map((d) => p.dayAvg?.[d])).toEqual(priced.live_values);
+    expect(p.dayAvg?.[0]).toBeNull(); // Monday is played: no price, no game
+    expect(p.avg).toBeCloseTo((8 + 30 * (camara.game_days.length - 1)) / camara.game_days.length, 6);
+
+    const hart = source.mine.find((x) => x.name === "Josh Hart")!.id;
+    const grid = buildWeekGrid({ source, board, staged: {}, incoming: { player: p, replaces: hart }, viewDay: DEMO_TODAY, mode: "best" });
+    const row = grid.rows.find((r) => r.kind === "incoming")!;
+    expect(camara.game_days.map((d) => row.cells[d].value)).toEqual(priced.live_values);
+  });
+
+  test("a doubtful first night lowers that day's gain and leaves the later ones alone", () => {
+    const hart = source.mine.find((x) => x.name === "Josh Hart")!.id;
+    const gain = (values: number[]) =>
+      gainOf(
+        base,
+        buildWeekGrid({
+          source, board, staged: {}, viewDay: DEMO_TODAY, mode: "best",
+          incoming: { player: sourceFromStreamer({ ...camara, live_values: values }, source.days), replaces: hart },
+        }),
+        hart
+      );
+    const [first, ...rest] = camara.game_days;
+    const sure = gain(camara.game_days.map(() => 30));
+    const doubtful = gain(camara.game_days.map((_, i) => (i === 0 ? 8 : 30)));
+    expect(doubtful.byDay[first]).toBeLessThan(sure.byDay[first]);
+    expect(rest.map((d) => doubtful.byDay[d])).toEqual(rest.map((d) => sure.byDay[d]));
+    expect(doubtful.week).toBeLessThan(sure.week);
+  });
+
+  test("unpriced, or priced for other days than he plays, he reads as his recent average", () => {
+    const none = { ...camara, live_values: null };
+    expect(nightly(none)).toBeNull();
+    expect(faValue(none)).toEqual({ value: camara.avg_points_last_n!, live: false });
+    expect(sourceFromStreamer(none, source.days).dayAvg).toBeUndefined();
+    expect(sourceFromStreamer(none, source.days).avg).toBe(camara.avg_points_last_n!);
+    expect(nightly({ ...camara, live_values: [30] })).toBeNull();
+    expect(nightly({ ...camara, live_values: [] })).toBeNull();
+  });
+
+  test("the figure a row shows is the asked-for day's price, else his games left averaged", () => {
+    const priced = { ...camara, game_days: [2, 4], live_values: [12, 30] };
+    expect(faValue(priced, 2)).toEqual({ value: 12, live: true });
+    expect(faValue(priced, 3)).toEqual({ value: 21, live: true }); // no game that day: the week's figure
+    expect(faValue(priced)).toEqual({ value: 21, live: true });
+  });
+
+  test("the demo's day-to-day free agent is priced lower on his first night", () => {
+    const eason = fa("Tari Eason");
+    expect(eason.injury_status).toBe("DAY_TO_DAY");
+    const [first, ...later] = eason.live_values!;
+    expect(first).toBeLessThan(later[0]);
+    expect(eason.live_week).toBeCloseTo(eason.live_values!.reduce((a, v) => a + v, 0), 2);
   });
 });
 

@@ -490,6 +490,7 @@ export function WeekTerminal({
     [keptSource, board, protectedIds]
   );
   const avgOf = useCallback((id: number) => roster.find((p) => p.id === id)?.avg ?? null, [roster]);
+  const seasonOf = useCallback((id: number) => roster.find((p) => p.id === id)?.season ?? null, [roster]);
   // Open spots once every staged drop is made (one an add rides on included, whenever it lands).
   const marketRoom = useMemo(() => {
     const b = rawToday ?? board;
@@ -1946,6 +1947,7 @@ export function WeekTerminal({
             room={marketRoom}
             nameOf={nameOf}
             avgOf={avgOf}
+            seasonOf={seasonOf}
             pinned={pinned}
             pinnedBlocked={swap?.blocked ?? null}
             scheduled={scheduledFa}

@@ -106,11 +106,27 @@ export interface SourcePlayer {
   nbaId: number | null;
   /** Projected points per game. */
   avg: number;
+  /**
+   * His price on each day index where the live projection has one (lib/live-prices.ts): what
+   * he is expected to score that night, his role and his chance of playing counted. A free
+   * agent's; a day without one reads `avg`.
+   */
+  dayAvg?: Array<number | null>;
+  /**
+   * His rest-of-season price: expected points a game on his team's schedule, the games he is
+   * expected to miss counted against him. What giving him up costs; null when he is not priced.
+   */
+  season?: number | null;
   injury: string | null;
   /** Active slot ids he may fill. Used when there is no ESPN board. */
   eligible: number[];
   /** One entry per day index; null = no game. */
   games: Array<DayGame | null>;
+}
+
+/** A player's projected points on a day: that day's own price where he has one, else his per-game figure. */
+export function avgOn(p: Pick<SourcePlayer, "avg" | "dayAvg">, day: number): number {
+  return p.dayAvg?.[day] ?? p.avg;
 }
 
 export interface SourceOpponent {
@@ -633,7 +649,7 @@ export function buildWeekGrid({
       if (p.id === out || irIds.has(p.id)) continue;
       const g = p.games[d.index];
       if (!g || g.out || g.status === "final") continue;
-      cands.push({ id: p.id, avg: p.avg, eligible: eligibleOf(p) });
+      cands.push({ id: p.id, avg: avgOn(p, d.index), eligible: eligibleOf(p) });
     }
     const plan = planDay(cands, slots);
     // Players who don't play keep their own spot (as set on ESPN for the day) while nobody who
@@ -680,7 +696,7 @@ export function buildWeekGrid({
         : { ...base, state: "dnp", value: null, counts: false, tag };
     }
     if (leftOn(p.id, d.index)) {
-      return { ...base, state: g.status === "scheduled" ? "upcoming" : g.status, value: g.fpts ?? p.avg, counts: false, tag: "DROP" };
+      return { ...base, state: g.status === "scheduled" ? "upcoming" : g.status, value: g.fpts ?? avgOn(p, d.index), counts: false, tag: "DROP" };
     }
     const slot = dayAssign[d.index]?.get(p.id);
     const active = slot != null && isActiveSlot(slot);
@@ -688,15 +704,15 @@ export function buildWeekGrid({
     if (g.status === "final") return { ...base, state: "final", value: g.fpts, counts: active, tag };
     if (g.status === "live") return { ...base, state: "live", value: g.fpts, note: g.clock, counts: active, tag };
     if (g.out) return { ...base, state: "out", value: null, counts: false, tag: null };
-    return { ...base, state: "upcoming", value: p.avg, counts: active, tag };
+    return { ...base, state: "upcoming", value: avgOn(p, d.index), counts: active, tag };
   };
 
   /** What a counting cell adds to the expected finish. */
   const expected = (c: GridCell, p: SourcePlayer, d: WeekDay): number => {
     if (!c.counts) return 0;
     if (c.state === "final") return c.value ?? 0;
-    if (c.state === "live") return (c.value ?? 0) + p.avg * (p.games[d.index]?.remaining ?? 0);
-    if (c.state === "upcoming") return p.avg;
+    if (c.state === "live") return (c.value ?? 0) + avgOn(p, d.index) * (p.games[d.index]?.remaining ?? 0);
+    if (c.state === "upcoming") return avgOn(p, d.index);
     return 0;
   };
 
@@ -1047,7 +1063,7 @@ function seatIncomingBest({ assign, incoming, roster, day, eligibleOf, slots, ir
   const fa = incoming.player;
   const value = (p: SourcePlayer) => {
     const g = p.games[day];
-    return g && !g.out && g.status === "scheduled" ? p.avg : 0;
+    return g && !g.out && g.status === "scheduled" ? avgOn(p, day) : 0;
   };
 
   // Players who can move, and what the locked ones already hold.

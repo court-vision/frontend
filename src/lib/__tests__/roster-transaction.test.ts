@@ -40,6 +40,9 @@ function streamer(overrides: Partial<StreamerPlayer> = {}): StreamerPlayer {
     default_position_id: null,
     acquisition_status: "free_agent",
     waivers_until: null,
+    live_day: null,
+    live_week: null,
+    live_values: null,
     ...overrides,
   };
 }
@@ -58,6 +61,7 @@ function search(overrides: Partial<StreamerData> = {}): StreamerData {
     teams_with_b2b: [],
     streamers: [],
     value_kind: "fpts",
+    live_as_of: null,
     ...overrides,
   };
 }
