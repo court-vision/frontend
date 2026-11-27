@@ -17608,6 +17608,17 @@
       },
       "LinePlayerValue": {
         "properties": {
+          "below_line": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Below Line"
+          },
           "by_matchup": {
             "items": {
               "type": "number"
@@ -17650,6 +17661,10 @@
             "title": "On Ir",
             "type": "boolean"
           },
+          "per_game": {
+            "title": "Per Game",
+            "type": "number"
+          },
           "player_id": {
             "anyOf": [
               {
@@ -17685,16 +17700,13 @@
             ],
             "title": "Slot"
           },
-          "under_line": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Under Line"
+          "streamed_in": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Streamed In",
+            "type": "array"
           },
           "worth": {
             "title": "Worth",
@@ -17711,11 +17723,31 @@
           "injury_status",
           "protected",
           "on_ir",
+          "per_game",
+          "below_line",
+          "streamed_in",
           "worth",
-          "by_matchup",
-          "under_line"
+          "by_matchup"
         ],
         "title": "LinePlayerValue",
+        "type": "object"
+      },
+      "LineSpot": {
+        "properties": {
+          "espn_id": {
+            "title": "Espn Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "espn_id"
+        ],
+        "title": "LineSpot",
         "type": "object"
       },
       "LineupCheckResp": {
@@ -18455,6 +18487,17 @@
             "title": "Lineup Slot Id",
             "type": "integer"
           },
+          "live_season": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Season"
+          },
           "locked": {
             "default": false,
             "title": "Locked",
@@ -18541,7 +18584,8 @@
           "playable",
           "avg_points",
           "value_kind",
-          "value_source"
+          "value_source",
+          "live_season"
         ],
         "title": "LineupPlayer",
         "type": "object"
@@ -21571,6 +21615,11 @@
             ],
             "title": "End"
           },
+          "games": {
+            "default": 0.0,
+            "title": "Games",
+            "type": "number"
+          },
           "lanes": {
             "items": {
               "$ref": "#/components/schemas/LineLane"
@@ -21625,6 +21674,14 @@
             ],
             "title": "Start"
           },
+          "streamed": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineSpot"
+            },
+            "title": "Streamed",
+            "type": "array"
+          },
           "worth_running": {
             "title": "Worth Running",
             "type": "integer"
@@ -21642,6 +21699,8 @@
           "worth_running",
           "line",
           "line_low",
+          "games",
+          "streamed",
           "proven"
         ],
         "title": "MatchupStreamingLine",
@@ -31879,6 +31938,18 @@
             "title": "Game Span",
             "type": "integer"
           },
+          "live_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live As Of"
+          },
           "matchup_number": {
             "title": "Matchup Number",
             "type": "integer"
@@ -31943,7 +32014,8 @@
           "target_day",
           "teams_with_b2b",
           "streamers",
-          "value_kind"
+          "value_kind",
+          "live_as_of"
         ],
         "title": "StreamerData",
         "type": "object"
@@ -32096,6 +32168,42 @@
             ],
             "title": "Injury Status"
           },
+          "live_day": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Day"
+          },
+          "live_values": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Values"
+          },
+          "live_week": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Week"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -32156,6 +32264,9 @@
           "has_b2b",
           "b2b_game_count",
           "game_days",
+          "live_day",
+          "live_week",
+          "live_values",
           "streamer_score",
           "injured",
           "injury_status",

@@ -70,7 +70,7 @@ function player(pid: number, slot: number, eligible: number[], extra: Partial<Li
     eligible_slot_ids: eligible, eligible_slots: eligible.map(slotName),
     injured: false, injury_status: null, default_position_id: null, lineup_locked: false,
     has_game_today: true, opponent: "vs LAL", game_time_et: "19:30", game_started: false,
-    locked: false, playable: true, avg_points: 30, value_kind: "fpts", value_source: null,
+    locked: false, playable: true, avg_points: 30, value_kind: "fpts", value_source: null, live_season: null,
     ...extra,
   };
 }

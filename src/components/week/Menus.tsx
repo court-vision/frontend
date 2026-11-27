@@ -5,6 +5,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { Command } from "cmdk";
 import { BarChart3, Radio, Repeat2, Shield, ShieldOff, Undo2, UserMinus } from "lucide-react";
 import { slotName } from "@/lib/lineup-editor";
+import { faValue } from "@/lib/live-prices";
 import type { SourcePlayer, WeekDay } from "@/lib/week-grid";
 import type { StreamerPlayer } from "@/types/streamer";
 import { Headshot } from "@/components/desk/Headshot";
@@ -333,7 +334,7 @@ export function ReplaceMenu({
                   ))}
                 </span>
                 <span className={dk.mono} style={{ width: 40, textAlign: "right", color: "var(--text-2)" }}>
-                  {pts(fa.avg_points_last_n ?? fa.avg_points_season)}
+                  {pts(faValue(fa).value)}
                 </span>
                 <span
                   className={`${dk.chip} ${gain > 0.05 ? dk.up : gain < -0.05 ? dk.down : dk.flat}`}
@@ -346,7 +347,8 @@ export function ReplaceMenu({
           })}
         </Command.List>
         <div className={dk.menuFoot}>
-          Sorted by projected change to your week · bars are his games left · column is his recent average
+          Sorted by projected change to your week · bars are his games left · column is{" "}
+          {options.some(({ fa }) => faValue(fa).live) ? "his expected points a game" : "his recent average"}
         </div>
       </Command>
     </Shell>

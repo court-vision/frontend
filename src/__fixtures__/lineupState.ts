@@ -61,6 +61,7 @@ function player(
     avg_points: avg,
     value_kind: "fpts",
     value_source: "rolling",
+    live_season: null,
   };
 }
 

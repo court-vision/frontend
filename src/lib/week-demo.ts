@@ -117,10 +117,12 @@ const DEMO_RULING: Ruling = {
 interface MineSpec {
   id: number; nbaId: number; name: string; team: string; slot: number; eligible: number[];
   avg: number; injury?: string; line?: Line;
+  /** His rest-of-season price (the live projection's), where it differs from his recent average. */
+  ros?: number;
 }
 
 const MINE: MineSpec[] = [
-  { id: 4431678, nbaId: 1630178, name: "Tyrese Maxey", team: "PHI", slot: PG, eligible: [PG, G, UT], avg: 40.0, injury: "OUT", line: { mon: 38.5 } },
+  { id: 4431678, nbaId: 1630178, name: "Tyrese Maxey", team: "PHI", slot: PG, eligible: [PG, G, UT], avg: 40.0, ros: 37.5, injury: "OUT", line: { mon: 38.5 } },
   { id: 4593803, nbaId: 1631114, name: "Jalen Williams", team: "OKC", slot: SG, eligible: [SG, SF, G, F, UT], avg: 42.0, line: { mon: 41.0, tue: { fpts: 21.5, status: "live", clock: "Q2 7:48", remaining: 0.66 } } },
   { id: 4433134, nbaId: 1630567, name: "Scottie Barnes", team: "TOR", slot: SF, eligible: [SF, PF, F, UT], avg: 41.0, line: { tue: { fpts: 44.0, status: "final" } } },
   { id: 4277961, nbaId: 1628991, name: "Jaren Jackson Jr.", team: "MEM", slot: PF, eligible: [PF, C, F, UT], avg: 38.5, line: { mon: 40.5 } },
@@ -131,8 +133,8 @@ const MINE: MineSpec[] = [
   { id: 4397002, nbaId: 1630530, name: "Trey Murphy III", team: "NOP", slot: UT, eligible: [SF, PF, F, UT], avg: 34.0, line: { mon: 37.5 } },
   { id: 4278073, nbaId: 1628404, name: "Josh Hart", team: "NYK", slot: UT, eligible: [PG, SG, SF, G, F, UT], avg: 32.5, line: { mon: 33.5 } },
   { id: 3078576, nbaId: 1628401, name: "Derrick White", team: "BOS", slot: BE, eligible: [PG, SG, G, UT], avg: 33.5 },
-  { id: 4433136, nbaId: 1631117, name: "Walker Kessler", team: "UTA", slot: BE, eligible: [C, UT], avg: 28.0 },
-  { id: 4594327, nbaId: 1631099, name: "Keegan Murray", team: "SAC", slot: BE, eligible: [SF, PF, F, UT], avg: 26.0 },
+  { id: 4433136, nbaId: 1631117, name: "Walker Kessler", team: "UTA", slot: BE, eligible: [C, UT], avg: 28.0, ros: 27.5 },
+  { id: 4594327, nbaId: 1631099, name: "Keegan Murray", team: "SAC", slot: BE, eligible: [SF, PF, F, UT], avg: 26.0, ros: 30.5 },
 ];
 
 interface OppSpec {
@@ -182,6 +184,7 @@ function lineupPlayer(s: MineSpec, slot: number = s.slot, day: number = TODAY): 
     avg_points: s.avg,
     value_kind: "fpts",
     value_source: "rolling",
+    live_season: s.ros ?? s.avg,
   };
 }
 
@@ -404,7 +407,7 @@ export function demoApply(state: LineupState, staged: Staged): LineupState {
 
 function sourcePlayer(s: MineSpec): SourcePlayer {
   return {
-    id: s.id, name: s.name, team: s.team, nbaId: s.nbaId, avg: s.avg,
+    id: s.id, name: s.name, team: s.team, nbaId: s.nbaId, avg: s.avg, season: s.ros ?? s.avg,
     injury: s.injury ?? null, eligible: s.eligible,
     games: games(s.team, s.line ?? {}, s.injury === "OUT"),
   };
@@ -519,9 +522,18 @@ function backToBacks(days: number[]): number {
   return days.filter((d, i) => i > 0 && days[i - 1] === d - 1).length;
 }
 
+/**
+ * The demo's nightly prices, as the live projection would send them: his season line each
+ * game, and a player listed day to day is less likely to play the first one.
+ */
+function demoLive(f: FaSpec, days: number[]): number[] {
+  return days.map((_, i) => Math.round(f.season * (f.injury && i === 0 ? 0.55 : 1) * 10) / 10);
+}
+
 export const DEMO_STREAMERS: StreamerPlayer[] = FREE_AGENTS.map((f) => {
   const days = remainingDays(f.team);
   const b2b = backToBacks(days);
+  const live = demoLive(f, days);
   return {
     player_id: f.id,
     nba_player_id: f.nbaId,
@@ -541,12 +553,17 @@ export const DEMO_STREAMERS: StreamerPlayer[] = FREE_AGENTS.map((f) => {
     acquisition_status: f.waiversUntil ? "waivers" : "free_agent",
     waivers_until: f.waiversUntil ?? null,
     default_position_id: null,
+    live_day: days[0] === TODAY ? live[0] : null,
+    live_week: Math.round(live.reduce((a, v) => a + v, 0) * 100) / 100,
+    live_values: live,
   };
 });
 
 /** The single-day search: free agents with a game on `day`, best for the day first. */
 export function demoDailyStreamers(day: number): StreamerPlayer[] {
-  return DEMO_STREAMERS.filter((f) => f.game_days.includes(day)).sort((a, b) => (b.avg_points_last_n ?? 0) - (a.avg_points_last_n ?? 0));
+  return DEMO_STREAMERS.filter((f) => f.game_days.includes(day))
+    .map((f) => ({ ...f, live_day: f.live_values?.[f.game_days.indexOf(day)] ?? null }))
+    .sort((a, b) => (b.avg_points_last_n ?? 0) - (a.avg_points_last_n ?? 0));
 }
 
 const byName = (name: string) => FREE_AGENTS.find((f) => f.name === name)!;

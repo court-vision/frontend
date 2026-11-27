@@ -13,6 +13,7 @@ import {
   joinBreakouts,
   matchesFilters,
   positionLabel,
+  rankingDrops,
   stripFor,
   type BreakoutRow,
   type DropOption,
@@ -20,6 +21,7 @@ import {
   type PositionFilter,
   type StripState,
 } from "@/lib/market";
+import { faValue } from "@/lib/live-prices";
 import type { LineupMode, WeekDay } from "@/lib/week-grid";
 import type { BreakoutCandidateResp } from "@/types/breakout";
 import type { StreamerPlayer } from "@/types/streamer";
@@ -75,6 +77,8 @@ interface MarketProps {
   nameOf: (id: number) => string;
   /** A roster player's projected points per game. */
   avgOf: (id: number) => number | null;
+  /** A roster player's rest-of-season price (what giving him up costs), when the live projection has one. */
+  seasonOf: (id: number) => number | null;
   pinned: MarketPick | null;
   /** Why the pinned add can't be sent, if it can't. */
   pinnedBlocked: string | null;
@@ -97,11 +101,14 @@ interface Ranked {
 }
 
 export function MarketPane(props: MarketProps) {
-  const { days, todayIndex, open, mode, onMode, day, onDay, pool, daily, evaluate, drops, room, pinned, onHover, onPin, onClose } = props;
+  const { days, todayIndex, open, mode, onMode, day, onDay, pool, daily, evaluate, drops, room, seasonOf, pinned, onHover, onPin, onClose } = props;
   const [filters, setFilters] = useState<MarketFilters>(DEFAULT_FILTERS);
   const set = (patch: Partial<MarketFilters>) => setFilters((f) => ({ ...f, ...patch }));
   const target = mode === "day" ? day : null;
-  const candidates = useMemo(() => (room > 0 ? [...drops, NO_DROP] : drops), [drops, room]);
+  // A drop cannot be taken back: with the roster priced on the rest of the season, a row assumes
+  // the cheapest player to lose there, not whoever this week's gain would rather be rid of.
+  const priced = useMemo(() => drops.some((id) => seasonOf(id) != null), [drops, seasonOf]);
+  const candidates = useMemo(() => rankingDrops(drops, room, priced), [drops, room, priced]);
 
   const ranked = useMemo<Ranked[]>(() => {
     if (mode === "breakouts") return [];
@@ -329,6 +336,9 @@ function FaItem(props: ItemProps) {
   const statsOpen = statsId === fa.player_id;
   const gain = best ? (target != null ? best.byDay[target] ?? 0 : best.week) : null;
   const injured = isInjured(fa);
+  // The price his gain is built on: the day's (or the week's) expected points when the live
+  // projection has them, his recent average when it does not.
+  const worth = faValue(fa, target);
   return (
     <div className={s.marketItem} data-selected={selected} role="listitem">
       <button
@@ -357,7 +367,10 @@ function FaItem(props: ItemProps) {
         <span className={s.marketWho}>
           <span className={s.marketName}>{fa.name}</span>
           <span className={s.marketMeta}>
-            {fa.team} · {positionLabel(fa)} · {pts(fa.avg_points_last_n ?? fa.avg_points_season)}/g
+            <span title={worth.live ? (target != null ? "Expected points that day: his role and his chance of playing counted" : "Expected points a game over his games left this week: his role and his chance of playing counted") : "Points a game: his recent average"}>
+              {fa.team} · {positionLabel(fa)} · {pts(worth.value)}
+              {worth.live ? " exp" : "/g"}
+            </span>
             {fa.has_b2b ? <span className={s.marketTag}>B2B</span> : null}
             {fa.acquisition_status === "waivers" ? (
               <span className={`${s.marketTag} ${s.marketTagWarn}`} title={fa.waivers_until ? `Clears waivers ${fa.waivers_until}` : "On waivers"}>
@@ -393,34 +406,42 @@ function FaItem(props: ItemProps) {
 }
 
 /** The selected free agent: every drop that could make room, ranked, and the add. Evaluated only when open. */
-function DropOptions({ fa, target, days, evaluate, allDrops, room, nameOf, avgOf, pinned, pinnedBlocked, onHover, onPin }: ItemProps) {
+function DropOptions({ fa, target, days, evaluate, allDrops, room, nameOf, avgOf, seasonOf, pinned, pinnedBlocked, onHover, onPin }: ItemProps) {
   const picked = pinned && pinned.faId === fa.player_id ? pinned.replaces : null;
   const from = pinned && pinned.faId === fa.player_id ? pinned.from ?? null : null;
+  const priced = useMemo(() => allDrops.some((id) => seasonOf(id) != null), [allDrops, seasonOf]);
   const options = useMemo(() => {
     // The weakest few, plus whoever was picked from the roster.
     const base = room > 0 ? [...allDrops, NO_DROP] : allDrops;
     const ids = picked != null && !base.includes(picked) ? [...base, picked] : base;
-    return evaluate(fa, ids, from).sort((a, b) => (target != null ? (b.byDay[target] ?? 0) - (a.byDay[target] ?? 0) : 0) || b.week - a.week);
-  }, [evaluate, fa, allDrops, room, target, picked, from]);
+    const byGain = (a: DropOption, b: DropOption) => (target != null ? (b.byDay[target] ?? 0) - (a.byDay[target] ?? 0) : 0) || b.week - a.week;
+    // Priced on the rest of the season, the list reads cheapest to lose first (an open spot costs nothing).
+    const cost = (id: number) => (id === NO_DROP ? -Infinity : seasonOf(id) ?? avgOf(id) ?? Infinity);
+    return evaluate(fa, ids, from).sort(priced ? (a, b) => cost(a.dropId) - cost(b.dropId) || byGain(a, b) : byGain);
+  }, [evaluate, fa, allDrops, room, target, picked, from, priced, seasonOf, avgOf]);
   const pick = pinned && pinned.faId === fa.player_id ? pinned : null;
   const day = from != null ? days[from] : null;
   return (
     <div className={s.marketDetail}>
       <span className={dk.label}>
-        {day ? `Make room from ${day.dow}` : "Make room"} · your weakest players
+        {day ? `Make room from ${day.dow}` : "Make room"} · {priced ? "least to lose the rest of the season" : "your weakest players"}
       </span>
       <div className={s.marketOptions}>
         {options.filter((o, i) => i < 6 || o.dropId === picked).map((o) => {
           const on = pick?.replaces === o.dropId;
           const value = target != null ? o.byDay[target] ?? 0 : o.week;
+          const season = o.dropId === NO_DROP ? null : seasonOf(o.dropId);
           return (
             <button key={o.dropId} type="button" className={s.marketOption} aria-pressed={on} onClick={() => {
                 onHover(null);
                 onPin({ faId: fa.player_id, replaces: o.dropId });
               }}>
               <span className={s.marketOptionName}>{o.dropId === NO_DROP ? "Open roster spot" : nameOf(o.dropId)}</span>
-              <span className={dk.sub}>
-                {o.dropId === NO_DROP ? "" : `${pts(avgOf(o.dropId))}/g`}
+              <span
+                className={dk.sub}
+                title={season != null ? "Expected points a game over the rest of the season, the games he is expected to miss counted" : undefined}
+              >
+                {o.dropId === NO_DROP ? "" : season != null ? `${pts(season)} ROS` : `${pts(avgOf(o.dropId))}/g`}
                 {target != null ? ` · ${signed(o.week)} wk` : ""}
               </span>
               <span className={s.marketGain} data-sign={value > 0.05 ? "up" : value < -0.05 ? "down" : "flat"}>

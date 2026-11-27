@@ -75,6 +75,7 @@ function board(players: [id: number, slot: number][]): LineupState {
     avg_points: 40,
     value_kind: "fpts",
     value_source: null,
+    live_season: null,
   });
   return {
     provider: "espn",

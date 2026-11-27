@@ -86,6 +86,7 @@ function lineupPlayer(s: Spec, day: number, now: string | null): LineupPlayer {
     avg_points: s.avg,
     value_kind: "fpts",
     value_source: "rolling",
+    live_season: null,
   };
 }
 

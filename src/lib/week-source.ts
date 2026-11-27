@@ -47,6 +47,7 @@ import {
 } from "./week-grid";
 import { isEmptyResult } from "./api-error";
 import { BENCH_SLOT_ID, IR_SLOT_ID, isActiveSlot } from "./lineup-editor";
+import { faValue, nightly } from "./live-prices";
 
 const INACTIVE_SLOT_NAMES = new Set(["BE", "BN", "IR", "IL", "IL+"]);
 
@@ -340,6 +341,7 @@ export function sourceFromApi({ week, live, matchup, board, boards }: SourceInpu
       team: b?.team ?? m?.team ?? w?.team ?? "",
       nbaId: b?.nba_player_id ?? m?.nba_player_id ?? w?.nba_player_id ?? null,
       avg: b?.avg_points ?? m?.avg_points ?? 0,
+      season: b?.live_season ?? null,
       injury,
       eligible: b ? b.eligible_slot_ids.filter(isActiveSlot) : slotsFromPositions((m?.position ?? w?.position ?? "").split(/[,/]/)),
       games: gamesFor(id, "your_team", liveRow, injury),
@@ -358,6 +360,7 @@ export function sourceFromApi({ week, live, matchup, board, boards }: SourceInpu
     team: p.team,
     nbaId: p.nba_player_id ?? null,
     avg: p.avg_points,
+    season: p.live_season ?? null,
     injury: p.injury_status ?? null,
     eligible: p.eligible_slot_ids.filter(isActiveSlot),
     games: rosterBoards.map((b, i) =>
@@ -439,6 +442,10 @@ export function sourceFromApi({ week, live, matchup, board, boards }: SourceInpu
  * the period; opponents and tip times come from his team's schedule when it
  * has loaded (keyed by date). `firstDay` is the first day an add made now
  * counts: ESPN puts a pickup made after the day's first tip on the next day.
+ *
+ * Where the live projection prices him, each game is worth that night's own
+ * price (`dayAvg`) and his per-game figure is their average; otherwise every
+ * game is worth his recent average.
  */
 export function sourceFromStreamer(
   fa: StreamerPlayer,
@@ -448,12 +455,14 @@ export function sourceFromStreamer(
 ): SourcePlayer {
   const byDate = new Map((schedule ?? []).map((g) => [g.date.slice(0, 10), g]));
   const playing = new Set(fa.game_days);
+  const prices = nightly(fa);
   return {
     id: fa.player_id,
     name: fa.name,
     team: fa.team,
     nbaId: fa.nba_player_id ?? null,
-    avg: fa.avg_points_last_n ?? fa.avg_points_season,
+    avg: faValue(fa).value,
+    ...(prices ? { dayAvg: days.map((d) => prices.get(d.index) ?? null) } : {}),
     injury: fa.injury_status ?? null,
     eligible: slotsFromPositions(fa.valid_positions),
     games: days.map((d) => {

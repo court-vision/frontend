@@ -122,6 +122,15 @@ describe("sourceFromApi without /matchups/current", () => {
     expect(src.mine.find((m) => m.id === F.MINE[0].id)!.eligible).toEqual([4, 11]);
   });
 
+  test("a roster player carries the board's rest-of-season price, and none without a board or a price", () => {
+    const priced = { ...board, players: board.players.map((p) => (p.player_id === F.MINE[0].id ? { ...p, live_season: 51.2 } : p)) };
+    const src = sourceFromApi({ week, live: lv, matchup: undefined, board: priced });
+    expect(src.mine.find((m) => m.id === F.MINE[0].id)!.season).toBe(51.2);
+    expect(src.mine.find((m) => m.id === F.MINE[1].id)!.season).toBeNull();
+    const bare = sourceFromApi({ week, live: lv, matchup: undefined, board: null });
+    expect(bare.mine.every((m) => m.season == null)).toBe(true);
+  });
+
   test("the source is the one /matchups/current used to give, overlay included", () => {
     const both = sourceFromApi({ week, live: lv, matchup: cur, board });
     const liveOnly = sourceFromApi({ week, live: lv, matchup: undefined, board });

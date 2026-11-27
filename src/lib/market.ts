@@ -7,11 +7,16 @@
  * dropped. The grid already computes exactly that for a preview, so the gain
  * is the grid with the move minus the grid without — these helpers only pick
  * the candidates, read the difference and describe a player's week.
+ *
+ * The two sides of a move are priced on different windows (lib/live-prices.ts):
+ * the free agent on his games this week, each at that night's price; the player
+ * given up on the rest of the season, because a drop cannot be taken back.
  */
 import type { BreakoutCandidateResp } from "@/types/breakout";
 import type { LineupState } from "@/types/lineup-editor";
 import type { StreamerPlayer } from "@/types/streamer";
 import { IR_SLOT_ID } from "./lineup-editor";
+import { dropPrice } from "./live-prices";
 import type { WeekDay, WeekGrid, WeekSource } from "./week-grid";
 
 /** `replaces` for an add that drops nobody (a roster with room). */
@@ -48,9 +53,12 @@ export function better(a: DropOption | null, b: DropOption, day: number | null):
 }
 
 /**
- * Who a streamer most plausibly replaces: the lowest projected players, never
- * one sitting on IR (he holds no roster spot worth trading) or one the user
- * protected (the roster lock: never suggested as a drop).
+ * Who a streamer most plausibly replaces: the players it costs least to give
+ * up, cheapest first, never one sitting on IR (he holds no roster spot worth
+ * trading) or one the user protected (the roster lock: never suggested as a
+ * drop). The cost is his rest-of-season price where he has one, so a slow
+ * fortnight or a week on the injury report does not put a good player on the
+ * list; without one it is his per-game figure, as before.
  */
 export function dropCandidates(
   source: WeekSource,
@@ -61,9 +69,21 @@ export function dropCandidates(
   const ir = new Set((board?.players ?? []).filter((p) => p.lineup_slot_id === IR_SLOT_ID).map((p) => p.player_id));
   return source.mine
     .filter((p) => !ir.has(p.id) && !protectedIds.has(p.id))
-    .sort((a, b) => a.avg - b.avg)
+    .sort((a, b) => dropPrice(a) - dropPrice(b))
     .slice(0, k)
     .map((p) => p.id);
+}
+
+/**
+ * The drops a free agent's row is ranked on. With the roster priced on the rest
+ * of the season the row assumes one: an open spot when there is room (nobody is
+ * given up for nothing), else the cheapest player to lose (`drops` come cheapest
+ * first), whatever the week says. Without prices every candidate is tried and
+ * the one that does most for the week stands (`better`), as before.
+ */
+export function rankingDrops(drops: ReadonlyArray<number>, room: number, priced: boolean): number[] {
+  if (!priced) return room > 0 ? [...drops, NO_DROP] : [...drops];
+  return room > 0 ? [NO_DROP] : drops.slice(0, 1);
 }
 
 /**
