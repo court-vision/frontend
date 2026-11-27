@@ -6,14 +6,15 @@ import { ThemePicker } from "@/components/desk/ThemePicker";
 import { useDeskScheme, useDeskTheme } from "@/components/desk/useDeskTheme";
 import { CourtField } from "./CourtField";
 import { Desks } from "./Desks";
+import { Jobs } from "./Jobs";
 import { SPECKS, STAT_WALL } from "./stat-wall";
 import { useClerkIntent } from "./useClerkIntent";
 import s from "./landing.module.css";
 
 /**
  * The signed-out front page, in the desks' frame and theme (the root layout's
- * DeskFrame): the moving court and one line up top, the desks below, then a
- * way in.
+ * DeskFrame): the moving court and one line up top, the desks below, what runs
+ * on its own after them, then a way in.
  */
 export function Landing() {
   const scheme = useDeskScheme();
@@ -82,7 +83,7 @@ export function Landing() {
         </header>
         <div className={s.heroCopy}>
           <h1 className={s.headline}>See the whole floor.</h1>
-          <p className={s.lede}>Lineups, pickups and drafts for your ESPN fantasy basketball league.</p>
+          <p className={s.lede}>Lineups, pickups and drafts for your ESPN fantasy basketball league, points or categories.</p>
           <div className={s.actions}>
             <Link href="/week?demo" className={s.primary}>
               Try the demo
@@ -95,6 +96,8 @@ export function Landing() {
       </section>
 
       <Desks />
+
+      <Jobs />
 
       <section className={s.closing} aria-labelledby="closing-title">
         <pre className={`${s.wall} ${s.closingWall}`} aria-hidden>

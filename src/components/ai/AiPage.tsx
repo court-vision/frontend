@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BookOpen, ChevronDown, ChevronLeft, ChevronUp, Loader2, Maximize2, Minimize2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AutopilotMark } from "@/components/desk/AutopilotMark";
@@ -28,8 +29,10 @@ import {
 import { useChipTray } from "@/hooks/useAiProposals";
 import { useSelectedTeam } from "@/hooks/useSelectedTeam";
 import { autopilotLive, checkinBanner } from "@/lib/ai-autonomy";
+import { AI_DEMO_CAP_USD, AI_DEMO_CONVERSATION, AI_DEMO_MONTH_USD, AI_DEMO_TEAM, AI_DEMO_TEAMS, seedAiDemo } from "@/lib/ai-demo";
 import { aiLocation, aiSearch, nextExpand, type AiExpand, type AiLocation, type AiPaneView } from "@/lib/ai-desk";
 import { draftKey, loadDraft, saveDraft } from "@/lib/ai-drafts";
+import { DEMO_REFUSAL, DemoAuth, useDeskAuth } from "@/lib/demo-auth";
 import { pausedLine, showsTimeline } from "@/lib/ai-timeline";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { teamName, teamTag } from "@/lib/account";
@@ -80,7 +83,32 @@ const EXAMPLES = [
   "Find me a pickup for tonight and set it up.",
 ];
 
-export function AiPage({ initial }: { initial: AiLocation }) {
+export function AiPage({ initial, demo = false }: { initial: AiLocation; demo?: boolean }) {
+  return demo ? <AiDemo initial={initial} /> : <AiGate initial={initial} />;
+}
+
+/**
+ * The demo (`/ai?demo`): the desk on sample data (lib/ai-demo.ts), signed in or not. Its own query
+ * client holds the sample, and `DemoAuth` turns the desk's queries off and stops its writes.
+ */
+function AiDemo({ initial }: { initial: AiLocation }) {
+  const [client] = useState(() => {
+    const c = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    seedAiDemo(c);
+    return c;
+  });
+  // Opens on the sample chat, unless the link names another conversation
+  const [start] = useState<AiLocation>(() => (initial.conversation == null ? { ...initial, conversation: AI_DEMO_CONVERSATION } : initial));
+  return (
+    <QueryClientProvider client={client}>
+      <DemoAuth>
+        <AiDesk initial={start} monthUsd={AI_DEMO_MONTH_USD} capUsd={AI_DEMO_CAP_USD} demo />
+      </DemoAuth>
+    </QueryClientProvider>
+  );
+}
+
+function AiGate({ initial }: { initial: AiLocation }) {
   const { isLoaded, isSignedIn } = useAuth();
   const usage = useAiUsageQuery();
   const access = usage.data?.access === true;
@@ -103,6 +131,9 @@ export function AiPage({ initial }: { initial: AiLocation }) {
         <div className={s.linkRow}>
           <Link href={`/sign-in?redirect_url=${encodeURIComponent(AI_DESK)}`} className={`${dk.btn} ${dk.btnPrimary}`}>
             Sign in
+          </Link>
+          <Link href={`${AI_DESK}?demo`} className={dk.btn}>
+            See the demo
           </Link>
         </div>
       </div>
@@ -147,7 +178,7 @@ export function AiPage({ initial }: { initial: AiLocation }) {
   return <AiDesk initial={initial} monthUsd={usage.data?.month_usd ?? 0} capUsd={usage.data?.cap_usd ?? 0} />;
 }
 
-function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: number; capUsd: number }) {
+function AiDesk({ initial, monthUsd, capUsd, demo = false }: { initial: AiLocation; monthUsd: number; capUsd: number; demo?: boolean }) {
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const [loc, setLoc] = useState<AiLocation>(initial);
   const current = loc.conversation;
@@ -171,7 +202,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
   const remove = useDeleteAiConversation();
   const feedback = useAiFeedback(current);
   const comment = useAiComment(current);
-  const { userId } = useAuth();
+  const { userId } = useDeskAuth();
   const { live, running, send, clear } = useAiTurn();
   // The chips staged in this conversation: the Week desk's tray under the thread sends them
   const tray = useChipTray(current);
@@ -191,19 +222,22 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
 
   const selected = useSelectedTeam();
   const setSelectedTeam = useUIStore((st) => st.setSelectedTeam);
-  const teams = useMemo<DeskTeam[]>(
+  // The demo picks among its own teams, and leaves the account's pick alone
+  const [demoTeam, setDemoTeam] = useState(AI_DEMO_TEAM);
+  const accountTeams = useMemo<DeskTeam[]>(
     () => selected.teams.map((t) => ({ id: t.team_id, name: teamName(t), tag: teamTag(t) })),
     [selected.teams]
   );
+  const teams = demo ? AI_DEMO_TEAMS : accountTeams;
   // The desk reads one team: the bar's, or the first while none is picked (what the switch shows)
-  const teamId = selected.teamId ?? teams[0]?.id ?? null;
+  const teamId = demo ? demoTeam : (selected.teamId ?? teams[0]?.id ?? null);
   const dimeTeam = checkins.data?.teams.find((t) => t.team_id === teamId);
   // No timeline when the team's check-ins are off; while that is still loading, keep the split
   const hasTimeline = !checkins.data || showsTimeline(dimeTeam);
   // Without one the left pane opens only for the Notebook or the results
   const leftShown = hasTimeline || loc.view !== "timeline";
   const autopilot = autopilotLive(dimeTeam, checkins.data?.acting ?? null);
-  const settingsHref = `${ACCOUNT_DESK}?v=automation${teamId != null ? `&team=${teamId}` : ""}`;
+  const settingsHref = demo ? `${ACCOUNT_DESK}?demo&v=automation` : `${ACCOUNT_DESK}?v=automation${teamId != null ? `&team=${teamId}` : ""}`;
 
   // ---- URL: ?v= the left pane, ?d= the day, ?c= the conversation in the chat (src/lib/ai-desk.ts)
 
@@ -228,12 +262,14 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
     const next = { ...locRef.current, ...patch };
     locRef.current = next;
     setLoc(next);
-    const url = `${AI_DESK}${aiSearch(next)}`;
+    const search = aiSearch(next);
+    // The demo's address keeps its flag, so a reload or a shared link stays in the demo
+    const url = `${AI_DESK}${demo ? (search ? `${search}&demo` : "?demo") : search}`;
     if (`${window.location.pathname}${window.location.search}` === url) return;
     const state = { [PANE_STATE]: pane ?? narrowRef.current };
     if (mode === "push") window.history.pushState(state, "", url);
     else window.history.replaceState(state, "", url);
-  }, []);
+  }, [demo]);
 
   /** Puts a conversation (or a new one) in the chat, and the chat in view. */
   const showChat = useCallback(
@@ -301,6 +337,11 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
 
   const onSend = useCallback(
     async (message: string) => {
+      if (demo) {
+        composer.current?.fill(message);
+        toast.info(DEMO_REFUSAL);
+        return;
+      }
       const origin = current;
       // Kept as the draft of the chat it was typed in, unless that chat has newer text
       const keep = (): boolean => {
@@ -357,7 +398,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
       // Refused before it began: give the message back so it can be sent again
       if (!ok) giveBack(id);
     },
-    [current, create, teamId, showChat, send, userId]
+    [current, create, teamId, showChat, send, userId, demo]
   );
 
   // A question typed on the Home desk for this team: asked here, in a new conversation
@@ -502,7 +543,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
         <button type="button" className={`${dk.btn} ${dk.btnSmall}`} title="A new conversation (N)" onClick={newConversation}>
           <Plus size={13} /> New
         </button>
-        {current != null ? (
+        {current != null && !demo ? (
           <button
             type="button"
             className={dk.iconBtn}
@@ -596,6 +637,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
     <div ref={setRoot} className={dk.desk}>
       <DeskBar
         desk="ai"
+        demo={demo}
         right={
           <>
             {autopilot ? <AutopilotMark team={teams.find((t) => t.id === teamId)?.name} teamId={teamId} /> : null}
@@ -605,7 +647,13 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
           </>
         }
       >
-        <TeamSwitch teams={teams} teamId={teamId} onTeam={setSelectedTeam} onAdd={() => router.push(`${ACCOUNT_DESK}?add=1`)} container={root} />
+        <TeamSwitch
+          teams={teams}
+          teamId={teamId}
+          onTeam={demo ? setDemoTeam : setSelectedTeam}
+          onAdd={() => router.push(demo ? "/sign-up" : `${ACCOUNT_DESK}?add=1`)}
+          container={root}
+        />
       </DeskBar>
 
       <div className={s.split} data-expand={leftShown ? expand : "none"} data-narrow={leftShown ? narrow : "chat"} data-solo={leftShown ? undefined : ""}>
@@ -636,7 +684,7 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
       </div>
 
       <DeskStatus keys={!leftShown ? CHAT_KEYS : hasTimeline && loc.view === "timeline" ? KEYS : PANE_KEYS}>
-        <span>Opus 5.5 · answers from Court Vision&apos;s lookups</span>
+        <span>{demo ? "Demo · sample data · nothing is sent" : "Opus 5.5 · answers from Court Vision's lookups"}</span>
       </DeskStatus>
 
       <DeskDialog

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@clerk/nextjs";
+import { useDeskAuth } from "@/lib/demo-auth";
 import { apiClient } from "@/lib/api";
 import { toApiError, userMessage } from "@/lib/api-error";
 import type { GetTokenFn } from "@/lib/http";
@@ -63,7 +63,7 @@ export const aiKeys = {
 
 /** Whether the caller may use the agent, and this month's spend. 503 = turned off. */
 export function useAiUsageQuery() {
-  const { getToken, isSignedIn, userId } = useAuth();
+  const { getToken, isSignedIn, userId } = useDeskAuth();
   return useQuery<AiUsage>({
     queryKey: aiKeys.usage(userId),
     queryFn: ({ signal }) => apiClient.getAiUsage(getToken, { signal }),
@@ -75,7 +75,7 @@ export function useAiUsageQuery() {
 }
 
 export function useAiConversationsQuery(enabled: boolean) {
-  const { getToken, isSignedIn, userId } = useAuth();
+  const { getToken, isSignedIn, userId } = useDeskAuth();
   return useQuery<AiConversationSummary[]>({
     queryKey: aiKeys.conversations(userId),
     queryFn: ({ signal }) => apiClient.listAiConversations(getToken, { signal }),
@@ -86,7 +86,7 @@ export function useAiConversationsQuery(enabled: boolean) {
 }
 
 export function useAiConversationQuery(id: number | null, enabled: boolean) {
-  const { getToken, isSignedIn, userId } = useAuth();
+  const { getToken, isSignedIn, userId } = useDeskAuth();
   return useQuery<AiConversation>({
     queryKey: aiKeys.conversation(userId, id!),
     queryFn: ({ signal }) => apiClient.getAiConversation(getToken, id!, { signal }),
@@ -97,7 +97,7 @@ export function useAiConversationQuery(id: number | null, enabled: boolean) {
 }
 
 export function useCreateAiConversation() {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (teamId: number | null) => apiClient.createAiConversation(getToken, teamId),
@@ -109,7 +109,7 @@ export function useCreateAiConversation() {
 }
 
 export function useDeleteAiConversation() {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => apiClient.deleteAiConversation(getToken, id),
@@ -135,7 +135,7 @@ export function useDeleteAiConversation() {
 
 /** 👍 / 👎 on an answer, shown at once and put back if the save fails. */
 export function useAiFeedback(conversationId: number | null) {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ turnId, feedback }: { turnId: number; feedback: AiFeedback | null }) =>
@@ -160,7 +160,7 @@ export function useAiFeedback(conversationId: number | null) {
 
 /** A note on an answer: saved, then written into the cached conversation. */
 export function useAiComment(conversationId: number | null) {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ turnId, comment }: { turnId: number; comment: string | null }) =>
@@ -182,7 +182,7 @@ export function useAiComment(conversationId: number | null) {
  * running, and every 5 minutes otherwise (the schedule starts them on its own).
  */
 export function useAiCheckinsQuery(enabled: boolean) {
-  const { getToken, isSignedIn, userId } = useAuth();
+  const { getToken, isSignedIn, userId } = useDeskAuth();
   return useQuery<AiCheckins>({
     queryKey: aiKeys.checkins(userId),
     queryFn: ({ signal }) => apiClient.getAiCheckins(getToken, { signal }),
@@ -195,7 +195,7 @@ export function useAiCheckinsQuery(enabled: boolean) {
 }
 
 export function useRunAiCheckin() {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ teamId, kind }: { teamId: number; kind?: AiCheckinRunKind }) => apiClient.runAiCheckin(getToken, teamId, kind),
@@ -217,7 +217,7 @@ export function useRunAiCheckin() {
  * autopilot turns the features on, so those are read again.
  */
 export function useSetAiAutopilot() {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ teamId, change }: { teamId: number; change: AiAutopilotChange }) =>
@@ -239,7 +239,7 @@ export function useSetAiAutopilot() {
 
 /** The account's AI features: memory and Dime's side of the Draft desk. */
 export function useSetAiFeatures() {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (change: Partial<AiFeatures>) => apiClient.setAiFeatures(getToken, change),
@@ -255,7 +255,7 @@ export function useSetAiFeatures() {
  * own); a past day doesn't change, so it isn't polled.
  */
 export function useAiTimelineQuery(teamId: number | null, day: string | null, enabled: boolean) {
-  const { getToken, isSignedIn, userId } = useAuth();
+  const { getToken, isSignedIn, userId } = useDeskAuth();
   return useQuery<AiTimeline>({
     queryKey: aiKeys.timeline(userId, teamId ?? 0, day),
     queryFn: ({ signal }) => apiClient.getAiTimeline(getToken, teamId!, day, { signal }),
@@ -276,7 +276,7 @@ export function useAiTimelineQuery(teamId: number | null, day: string | null, en
  * day. Read while the team has no timeline (its Scheduled strip); polled while one is due or running.
  */
 export function useAiAsksQuery(teamId: number | null, enabled: boolean) {
-  const { getToken, isSignedIn, userId } = useAuth();
+  const { getToken, isSignedIn, userId } = useDeskAuth();
   return useQuery<AiAsks>({
     queryKey: aiKeys.asks(userId, teamId ?? 0),
     queryFn: ({ signal }) => apiClient.getAiAsks(getToken, teamId!, { signal }),
@@ -296,7 +296,7 @@ export function useAiAsksQuery(teamId: number | null, enabled: boolean) {
  * the conversations (the chat's ask block reads as the ask stands).
  */
 export function useCancelAiAsk() {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (askId: number) => apiClient.cancelAiAsk(getToken, askId),
@@ -320,7 +320,7 @@ const verdictSaves = new VerdictSaves();
  * conversation it was rated in, and only while no newer save on that call has started.
  */
 export function useAiDecisionVerdict(conversationId: number | null) {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ decisionId, verdict }: { decisionId: number; verdict: AiVerdict | null }) =>
@@ -373,7 +373,7 @@ export function useAiDecisionVerdict(conversationId: number | null) {
 
 /** Every note Dime keeps for the user, live ones first; with `includeRetired`, the retired ones too. */
 export function useAiNotesQuery(enabled: boolean, includeRetired: boolean) {
-  const { getToken, isSignedIn, userId } = useAuth();
+  const { getToken, isSignedIn, userId } = useDeskAuth();
   return useQuery<AiNote[]>({
     queryKey: [...aiKeys.notes(userId), includeRetired],
     queryFn: ({ signal }) => apiClient.listAiNotes(getToken, includeRetired, { signal }),
@@ -384,7 +384,7 @@ export function useAiNotesQuery(enabled: boolean, includeRetired: boolean) {
 }
 
 function useNoteMutation<V>(fn: (getToken: GetTokenFn, vars: V) => Promise<unknown>) {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (vars: V) => fn(getToken, vars),
@@ -408,7 +408,7 @@ export function useDeleteAiNote() {
 
 /** A team's moves (or its league's) and what they earned; the ledger changes once a night. */
 export function useMoveOutcomesQuery(teamId: number | null, scope: MoveScope, enabled: boolean) {
-  const { getToken, isSignedIn, userId } = useAuth();
+  const { getToken, isSignedIn, userId } = useDeskAuth();
   return useQuery<MoveOutcomeList>({
     queryKey: aiKeys.moves(userId, teamId ?? 0, scope),
     queryFn: ({ signal }) => apiClient.getMoveOutcomes(getToken, teamId!, scope, { signal }),
@@ -440,7 +440,7 @@ export interface LiveTurn {
  * the stored turn in place of the live one once the conversation has it.
  */
 export function useAiTurn() {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   const [live, setLive] = useState<LiveTurn | null>(null);
   const abort = useRef<AbortController | null>(null);

@@ -289,6 +289,7 @@
 /* ---------------------------------------------------------------- desks */
 
 .desks,
+.jobs,
 .closing {
   max-width: 1320px;
   margin: 0 auto;
@@ -316,7 +317,7 @@
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   margin-top: clamp(40px, 5vw, 64px);
   border-bottom: 1px solid var(--line);
 }
@@ -346,6 +347,23 @@
 .tabShort {
   font-size: 14px;
   color: var(--text-3);
+}
+
+/* "Beta" beside a desk's name or a job's. */
+.tabBadge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: calc(4px * var(--round, 1));
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  vertical-align: 0.45em;
+  color: var(--accent);
 }
 
 .tab:hover .tabName,
@@ -412,18 +430,227 @@
   color: var(--text-2);
 }
 
-@media (max-width: 767.98px) {
+/* Six tabs don't fit a row below a laptop: they scroll sideways. */
+@media (max-width: 1099.98px) {
   .tabs {
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    grid-template-columns: repeat(6, minmax(150px, 1fr));
     margin-left: calc(-1 * var(--gutter));
     margin-right: calc(-1 * var(--gutter));
     padding: 0 var(--gutter);
     overflow-x: auto;
     scrollbar-width: none;
   }
+}
 
+@media (max-width: 767.98px) {
   .tabName {
     font-size: 20px;
+  }
+}
+
+/* ---------------------------------------------------------------- jobs */
+
+.jobs {
+  padding-top: 0;
+}
+
+.jobTable {
+  width: 100%;
+  margin-top: clamp(36px, 4.5vw, 56px);
+  border-collapse: collapse;
+}
+
+.jobTable th,
+.jobTable td {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  font-weight: inherit;
+}
+
+.jobTable thead th {
+  padding-top: 0;
+  border-bottom-color: var(--line-2);
+}
+
+.jobTable .jobLevel {
+  width: 15%;
+  padding-left: 16px;
+}
+
+.jobLevelName {
+  display: block;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.jobLevelName[data-ai] {
+  color: var(--accent);
+}
+
+.jobLevelNote {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+.jobTable .jobName {
+  padding-right: 24px;
+}
+
+.jobName > span:first-child {
+  display: block;
+  font-family: var(--font-outfit), var(--desk-sans), sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.jobWhat {
+  display: block;
+  max-width: 52ch;
+  margin-top: 6px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.jobTable .jobCell {
+  padding-left: 16px;
+}
+
+/* A level the job offers: a filled mark; AI in the accent. Not offered: a short rule. */
+.jobOn,
+.jobOff {
+  display: block;
+  margin-top: 9px;
+}
+
+.jobOn {
+  width: 12px;
+  height: 12px;
+  border-radius: calc(6px * var(--round, 1));
+  background: var(--text);
+}
+
+.jobOn[data-ai] {
+  background: var(--accent);
+  box-shadow: var(--glow);
+}
+
+.jobOff {
+  width: 12px;
+  height: 0;
+  margin-top: 15px;
+  border-top: 1px solid var(--line-2);
+}
+
+.jobNotes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 48px;
+  margin-top: 32px;
+}
+
+.jobNotes p {
+  max-width: 56ch;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.jobNoteHead {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-outfit), var(--desk-sans), sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Phones: a job's levels sit in a row under its words, each with its name; no header row. */
+@media (max-width: 767.98px) {
+  .jobTable,
+  .jobTable tbody {
+    display: block;
+  }
+
+  .jobTable thead {
+    display: none;
+  }
+
+  .jobTable tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 22px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .jobTable tbody th,
+  .jobTable tbody td {
+    padding: 0;
+    border: 0;
+  }
+
+  .jobTable .jobName {
+    flex-basis: 100%;
+    padding-right: 0;
+  }
+
+  .jobTable .jobCell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 0;
+  }
+
+  .jobCell::before {
+    content: attr(data-level);
+    font-family: var(--desk-mono), ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  .jobCell[data-level="AI"]::before {
+    color: var(--accent);
+  }
+
+  .jobOn,
+  .jobOff {
+    margin-top: 0;
+  }
+
+  .jobName > span:first-child {
+    font-size: 19px;
+  }
+
+  .jobWhat {
+    font-size: 14px;
+  }
+
+  .jobNotes {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

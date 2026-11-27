@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     template: "%s | Court Vision",
   },
   description:
-    "Advanced fantasy basketball analytics. Player rankings, lineup optimization, matchup analysis, and streaming recommendations to help you win your league.",
+    "Fantasy basketball for your ESPN league: daily lineups, pickups, live and mock drafts, player scouting, and automations that run while you're away.",
   keywords: [
     "fantasy basketball",
     "fantasy basketball analytics",
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     siteName: "Court Vision",
     title: "Court Vision – Fantasy Basketball Analytics",
     description:
-      "Advanced fantasy basketball analytics. Player rankings, lineup optimization, matchup analysis, and streaming recommendations to help you win your league.",
+      "Fantasy basketball for your ESPN league: daily lineups, pickups, live and mock drafts, player scouting, and automations that run while you're away.",
     images: [
       {
         url: "/logo-dark.png",
@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Court Vision – Fantasy Basketball Analytics",
     description:
-      "Advanced fantasy basketball analytics. Player rankings, lineup optimization, matchup analysis, and streaming recommendations to help you win your league.",
+      "Fantasy basketball for your ESPN league: daily lineups, pickups, live and mock drafts, player scouting, and automations that run while you're away.",
     images: ["/logo-dark.png"],
   },
   robots: {
@@ -107,7 +107,7 @@ export default function RootLayout({
               name: "Court Vision",
               url: "https://www.courtvision.dev",
               description:
-                "Advanced fantasy basketball analytics platform. Player rankings, lineup optimization, matchup analysis, and streaming recommendations.",
+                "Fantasy basketball for your ESPN league: daily lineups, pickups, live and mock drafts, player scouting, an AI assistant in beta, and automations that run while you're away.",
               applicationCategory: "SportsApplication",
               operatingSystem: "Web",
               offers: {
