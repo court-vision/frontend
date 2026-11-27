@@ -5,6 +5,9 @@
  */
 import { describe, expect, test } from "bun:test";
 import {
+  askAbout,
+  askWhy,
+  chatStarters,
   dimePickFor,
   draftedIds,
   failedLine,
@@ -55,6 +58,7 @@ const room = (over: Partial<DimeDraftRoom> = {}): DimeDraftRoom => ({
   seat_blocker: null,
   running: null,
   notes: [],
+  chat_id: null,
   ...over,
 });
 
@@ -230,5 +234,40 @@ describe("Dime's notes on a room's recap", () => {
     const long = notePreview("x".repeat(300), 20);
     expect(long).toHaveLength(20);
     expect(long?.endsWith("…")).toBe(true);
+  });
+});
+
+describe("the room's chat: what Ask Dime puts in the box", () => {
+  test("a player on the board is asked about for the user's next pick, the one on the clock included", () => {
+    expect(askAbout("Jalen Williams", { status: "active", my_next_pick: 24 })).toBe("How does Jalen Williams fit my team at pick #24?");
+  });
+
+  test("with no pick left, or the draft over, the question names no pick", () => {
+    expect(askAbout("Jalen Williams", { status: "active", my_next_pick: null })).toBe("How does Jalen Williams fit my team?");
+    expect(askAbout("Jalen Williams", { status: "completed", my_next_pick: 130 })).toBe("How does Jalen Williams fit my team?");
+  });
+
+  test("Ask why names Dime's pick and the pick it is for", () => {
+    expect(askWhy({ name: "Jalen Williams", forPick: 24 })).toBe("Why Jalen Williams for pick #24?");
+  });
+
+  test("an empty chat offers a plan first, then the next pick, then the scoring's question", () => {
+    expect(chatStarters({ status: "active", my_next_pick: 24, scoring_format: "points" })).toEqual([
+      "Plan the rest of my draft",
+      "Who is likely still there at #24?",
+      "Which positions should I fill next?",
+    ]);
+    expect(chatStarters({ status: "active", my_next_pick: null, scoring_format: "categories" })).toEqual([
+      "Plan the rest of my draft",
+      "Who are the best players left?",
+      "Should I punt a category yet?",
+    ]);
+  });
+
+  test("a finished draft is asked about how it went", () => {
+    expect(chatStarters({ status: "completed", my_next_pick: null, scoring_format: "points" })).toEqual([
+      "How did my draft go?",
+      "Which of my picks should I worry about?",
+    ]);
   });
 });

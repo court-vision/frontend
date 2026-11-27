@@ -12,6 +12,8 @@ import { useDeskTheme } from "@/components/desk/useDeskTheme";
 import dk from "@/components/desk/desk.module.css";
 import { toApiError, userMessage } from "@/lib/api-error";
 import { countAtRisk, marketNote, stepHighlight, targetRow } from "@/lib/draft-board";
+import { askAbout } from "@/lib/draft-dime";
+import type { ComposerHandle } from "@/components/ai/Composer";
 import { mockAdvanceToast, mockBlocker, mockMyTurnBlocker, needsSeatConfirm } from "@/lib/draft-mock";
 import { fillLineup, keeperStatuses, lastPick, myRoster, openStartingSlots, samePlayer } from "@/lib/draft-roster";
 import { buildTape, myUpcoming } from "@/lib/draft-tape";
@@ -443,6 +445,12 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
     [rows, visible, setSearch, setPositionFilter, onlyLikelyGone, setOnlyLikelyGone, setHighlight]
   );
 
+  // ---- Dime's chat: Ask Dime (a row's button, or A on the active row) and Ask why put a
+  // question in its box, to send or change; nothing is sent until the user sends it
+  const dimeBox = useRef<ComposerHandle>(null);
+  const fillDimeBox = useLatestCallback((question: string) => dimeBox.current?.fill(question));
+  const askDime = useLatestCallback((row: Pick<DraftBoardRow, "name">) => fillDimeBox(askAbout(row.name, session)));
+
   const dialogOpen = seatOpen || keepersOpen || confirmEnd;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -501,6 +509,12 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
         case "r":
           if (completed) router.push(model.hrefs.recap);
           break;
+        case "a":
+          if (active && dime.room) {
+            e.preventDefault();
+            askDime(active);
+          }
+          break;
         case "Escape":
           setHighlight(null);
           break;
@@ -508,7 +522,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dialogOpen, undoLast, move, markActive, writeUi, active, draftOnEspn, mock, simBlocker, simToMe, cats, toggleSort, setBoardSource, boardSource, toggleTheme, completed, router, model.hrefs.recap, setHighlight]);
+  }, [dialogOpen, undoLast, move, markActive, writeUi, active, draftOnEspn, mock, simBlocker, simToMe, cats, toggleSort, setBoardSource, boardSource, toggleTheme, completed, router, model.hrefs.recap, setHighlight, dime.room, askDime]);
 
   const onSearchKey = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -542,6 +556,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
   // the sync object are rebuilt each time), so these keep one identity and call the latest.
   // Without them every highlight and every sync frame re-rendered all ~600 rows.
   const onBoardMark = useLatestCallback(mark);
+  const onBoardAsk = useLatestCallback((row: DraftBoardRow) => askDime(row));
   const onBoardEspn = useLatestCallback((row: DraftBoardRow) => void draftOnEspn(row));
   const onToolbarSearchKey = useLatestCallback(onSearchKey);
   const onToolbarSearch = useCallback(
@@ -564,6 +579,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
     ...(mock && !simBlocker ? ([["S", "sim to me"]] as Array<[string, string]>) : []),
     ["B", "board"],
     ...(cats ? ([["F", "fit"]] as Array<[string, string]>) : []),
+    ...(dime.room ? ([["A", "ask Dime"]] as Array<[string, string]>) : []),
     ["T", "theme"],
   ];
 
@@ -711,6 +727,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
               pendingEspnId={sync?.state.pending?.playerId ?? null}
               dimePick={boardDimePick}
               pickLine={pickLine}
+              onAsk={dime.room ? onBoardAsk : undefined}
             />
           )}
         </div>
@@ -738,7 +755,7 @@ function Room({ model, session, board }: { model: RoomModel; session: DraftSessi
             loading={model.boardLoading}
             dimeId={boardDimePick?.playerId ?? null}
           />
-          <DimeRail dime={dime} session={session} onFocus={focusPlayer} />
+          <DimeRail dime={dime} session={session} onFocus={focusPlayer} box={dimeBox} onAsk={fillDimeBox} />
           <Needs board={board} onPunt={completed ? null : togglePunt} saving={model.updating} />
           <Roster
             session={session}

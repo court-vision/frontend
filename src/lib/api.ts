@@ -1268,8 +1268,8 @@ class ApiClient {
     return unwrap(env);
   }
 
-  // ---- Dime in a draft room (the Dime autopilot plan, step 7): its notes, the
-  // switch for a note at each of the user's picks, and the user's seat in a mock.
+  // ---- Dime in a draft room (the Dime autopilot plan, step 7): its notes (its
+  // pick on the board, a recap), the room's chat, and the user's seat in a mock.
 
   /** What Dime wrote in the room and its switches. Never refuses for a server or user without Dime: `available` says. */
   async getDimeDraft(getToken: GetTokenFn, sessionId: number, opts?: RequestOptions): Promise<DimeDraftRoom> {
@@ -1283,7 +1283,15 @@ class ApiClient {
     );
   }
 
-
+  /**
+   * The room's Dime chat, started if the room has none (`fresh` starts a new one in its place).
+   * Its messages are sent like any of the AI desk's, each a turn on the desk's budget.
+   */
+  async openDimeDraftChat(getToken: GetTokenFn, sessionId: number, fresh = false): Promise<AiConversation> {
+    return unwrap(
+      await fetchJson<AiConversationResponse>(`${DRAFTS_API}/${sessionId}/dime/chat`, { getToken, method: "POST", body: { fresh } })
+    );
+  }
 
   /** Hand Dime the user's seat in a mock (it drafts to the end), or take it back after the pick it is making. */
   async setDimeDraftSeat(getToken: GetTokenFn, sessionId: number, on: boolean): Promise<DimeDraftRoom> {

@@ -4,6 +4,8 @@ import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
 import { shouldPoll } from "@/lib/draft-dime";
 import { draftKeys } from "@/hooks/useDrafts";
+import { aiKeys } from "@/hooks/useAi";
+import type { AiConversation } from "@/types/ai";
 import type { DimeDraftNote, DimeDraftNoteKind, DimeDraftRoom } from "@/types/draft";
 
 /** Keyed by the Clerk user too: another account on the same page never sees the last one's notes. */
@@ -61,4 +63,22 @@ export function useAskDimeDraft(sessionId: number) {
 export function useSetDimeDraftSeat(sessionId: number) {
   const { getToken } = useAuth();
   return useDimeWrite<boolean, DimeDraftRoom>(sessionId, (on) => apiClient.setDimeDraftSeat(getToken, sessionId, on), (_, room) => room);
+}
+
+/**
+ * The room's Dime chat: opened (started if the room has none) when its first message is sent,
+ * or with `fresh` started over in place of a full one. The conversation goes in the AI desk's
+ * cache, so the chat reads it from there like any other.
+ */
+export function useOpenDimeChat(sessionId: number) {
+  const { getToken, userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation<AiConversation, Error, boolean>({
+    mutationFn: (fresh) => apiClient.openDimeDraftChat(getToken, sessionId, fresh),
+    meta: { toast: false },
+    onSuccess: (conversation) => {
+      queryClient.setQueryData(aiKeys.conversation(userId, conversation.id), conversation);
+      queryClient.setQueryData<DimeDraftRoom>(dimeDraftKey(userId, sessionId), (d) => (d ? { ...d, chat_id: conversation.id } : d));
+    },
+  });
 }

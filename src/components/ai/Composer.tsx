@@ -43,7 +43,9 @@ export const Composer = forwardRef<ComposerHandle, {
   /** Where this conversation's unsent message is kept; null keeps nothing. */
   draftKey: string | null;
   onSend: (message: string) => void;
-}>(function Composer({ disabled, busy, placeholder, banner, draftKey, onSend }, ref) {
+  /** Narrow gutters, for a box in a side rail (a draft room's Dime chat). */
+  compact?: boolean;
+}>(function Composer({ disabled, busy, placeholder, banner, draftKey, onSend, compact = false }, ref) {
   const [text, setTextState] = useState("");
   const area = useRef<HTMLTextAreaElement>(null);
   const key = useRef(draftKey);
@@ -96,7 +98,7 @@ export const Composer = forwardRef<ComposerHandle, {
 
   return (
     <div className={s.composer}>
-      <div className={s.composerInner}>
+      <div className={`${s.composerInner} ${compact ? s.composerCompact : ""}`}>
         {banner ? <div className={s.banner}>{banner}</div> : null}
         <div className={s.box}>
           <textarea

@@ -688,6 +688,10 @@
   padding: 12px 22px 10px;
 }
 
+.composerCompact {
+  padding: 10px 16px 8px;
+}
+
 .box {
   display: flex;
   align-items: flex-end;
