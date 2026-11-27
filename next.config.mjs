@@ -13,6 +13,11 @@ const nextConfig = {
     // reads the app map crawled from the same commit
     NEXT_PUBLIC_BUILD_SHA: process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "",
   },
+  // 75 is Next's default; the landing page's desk pictures ask for 90, since
+  // small text in a screenshot smears at 75 (src/components/landing/Desks.tsx)
+  images: {
+    qualities: [75, 90],
+  },
   async headers() {
     return [
       {

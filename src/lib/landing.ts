@@ -69,6 +69,12 @@ export const LANDING_DESKS: readonly LandingDesk[] = [
   },
 ];
 
+/**
+ * The pictures' size in real pixels: the desks at 1440×900, taken at twice the
+ * pixel density so they stay sharp on high-density screens. A test checks every file.
+ */
+export const LANDING_SHOT_SIZE = { width: 2880, height: 1800 } as const;
+
 /** The themes the pictures were taken in (scripts/landing-shots.mjs). A test checks it names every desk theme. */
 export const LANDING_SHOT_THEMES: readonly DeskThemeId[] = ["noon", "midnight", "paper", "ember", "chalk", "blacktop", "harvest", "hearth"];
 

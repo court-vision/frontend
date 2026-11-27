@@ -1,5 +1,6 @@
 // Regenerates the landing page's desk screenshots (public/landing/<desk>-<theme>.webp):
-// every desk, in every desk theme, at 1440×900 with sample data, saved as lossless WebP.
+// every desk, in every desk theme, at 1440×900 CSS pixels and twice that in real pixels (2880×1800, so the
+// pictures stay sharp on high-density screens), with sample data, saved as lossless WebP.
 //
 //   bun run dev -p 3000          (prod API is fine: Scout and Developer read public routes)
 //   node scripts/landing-shots.mjs [baseUrl]
@@ -76,7 +77,7 @@ try {
     (await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })).result?.result?.value;
 
   await send("Page.enable");
-  await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 2, mobile: false });
   await send("Emulation.setTimezoneOverride", { timezoneId: "America/New_York" });
   // Harvest and Hearth drop a few leaves as the theme opens: no motion, so none are caught mid-fall.
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });

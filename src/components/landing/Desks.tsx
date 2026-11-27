@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useDeskTheme } from "@/components/desk/useDeskTheme";
-import { LANDING_DESKS, landingShot } from "@/lib/landing";
+import { LANDING_DESKS, LANDING_SHOT_SIZE, landingShot } from "@/lib/landing";
 import s from "./landing.module.css";
 
 /** The desks, shown the way they look: a tab per desk and its picture in the visitor's theme (lib/landing.ts). */
@@ -69,9 +69,10 @@ export function Desks() {
             className={s.shotImg}
             src={landingShot(desk.id, theme)}
             alt={`The ${desk.name} desk with sample data`}
-            width={1440}
-            height={900}
+            width={LANDING_SHOT_SIZE.width}
+            height={LANDING_SHOT_SIZE.height}
             sizes="(max-width: 1240px) 100vw, 1200px"
+            quality={90}
           />
         </figure>
         <div className={s.panelText}>
