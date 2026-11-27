@@ -318,34 +318,30 @@ function AiDesk({ initial, monthUsd, capUsd }: { initial: AiLocation; monthUsd: 
         composer.current?.fill(message);
         return true;
       };
+      // With nowhere to put it back, the notice carries the words so they are not lost: the start
+      // of a long one to read, and all of it to copy
+      const lost = {
+        description: `Not asked: ${message.length > 280 ? `${message.slice(0, 280)}…` : message}`,
+        duration: 30_000,
+        action: {
+          label: "Copy it",
+          onClick: () => void navigator.clipboard?.writeText(message).then(() => toast.success("Copied"), () => {}),
+        },
+      };
       let id = current;
       if (id == null) {
         try {
           id = (await create.mutateAsync(teamId)).id;
         } catch (err) {
           const kept = mounted.current ? giveBack(null) : keep();
-          // With nowhere to put it back, the notice carries the words so they are not lost: the start
-          // of a long one to read, and all of it to copy
-          const words = message.length > 280 ? `${message.slice(0, 280)}…` : message;
-          toast.error(
-            aiMessage(err, "Couldn't start a conversation"),
-            kept
-              ? undefined
-              : {
-                  description: `Not asked: ${words}`,
-                  duration: 30_000,
-                  action: {
-                    label: "Copy it",
-                    onClick: () => void navigator.clipboard?.writeText(message).then(() => toast.success("Copied"), () => {}),
-                  },
-                }
-          );
+          toast.error(aiMessage(err, "Couldn't start a conversation"), kept ? undefined : lost);
           return;
         }
         // The desk was left while the conversation was being made: this page is another desk's now, so
-        // its address is not written and no turn starts with nobody reading. The message waits as a draft
+        // its address is not written and no turn starts with nobody reading. The message waits as a draft,
+        // or in the notice when newer text holds the draft's place
         if (!mounted.current) {
-          keep();
+          if (!keep()) toast.error("Your message to Dime wasn't asked", lost);
           return;
         }
         // Into the chat only while it still shows the new conversation: one opened meanwhile (a

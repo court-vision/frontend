@@ -8,6 +8,9 @@ import { ACCOUNT } from "@/components/desk/routes";
 import { pts, signed } from "@/components/week/format";
 import {
   STATE_WORD,
+  chanceText,
+  edgeColor,
+  edgeOf,
   leadItem,
   moreItems,
   nextWord,
@@ -33,6 +36,11 @@ const HOUR = 3_600_000;
 /** A team's row, and the week strip in it: what grows into the desk the row opens. */
 export const rowEl = (teamId: number) => document.getElementById(`home-row-${teamId}`);
 export const weekEl = (teamId: number) => document.getElementById(`home-week-${teamId}`) ?? rowEl(teamId);
+/** The team as it is on screen: its card where cards take the rows' place, else its row. */
+export const teamEl = (teamId: number) => {
+  const card = document.getElementById(`home-card-${teamId}`);
+  return card && card.getClientRects().length ? card : rowEl(teamId);
+};
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 /** 1339.4 → "1,339": a projection, which is not known to the decimal. */
@@ -74,8 +82,7 @@ function rowSay(team: TeamOverview, last: LastCheckin | undefined, now: number, 
         whenText: before,
         when: (
           <>
-            <b className={s.t1}>{before}</b>
-            <span>{until}</span>
+            <b className={s.t1}>{before}</b> <span>{until}</span>
           </>
         ),
       };
@@ -108,7 +115,7 @@ function Score({ team }: { team: TeamOverview }) {
     return (
       <span className={s.score}>
         {live ? <span className={dk.liveDot} /> : null}
-        {m.categories?.wins ?? 0} <span className={s.t3}>–</span> {m.categories?.losses ?? 0}
+        <b>{m.categories?.wins ?? 0}</b> <span className={s.t3}>–</span> {m.categories?.losses ?? 0}
         {m.categories?.ties ? (
           <>
             {" "}
@@ -121,7 +128,7 @@ function Score({ team }: { team: TeamOverview }) {
   return (
     <span className={s.score}>
       {live ? <span className={dk.liveDot} /> : null}
-      {pts(m.your_score)} <span className={s.t3}>–</span> {pts(m.opponent_score)}
+      <b>{pts(m.your_score)}</b> <span className={s.t3}>–</span> {pts(m.opponent_score)}
     </span>
   );
 }
@@ -250,6 +257,12 @@ function seasonLines(team: TeamOverview): [string, string] {
   return [`${record}${place}`, odds];
 }
 
+/** The row's edge: how the week is going, red through yellow to green. Nothing without a chance to go on. */
+function edgeStyle(team: TeamOverview): React.CSSProperties | undefined {
+  const color = edgeColor(edgeOf(team.matchup?.win_chance));
+  return color ? ({ "--edge": color } as React.CSSProperties) : undefined;
+}
+
 function TeamRow({ team, demo, picked, last, now, tz, doors, onPick }: RowProps) {
   const row = rowSay(team, last, now, tz);
   const more = moreItems(team);
@@ -262,16 +275,18 @@ function TeamRow({ team, demo, picked, last, now, tz, doors, onPick }: RowProps)
   const lock = tonight?.next_lock_at ? Date.parse(tonight.next_lock_at) : null;
   const margin = m ? m.your_score - m.opponent_score : 0;
   const strip = () => weekEl(team.team_id);
+  const chance = chanceText(m?.win_chance);
 
   return (
     <div
       id={`home-row-${team.team_id}`}
       className={s.row}
+      style={edgeStyle(team)}
       data-state={team.state}
       data-picked={picked}
       tabIndex={0}
       aria-current={picked ? "true" : undefined}
-      aria-label={`${team.team_name}: ${STATE_WORD[team.state]}. ${row.say}`}
+      aria-label={`${team.team_name}: ${STATE_WORD[team.state]}. ${row.say}${chance ? ` ${chance}.` : ""}`}
       onClick={() => onPick(team, true)}
       onFocus={(e) => {
         if (e.target === e.currentTarget && !picked) onPick(team, false);
@@ -293,10 +308,50 @@ function TeamRow({ team, demo, picked, last, now, tz, doors, onPick }: RowProps)
         </div>
       </div>
 
-      <div className={s.col}>
+      <div className={`${s.col} ${s.colWeek}`}>
+        <div className={s.ln}>
+          <Score team={team} />
+          {m && !cats ? (
+            <span className={s.margin} data-tone={Math.abs(margin) < 0.05 ? "even" : margin > 0 ? "up" : "down"}>
+              {signed(margin)}
+            </span>
+          ) : m ? (
+            <span className={`${s.m} ${s.t3}`}>categories</span>
+          ) : null}
+        </div>
+        <div className={`${s.ln} ${s.m}`}>
+          {m?.win_chance != null ? <WinBar chance={m.win_chance} width={48} /> : null}
+          {m ? (
+            <span className={s.el}>
+              {m.win_chance != null ? (
+                <>
+                  <b>{Math.round(m.win_chance * 100)}%</b>
+                  {cats ? " to win the week" : <><span className={s.toWin}> to win</span> · </>}
+                </>
+              ) : null}
+              {cats ? null : `proj ${whole(m.your_projected)}–${whole(m.opponent_projected)}`}
+            </span>
+          ) : null}
+        </div>
+        <div className={s.ln}>
+          <span id={`home-week-${team.team_id}`} className={s.wk}>
+            {cells.map((c) => (
+              <i key={c.date} data-tone={c.tone ?? undefined} data-kind={c.kind} title={c.title}>
+                {c.text}
+              </i>
+            ))}
+          </span>
+        </div>
+        <div className={`${s.ln} ${s.m}`}>
+          <span className={s.el}>{m ? `vs ${m.opponent_name}` : ""}</span>
+        </div>
+      </div>
+
+      <div className={`${s.col} ${s.colStatus}`}>
         <div className={`${s.ln} ${s.m}`}>
           <StateChip team={team} />
-          {row.when}
+          {/* the words give way first: the count of what else is open and Dime's check-in stay whole */}
+          {row.when ? <span className={s.el}>{row.when}</span> : null}
           {more ? <span className={`${s.more} ${s.push}`}>+{more} more</span> : null}
           {last ? (
             <button
@@ -409,45 +464,6 @@ function TeamRow({ team, demo, picked, last, now, tz, doors, onPick }: RowProps)
         )}
       </div>
 
-      <div className={s.col}>
-        <div className={s.ln}>
-          <Score team={team} />
-          {m && !cats ? (
-            <span className={s.margin} data-tone={Math.abs(margin) < 0.05 ? "even" : margin > 0 ? "up" : "down"}>
-              {signed(margin)}
-            </span>
-          ) : m ? (
-            <span className={`${s.m} ${s.t3}`}>categories</span>
-          ) : null}
-        </div>
-        <div className={`${s.ln} ${s.m}`}>
-          {m?.win_chance != null ? <WinBar chance={m.win_chance} width={60} /> : null}
-          {m ? (
-            <span className={s.el}>
-              {m.win_chance != null ? (
-                <>
-                  <b>{Math.round(m.win_chance * 100)}%</b>
-                  {cats ? " to win the week" : " · "}
-                </>
-              ) : null}
-              {cats ? null : `proj ${whole(m.your_projected)}–${whole(m.opponent_projected)}`}
-            </span>
-          ) : null}
-        </div>
-        <div className={s.ln}>
-          <span id={`home-week-${team.team_id}`} className={s.wk}>
-            {cells.map((c) => (
-              <i key={c.date} data-tone={c.tone ?? undefined} data-kind={c.kind} title={c.title}>
-                {c.text}
-              </i>
-            ))}
-          </span>
-        </div>
-        <div className={`${s.ln} ${s.m} ${s.vs}`}>
-          <span className={s.el}>{m ? `vs ${m.opponent_name}` : ""}</span>
-        </div>
-      </div>
-
       <span className={s.go}>
         <DoorMarks team={team} doors={doors} from={strip} dimeFrom={() => rowEl(team.team_id)} />
       </span>
@@ -495,11 +511,12 @@ function TeamCard({ team, last, now, tz, doors, onPick }: Omit<RowProps, "picked
       </span>
       <button
         ref={card}
+        id={`home-card-${team.team_id}`}
         type="button"
         className={s.card}
         data-state={team.state}
         data-settling={settling}
-        style={{ transform: dx ? `translateX(${dx}px)` : undefined }}
+        style={{ ...edgeStyle(team), transform: dx ? `translateX(${dx}px)` : undefined }}
         aria-label={`${team.team_name}: ${STATE_WORD[team.state]}. ${row.say} Opens the team. Slide right for its Week desk, left for Dime.`}
         onPointerDown={(e) => {
           if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -587,9 +604,11 @@ export function Board({ data, picked, lasts, now, tz, demo, doors, onPick }: Boa
     <section className={s.board} aria-label="Your teams">
       <div className={s.head}>
         <span className={dk.label}>Team</span>
-        <span className={dk.label}>Status</span>
-        <span className={`${dk.label} ${s.headTonight}`}>Tonight</span>
         <span className={dk.label}>This week</span>
+        <span className={dk.label}>
+          Status <span className={s.headNote}>most pressing first</span>
+        </span>
+        <span className={`${dk.label} ${s.headTonight}`}>Tonight</span>
       </div>
       {data.teams.map((team) => (
         <TeamRow key={team.team_id} team={team} demo={demo} picked={team.team_id === picked} last={lasts.get(team.team_id)} now={now} tz={tz} doors={doors} onPick={onPick} />
@@ -599,27 +618,30 @@ export function Board({ data, picked, lasts, now, tz, demo, doors, onPick }: Boa
           <span className={dk.mono}>+</span> Add a team
         </Link>
         <span className={s.legend}>
-          <span className={s.dots}>
-            <i data-mark="live" />
+          {/* tonight's seat marks, where the rows show them */}
+          <span className={s.keySeats}>
+            {(
+              [
+                ["live", "live"],
+                ["later", "to come"],
+                ["questionable", "questionable"],
+                ["out", "out"],
+                ["idle", "no game"],
+              ] as const
+            ).map(([mark, word]) => (
+              <span key={mark} className={s.key}>
+                <span className={s.dots}>
+                  <i data-mark={mark} />
+                </span>
+                {word}
+              </span>
+            ))}
           </span>
-          live
-          <span className={s.dots}>
-            <i data-mark="later" />
+          <span className={s.key}>week: each day&apos;s margin, then your games v theirs</span>
+          <span className={s.key}>
+            <span className={s.edgeKey} aria-hidden />
+            edge: chance to win the week
           </span>
-          to come
-          <span className={s.dots}>
-            <i data-mark="questionable" />
-          </span>
-          questionable
-          <span className={s.dots}>
-            <i data-mark="out" />
-          </span>
-          out
-          <span className={s.dots}>
-            <i data-mark="idle" />
-          </span>
-          no game
-          <span style={{ marginLeft: 10 }}>week: each day&apos;s margin, then your games v theirs</span>
         </span>
       </div>
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { SignIn, SignUp } from "@clerk/nextjs";
 import { ThemePicker } from "@/components/desk/ThemePicker";
-import { ACCOUNT_DESK, WEEK_DESK } from "@/components/desk/routes";
+import { ACCOUNT_DESK, HOME_DESK } from "@/components/desk/routes";
 import { useDeskScheme, useDeskTheme } from "@/components/desk/useDeskTheme";
 import { CourtField } from "@/components/landing/CourtField";
 import { STAT_WALL } from "@/components/landing/stat-wall";
@@ -102,7 +102,7 @@ export function AuthPage({ mode }: { mode: "sign-in" | "sign-up" }) {
         {!appearance ? (
           <div className={s.formSpace} aria-hidden />
         ) : mode === "sign-in" ? (
-          <SignIn appearance={appearance} routing="path" path="/sign-in" signUpUrl="/sign-up" fallbackRedirectUrl={WEEK_DESK} />
+          <SignIn appearance={appearance} routing="path" path="/sign-in" signUpUrl="/sign-up" fallbackRedirectUrl={HOME_DESK} />
         ) : (
           <SignUp
             appearance={appearance}

@@ -90,16 +90,16 @@ describe("pages Clerk's middleware no longer sees", () => {
     expect((await run("/privacy?demo", DOCUMENT)).rewrite).toBeNull();
   });
 
-  test("the front door sends a browser that holds a session to its Week desk", async () => {
+  test("the front door sends a browser that holds a session to its Home desk", async () => {
     for (const cookie of [HINT, "__client_uat_Xk9Q2bLm=1760000000", `theme=paper; ${HINT}`]) {
       for (const headers of [DOCUMENT, {}]) {
         const r = await run("/", headers, cookie);
         expect(r.status).toBe(307);
-        expect(r.location).toBe(`${ORIGIN}/week`);
+        expect(r.location).toBe(`${ORIGIN}/home`);
         expect(r.clerk).toBeNull();
       }
     }
-    expect((await run("/?utm_source=x", DOCUMENT, HINT)).location).toBe(`${ORIGIN}/week`);
+    expect((await run("/?utm_source=x", DOCUMENT, HINT)).location).toBe(`${ORIGIN}/home`);
     // A POST is never the router's 204.
     expect((await run("/", { ...ROUTER, "Next-Action": "abc" }, HINT, "POST")).status).toBe(307);
   });

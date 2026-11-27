@@ -78,10 +78,23 @@
 .head,
 .row {
   display: grid;
-  grid-template-columns: 186px minmax(0, 1fr) 184px 232px;
+  grid-template-columns: 186px 240px minmax(0, 1fr) 184px;
   column-gap: 18px;
   padding-left: 17px;
   padding-right: 16px;
+}
+/* "54% to win": the words only where the week's column has the room for them */
+.toWin {
+  display: none;
+}
+@media (min-width: 1500px) {
+  .head,
+  .row {
+    grid-template-columns: 186px 276px minmax(0, 1fr) 184px;
+  }
+  .toWin {
+    display: inline;
+  }
 }
 .head {
   height: 32px;
@@ -105,23 +118,15 @@
   outline: none;
   text-align: left;
 }
+/* the row's edge: how its week is going, the theme's red through its yellow to its green (--edge, set by the row) */
 .row::before {
   content: "";
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 3px;
-  background: transparent;
-}
-.row[data-state="needs_you"]::before {
-  background: var(--down);
-}
-.row[data-state="your_call"]::before {
-  background: var(--accent);
-}
-.row[data-state="cant_read"]::before {
-  background: var(--warn);
+  width: 4px;
+  background: var(--edge, transparent);
 }
 .row:hover {
   background: var(--hover);
@@ -156,9 +161,16 @@
   min-width: 0;
   overflow: hidden;
 }
-/* the row's last line under the week: its end is where the row's doors stand */
-.vs {
+/* the last line of the row's last column: its end is where the row's doors stand */
+.colTonight .ln:last-child {
   padding-right: 54px;
+}
+.headNote {
+  margin-left: 8px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--text-3);
+  opacity: 0.85;
 }
 .m {
   font-family: var(--desk-mono), ui-monospace, monospace;
@@ -193,14 +205,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* the week's score: the number a row is read for, the user's own side the heavier */
 .score {
   font-family: var(--desk-mono), ui-monospace, monospace;
-  font-size: 16px;
-  letter-spacing: -0.01em;
+  font-size: 19px;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  color: var(--text-2);
+}
+.score b {
+  font-weight: 600;
+  color: var(--text);
 }
 .t1 {
   color: var(--text);
@@ -270,6 +288,7 @@
 .more {
   display: inline-flex;
   align-items: center;
+  flex: none;
   height: 18px;
   padding: 0 6px;
   border-radius: calc(4px * var(--round, 1));
@@ -467,12 +486,26 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 16px;
   font-family: var(--desk-mono), ui-monospace, monospace;
   font-size: 10.5px;
   color: var(--text-3);
   min-width: 0;
   overflow: hidden;
+}
+.keySeats,
+.key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.edgeKey {
+  width: 26px;
+  height: 9px;
+  border-radius: 2px;
+  flex: none;
+  background: linear-gradient(90deg, var(--down), var(--warn), var(--up));
 }
 
 /* ---- the picked team's page */
@@ -896,16 +929,8 @@
   left: 0;
   top: 0;
   bottom: 0;
-  width: 3px;
-}
-.card[data-state="needs_you"]::before {
-  background: var(--down);
-}
-.card[data-state="your_call"]::before {
-  background: var(--accent);
-}
-.card[data-state="cant_read"]::before {
-  background: var(--warn);
+  width: 4px;
+  background: var(--edge, transparent);
 }
 .r1 {
   display: flex;
@@ -919,7 +944,7 @@
   min-width: 0;
 }
 .r1 .score {
-  font-size: 13.5px;
+  font-size: 15.5px;
 }
 .r2 {
   display: flex;
@@ -977,11 +1002,15 @@
   }
   .head,
   .row {
-    grid-template-columns: 186px minmax(0, 1fr) 232px;
+    grid-template-columns: 186px 240px minmax(0, 1fr);
   }
   .colTonight,
-  .headTonight {
+  .headTonight,
+  .keySeats {
     display: none;
+  }
+  .colStatus .ln:last-child {
+    padding-right: 54px;
   }
 }
 
@@ -1036,12 +1065,16 @@
   }
   .head,
   .row {
-    grid-template-columns: 150px minmax(0, 1fr) 232px;
+    grid-template-columns: 150px 232px minmax(0, 1fr);
     column-gap: 14px;
   }
   .colTonight,
-  .headTonight {
+  .headTonight,
+  .keySeats {
     display: none;
+  }
+  .colStatus .ln:last-child {
+    padding-right: 54px;
   }
 }
 
