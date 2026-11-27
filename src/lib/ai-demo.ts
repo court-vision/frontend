@@ -30,6 +30,7 @@ import type {
   MoveOutcomeList,
 } from "@/types/ai";
 import type { DeskTeam } from "@/components/desk/TeamSwitch";
+import { shiftDay } from "./ai-timeline";
 import { etInstant } from "./local-time";
 
 export const AI_DEMO_DATE = "2026-11-19";
@@ -236,6 +237,34 @@ const TODAY_TIMELINE: AiTimeline = {
   asks: [],
   notes_due: [],
 };
+
+/**
+ * Any other day the desk steps to: nothing ran (or, tomorrow, what is scheduled), so the day
+ * arrows never land on "Couldn't read the day" in a demo whose queries can't fetch.
+ */
+function quietDay(teamId: number, date: string): AiTimeline {
+  const tomorrow = date === TOMORROW;
+  return {
+    ...TODAY_TIMELINE,
+    team_id: teamId,
+    date,
+    starts_at: at("03:00", date),
+    ends_at: at("03:00", shiftDay(date, 1)),
+    first_tip: tomorrow ? at("19:00", date) : null,
+    checkins_on: teamId === AI_DEMO_TEAM,
+    checkins: [],
+    upcoming:
+      tomorrow && teamId === AI_DEMO_TEAM
+        ? [
+            { kind: "night", date: AI_DEMO_DATE, due_at: at("05:40", date) },
+            { kind: "morning", date, due_at: at("06:00", date) },
+            { kind: "pre_lock", date, due_at: at("18:30", date) },
+          ]
+        : [],
+    asks: [],
+    notes_due: [],
+  };
+}
 
 const YESTERDAY_TIMELINE: AiTimeline = {
   ...TODAY_TIMELINE,
@@ -502,6 +531,15 @@ const NO_MOVES = (teamId: number, scope: MoveOutcomeList["scope"]): MoveOutcomeL
 /** Fills a demo's query client with the desk's sample data. */
 export function seedAiDemo(client: QueryClient): void {
   const who = null;
+  // A day nobody seeded gets a quiet one the moment the desk asks for it, before it first renders
+  const days = aiKeys.timelines(who);
+  client.getQueryCache().subscribe((e) => {
+    if (e.type !== "added" || e.query.state.data !== undefined) return;
+    const key = e.query.queryKey;
+    if (key.length !== days.length + 2 || days.some((k, i) => key[i] !== k)) return;
+    const [teamId, day] = key.slice(days.length) as [number, string];
+    client.setQueryData(key, quietDay(teamId, day === "today" ? AI_DEMO_DATE : day));
+  });
   client.setQueryData(aiKeys.checkins(who), CHECKINS);
   client.setQueryData(aiKeys.conversations(who), CONVERSATIONS.map(summaryOf));
   for (const c of CONVERSATIONS) client.setQueryData(aiKeys.conversation(who, c.id), c);

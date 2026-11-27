@@ -93,7 +93,8 @@ export function AiPage({ initial, demo = false }: { initial: AiLocation; demo?: 
  */
 function AiDemo({ initial }: { initial: AiLocation }) {
   const [client] = useState(() => {
-    const c = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    // Kept for the whole visit: the demo's queries can't fetch, so nothing may be collected
+    const c = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } } });
     seedAiDemo(c);
     return c;
   });
