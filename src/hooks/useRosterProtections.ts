@@ -6,6 +6,7 @@ import { userMessage } from "@/lib/api-error";
 import { lineupKeys } from "@/hooks/useLineupEditor";
 import { pickupKeys } from "@/hooks/useScheduledPickups";
 import { laneKeys } from "@/hooks/useStreamLanes";
+import { teamDeskKeys } from "@/hooks/useTeamDesk";
 import type { RosterProtections } from "@/types/roster-protection";
 
 export const protectionKeys = {
@@ -57,6 +58,8 @@ export function useSetProtectionMutation(teamId: number) {
         void queryClient.invalidateQueries({ queryKey: laneKeys.team(teamId) });
       }
       void queryClient.invalidateQueries({ queryKey: lineupKeys.actions(teamId) });
+      // The streaming line never streams a protected spot
+      void queryClient.invalidateQueries({ queryKey: teamDeskKeys.lines(teamId) });
     },
     onError: (err, { on }) => {
       toast.error(userMessage(err, on ? "Couldn't protect him" : "Couldn't unprotect him"));

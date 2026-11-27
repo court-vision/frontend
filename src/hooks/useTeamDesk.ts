@@ -5,9 +5,13 @@ import type { LeagueProjectionData, LeagueValuesData, StreamingLineData, ValueWi
 
 export const teamDeskKeys = {
   all: ["team-desk"] as const,
-  projections: (teamId: number) => [...teamDeskKeys.all, teamId, "projections"] as const,
-  values: (teamId: number, window: ValueWindowKey) => [...teamDeskKeys.all, teamId, "values", window] as const,
-  line: (teamId: number, window: ValueWindowKey) => [...teamDeskKeys.all, teamId, "line", window] as const,
+  /** Every read of one team: invalidated when its roster changes (`invalidateRoster`, a transaction). */
+  team: (teamId: number) => [...teamDeskKeys.all, teamId] as const,
+  projections: (teamId: number) => [...teamDeskKeys.team(teamId), "projections"] as const,
+  values: (teamId: number, window: ValueWindowKey) => [...teamDeskKeys.team(teamId), "values", window] as const,
+  /** Every window's streaming line: invalidated when a protection changes which spots it may stream. */
+  lines: (teamId: number) => [...teamDeskKeys.team(teamId), "line"] as const,
+  line: (teamId: number, window: ValueWindowKey) => [...teamDeskKeys.lines(teamId), window] as const,
 };
 
 /**
