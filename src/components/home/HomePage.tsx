@@ -20,7 +20,7 @@ import { localClock } from "@/lib/local-time";
 import { useDimeAsk } from "@/stores/useDimeAsk";
 import { useUIStore } from "@/stores/useUIStore";
 import type { TeamOverview, TeamsOverviewData } from "@/types/team-overview";
-import { Board, HomeTape, rowEl, weekEl } from "./Board";
+import { Board, HomeTape, rowEl, teamEl, weekEl } from "./Board";
 import { TeamSide, type Doors } from "./TeamSide";
 import dk from "@/components/desk/desk.module.css";
 import s from "./home.module.css";
@@ -223,15 +223,27 @@ function HomeDesk({ model }: { model: HomeModel }) {
 
   // Where the page takes the rows' place, focus goes with it, and comes back to the row after
   const paneWas = useRef(pane);
+  const focusOwed = useRef(false);
+  const hasTeam = team != null;
   useEffect(() => {
-    const was = paneWas.current;
-    paneWas.current = pane;
-    if (was === pane || !window.matchMedia(NARROW).matches) return;
-    if (pane === "team") document.getElementById("home-team-page")?.focus({ preventScroll: true });
-    else if (picked != null) rowEl(picked)?.focus({ preventScroll: true });
-    // Only when the pane turns: a pick made beside the open page moves no focus
+    if (paneWas.current !== pane) {
+      paneWas.current = pane;
+      focusOwed.current = true;
+    }
+    if (!focusOwed.current) return;
+    if (!window.matchMedia(NARROW).matches || (pane === "board" && picked == null)) {
+      focusOwed.current = false;
+      return;
+    }
+    // The team as it is on screen: at phone width that is its card, not its row
+    const to = pane === "team" ? document.getElementById("home-team-page") : teamEl(picked!);
+    // Not there yet (a reload on the team's page, before the teams are read): owed until it is
+    if (!to) return;
+    focusOwed.current = false;
+    to.focus({ preventScroll: true });
+    // Only when the pane turns, or the page it turned to arrives: a pick made beside the open page moves no focus
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pane]);
+  }, [pane, hasTeam]);
 
   const back = useCallback(() => {
     if (window.history.state?.homePane === "team") window.history.back();

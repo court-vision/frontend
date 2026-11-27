@@ -5,7 +5,10 @@ import { overviewKeys } from "@/hooks/useTeamsOverview";
 import { insetOf } from "../desk-zoom";
 import {
   benchPlaying,
+  chanceText,
   duelOf,
+  edgeColor,
+  edgeOf,
   latestCheckins,
   leadItem,
   moreItems,
@@ -117,6 +120,36 @@ describe("the week strip", () => {
     expect(todayOf(NEEDS_YOU.week)?.kind).toBe("today");
     expect(todayOf([])).toBeNull();
     expect(weekCells(null)).toEqual([]);
+  });
+});
+
+describe("a row's edge", () => {
+  test("is yellow at a coin flip and leans green or red with the chance to win the week", () => {
+    expect(edgeOf(0.5)).toEqual({ tone: "up", lean: 0 });
+    expect(edgeOf(0.65)).toEqual({ tone: "up", lean: 50 });
+    expect(edgeOf(0.35)).toEqual({ tone: "down", lean: 50 });
+    expect(edgeColor(edgeOf(0.35))).toBe("color-mix(in oklab, var(--down) 50%, var(--warn))");
+  });
+  test("is one colour once the week is one-sided, and stays inside 0 to 1", () => {
+    expect(edgeOf(0.8)).toEqual({ tone: "up", lean: 100 });
+    expect(edgeOf(0.99)).toEqual(edgeOf(0.8));
+    expect(edgeOf(0.01)).toEqual({ tone: "down", lean: 100 });
+    expect(edgeOf(1.4)).toEqual({ tone: "up", lean: 100 });
+    expect(edgeOf(-1)).toEqual({ tone: "down", lean: 100 });
+  });
+  test("a team with no chance to go on has no edge and nothing read aloud", () => {
+    expect(edgeOf(null)).toBeNull();
+    expect(edgeOf(undefined)).toBeNull();
+    expect(edgeOf(Number.NaN)).toBeNull();
+    expect(edgeColor(null)).toBeUndefined();
+    expect(chanceText(null)).toBe("");
+    expect(chanceText(0.536)).toBe("54% to win the week");
+  });
+  test("every demo team has a chance, and both ends of the spectrum are on show", () => {
+    const leans = HOME_DEMO.teams.map((t) => edgeOf(t.matchup?.win_chance));
+    expect(leans.every((e) => e !== null)).toBe(true);
+    expect(new Set(leans.map((e) => e!.tone))).toEqual(new Set(["up", "down"]));
+    expect(leans.some((e) => e!.lean < 40)).toBe(true);
   });
 });
 

@@ -1,7 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { CommandPalette } from "@/components/desk/CommandPalette";
 import { ZoomArrival } from "@/components/desk/ZoomArrival";
-import { ACCOUNT_DESK, WEEK_DESK } from "@/components/desk/routes";
+import { ACCOUNT_DESK, HOME_DESK } from "@/components/desk/routes";
 
 /**
  * Clerk, for the pages that use it: the desks, and the sign-in and sign-up
@@ -15,7 +15,7 @@ import { ACCOUNT_DESK, WEEK_DESK } from "@/components/desk/routes";
  */
 export default function DeskLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider signInFallbackRedirectUrl={WEEK_DESK} signUpFallbackRedirectUrl={`${ACCOUNT_DESK}?add`} afterSignOutUrl="/">
+    <ClerkProvider signInFallbackRedirectUrl={HOME_DESK} signUpFallbackRedirectUrl={`${ACCOUNT_DESK}?add`} afterSignOutUrl="/">
       {children}
       {/* ⌘K on every desk and on the way in. It reads Clerk (your teams, sign out), so it sits here rather than in the frame. */}
       <CommandPalette />

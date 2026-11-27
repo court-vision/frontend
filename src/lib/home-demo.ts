@@ -1,7 +1,9 @@
 /**
  * The Home desk's demo: a made-up account with five teams on one Thursday night, two games
  * under way. One team needs a swap before a tip, one has an IR move to take or leave, two are
- * set and Dime drives the last. Nothing here is real and nothing is sent anywhere: the page
+ * set and Dime drives the last. They stand as the server orders them, most pressing first: what
+ * can be done on a team weighed by how close its week is, the weeks all but settled last.
+ * Nothing here is real and nothing is sent anywhere: the page
  * opens signed out, so team, league and opponent names are invented too (the first team carries
  * the Week demo's names).
  */
@@ -313,7 +315,7 @@ const TEAMS: TeamOverview[] = [
   }),
   team({
     id: 21, name: "Nine Lives", league: "Office Cats League", state: "your_call", opp: "Board Men",
-    score: [3, 5], proj: [4, 5], win: null, season: [2, 2, 5, 8, null], categories: [3, 5, 0],
+    score: [3, 5], proj: [4, 5], win: 0.41, season: [2, 2, 5, 8, null], categories: [3, 5, 0],
     week: weekOf([[4, 4], [3, 5], [3, 5]], [3, 5], [[4, 6], [7, 7], [6, 4]], true),
     items: [item("your_call", action("ir_in", "ir-harris", "Harris is out and IR has an open seat.", "T. Harris moves to IR, which frees a roster spot", HARRIS, "BE", null))],
     next: { kind: "auto_lineup", at: at("18:15", "2026-11-20"), label: "Auto-lineup sets the lineup" },
@@ -327,8 +329,8 @@ const TEAMS: TeamOverview[] = [
   }),
   team({
     id: 24, name: "Bank Shots", league: "Family League · 4 teams", state: "set", opp: "Uncle Drop Step",
-    score: [668, 471.5], proj: [1279, 1033], win: 0.99, season: [4, 0, 1, 4, 1],
-    week: weekOf([[225, 171], [198, 146], [193, 124]], [52.5, 32], [[6, 5], [9, 7], [7, 6]]),
+    score: [471.5, 668], proj: [1033, 1279], win: 0.01, season: [1, 3, 4, 4, 0.12],
+    week: weekOf([[171, 225], [146, 198], [124, 193]], [32, 52.5], [[5, 6], [7, 9], [6, 7]]),
     items: [],
     next: { kind: "auto_lineup", at: at("18:15", "2026-11-20"), label: "Auto-lineup sets the lineup" },
   }),

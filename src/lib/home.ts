@@ -202,6 +202,36 @@ export function tipsAfterLock(tonight: TeamOverview["tonight"], now: number): bo
   return toCome.some((s) => s.game_time_et !== tonight.next_lock_et);
 }
 
+// ---- how the week is going, for a row's edge
+
+/** A chance this far from a coin flip, either way, is the full green or the full red. */
+const EDGE_FULL = 0.3;
+
+export interface Edge {
+  /** Which way the week leans. */
+  tone: "up" | "down";
+  /** How far it leans: 0 at a coin flip (the edge is yellow), 100 once it is one-sided. */
+  lean: number;
+}
+
+/** A row's edge from its chance to win the week: red, through yellow at a coin flip, to green. Null with no chance to go on. */
+export function edgeOf(chance: number | null | undefined): Edge | null {
+  if (chance == null || !Number.isFinite(chance)) return null;
+  const p = Math.min(Math.max(chance, 0), 1);
+  return { tone: p >= 0.5 ? "up" : "down", lean: Math.round(Math.min(Math.abs(p - 0.5) / EDGE_FULL, 1) * 100) };
+}
+
+/** The edge as a colour of the theme's own: its yellow mixed toward its green or its red. */
+export function edgeColor(edge: Edge | null): string | undefined {
+  if (!edge) return undefined;
+  return `color-mix(in oklab, var(--${edge.tone}) ${edge.lean}%, var(--warn))`;
+}
+
+/** "54% to win" for a row read aloud; "" with no chance. */
+export function chanceText(chance: number | null | undefined): string {
+  return chance == null || !Number.isFinite(chance) ? "" : `${Math.round(chance * 100)}% to win the week`;
+}
+
 // ---- the strip above the rows
 
 export interface Tape {
