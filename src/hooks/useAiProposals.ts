@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@clerk/nextjs";
+import { useDeskAuth } from "@/lib/demo-auth";
 import { toast } from "sonner";
 import { aiKeys, aiMessage } from "@/hooks/useAi";
 import { lineupKeys, useTeamLineupQuery } from "@/hooks/useLineupEditor";
@@ -87,7 +87,7 @@ export interface ChipTray {
  * column for a retry; a stale board is read again.
  */
 export function useChipTray(conversationId: number | null): ChipTray {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId } = useDeskAuth();
   const queryClient = useQueryClient();
   const [staged, setStaged] = useState<StagedChip[]>([]);
   const [patches, setPatches] = useState<ReadonlyMap<number, ChipPatch>>(() => new Map());

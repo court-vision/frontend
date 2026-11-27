@@ -20,5 +20,5 @@ export default async function Page({
   // Draft notes left the AI desk for each room's recap: an old link goes to the note or the rooms
   const moved = draftsRedirect(one(params.v), one(params.c), DRAFT_DESK, AI_DESK);
   if (moved) redirect(moved);
-  return <AiPage initial={aiLocation(one(params.v), one(params.c), one(params.d))} />;
+  return <AiPage initial={aiLocation(one(params.v), one(params.c), one(params.d))} demo={"demo" in params} />;
 }

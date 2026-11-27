@@ -1,23 +1,31 @@
-// Regenerates the landing page's desk screenshots (public/landing/<desk>-<theme>.png):
-// every desk, in every desk theme, at 1440×900 with sample data.
+// Regenerates the landing page's desk screenshots (public/landing/<desk>-<theme>.webp):
+// every desk, in every desk theme, at 1440×900 CSS pixels and twice that in real pixels (2880×1800, so the
+// pictures stay sharp on high-density screens), with sample data, saved as lossless WebP.
 //
 //   bun run dev -p 3000          (prod API is fine: Scout and Developer read public routes)
 //   node scripts/landing-shots.mjs [baseUrl]
 //
-// Needs Google Chrome installed. Drives it headless over the DevTools protocol,
-// signed out, so the desks open their demos.
+// Needs Google Chrome installed (or its path in CHROME). Drives it headless over the
+// DevTools protocol, signed out, so the desks open their demos, with the clock in
+// New York so the desks' times read in ET.
+//
+// Keep DESKS in step with LANDING_DESKS and THEMES with LANDING_SHOT_THEMES
+// (src/lib/landing.ts); src/lib/__tests__/landing.test.ts checks every picture is here.
 import { spawn } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import sharp from "sharp";
 
 const base = (process.argv[2] ?? "http://localhost:3000").replace(/\/$/, "");
 const out = join(process.cwd(), "public", "landing");
-const THEMES = ["paper", "ember", "noon", "midnight"];
+const THEMES = ["noon", "midnight", "paper", "ember", "chalk", "blacktop", "harvest", "hearth"];
 const DESKS = [
+  ["home", "/home?demo", 3000],
   ["week", "/week?demo", 2500],
   ["draft", "/draft/demo-1", 3000],
   ["scout", "/scout", 5000],
+  ["ai", "/ai?demo", 3000],
   ["dev", "/developer", 4000],
 ];
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -69,7 +77,10 @@ try {
     (await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })).result?.result?.value;
 
   await send("Page.enable");
-  await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 2, mobile: false });
+  await send("Emulation.setTimezoneOverride", { timezoneId: "America/New_York" });
+  // Harvest and Hearth drop a few leaves as the theme opens: no motion, so none are caught mid-fall.
+  await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
   await send("Page.navigate", { url: `${base}/week?demo` });
   await sleep(4000);
 
@@ -86,8 +97,8 @@ try {
       await value(`(() => { const s = document.createElement("style"); s.textContent = "nextjs-portal,.tsqd-parent-container{display:none!important}"; document.head.appendChild(s); })()`);
       await sleep(settle);
       const shot = await send("Page.captureScreenshot", { format: "png" });
-      writeFileSync(join(out, `${desk}-${theme}.png`), Buffer.from(shot.result.data, "base64"));
-      console.log(`${desk}-${theme}.png`);
+      await sharp(Buffer.from(shot.result.data, "base64")).webp({ lossless: true, effort: 6 }).toFile(join(out, `${desk}-${theme}.webp`));
+      console.log(`${desk}-${theme}.webp`);
     }
   }
   ws.close();
