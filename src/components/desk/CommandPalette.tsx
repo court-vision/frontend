@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   Braces,
   CalendarDays,
+  ChartColumnBig,
   Check,
   ClipboardList,
   LayoutGrid,
@@ -45,7 +46,7 @@ import dk from "./desk.module.css";
 /** How long typing must pause before the directory is asked, as Scout's own box waits. */
 const DIRECTORY_DEBOUNCE_MS = 150;
 
-const DESK_ICONS: Record<DeskId, LucideIcon> = { home: LayoutGrid, week: CalendarDays, draft: ClipboardList, scout: Telescope, ai: MessagesSquare, developer: Braces, account: UserRound };
+const DESK_ICONS: Record<DeskId, LucideIcon> = { home: LayoutGrid, week: CalendarDays, draft: ClipboardList, scout: Telescope, team: ChartColumnBig, ai: MessagesSquare, developer: Braces, account: UserRound };
 const LENS_ICONS: Record<Lens, LucideIcon> = { pool: Trophy, teams: ListOrdered, slate: Activity, market: TrendingUp };
 
 /** The palette's own groups in the order they are listed; the desk's own group goes before them all. */

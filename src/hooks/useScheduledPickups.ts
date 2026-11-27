@@ -8,6 +8,7 @@ import { cancelRefusal } from "@/lib/pickups";
 import { lineupKeys } from "@/hooks/useLineupEditor";
 import { matchupKeys } from "@/hooks/useMatchup";
 import { streamersKeys } from "@/hooks/useStreamers";
+import { teamDeskKeys } from "@/hooks/useTeamDesk";
 import { teamsKeys } from "@/hooks/useTeams";
 import type { ScheduledPickup, ScheduledPickupList, SchedulePickupRequest } from "@/types/scheduled-pickup";
 
@@ -64,6 +65,7 @@ export function invalidateRoster(queryClient: ReturnType<typeof useQueryClient>,
   queryClient.invalidateQueries({ queryKey: teamsKeys.roster(teamId) });
   queryClient.invalidateQueries({ queryKey: matchupKeys.live(teamId) });
   queryClient.invalidateQueries({ queryKey: matchupKeys.week(teamId) });
+  queryClient.invalidateQueries({ queryKey: teamDeskKeys.team(teamId) });
 }
 
 /**

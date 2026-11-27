@@ -17608,6 +17608,17 @@
       },
       "LinePlayerValue": {
         "properties": {
+          "below_line": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Below Line"
+          },
           "by_matchup": {
             "items": {
               "type": "number"
@@ -17650,6 +17661,10 @@
             "title": "On Ir",
             "type": "boolean"
           },
+          "per_game": {
+            "title": "Per Game",
+            "type": "number"
+          },
           "player_id": {
             "anyOf": [
               {
@@ -17685,16 +17700,13 @@
             ],
             "title": "Slot"
           },
-          "under_line": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Under Line"
+          "streamed_in": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Streamed In",
+            "type": "array"
           },
           "worth": {
             "title": "Worth",
@@ -17711,11 +17723,31 @@
           "injury_status",
           "protected",
           "on_ir",
+          "per_game",
+          "below_line",
+          "streamed_in",
           "worth",
-          "by_matchup",
-          "under_line"
+          "by_matchup"
         ],
         "title": "LinePlayerValue",
+        "type": "object"
+      },
+      "LineSpot": {
+        "properties": {
+          "espn_id": {
+            "title": "Espn Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "espn_id"
+        ],
+        "title": "LineSpot",
         "type": "object"
       },
       "LineupCheckResp": {
@@ -21571,6 +21603,11 @@
             ],
             "title": "End"
           },
+          "games": {
+            "default": 0.0,
+            "title": "Games",
+            "type": "number"
+          },
           "lanes": {
             "items": {
               "$ref": "#/components/schemas/LineLane"
@@ -21625,6 +21662,14 @@
             ],
             "title": "Start"
           },
+          "streamed": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineSpot"
+            },
+            "title": "Streamed",
+            "type": "array"
+          },
           "worth_running": {
             "title": "Worth Running",
             "type": "integer"
@@ -21642,6 +21687,8 @@
           "worth_running",
           "line",
           "line_low",
+          "games",
+          "streamed",
           "proven"
         ],
         "title": "MatchupStreamingLine",

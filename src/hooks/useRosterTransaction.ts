@@ -14,6 +14,7 @@ import { STALE_POOL_REASONS, transactionError, transactionOutcomeCopy } from "@/
 import { lineupKeys } from "@/hooks/useLineupEditor";
 import { matchupKeys } from "@/hooks/useMatchup";
 import { streamersKeys } from "@/hooks/useStreamers";
+import { teamDeskKeys } from "@/hooks/useTeamDesk";
 import { teamsKeys } from "@/hooks/useTeams";
 import type { LineupState } from "@/types/lineup-editor";
 import type { RosterTransactionData, RosterTransactionRequest } from "@/types/roster-transaction";
@@ -29,7 +30,7 @@ import type { RosterTransactionData, RosterTransactionRequest } from "@/types/ro
  *
  * On success the re-read board replaces the cached one, and everything that
  * lists the roster — insights, roster, matchups, the streamer pool this
- * player just left — is invalidated. ESPN's reads can trail its writes, so the
+ * player just left, the Team desk — is invalidated. ESPN's reads can trail its writes, so the
  * roster's other reads (the later days, the matchup, the week, the pool) go
  * again a few seconds on, and today's board with them, twice, when the
  * transaction came back not confirmed (`catchUp`).
@@ -59,6 +60,7 @@ export function useRosterTransactionMutation(teamId: number) {
       queryClient.invalidateQueries({ queryKey: matchupKeys.live(teamId) });
       queryClient.invalidateQueries({ queryKey: matchupKeys.week(teamId) });
       queryClient.invalidateQueries({ queryKey: [...matchupKeys.all, "daily", teamId] });
+      queryClient.invalidateQueries({ queryKey: teamDeskKeys.team(teamId) });
       catchUp(
         queryClient,
         teamId,
@@ -70,6 +72,7 @@ export function useRosterTransactionMutation(teamId: number) {
           { queryKey: teamsKeys.roster(teamId) },
           { queryKey: matchupKeys.live(teamId) },
           { queryKey: matchupKeys.week(teamId) },
+          { queryKey: teamDeskKeys.team(teamId) },
         ],
         data.verified ? catchUpDelays.after : catchUpDelays.unconfirmed
       );
