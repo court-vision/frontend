@@ -1,0 +1,801 @@
+/*
+ * The Team desk: your team against the league's other rosters, projected the same way. A window
+ * rail, a tape of the season, the week-by-week chart, then three panes (where your points come
+ * from, your roster by tier, the streaming line). The page scrolls as one; styled in the desk
+ * tokens.
+ */
+
+/* ---- the window rail */
+
+.toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 46px;
+  padding: 0 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.toolbar > * {
+  flex-shrink: 0;
+}
+.windowSpan {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.benchmark {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* ---- the page */
+
+.main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+.heroTitle {
+  font-size: 17px;
+  font-weight: 600;
+}
+.heroSub {
+  font-size: 13px;
+  color: var(--text-2);
+  max-width: 460px;
+  line-height: 1.5;
+}
+.heroRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.upText {
+  color: var(--up);
+}
+.downText {
+  color: var(--down);
+}
+.dim {
+  color: var(--text-3);
+}
+/* a read under way behind what is shown */
+.stale {
+  opacity: 0.55;
+  transition: opacity 160ms ease;
+}
+
+/* ---- the tape */
+
+.tape {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  background: var(--tape-bg, var(--surface));
+  border-bottom: 1px solid var(--line);
+}
+.tile {
+  min-width: 0;
+  padding: 10px 16px 11px;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tile:last-child {
+  border-right: 0;
+}
+.tileV {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: var(--figure-weight, 400);
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+.tileV small {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+.tileS {
+  font-size: 11.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tapeError {
+  border-bottom: 1px solid var(--line);
+}
+
+/* ---- the chart */
+
+.chartPane {
+  flex: none;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.chartHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 0;
+  flex-wrap: wrap;
+}
+.legend {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.legend i {
+  display: inline-block;
+}
+.swYou {
+  width: 12px;
+  height: 8px;
+  background: linear-gradient(90deg, var(--series-1) 50%, var(--series-2) 50%);
+}
+.swBand {
+  width: 12px;
+  height: 8px;
+  background: color-mix(in srgb, var(--text-3) 22%, transparent);
+}
+.swLine {
+  width: 12px;
+  border-top: 2px dashed var(--warn);
+}
+.swBest {
+  width: 12px;
+  border-top: 2px solid var(--text-3);
+}
+.swDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--up);
+}
+.swWindow {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.chartScroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 0 4px;
+}
+.chart {
+  display: block;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.hatchLine {
+  stroke: color-mix(in srgb, var(--text-3) 26%, transparent);
+}
+.hatch {
+  opacity: 0.9;
+}
+.playoffShade {
+  fill: color-mix(in srgb, var(--preview) 7%, transparent);
+}
+.phase_scored,
+.phase_projected {
+  stroke: var(--line-2);
+}
+.phase_playoffs {
+  stroke: var(--preview);
+}
+.phaseText {
+  fill: var(--text-2);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+}
+.phaseTextPlayoffs {
+  fill: var(--preview);
+}
+.nowCol {
+  fill: var(--today);
+}
+.gridLine {
+  stroke: color-mix(in srgb, var(--line) 70%, transparent);
+  stroke-width: 1;
+}
+.gridZero {
+  stroke: var(--line-2);
+  stroke-width: 1;
+}
+.axis {
+  fill: var(--text-3);
+  font-size: 10px;
+}
+.axisZero {
+  fill: var(--text-2);
+  font-size: 10px;
+}
+.band {
+  fill: color-mix(in srgb, var(--text-3) 16%, transparent);
+}
+.lineMark {
+  stroke: var(--warn);
+  stroke-width: 1.6;
+}
+.bestTick {
+  stroke: var(--text-3);
+  stroke-width: 1.4;
+}
+.bestMark {
+  fill: var(--text-3);
+}
+/* above and below the median: the theme's two series colors, a pair in every theme */
+.barUp {
+  fill: var(--series-1);
+}
+.barDown {
+  fill: var(--series-2);
+}
+.barAhead {
+  fill-opacity: 0.72;
+}
+.barTbd {
+  fill-opacity: 0.35;
+}
+.clearDot {
+  fill: var(--up);
+}
+.label1 {
+  fill: var(--text-2);
+  font-size: 10.5px;
+}
+.label2 {
+  fill: var(--text-3);
+  font-size: 9.5px;
+}
+.labelWin {
+  fill: var(--up);
+  font-size: 9.5px;
+}
+.labelLoss {
+  fill: var(--down);
+  font-size: 9.5px;
+}
+.labelNow,
+.labelNowNum {
+  fill: var(--accent);
+  font-size: 10px;
+}
+.labelNowNum {
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.windowMark {
+  stroke: var(--accent);
+  opacity: 0.85;
+}
+.hit {
+  fill: transparent;
+}
+.hit:hover {
+  fill: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+/* ---- the three panes */
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.85fr) minmax(420px, 1.05fr) minmax(380px, 1fr);
+  align-items: stretch;
+  border-bottom: 1px solid var(--line);
+}
+.pane {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+}
+.pane:last-child {
+  border-right: 0;
+}
+.paneLine {
+  background: var(--surface);
+}
+.phead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 11px 16px 9px;
+  border-bottom: 1px solid var(--line);
+}
+.psub {
+  margin-left: auto;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.skel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+.paneError {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.rankChip {
+  justify-content: center;
+  min-width: 36px;
+}
+.warnChip {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+.injury {
+  height: 16px;
+  padding: 0 4px;
+  font-size: 9.5px;
+}
+
+/* where your points come from */
+
+.tracks {
+  display: flex;
+  flex-direction: column;
+}
+.trackHead,
+.trackRow {
+  display: grid;
+  grid-template-columns: 138px minmax(0, 1fr) 58px 40px;
+  gap: 10px;
+  align-items: center;
+  padding: 0 16px;
+}
+.trackHead {
+  padding-top: 8px;
+  padding-bottom: 2px;
+}
+.trackEnds {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--text-3);
+}
+.trackRow {
+  min-height: 36px;
+  border-bottom: 1px solid var(--line);
+}
+.trackLabel {
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.track {
+  position: relative;
+  height: 16px;
+}
+.trackRule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 7px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--line-2);
+}
+.trackMedian {
+  position: absolute;
+  top: 2px;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  background: var(--text-2);
+}
+.trackLine {
+  position: absolute;
+  top: 0;
+  height: 16px;
+  margin-left: -1px;
+  border-left: 2px dashed var(--warn);
+}
+.trackYou {
+  position: absolute;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.trackValue {
+  text-align: right;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+}
+.trackKey {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 10px 16px;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.trackKey span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.trackKeyNote {
+  margin-left: auto;
+  color: var(--text-3);
+}
+.keyMedian {
+  display: inline-block;
+  width: 2px;
+  height: 12px;
+  background: var(--text-2);
+}
+.keyLine {
+  display: inline-block;
+  height: 12px;
+  border-left: 2px dashed var(--warn);
+}
+.keyYou {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* tables: your roster by tier, your players against the line */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.table th {
+  padding: 7px 8px;
+  text-align: right;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: var(--label-weight, 400);
+  letter-spacing: var(--label-track, 0.08em);
+  text-transform: uppercase;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.table td {
+  padding: 4px 8px;
+  text-align: right;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  white-space: nowrap;
+}
+.table th:first-child,
+.table td:first-child {
+  padding-left: 16px;
+}
+.table th:last-child,
+.table td:last-child {
+  padding-right: 16px;
+}
+.table .l {
+  text-align: left;
+}
+.table .c {
+  text-align: center;
+}
+.tierTable {
+  table-layout: auto;
+}
+.playerCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  font-family: var(--desk-sans), ui-sans-serif, system-ui, sans-serif;
+}
+.pname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ppos {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.lock {
+  color: var(--text-3);
+  flex: none;
+}
+
+.diverge {
+  position: relative;
+  display: inline-block;
+  width: 96px;
+  height: 12px;
+  vertical-align: middle;
+}
+.divergeAxis {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--line-2);
+}
+.divergeUp,
+.divergeDown {
+  position: absolute;
+  top: 2px;
+  height: 8px;
+  border-radius: 1px;
+}
+.divergeUp {
+  background: var(--series-1);
+}
+.divergeDown {
+  background: var(--series-2);
+}
+.foot {
+  margin: 0;
+  padding: 10px 16px 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+.foot b {
+  font-weight: 600;
+  font-family: var(--desk-mono), ui-monospace, monospace;
+}
+
+/* the streaming line */
+
+.lineHero {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 16px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.lineV {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  line-height: 1.1;
+  color: var(--warn);
+}
+.lineV small {
+  font-size: 12px;
+  margin-left: 7px;
+  color: var(--text-3);
+}
+.lineS {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.lineNote {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.belowRow td {
+  background: color-mix(in srgb, var(--warn) 7%, transparent);
+}
+.ruleRow td {
+  padding: 0 16px;
+  border-bottom: 0;
+  text-align: left;
+}
+.ruleLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+.ruleLabel::after {
+  content: "";
+  flex: 1;
+  border-top: 2px dashed var(--warn);
+}
+.ruleLabel.benchRule {
+  color: var(--text-3);
+}
+.ruleLabel.benchRule::after {
+  border-top: 1px solid var(--line-2);
+}
+.streamed {
+  display: inline-flex;
+  gap: 3px;
+}
+.streamChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: calc(3px * var(--round, 1));
+  font-size: 10.5px;
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 13%, transparent);
+}
+.lineMatchups {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 10px;
+}
+.lineMatchup {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 10px;
+  padding: 4px 16px;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.lmHead {
+  font-family: var(--desk-mono), ui-monospace, monospace;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.lmHead b {
+  color: var(--text);
+  font-weight: 600;
+  margin-right: 4px;
+}
+.lmBody {
+  min-width: 0;
+}
+
+/* the reads' notes */
+
+.notes {
+  padding: 10px 16px 16px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+.notes p {
+  margin: 0 0 4px;
+}
+
+/* ---- narrower screens */
+
+@media (max-width: 1279.98px) {
+  .tape {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .tile:nth-child(3) {
+    border-right: 0;
+  }
+  .tile:nth-child(-n + 3) {
+    border-bottom: 1px solid var(--line);
+  }
+  .grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .paneLine {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+  }
+  .paneTiers {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 899.98px) {
+  .benchmark {
+    display: none;
+  }
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pane {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .paneLine {
+    border-top: 0;
+  }
+  .legend {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 599.98px) {
+  .tape {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tile:nth-child(3) {
+    border-right: 1px solid var(--line);
+  }
+  .tile:nth-child(2n) {
+    border-right: 0;
+  }
+  .tile:nth-child(-n + 4) {
+    border-bottom: 1px solid var(--line);
+  }
+  .tileV {
+    font-size: 17px;
+  }
+  .trackHead,
+  .trackRow {
+    grid-template-columns: 128px minmax(0, 1fr) 50px 38px;
+    gap: 8px;
+  }
+  .phead {
+    flex-wrap: wrap;
+  }
+  .psub {
+    margin-left: 0;
+  }
+  /* the league's average and the bar give way: the difference says both */
+  .tierTable td:nth-child(4),
+  .tierTable th:nth-child(4),
+  .tierTable td:nth-child(5),
+  .tierTable th:nth-child(5) {
+    display: none;
+  }
+}

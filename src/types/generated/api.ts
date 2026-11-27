@@ -10466,6 +10466,8 @@ export interface components {
         };
         /** LinePlayerValue */
         LinePlayerValue: {
+            /** Below Line */
+            below_line: boolean | null;
             /** By Matchup */
             by_matchup: number[];
             /** Espn Id */
@@ -10481,6 +10483,8 @@ export interface components {
              * @default false
              */
             on_ir: boolean;
+            /** Per Game */
+            per_game: number;
             /** Player Id */
             player_id: number | null;
             /**
@@ -10495,10 +10499,20 @@ export interface components {
             protected: boolean;
             /** Slot */
             slot: string | null;
-            /** Under Line */
-            under_line: boolean | null;
+            /**
+             * Streamed In
+             * @default []
+             */
+            streamed_in: number[];
             /** Worth */
             worth: number;
+        };
+        /** LineSpot */
+        LineSpot: {
+            /** Espn Id */
+            espn_id: number;
+            /** Name */
+            name: string;
         };
         /**
          * LineupCheckResp
@@ -11754,6 +11768,11 @@ export interface components {
             days: number;
             /** End */
             end: string | null;
+            /**
+             * Games
+             * @default 0
+             */
+            games: number;
             /** Lanes */
             lanes: components["schemas"]["LineLane"][];
             /** Line */
@@ -11774,6 +11793,11 @@ export interface components {
             proven: boolean;
             /** Start */
             start: string | null;
+            /**
+             * Streamed
+             * @default []
+             */
+            streamed: components["schemas"]["LineSpot"][];
             /** Worth Running */
             worth_running: number;
         };

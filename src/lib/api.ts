@@ -54,6 +54,15 @@ import type { TeamHolds, TeamHoldsResponse } from "@/types/team-hold";
 import type { RosterProtections, RosterProtectionsResponse } from "@/types/roster-protection";
 import type { DailyActionsData, DailyActionsResponse } from "@/types/daily-actions";
 import type { TeamsOverviewData, TeamsOverviewResponse } from "@/types/team-overview";
+import type {
+  LeagueProjectionData,
+  LeagueProjectionResponse,
+  LeagueValuesData,
+  LeagueValuesResponse,
+  StreamingLineData,
+  StreamingLineResponse,
+  ValueWindowKey,
+} from "@/types/team-desk";
 import type { TeamAvailabilityData, TeamAvailabilityResponse } from "@/types/availability";
 import { normalizeParams, toApiQuery } from "@/lib/rankings-params";
 import type { PlayerStats, PercentileData, PlayerStatusData, PlayerOwnershipData } from "@/types/player";
@@ -219,6 +228,8 @@ const STREAMERS_TIMEOUT_MS = 30_000;
 const LINEUP_WRITE_TIMEOUT_MS = 45_000;
 /** Connecting or re-checking an ESPN account reads ESPN up to four times first. */
 const ESPN_CHECK_TIMEOUT_MS = 30_000;
+/** The Team desk's league reads: each reads the whole league from ESPN, and the line solves a plan per matchup. */
+const LEAGUE_READ_TIMEOUT_MS = 40_000;
 
 /**
  * Every method is one of three shapes:
@@ -360,6 +371,36 @@ class ApiClient {
    */
   async getTeamsOverview(getToken: GetTokenFn, opts?: RequestOptions): Promise<TeamsOverviewData> {
     const env = await fetchJson<TeamsOverviewResponse>(`${TEAMS_API}/overview`, { ...opts, getToken });
+    return unwrap(env);
+  }
+
+  /** Every roster in the team's league projected the same way, the league's benchmarks, playoff odds (the Team desk). */
+  async getLeagueProjections(getToken: GetTokenFn, teamId: number, opts?: RequestOptions): Promise<LeagueProjectionData> {
+    const env = await fetchJson<LeagueProjectionResponse>(`${TEAMS_API}/${teamId}/league/projections`, {
+      ...opts,
+      getToken,
+      timeoutMs: LEAGUE_READ_TIMEOUT_MS,
+    });
+    return unwrap(env);
+  }
+
+  /** Every rostered player in the league priced over a window, and the team's tiers against the league's. */
+  async getLeagueValues(getToken: GetTokenFn, teamId: number, window: ValueWindowKey, opts?: RequestOptions): Promise<LeagueValuesData> {
+    const env = await fetchJson<LeagueValuesResponse>(`${TEAMS_API}/${teamId}/league/values?window=${window}`, {
+      ...opts,
+      getToken,
+      timeoutMs: LEAGUE_READ_TIMEOUT_MS,
+    });
+    return unwrap(env);
+  }
+
+  /** The streaming line over a window of up to four matchups, and each of the team's players against it. */
+  async getStreamingLine(getToken: GetTokenFn, teamId: number, window: ValueWindowKey, opts?: RequestOptions): Promise<StreamingLineData> {
+    const env = await fetchJson<StreamingLineResponse>(`${TEAMS_API}/${teamId}/league/streaming-line?window=${window}`, {
+      ...opts,
+      getToken,
+      timeoutMs: LEAGUE_READ_TIMEOUT_MS,
+    });
     return unwrap(env);
   }
 

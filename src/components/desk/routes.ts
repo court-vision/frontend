@@ -1,7 +1,8 @@
 /**
  * The desks: full-screen workspaces that share one frame. Each owns one
  * subject end to end — Home every team you have at a glance, Week your team's matchup week, Draft a draft room, Scout
- * one player, NBA team or night of games, AI a conversation with the agent,
+ * one player, NBA team or night of games, Team your team against the league's other rosters,
+ * AI a conversation with the agent,
  * Developer the API and the data behind the app, Account your teams and
  * alerts — and anything about that
  * subject is a pane, mode or overlay inside it rather than a page of its own.
@@ -10,6 +11,7 @@ export const HOME_DESK = "/home";
 export const WEEK_DESK = "/week";
 export const DRAFT_DESK = "/draft";
 export const SCOUT_DESK = "/scout";
+export const TEAM_DESK = "/team";
 export const AI_DESK = "/ai";
 export const DEVELOPER_DESK = "/developer";
 export const ACCOUNT_DESK = "/account";
@@ -23,6 +25,7 @@ export const DESKS = [
   { id: "week", label: "Week", href: WEEK_DESK, key: "1", note: "Your team's matchup week", keywords: ["matchup", "lineup", "roster", "streamers", "market", "moves"] },
   { id: "draft", label: "Draft", href: DRAFT_DESK, key: "2", note: "A draft room, live or mock", keywords: ["draft", "room", "board", "mock", "lab", "picks"] },
   { id: "scout", label: "Scout", href: SCOUT_DESK, key: "3", note: "One player, NBA team or night of games", keywords: ["players", "rankings", "standings", "tonight", "terminal"] },
+  { id: "team", label: "Team", href: TEAM_DESK, key: "5", note: "Your team against the league's rosters", keywords: ["team", "analysis", "league", "benchmark", "tiers", "playoff odds", "projections", "streaming line", "depth"] },
   { id: "ai", label: "AI", href: AI_DESK, key: "4", note: "Ask Dime about your team", keywords: ["ai", "dime", "assistant", "chat", "ask", "agent", "question"] },
 ] as const;
 
@@ -55,7 +58,7 @@ export function isDeskPath(pathname: string | null | undefined): boolean {
 
 /**
  * A desk demo's URL, which runs on sample data in the browser and so opens
- * signed out. Only these: a desk's own page with `?demo` (`/week?demo`,
+ * signed out. Only these: a desk's own page with `?demo` (`/week?demo`, `/team?demo`,
  * `/draft?demo`, `/account?demo`) and the Draft desk's demo rooms
  * (`/draft/demo-3`, `/draft/demo-3/recap`). `?demo` anywhere else, a live room
  * included, leaves that route's sign-in as it is.
