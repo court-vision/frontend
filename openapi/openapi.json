@@ -1199,6 +1199,288 @@
         "title": "AiAutopilotTeam",
         "type": "object"
       },
+      "AiBill": {
+        "properties": {
+          "days": {
+            "description": "Every UTC day of both months to today",
+            "items": {
+              "$ref": "#/components/schemas/AiBillDay"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "keys": {
+            "description": "This month, largest first",
+            "items": {
+              "$ref": "#/components/schemas/AiBillKey"
+            },
+            "title": "Keys",
+            "type": "array"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the check couldn't run, in Anthropic's words when it said",
+            "title": "Message"
+          },
+          "months": {
+            "description": "Last month, then this month",
+            "items": {
+              "$ref": "#/components/schemas/AiBillMonth"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "read_at": {
+            "description": "When Anthropic was read (answers are kept a few minutes)",
+            "format": "date-time",
+            "title": "Read At",
+            "type": "string"
+          },
+          "refreshed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Anthropic's data_refreshed_at: its numbers are complete up to here, short after it",
+            "title": "Refreshed At"
+          },
+          "state": {
+            "enum": [
+              "ok",
+              "no_key",
+              "refused",
+              "unavailable",
+              "unreachable"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "message",
+          "read_at",
+          "refreshed_at",
+          "months",
+          "days",
+          "keys"
+        ],
+        "title": "AiBill",
+        "type": "object"
+      },
+      "AiBillDay": {
+        "properties": {
+          "billed_micros": {
+            "title": "Billed Micros",
+            "type": "integer"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "ledger_micros": {
+            "title": "Ledger Micros",
+            "type": "integer"
+          },
+          "open_micros": {
+            "default": 0,
+            "title": "Open Micros",
+            "type": "integer"
+          },
+          "ours_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ours Micros"
+          }
+        },
+        "required": [
+          "day",
+          "billed_micros",
+          "ours_micros",
+          "ledger_micros",
+          "open_micros"
+        ],
+        "title": "AiBillDay",
+        "type": "object"
+      },
+      "AiBillKey": {
+        "description": "An API key Anthropic billed this month, as its key list names it.",
+        "properties": {
+          "api_key_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null: usage made without a key (the Console)",
+            "title": "Api Key Id"
+          },
+          "billed_micros": {
+            "title": "Billed Micros",
+            "type": "integer"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Anthropic's partial hint, like sk-ant-api03-R2D...igAA",
+            "title": "Hint"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "ours": {
+            "default": false,
+            "description": "The key this app sends its model calls with",
+            "title": "Ours",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "api_key_id",
+          "name",
+          "hint",
+          "ours",
+          "billed_micros"
+        ],
+        "title": "AiBillKey",
+        "type": "object"
+      },
+      "AiBillMonth": {
+        "description": "One calendar month (UTC): what Anthropic bills against what the ledger priced.",
+        "properties": {
+          "billed_micros": {
+            "description": "Anthropic's cost for the whole organization, before credits",
+            "title": "Billed Micros",
+            "type": "integer"
+          },
+          "ledger_micros": {
+            "description": "The ledger's settled spend",
+            "title": "Ledger Micros",
+            "type": "integer"
+          },
+          "month": {
+            "description": "Its first day",
+            "format": "date",
+            "title": "Month",
+            "type": "string"
+          },
+          "open_micros": {
+            "default": 0,
+            "description": "The ledger's reservations still open (turns running)",
+            "title": "Open Micros",
+            "type": "integer"
+          },
+          "ours_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Of it, on this app's API key; null: the key wasn't found",
+            "title": "Ours Micros"
+          }
+        },
+        "required": [
+          "month",
+          "billed_micros",
+          "ours_micros",
+          "ledger_micros",
+          "open_micros"
+        ],
+        "title": "AiBillMonth",
+        "type": "object"
+      },
+      "AiBillResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiBill"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "AiBillResp",
+        "type": "object"
+      },
       "AiBlockPart": {
         "properties": {
           "block": {
@@ -17285,6 +17567,157 @@
         "title": "LedgerRunResp",
         "type": "object"
       },
+      "LineLane": {
+        "description": "The kth lane: the player who holds it now, the team's total with k lanes, and what the\nkth lane gains over k - 1.",
+        "properties": {
+          "adds": {
+            "title": "Adds",
+            "type": "integer"
+          },
+          "gain": {
+            "title": "Gain",
+            "type": "number"
+          },
+          "holder": {
+            "title": "Holder",
+            "type": "string"
+          },
+          "holder_espn_id": {
+            "title": "Holder Espn Id",
+            "type": "integer"
+          },
+          "lane": {
+            "title": "Lane",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lane",
+          "holder",
+          "holder_espn_id",
+          "total",
+          "gain",
+          "adds"
+        ],
+        "title": "LineLane",
+        "type": "object"
+      },
+      "LinePlayerValue": {
+        "properties": {
+          "by_matchup": {
+            "items": {
+              "type": "number"
+            },
+            "title": "By Matchup",
+            "type": "array"
+          },
+          "espn_id": {
+            "title": "Espn Id",
+            "type": "integer"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injury Status"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nba_team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nba Team"
+          },
+          "on_ir": {
+            "default": false,
+            "title": "On Ir",
+            "type": "boolean"
+          },
+          "player_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Id"
+          },
+          "positions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Positions",
+            "type": "array"
+          },
+          "protected": {
+            "default": false,
+            "title": "Protected",
+            "type": "boolean"
+          },
+          "slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot"
+          },
+          "under_line": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Under Line"
+          },
+          "worth": {
+            "title": "Worth",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "espn_id",
+          "player_id",
+          "nba_team",
+          "positions",
+          "slot",
+          "injury_status",
+          "protected",
+          "on_ir",
+          "worth",
+          "by_matchup",
+          "under_line"
+        ],
+        "title": "LinePlayerValue",
+        "type": "object"
+      },
       "LineupCheckResp": {
         "description": "Lineup check result for a team.",
         "properties": {
@@ -21104,6 +21537,114 @@
           "timestamp"
         ],
         "title": "MatchupScoreHistoryResp",
+        "type": "object"
+      },
+      "MatchupStreamingLine": {
+        "properties": {
+          "adds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adds"
+          },
+          "base": {
+            "title": "Base",
+            "type": "number"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "lanes": {
+            "items": {
+              "$ref": "#/components/schemas/LineLane"
+            },
+            "title": "Lanes",
+            "type": "array"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "line_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Low"
+          },
+          "matchup": {
+            "title": "Matchup",
+            "type": "integer"
+          },
+          "playoffs": {
+            "default": false,
+            "title": "Playoffs",
+            "type": "boolean"
+          },
+          "proven": {
+            "default": true,
+            "title": "Proven",
+            "type": "boolean"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "worth_running": {
+            "title": "Worth Running",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "matchup",
+          "start",
+          "end",
+          "days",
+          "adds",
+          "playoffs",
+          "base",
+          "lanes",
+          "worth_running",
+          "line",
+          "line_low",
+          "proven"
+        ],
+        "title": "MatchupStreamingLine",
         "type": "object"
       },
       "MatchupTeamResp": {
@@ -31735,6 +32276,190 @@
         "title": "StreamerResp",
         "type": "object"
       },
+      "StreamingLineData": {
+        "properties": {
+          "current_matchup": {
+            "title": "Current Matchup",
+            "type": "integer"
+          },
+          "first_matchup": {
+            "title": "First Matchup",
+            "type": "integer"
+          },
+          "free_agents_read": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Agents Read"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "this_week",
+                  "next_4",
+                  "to_playoffs",
+                  "playoffs",
+                  "rest_of_season"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "last_matchup": {
+            "title": "Last Matchup",
+            "type": "integer"
+          },
+          "league_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "League Name"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "line_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Low"
+          },
+          "matchups": {
+            "items": {
+              "$ref": "#/components/schemas/MatchupStreamingLine"
+            },
+            "title": "Matchups",
+            "type": "array"
+          },
+          "notes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/LinePlayerValue"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "projection_as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection As Of"
+          },
+          "today": {
+            "title": "Today",
+            "type": "string"
+          }
+        },
+        "required": [
+          "league_name",
+          "today",
+          "projection_as_of",
+          "current_matchup",
+          "key",
+          "first_matchup",
+          "last_matchup",
+          "line",
+          "line_low",
+          "matchups",
+          "players",
+          "free_agents_read",
+          "notes"
+        ],
+        "title": "StreamingLineData",
+        "type": "object"
+      },
+      "StreamingLineResp": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamingLineData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "data",
+          "error_code",
+          "timestamp"
+        ],
+        "title": "StreamingLineResp",
+        "type": "object"
+      },
       "TeamAddReq": {
         "properties": {
           "league_info": {
@@ -37985,6 +38710,33 @@
         ]
       }
     },
+    "/v1/internal/jobs/ai/bill": {
+      "get": {
+        "description": "The bill check, for the data platform's AI spend page: what Anthropic bills the\norganization, last month and this one by UTC day and by API key, beside the ledger.\nRead with ANTHROPIC_ADMIN_KEY and kept 5 minutes; `state` says why when it couldn't be\nread (no key, a refused key). No model call: it spends nothing.",
+        "operationId": "ai_bill_v1_internal_jobs_ai_bill_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiBillResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ai Bill",
+        "tags": [
+          "internal jobs"
+        ]
+      }
+    },
     "/v1/internal/jobs/ai/caps": {
       "put": {
         "description": "Set a line's monthly cap, the whole app's (`line` app), or one user's cap on the\ndesk or autopilot line, from the next reservation on. `monthly_usd` null clears it:\nthe environment's number applies again (and a user's desk cap is an equal part of\nthe desk's).",
@@ -40622,6 +41374,117 @@
           }
         ],
         "summary": "Get Team League Projections",
+        "tags": [
+          "team management"
+        ]
+      }
+    },
+    "/v1/internal/teams/{team_id}/league/streaming-line": {
+      "get": {
+        "description": "Each of the team's players against the streaming line: what the last stream lane worth\nrunning adds to the lineup with the league's adds, matchup by matchup over a window of up\nto four matchups (ESPN points leagues).",
+        "operationId": "get_team_streaming_line_v1_internal_teams__team_id__league_streaming_line_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "A preset window; this_week when no matchups are given",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "this_week",
+                    "next_4",
+                    "to_playoffs",
+                    "playoffs",
+                    "rest_of_season"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A preset window; this_week when no matchups are given",
+              "title": "Window"
+            }
+          },
+          {
+            "description": "The window's first matchup (wins over the preset)",
+            "in": "query",
+            "name": "first_matchup",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The window's first matchup (wins over the preset)",
+              "title": "First Matchup"
+            }
+          },
+          {
+            "description": "The window's last matchup",
+            "in": "query",
+            "name": "last_matchup",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The window's last matchup",
+              "title": "Last Matchup"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamingLineResp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Team Streaming Line",
         "tags": [
           "team management"
         ]
